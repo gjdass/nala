@@ -26,7 +26,7 @@ Status: `idea` → `specified` → `in progress` → `done`. A feature moves to 
 
 | # | Feature | Spec | Status | Notes |
 |---|---------|------|--------|-------|
-| 01 | Project skeleton (solution, Angular PWA, Docker Compose, test setups) | [01-project-skeleton.md](01-project-skeleton.md) | specified | |
+| 01 | Project skeleton (solution, Angular PWA, Docker Compose, test setups) | [01-project-skeleton.md](01-project-skeleton.md) | in progress | |
 | 02 | Authentication (login, register, sessions) | [02-auth.md](02-auth.md) | specified | |
 | 03 | Family & baby profile | [03-family-baby.md](03-family-baby.md) | specified | |
 | 04 | App layout & section pattern (home cards, entry sheet, mini-bar) | [04-app-layout.md](04-app-layout.md) | specified | Shared by every section. |

@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="Nala.Api/Nala.Api.csproj" />
+  <Project Path="Nala.Core/Nala.Core.csproj" />
+  <Project Path="Nala.Sql/Nala.Sql.csproj" />
+  <Project Path="Nala.Tests/Nala.Tests.csproj" />
+</Solution>

@@ -1,6 +1,6 @@
 # 01 — Project skeleton
 
-Status: specified
+Status: in progress
 
 ## Goal
 
@@ -11,11 +11,11 @@ Prove the whole chain — Angular PWA → nginx → API → PostgreSQL, built an
 Each item becomes at least one test or check, written failing first where testable.
 
 ### API
-- [ ] `api/` contains a .NET solution (current LTS) with `Nala.Api`, `Nala.Core`, `Nala.Sql`, `Nala.Tests`, referencing each other as described in `api/CLAUDE.md` (Core references nothing).
-- [ ] `Nala.Tests` uses NUnit and `dotnet test` runs green from `api/`.
-- [ ] `Nala.Sql` has a `DbContext` on PostgreSQL (Npgsql) and an initial migration; the API applies pending migrations at startup.
-- [ ] `GET /api/health` returns 200 with `{ "status": "ok" }` when the database is reachable, 503 otherwise.
-- [ ] The connection string comes from an environment variable.
+- [x] `api/` contains a .NET solution (current LTS) with `Nala.Api`, `Nala.Core`, `Nala.Sql`, `Nala.Tests`, referencing each other as described in `api/CLAUDE.md` (Core references nothing).
+- [x] `Nala.Tests` uses NUnit and `dotnet test` runs green from `api/`.
+- [x] `Nala.Sql` has a `DbContext` on PostgreSQL (Npgsql) and an initial migration; the API applies pending migrations at startup.
+- [x] `GET /api/health` returns 200 with `{ "status": "ok" }` when the database is reachable, 503 (`{ "status": "unavailable" }`) otherwise.
+- [x] The connection string comes from an environment variable (`ConnectionStrings__Nala`).
 
 ### Web
 - [ ] `web/` contains an Angular app (current version): standalone components, installable PWA (manifest, icons, service worker for the app shell).
@@ -41,7 +41,7 @@ Each item becomes at least one test or check, written failing first where testab
 
 Each slice goes red → green → commit on `master`, in this order.
 
-- [ ] **Slice 1 — API skeleton + health endpoint.** .NET 10 solution with the four projects and their references, NUnit, `NalaDbContext` (Npgsql) with an initial migration applied at startup, `GET /api/health` (200 / 503), connection string from an environment variable, `api/CLAUDE.md` commands. Covers: all API criteria, api half of Docs / Commands.
+- [x] **Slice 1 — API skeleton + health endpoint.** .NET 10 solution with the four projects and their references, NUnit, `NalaDbContext` (Npgsql) with an initial migration applied at startup, `GET /api/health` (200 / 503), connection string from an environment variable, `api/CLAUDE.md` commands. Covers: all API criteria, api half of Docs / Commands.
 - [ ] **Slice 2 — Web skeleton + health page + i18n.** Angular app (standalone, OnPush, signals), installable PWA (manifest, icons, service worker), unit test runner, runtime EN/FR i18n switchable without reload, placeholder home page calling `/api/health` through the dev proxy, `web/CLAUDE.md` commands. Covers: Web criteria 1, 5, 6, 7, web half of Docs / Commands.
 - [ ] **Slice 3 — Material 3 theme, theme service, colour lint.** Global M3 theme under `src/styles/` (light and dark, system preference), `ThemeService` (light / dark / system, persisted per device), placeholder section colour tokens (`feed`, `sleep`, `diaper`, `pump`, `growth`, `medication`, each with an "on" colour, light and dark), stylelint rule rejecting hard-coded colours in component styles, health page restyled with Material. Covers: Web criteria 2, 3, 4.
 - [ ] **Slice 4 — Docker Compose deployment.** Multi-stage Dockerfiles (`api`: SDK → ASP.NET runtime; `web`: node → nginx with SPA fallback and `/api` proxy), `docker-compose.yml` (`db` with named volume and healthcheck, `api` waiting for healthy `db`, `web` the only published port), `.env.example`, README deployment section, scripted smoke check from a clean clone. Covers: all Docker criteria, README criterion.

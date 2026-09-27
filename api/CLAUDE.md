@@ -2,7 +2,20 @@
 
 ## Commands
 
-_Fill in once scaffolded (build, test, run, add migration)._
+Run from `api/`. Tests need Docker running (Testcontainers starts PostgreSQL).
+
+| What | Command |
+|---|---|
+| Restore local tools (`dotnet-ef`) | `dotnet tool restore` |
+| Build | `dotnet build` |
+| Test | `dotnet test` |
+| Lint (format check) | `dotnet format --verify-no-changes` |
+| Run | `ConnectionStrings__Nala="Host=localhost;Port=5432;Database=nala;Username=…;Password=…" dotnet run --project Nala.Api` |
+| Add a migration | `dotnet ef migrations add <Name> -p Nala.Sql -s Nala.Sql -o Migrations` |
+
+- The connection string comes only from the `ConnectionStrings__Nala` environment variable; the API refuses to start without it.
+- Pending migrations are applied at startup. `dotnet ef` uses `DesignTimeDbContextFactory` in `Nala.Sql`, so generating a migration needs no database.
+- Health: `GET /api/health` → 200 `{"status":"ok"}`, or 503 `{"status":"unavailable"}` when the database is unreachable.
 
 ## Solution structure
 
