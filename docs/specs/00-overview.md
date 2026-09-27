@@ -43,7 +43,7 @@ Specs are numbered in build order: build 01, then 02, and so on. If the order of
 
 Notes per step:
 - **01 Project skeleton:** the whole chain, incl. `docker compose up`, before any feature.
-- **02 Authentication:** first-run setup → login/session → invitations → reset → account settings → admin.
+- **02 Authentication:** first-run setup → login/session → invitation registration → account settings → account deletion → admin → admin reset link → email reset.
 - **04 App layout:** shared components, home column, per-user order.
 - **05 Feed:** slices bottle → solids → breastfeed timers → live sync + mini-bar → offline queue.
 - **06+:** spec each remaining section before building it.

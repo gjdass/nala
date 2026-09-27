@@ -40,7 +40,7 @@ Each item becomes at least one test, written failing first.
 - [ ] After too many failed logins for the same account (5 in 15 minutes), further attempts are temporarily refused.
 - [ ] A disabled account cannot log in, and its existing sessions stop working.
 - [ ] Logout ends the current session only.
-- [ ] Every API endpoint except setup, login, invitation lookup/registration and password reset requires a valid session (401 otherwise).
+- [ ] Every API endpoint except health (`GET /api/health`), setup, login, invitation lookup/registration and password reset requires a valid session (401 otherwise).
 
 ### Password rules
 - [ ] Passwords must be at least 8 characters; no other composition rules.
@@ -70,7 +70,20 @@ Each item becomes at least one test, written failing first.
 - [ ] The admin can disable and re-enable a user; the admin cannot disable themselves.
 
 ### Offline interaction
-- [ ] If the session has expired while entries are queued offline, the queue is kept on the device; it is sent after the user logs in again, as the same user only.
+- Keeping queued entries across a session expiry is specified and tested with the offline queue, in [05 Feed § Offline](05-feed.md#offline).
+
+## Build slices
+
+Each slice goes red → green → commit on `master`, in this order.
+
+- [ ] **Slice 1 — First-run setup.** `User` entity + migration (normalized email, unique among non-deleted users), password hasher behind a Core interface (Identity's `PasswordHasher`), 8-character minimum, `GET /api/auth/state`, `POST /api/auth/setup` (creates the admin and signs them in; 403 once any user exists). Web: shared auth card layout, setup page, guard routing to/away from setup. Covers: all First-run setup criteria, email normalization, both Password rules, the "admin = setup account" part of Admin.
+- [ ] **Slice 2 — Login, session, logout.** Login with a generic error, secure httpOnly same-site cookie backed by server-side sessions, 90-day rolling expiry, lockout after 5 failures in 15 minutes, logout of the current session only, every endpoint requires a session except the public ones (401). Web: login page, auth guard, 401 interceptor. Covers: Login and session criteria except the disabled account one (slice 6).
+- [ ] **Slice 3 — Registration by invitation.** `Invitation` entity + migration (hashed token, 7-day expiry, used, revoked), invitation lookup, registration consuming the invitation and logging in, duplicate email refused, no public sign-up. Web: register page with clear errors for expired / used / unknown links. Invitations are created in 03; tests seed them. Covers: all Registration criteria.
+- [ ] **Slice 4 — Account settings.** Get/update the current user (display name, language; language defaults to the browser's on first login), change password with the current one (ends other sessions). Web: settings page with the Account section (and the theme choice), logout. Covers: both Account settings criteria.
+- [ ] **Slice 5 — Account deletion.** Delete own account after confirming the password: ends all sessions, clears email and password hash, keeps the display name, refused for the admin; no cascade to entries. Web: delete action with confirmation dialog. Covers: all Account deletion criteria.
+- [ ] **Slice 6 — Admin: users list, disable / re-enable.** Admin-only users list (deleted excluded), disable / re-enable (not self); disabling ends sessions and blocks login. Web: Admin section in settings, admin only. Covers: all Admin criteria, and the disabled account criterion.
+- [ ] **Slice 7 — Admin reset link.** `PasswordResetToken` entity + migration (hashed token), admin generates a one-time link valid 24 hours, reset sets the password, consumes the link and ends other sessions. Web: reset-link action in the admin list, reset-password page. Covers: the admin reset link criterion and the "using a reset link" criterion.
+- [ ] **Slice 8 — Forgot password by email.** SMTP and public base URL env variables (`.env.example`), `smtpEnabled` in the auth state, forgot-password endpoint with an identical confirmation whatever the email, emailed one-time link valid 1 hour. Web: "Forgot password" when SMTP is configured, "ask your admin" otherwise. Covers: the three SMTP reset criteria.
 
 ## Data
 

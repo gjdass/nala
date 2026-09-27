@@ -93,6 +93,7 @@ Each item becomes at least one test, written failing first.
 - [ ] With no network, every action above that creates or changes a feed (timer taps, save, manual entry, edit, delete) is queued on the device with its own timestamp and applied when back online.
 - [ ] While offline, a breastfeed timer started on this device keeps running and displaying correctly.
 - [ ] Re-sending a queued action is idempotent (client-generated UUIDs for feeds and segments).
+- [ ] If the session has expired while entries are queued offline, the queue is kept on the device; it is sent after the user logs in again, as the same user only (moved from 02).
 - [ ] If a queued breastfeed reaches the server while another in-progress feed exists for the same baby, both are kept as separate feeds; nothing is dropped.
 
 ## Data
