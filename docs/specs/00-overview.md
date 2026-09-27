@@ -11,7 +11,7 @@ Self-hosted baby tracker PWA for parents: log a baby's feedings, sleep, diapers,
 These change the data model or architecture. Changing one later means updating this section first.
 
 - **Offline:** offline logging queue. Entries created without a network are queued on the device and sent when back online. Reading history needs the network. The PWA caches the app shell. Implication: entries get a client-generated UUID so re-sending a queued entry is idempotent.
-- **Accounts & sharing:** one account per caregiver. Caregivers share a **family** and join it by invitation. A user belongs to exactly one family. Every entry records who logged it; deleting an account never changes the entries it logged.
+- **Accounts & sharing:** one account per caregiver. **One instance = one family**: every user on the instance is a member of that family, joins it by invitation. Members have the same rights except destructive family actions (deleting a baby, removing a member), which only the admin can do. There is no family table in the data model. Every entry records who logged it; deleting an account never changes the entries it logged.
 - **Registration on a self-hosted instance:** the first account created becomes the instance's only admin. After that, public sign-up is closed; new users join through invitation links sent by a family member.
 - **Multiple babies:** a family has one or more babies. The app shows one selected baby at a time, with a quick switcher.
 - **Time zones:** all times stored in UTC; each device displays them in its own local time zone.
@@ -26,10 +26,10 @@ Status: `idea` → `specified` → `in progress` → `done`. A feature moves to 
 | # | Feature | Spec | Status | Notes |
 |---|---------|------|--------|-------|
 | 01 | Authentication (login, register, sessions) | [01-auth.md](01-auth.md) | specified | |
-| 02 | Family & baby profile | — | idea | |
+| 02 | Family & baby profile | [02-family-baby.md](02-family-baby.md) | specified | |
 | 10 | Feed | — | idea | **Hard requirement:** breast feeding has two independent timers, one per side (left/right). Each side starts and stops on its own; the card is split left/right. A single timer with a "side" field is not acceptable. |
 | 11 | Sleep | — | idea | |
 | 12 | Diaper | — | idea | |
 | 13 | Medication | — | idea | |
-| 14 | Growth | — | idea | **Hard requirement:** simple measurement entries over time — weight, height, head circumference, milestones. Raw logging only, no percentile/trend charts. |
+| 14 | Growth | — | idea | Birth weight/length/head circumference are stored on the baby profile (02) and must appear as the starting point of the growth history. **Hard requirement:** simple measurement entries over time — weight, height, head circumference, milestones. Raw logging only, no percentile/trend charts. |
 | 15 | Pump | — | idea | **Hard requirement:** pumping sessions with volume and history. |

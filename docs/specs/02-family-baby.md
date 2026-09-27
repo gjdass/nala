@@ -1,0 +1,80 @@
+# 02 — Family & baby profile
+
+Status: specified
+
+## Goal
+
+Let a household share one Nala instance: invite caregivers, let the admin remove them when needed, and register the babies they track, with a quick way to switch between babies.
+
+## Decisions
+
+- **One instance = one family.** Everyone with an account on the instance is a member of the family. There is no family entity and no family name.
+- **Members are equal, except for destructive actions.** Every member can log and edit entries, add and edit babies, and invite people. Only the admin can delete a baby or remove a member, on top of the admin powers from 01 (reset links, disable/re-enable accounts).
+
+## User stories
+
+- As a member, I want to invite a caregiver by sharing a link, so they can log for our baby.
+- As a member, I want to see the members and pending invitations, and revoke an invitation I no longer need.
+- As the admin, I want to remove someone from the family so they can no longer access our data.
+- As a member, I want to add a baby with their name, birth date, sex and birth measurements.
+- As a member, I want to quickly switch between our babies, and have the app remember which one I was looking at.
+- As a member, I want to edit a baby's profile.
+- As the admin, I want to delete a baby added by mistake.
+
+## Acceptance criteria
+
+Each item becomes at least one test, written failing first.
+
+### First baby
+- [ ] After first-run setup, or whenever the family has no baby, the app shows an empty state inviting the user to add a baby; no activity screen is reachable until a baby exists.
+
+### Babies
+- [ ] A baby has a name (required, 1–50 characters), a birth date (required, not in the future), a sex (girl / boy / unspecified, default unspecified), and optional birth weight (g), birth length (cm) and birth head circumference (cm).
+- [ ] Birth measurements, when given, must be positive and within plausible bounds (weight 300–7000 g, length 20–70 cm, head circumference 15–50 cm).
+- [ ] Any member can add a baby and edit any field of any baby.
+- [ ] The baby's age is shown from the birth date in days for the first 2 weeks, then weeks + days until 3 months, then months + days (e.g. "5 days", "6 weeks 2 days", "4 months 10 days"), in the user's language.
+- [ ] Only the admin can delete a baby, after a confirmation that requires typing the baby's name. Deleting a baby deletes all of that baby's entries.
+- [ ] A non-admin member does not see the delete action, and the delete endpoint refuses them (403).
+- [ ] Babies are listed by birth date, oldest first.
+
+### Baby switcher
+- [ ] When the family has more than one baby, a switcher is available from every main screen; with one baby it is hidden.
+- [ ] The selected baby is remembered per device (not per account) and restored when the app is reopened. If it no longer exists, the first baby is selected.
+
+### Invitations
+- [ ] Any member can create an invitation link (single-use, expires after 7 days — see 01) and copy or share it with the device's share sheet.
+- [ ] If SMTP is configured, the member can instead enter an email address and the link is sent to it.
+- [ ] Any member can list pending (unused, unexpired, unrevoked) invitations with who created them and when they expire, and revoke any of them. A revoked link cannot be used.
+
+### Members
+- [ ] Any member can list the family members (display name, email, admin badge). Disabled and deleted accounts are not listed.
+- [ ] Only the admin can remove a member: this disables their account (sessions end, login refused) — it is the same action as the admin disable in 01, offered from the members list. Their entries are not changed.
+- [ ] A non-admin member does not see the remove action, and the endpoint refuses them (403).
+- [ ] The admin cannot remove themselves. A member who wants to leave deletes their own account (see 01).
+- [ ] A removed member can only come back if the admin re-enables them (01) or through a new invitation after their account is deleted.
+
+### Authorization
+- [ ] Every baby and activity endpoint only works for authenticated, enabled members; there is no per-baby access restriction.
+- [ ] Admin-only actions (delete baby, remove member, plus those in 01) are enforced by the API, not only hidden in the UI.
+
+## Data
+
+- **Baby:** id, name, birth date (date only, no time), sex, birth weight g (nullable), birth length cm (nullable, one decimal), birth head circumference cm (nullable, one decimal), created at, created by user, updated at.
+- Birth measurements live on the baby. The Growth feature (14) will show them as the first point of the growth history rather than duplicating them as entries.
+- **Invitation:** as defined in 01, plus `revoked at`.
+- Deleting a baby cascades to every activity table's entries for that baby.
+
+## UI notes
+
+- Settings area with sections: Babies, Members & invitations, Account (01), Admin (01, admin only).
+- Baby switcher: compact control in the top app bar showing the selected baby's name and age.
+- Baby form, member list item and invitation list item are shared UI components.
+- All text through i18n (EN/FR); ages and dates formatted in the user's language.
+
+## Out of scope
+
+- Several families per instance, family name.
+- Roles beyond member/admin, read-only members.
+- Baby photos.
+- Per-baby access (a member sees all babies).
+- Archiving a baby (only delete).
