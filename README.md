@@ -1,4 +1,7 @@
 # nala
+
+[![CI](https://github.com/gjdass/nala/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/gjdass/nala/actions/workflows/ci.yml)
+
 Open source baby life tracker PWA for parents you can run easily with docker
 
 ## Deploy with Docker Compose
