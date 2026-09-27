@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Nala.Api.Account;
 using Nala.Api.Auth;
 using Nala.Api.Health;
 using Nala.Sql;
@@ -12,6 +13,7 @@ var connectionString = builder.Configuration.GetConnectionString("Nala")
 builder.Services.AddNalaSql(connectionString);
 builder.Services.AddNalaHealth();
 builder.Services.AddNalaAuth(builder.Environment);
+builder.Services.AddNalaAccount();
 builder.Services.AddSingleton(TimeProvider.System);
 
 var app = builder.Build();
@@ -26,6 +28,7 @@ app.UseAuthorization();
 
 app.MapNalaHealth();
 app.MapNalaAuth();
+app.MapNalaAccount();
 
 app.Run();
 

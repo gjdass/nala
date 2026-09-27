@@ -3,7 +3,6 @@ import { Injectable, inject, signal } from '@angular/core';
 import { Observable, catchError, map, of, tap } from 'rxjs';
 import {
   AuthState,
-  FieldErrors,
   Invitation,
   InvitationLookup,
   LoginRequest,
@@ -13,6 +12,7 @@ import {
   SetupRequest,
   SetupResult,
 } from './auth.models';
+import { toFieldErrors } from '../http/field-errors';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -85,25 +85,3 @@ export class AuthService {
 }
 
 const invitationUrl = (token: string) => `/api/auth/invitations/${encodeURIComponent(token)}`;
-
-/** Form-level codes the API answers with, by status. */
-const FORM_ERRORS: Partial<Record<number, string>> = {
-  401: 'invalidCredentials',
-  429: 'tooManyAttempts',
-};
-
-/** Statuses whose body carries the form code: an unusable invitation link (404 unknown, 410 expired/used/revoked). */
-const CODE_IN_BODY = [404, 410];
-
-/**
- * A 400 validation problem (`{ errors: { field: [code] } }`) to one code per field; a known status
- * to its form code; anything else is `form: unknown`.
- */
-function toFieldErrors(error: HttpErrorResponse): FieldErrors {
-  const problem = error.status === 400 ? (error.error?.errors as Record<string, string[]>) : null;
-  if (!problem) {
-    const bodyCode = CODE_IN_BODY.includes(error.status) ? (error.error?.code as string) : null;
-    return { form: bodyCode ?? FORM_ERRORS[error.status] ?? 'unknown' };
-  }
-  return Object.fromEntries(Object.entries(problem).map(([field, codes]) => [field, codes[0]]));
-}

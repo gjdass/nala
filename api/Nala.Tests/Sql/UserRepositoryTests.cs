@@ -94,4 +94,27 @@ public class UserRepositoryTests
         Assert.That((await repository.GetByEmailAsync("anna@mail.com"))?.Id, Is.EqualTo(anna.Id));
         Assert.That(await repository.GetByEmailAsync("ben@mail.com"), Is.Null);
     }
+
+    [Test]
+    public async Task Update_saves_display_name_language_and_password_hash()
+    {
+        var user = NewUser("anna@mail.com");
+        await AddAsync(user);
+
+        await using (var db = _db())
+        {
+            var repository = new UserRepository(db);
+            var read = (await repository.GetByIdAsync(user.Id))!;
+            read.DisplayName = "Anna B.";
+            read.PreferredLanguage = "fr";
+            read.PasswordHash = "new hash";
+            await repository.UpdateAsync(read);
+        }
+
+        await using var check = _db();
+        var saved = (await new UserRepository(check).GetByIdAsync(user.Id))!;
+        Assert.That(saved.DisplayName, Is.EqualTo("Anna B."));
+        Assert.That(saved.PreferredLanguage, Is.EqualTo("fr"));
+        Assert.That(saved.PasswordHash, Is.EqualTo("new hash"));
+    }
 }

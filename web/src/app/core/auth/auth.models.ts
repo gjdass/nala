@@ -46,3 +46,16 @@ export type InvitationLookup = { ok: true; invitation: Invitation } | { ok: fals
 export type RegisterRequest = SetupRequest;
 
 export type RegisterResult = { ok: true } | { ok: false; errors: FieldErrors };
+
+/** Fields left out are unchanged. */
+export interface UpdateAccountRequest {
+  displayName?: string;
+  language?: Lang;
+}
+
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+}
+
+export type AccountResult = { ok: true } | { ok: false; errors: FieldErrors };

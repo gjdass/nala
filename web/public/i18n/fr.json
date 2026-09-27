@@ -3,9 +3,7 @@
     "title": "Nala"
   },
   "home": {
-    "apiStatus": "État de l'API :",
-    "language": "Langue",
-    "theme": "Thème"
+    "apiStatus": "État de l'API :"
   },
   "health": {
     "loading": "Vérification…",
@@ -43,7 +41,9 @@
       "email": "E-mail",
       "displayName": "Nom affiché",
       "password": "Mot de passe",
-      "passwordHint": "8 caractères minimum"
+      "passwordHint": "8 caractères minimum",
+      "currentPassword": "Mot de passe actuel",
+      "newPassword": "Nouveau mot de passe"
     },
     "errors": {
       "email": {
@@ -59,6 +59,14 @@
         "required": "Saisissez un mot de passe",
         "tooShort": "8 caractères minimum"
       },
+      "currentPassword": {
+        "required": "Saisissez votre mot de passe actuel",
+        "incorrect": "Mot de passe incorrect"
+      },
+      "newPassword": {
+        "required": "Saisissez un nouveau mot de passe",
+        "tooShort": "8 caractères minimum"
+      },
       "form": {
         "unknown": "Une erreur est survenue. Vérifiez votre connexion et réessayez.",
         "invalidCredentials": "Email ou mot de passe incorrect.",
@@ -69,5 +77,25 @@
         "invitationRevoked": "Cette invitation a été annulée. Demandez-en une nouvelle à un membre de la famille."
       }
     }
+  },
+  "settings": {
+    "title": "Paramètres",
+    "back": "Retour",
+    "saved": "Enregistré",
+    "account": {
+      "title": "Compte",
+      "save": "Enregistrer",
+      "language": "Langue"
+    },
+    "password": {
+      "title": "Changer le mot de passe",
+      "submit": "Changer le mot de passe",
+      "changed": "Mot de passe modifié. Vos autres appareils ont été déconnectés."
+    },
+    "appearance": {
+      "title": "Apparence",
+      "theme": "Thème"
+    },
+    "logout": "Se déconnecter"
   }
 }

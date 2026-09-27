@@ -12,6 +12,7 @@ import { routes } from './app.routes';
 import { authInterceptor } from './core/auth/auth.interceptor';
 import { provideNalaI18n } from './core/i18n/i18n.providers';
 import { pickInitialLang } from './core/i18n/initial-lang';
+import { provideUserLanguage } from './core/i18n/user-language';
 import { ThemeService } from './core/theme/theme.service';
 
 export const appConfig: ApplicationConfig = {
@@ -20,6 +21,7 @@ export const appConfig: ApplicationConfig = {
     provideRouter(routes),
     provideHttpClient(withFetch(), withInterceptors([authInterceptor])),
     provideNalaI18n(pickInitialLang(navigator.languages)),
+    provideUserLanguage(),
     provideAppInitializer(() => void inject(ThemeService)),
     provideServiceWorker('ngsw-worker.js', {
       enabled: !isDevMode(),

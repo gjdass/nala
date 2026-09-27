@@ -1,0 +1,241 @@
+import { signal } from '@angular/core';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { Router, provideRouter } from '@angular/router';
+import { Subject, of, throwError } from 'rxjs';
+import en from '../../../../public/i18n/en.json';
+import fr from '../../../../public/i18n/fr.json';
+import { AccountService } from '../../core/account/account.service';
+import { AccountResult, AuthState } from '../../core/auth/auth.models';
+import { AuthService } from '../../core/auth/auth.service';
+import { ThemeMode, ThemeService } from '../../core/theme/theme.service';
+import { translocoTesting } from '../../testing/transloco-testing';
+import { SettingsPage } from './settings.page';
+
+describe('SettingsPage', () => {
+  let fixture: ComponentFixture<SettingsPage>;
+  let updated: Subject<AccountResult>;
+  let passwordChanged: Subject<AccountResult>;
+  let account: { update: ReturnType<typeof vi.fn>; changePassword: ReturnType<typeof vi.fn> };
+  let auth: {
+    state: ReturnType<typeof signal<AuthState | null>>;
+    logout: ReturnType<typeof vi.fn>;
+  };
+  let theme: { mode: ReturnType<typeof signal<ThemeMode>>; setMode: ReturnType<typeof vi.fn> };
+  let snackBar: { open: ReturnType<typeof vi.fn> };
+  let router: Router;
+
+  const host = () => fixture.nativeElement as HTMLElement;
+  const input = (field: string) =>
+    host().querySelector<HTMLInputElement>(`input[data-testid="${field}"]`)!;
+  const button = (testId: string) =>
+    host().querySelector<HTMLButtonElement>(`[data-testid="${testId}"]`)!;
+  const toggle = (testId: string) =>
+    host().querySelector<HTMLButtonElement>(`mat-button-toggle[data-testid="${testId}"] button`)!;
+  const checked = (prefix: string) =>
+    host()
+      .querySelector(`mat-button-toggle.mat-button-toggle-checked[data-testid^="${prefix}"]`)
+      ?.getAttribute('data-testid');
+  const error = (field: string) =>
+    host().querySelector(`[data-testid="error-${field}"]`)?.textContent?.trim();
+
+  const type = (field: string, value: string) => {
+    input(field).value = value;
+    input(field).dispatchEvent(new Event('input'));
+    input(field).dispatchEvent(new Event('blur'));
+  };
+  const click = async (element: HTMLElement) => {
+    element.click();
+    await fixture.whenStable();
+  };
+  const answer = async (subject: Subject<AccountResult>, value: AccountResult) => {
+    subject.next(value);
+    await fixture.whenStable();
+  };
+
+  beforeEach(async () => {
+    updated = new Subject<AccountResult>();
+    passwordChanged = new Subject<AccountResult>();
+    account = { update: vi.fn(() => updated), changePassword: vi.fn(() => passwordChanged) };
+    auth = {
+      state: signal<AuthState | null>({
+        setupRequired: false,
+        user: {
+          id: 'u1',
+          email: 'anna@mail.com',
+          displayName: 'Anna',
+          language: 'en',
+          isAdmin: true,
+        },
+      }),
+      logout: vi.fn(() => of(undefined)),
+    };
+    theme = { mode: signal<ThemeMode>('system'), setMode: vi.fn() };
+    snackBar = { open: vi.fn() };
+    await TestBed.configureTestingModule({
+      imports: [SettingsPage, translocoTesting()],
+      providers: [
+        provideRouter([]),
+        { provide: AccountService, useValue: account },
+        { provide: AuthService, useValue: auth },
+        { provide: ThemeService, useValue: theme },
+        { provide: MatSnackBar, useValue: snackBar },
+      ],
+    }).compileComponents();
+    router = TestBed.inject(Router);
+    vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
+    fixture = TestBed.createComponent(SettingsPage);
+    await fixture.whenStable();
+  });
+
+  it('shows the Account and Appearance sections', () => {
+    const titles = [...host().querySelectorAll('mat-card-title')].map((t) => t.textContent?.trim());
+    expect(titles).toEqual([en.settings.account.title, en.settings.appearance.title]);
+  });
+
+  it('has a link back to home', () => {
+    expect(button('back').getAttribute('href')).toBe('/');
+  });
+
+  describe('display name', () => {
+    it('starts with the current display name', () => {
+      expect(input('displayName').value).toBe('Anna');
+    });
+
+    it('saves the trimmed name and confirms with a snackbar', async () => {
+      type('displayName', '  Anna B. ');
+      await click(button('save-profile'));
+
+      expect(account.update).toHaveBeenCalledWith({ displayName: 'Anna B.' });
+      await answer(updated, { ok: true });
+      expect(snackBar.open).toHaveBeenCalledWith(en.settings.saved, undefined, { duration: 3000 });
+    });
+
+    it('shows a field error for an empty or too long name and sends nothing', async () => {
+      type('displayName', ' ');
+      await click(button('save-profile'));
+      expect(error('displayName')).toBe(en.auth.errors.displayName.required);
+
+      type('displayName', 'a'.repeat(51));
+      await fixture.whenStable();
+      expect(error('displayName')).toBe(en.auth.errors.displayName.tooLong);
+      expect(account.update).not.toHaveBeenCalled();
+    });
+
+    it('shows a server field error under the field', async () => {
+      type('displayName', 'Anna B.');
+      await click(button('save-profile'));
+      await answer(updated, { ok: false, errors: { displayName: 'tooLong' } });
+
+      expect(error('displayName')).toBe(en.auth.errors.displayName.tooLong);
+    });
+  });
+
+  describe('language', () => {
+    it("selects the user's language", () => {
+      expect(checked('lang-')).toBe('lang-en');
+    });
+
+    it('saves the chosen language', async () => {
+      await click(toggle('lang-fr'));
+
+      expect(account.update).toHaveBeenCalledWith({ language: 'fr' });
+    });
+
+    it('confirms in the newly chosen language', async () => {
+      await click(toggle('lang-fr'));
+      await answer(updated, { ok: true });
+      await vi.waitFor(() => expect(snackBar.open).toHaveBeenCalled());
+
+      expect(snackBar.open).toHaveBeenCalledWith(fr.settings.saved, undefined, { duration: 3000 });
+    });
+
+    it('goes back to the saved language and says so when saving fails', async () => {
+      await click(toggle('lang-fr'));
+      await answer(updated, { ok: false, errors: { form: 'unknown' } });
+
+      expect(checked('lang-')).toBe('lang-en');
+      expect(snackBar.open).toHaveBeenCalledWith(en.auth.errors.form.unknown, undefined, {
+        duration: 3000,
+      });
+    });
+  });
+
+  describe('password', () => {
+    const fill = (current: string, next: string) => {
+      type('currentPassword', current);
+      type('newPassword', next);
+    };
+
+    it('uses password fields with the right autocomplete hints', () => {
+      expect(input('currentPassword').type).toBe('password');
+      expect(input('currentPassword').autocomplete).toBe('current-password');
+      expect(input('newPassword').type).toBe('password');
+      expect(input('newPassword').autocomplete).toBe('new-password');
+    });
+
+    it('changes the password, clears the form and confirms', async () => {
+      fill('correct horse', 'battery staple');
+      await click(button('change-password'));
+
+      expect(account.changePassword).toHaveBeenCalledWith({
+        currentPassword: 'correct horse',
+        newPassword: 'battery staple',
+      });
+      await answer(passwordChanged, { ok: true });
+      expect(input('currentPassword').value).toBe('');
+      expect(input('newPassword').value).toBe('');
+      expect(error('currentPassword')).toBeUndefined();
+      expect(snackBar.open).toHaveBeenCalledWith(en.settings.password.changed, undefined, {
+        duration: 3000,
+      });
+    });
+
+    it('requires both fields and a new password of 8 characters', async () => {
+      await click(button('change-password'));
+      expect(error('currentPassword')).toBe(en.auth.errors.currentPassword.required);
+      expect(error('newPassword')).toBe(en.auth.errors.newPassword.required);
+
+      fill('correct horse', 'short');
+      await click(button('change-password'));
+      expect(error('newPassword')).toBe(en.auth.errors.newPassword.tooShort);
+      expect(account.changePassword).not.toHaveBeenCalled();
+    });
+
+    it('shows an incorrect current password under its field', async () => {
+      fill('wrong horse', 'battery staple');
+      await click(button('change-password'));
+      await answer(passwordChanged, { ok: false, errors: { currentPassword: 'incorrect' } });
+
+      expect(error('currentPassword')).toBe(en.auth.errors.currentPassword.incorrect);
+    });
+  });
+
+  describe('theme', () => {
+    it('marks the current theme as selected', () => {
+      expect(checked('theme-')).toBe('theme-system');
+    });
+
+    it('selecting Dark sets the theme to dark', async () => {
+      await click(toggle('theme-dark'));
+      expect(theme.setMode).toHaveBeenCalledWith('dark');
+    });
+  });
+
+  it('logs out and opens the login screen', async () => {
+    await click(button('logout'));
+
+    expect(auth.logout).toHaveBeenCalled();
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/login');
+  });
+
+  it('says so when logging out fails', async () => {
+    auth.logout.mockReturnValue(throwError(() => new Error('offline')));
+    await click(button('logout'));
+
+    expect(router.navigateByUrl).not.toHaveBeenCalled();
+    expect(snackBar.open).toHaveBeenCalledWith(en.auth.errors.form.unknown, undefined, {
+      duration: 3000,
+    });
+  });
+});

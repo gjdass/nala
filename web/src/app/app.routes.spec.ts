@@ -57,4 +57,12 @@ describe('app routes', () => {
   it('an invitation link on an empty instance opens the setup screen', async () => {
     expect(await navigate('/invite/a-b_c', { setupRequired: true, user: null })).toBe('/setup');
   });
+
+  it('a signed-in user can open the settings', async () => {
+    expect(await navigate('/settings', signedIn)).toBe('/settings');
+  });
+
+  it('a signed-out visitor opening the settings lands on the login screen', async () => {
+    expect(await navigate('/settings', signedOut)).toBe('/login');
+  });
 });

@@ -1,33 +1,25 @@
-import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { Subject } from 'rxjs';
 import en from '../../../../public/i18n/en.json';
 import { HealthService, HealthStatus } from '../../core/health/health.service';
-import { ThemeMode, ThemeService } from '../../core/theme/theme.service';
 import { translocoTesting } from '../../testing/transloco-testing';
 import { HomePage } from './home.page';
 
 describe('HomePage', () => {
   let fixture: ComponentFixture<HomePage>;
   let health: Subject<HealthStatus>;
-  let theme: { mode: ReturnType<typeof signal<ThemeMode>>; setMode: ReturnType<typeof vi.fn> };
 
   const host = () => fixture.nativeElement as HTMLElement;
-  const toggle = (testId: string) =>
-    host().querySelector<HTMLButtonElement>(`mat-button-toggle[data-testid="${testId}"] button`);
 
   const text = (selector: string) =>
     (fixture.nativeElement as HTMLElement).querySelector(selector)?.textContent?.trim();
 
   beforeEach(async () => {
     health = new Subject<HealthStatus>();
-    theme = { mode: signal<ThemeMode>('system'), setMode: vi.fn() };
     await TestBed.configureTestingModule({
       imports: [HomePage, translocoTesting()],
-      providers: [
-        { provide: HealthService, useValue: { check: () => health } },
-        { provide: ThemeService, useValue: theme },
-      ],
+      providers: [provideRouter([]), { provide: HealthService, useValue: { check: () => health } }],
     }).compileComponents();
     fixture = TestBed.createComponent(HomePage);
     await fixture.whenStable();
@@ -49,29 +41,9 @@ describe('HomePage', () => {
     expect(text('[data-testid="health-status"]')).toBe(en.health.unavailable);
   });
 
-  it('switches the displayed text to French without reloading', async () => {
-    health.next('unavailable');
-    await fixture.whenStable();
-    const instance = fixture.componentInstance;
-
-    toggle('lang-fr')?.click();
-    await fixture.whenStable();
-
-    expect(fixture.componentInstance).toBe(instance);
-    expect(text('[data-testid="health-status"]')).toBe('Indisponible');
-    expect(text('[data-testid="api-status-label"]')).toBe("État de l'API :");
-  });
-
-  it('selecting Dark sets the theme to dark', async () => {
-    toggle('theme-dark')?.click();
-    await fixture.whenStable();
-    expect(theme.setMode).toHaveBeenCalledWith('dark');
-  });
-
-  it('marks the current theme as selected', () => {
-    const checked = host().querySelector(
-      'mat-button-toggle.mat-button-toggle-checked[data-testid^="theme-"]',
-    );
-    expect(checked?.getAttribute('data-testid')).toBe('theme-system');
+  it('links to the settings page', () => {
+    const link = host().querySelector('a[data-testid="settings"]');
+    expect(link?.getAttribute('href')).toBe('/settings');
+    expect(link?.textContent?.trim()).toBe(en.settings.title);
   });
 });

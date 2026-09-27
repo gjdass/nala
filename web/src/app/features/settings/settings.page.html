@@ -1,0 +1,125 @@
+<main>
+  <header>
+    <a mat-button routerLink="/" data-testid="back">{{ 'settings.back' | transloco }}</a>
+    <h1>{{ 'settings.title' | transloco }}</h1>
+  </header>
+
+  <nala-settings-section [title]="'settings.account.title' | transloco">
+    <form [formGroup]="profileForm" (ngSubmit)="saveProfile()" novalidate>
+      <mat-form-field>
+        <mat-label>{{ 'auth.fields.displayName' | transloco }}</mat-label>
+        <input
+          matInput
+          type="text"
+          formControlName="displayName"
+          autocomplete="nickname"
+          data-testid="displayName"
+        />
+        @if (errorOf(profileForm, 'displayName'); as code) {
+          <mat-error data-testid="error-displayName">{{
+            'auth.errors.displayName.' + code | transloco
+          }}</mat-error>
+        }
+      </mat-form-field>
+      <div class="actions">
+        <button
+          mat-flat-button
+          type="submit"
+          [disabled]="savingProfile()"
+          data-testid="save-profile"
+        >
+          {{ 'settings.account.save' | transloco }}
+        </button>
+      </div>
+    </form>
+
+    <div class="choice">
+      <span id="settings-language" class="label">{{
+        'settings.account.language' | transloco
+      }}</span>
+      <mat-button-toggle-group
+        aria-labelledby="settings-language"
+        [value]="language()"
+        (change)="setLanguage($event)"
+      >
+        @for (lang of langs; track lang) {
+          <mat-button-toggle [value]="lang" [attr.data-testid]="'lang-' + lang">
+            {{ 'lang.' + lang | transloco }}
+          </mat-button-toggle>
+        }
+      </mat-button-toggle-group>
+    </div>
+
+    <form
+      [formGroup]="passwordForm"
+      #passwordFormDirective="ngForm"
+      (ngSubmit)="changePassword(passwordFormDirective)"
+      novalidate
+    >
+      <h3>{{ 'settings.password.title' | transloco }}</h3>
+      <mat-form-field>
+        <mat-label>{{ 'auth.fields.currentPassword' | transloco }}</mat-label>
+        <input
+          matInput
+          type="password"
+          formControlName="currentPassword"
+          autocomplete="current-password"
+          data-testid="currentPassword"
+        />
+        @if (errorOf(passwordForm, 'currentPassword'); as code) {
+          <mat-error data-testid="error-currentPassword">{{
+            'auth.errors.currentPassword.' + code | transloco
+          }}</mat-error>
+        }
+      </mat-form-field>
+      <mat-form-field>
+        <mat-label>{{ 'auth.fields.newPassword' | transloco }}</mat-label>
+        <input
+          matInput
+          type="password"
+          formControlName="newPassword"
+          required
+          autocomplete="new-password"
+          data-testid="newPassword"
+        />
+        <mat-hint>{{ 'auth.fields.passwordHint' | transloco }}</mat-hint>
+        @if (errorOf(passwordForm, 'newPassword'); as code) {
+          <mat-error data-testid="error-newPassword">{{
+            'auth.errors.newPassword.' + code | transloco
+          }}</mat-error>
+        }
+      </mat-form-field>
+      <div class="actions">
+        <button
+          mat-flat-button
+          type="submit"
+          [disabled]="changingPassword()"
+          data-testid="change-password"
+        >
+          {{ 'settings.password.submit' | transloco }}
+        </button>
+      </div>
+    </form>
+  </nala-settings-section>
+
+  <nala-settings-section [title]="'settings.appearance.title' | transloco">
+    <div class="choice">
+      <span id="settings-theme" class="label">{{ 'settings.appearance.theme' | transloco }}</span>
+      <mat-button-toggle-group
+        aria-labelledby="settings-theme"
+        [value]="themeMode()"
+        (change)="setTheme($event.value)"
+      >
+        @for (mode of themeModes; track mode) {
+          <mat-button-toggle [value]="mode" [attr.data-testid]="'theme-' + mode">
+            {{ 'theme.' + mode | transloco }}
+          </mat-button-toggle>
+        }
+      </mat-button-toggle-group>
+    </div>
+  </nala-settings-section>
+
+  <button mat-stroked-button type="button" (click)="logout()" data-testid="logout">
+    {{ 'settings.logout' | transloco }}
+  </button>
+</main>

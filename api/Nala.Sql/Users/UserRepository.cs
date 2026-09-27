@@ -28,4 +28,10 @@ public class UserRepository(NalaDbContext db) : IUserRepository
 
     public Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default) =>
         db.Set<User>().SingleOrDefaultAsync(u => u.Email == email && u.DeletedAt == null, cancellationToken);
+
+    public async Task UpdateAsync(User user, CancellationToken cancellationToken = default)
+    {
+        db.Set<User>().Update(user);
+        await db.SaveChangesAsync(cancellationToken);
+    }
 }

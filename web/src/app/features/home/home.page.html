@@ -11,27 +11,5 @@
     </mat-card-content>
   </mat-card>
 
-  <mat-button-toggle-group
-    [attr.aria-label]="'home.language' | transloco"
-    [value]="activeLang()"
-    (change)="setLang($event.value)"
-  >
-    @for (lang of langs; track lang) {
-      <mat-button-toggle [value]="lang" [attr.data-testid]="'lang-' + lang">
-        {{ 'lang.' + lang | transloco }}
-      </mat-button-toggle>
-    }
-  </mat-button-toggle-group>
-
-  <mat-button-toggle-group
-    [attr.aria-label]="'home.theme' | transloco"
-    [value]="themeMode()"
-    (change)="setTheme($event.value)"
-  >
-    @for (mode of themeModes; track mode) {
-      <mat-button-toggle [value]="mode" [attr.data-testid]="'theme-' + mode">
-        {{ 'theme.' + mode | transloco }}
-      </mat-button-toggle>
-    }
-  </mat-button-toggle-group>
+  <a mat-button routerLink="/settings" data-testid="settings">{{ 'settings.title' | transloco }}</a>
 </main>

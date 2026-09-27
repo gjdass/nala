@@ -106,4 +106,38 @@ public class SessionRepositoryTests
 
         await Assert.ThatAsync(() => new SessionRepository(db).DeleteAsync(Guid.NewGuid()), Throws.Nothing);
     }
+
+    [Test]
+    public async Task DeleteOthers_deletes_the_users_other_sessions_only()
+    {
+        var bob = new User
+        {
+            Id = Guid.NewGuid(),
+            Email = "bob@mail.com",
+            DisplayName = "Bob",
+            PasswordHash = "hash",
+            PreferredLanguage = "en",
+            CreatedAt = Now,
+        };
+        await using (var db = _db())
+        {
+            await new UserRepository(db).AddAsync(bob);
+        }
+
+        var current = NewSession();
+        var other = NewSession();
+        var bobs = new Session { Id = Guid.NewGuid(), UserId = bob.Id, CreatedAt = Now, LastSeenAt = Now };
+        await AddAsync(current);
+        await AddAsync(other);
+        await AddAsync(bobs);
+
+        await using (var db = _db())
+        {
+            await new SessionRepository(db).DeleteOthersAsync(_anna.Id, current.Id);
+        }
+
+        Assert.That(await GetAsync(current.Id), Is.Not.Null);
+        Assert.That(await GetAsync(other.Id), Is.Null);
+        Assert.That(await GetAsync(bobs.Id), Is.Not.Null);
+    }
 }

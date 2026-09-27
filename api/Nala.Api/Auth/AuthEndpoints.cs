@@ -102,7 +102,7 @@ public static class AuthEndpoints
                 await SignInAsync(context, sessions, created.User, cancellationToken);
                 return Results.Ok(new AuthStateResponse(false, ToResponse(created.User)));
             case SetupResult.Invalid invalid:
-                return Results.ValidationProblem(invalid.Errors.ToDictionary(e => e.Key, e => new[] { e.Value }));
+                return ValidationProblem(invalid.Errors);
             default:
                 return Results.StatusCode(StatusCodes.Status403Forbidden);
         }
@@ -119,7 +119,7 @@ public static class AuthEndpoints
                 await SignInAsync(context, sessions, success.User, cancellationToken);
                 return Results.Ok(new AuthStateResponse(false, ToResponse(success.User)));
             case LoginResult.Invalid invalid:
-                return Results.ValidationProblem(invalid.Errors.ToDictionary(e => e.Key, e => new[] { e.Value }));
+                return ValidationProblem(invalid.Errors);
             case LoginResult.LockedOut:
                 return Results.Json(new ErrorResponse("tooManyAttempts"), statusCode: StatusCodes.Status429TooManyRequests);
             default:
@@ -153,7 +153,7 @@ public static class AuthEndpoints
                 await SignInAsync(context, sessions, registered.User, cancellationToken);
                 return Results.Ok(new AuthStateResponse(false, ToResponse(registered.User)));
             case RegisterResult.Invalid invalid:
-                return Results.ValidationProblem(invalid.Errors.ToDictionary(e => e.Key, e => new[] { e.Value }));
+                return ValidationProblem(invalid.Errors);
             default:
                 return Unavailable(((RegisterResult.Unavailable)result).Problem);
         }
@@ -169,7 +169,7 @@ public static class AuthEndpoints
     private static async Task<IResult> LogoutAsync(
         ClaimsPrincipal principal, SessionService sessions, HttpContext context, CancellationToken cancellationToken)
     {
-        if (Guid.TryParse(principal.FindFirstValue(SessionIdClaim), out var sessionId))
+        if (CurrentSessionId(principal) is { } sessionId)
         {
             await sessions.EndAsync(sessionId, cancellationToken);
         }
@@ -199,7 +199,7 @@ public static class AuthEndpoints
     /// </summary>
     private static async Task ValidateSessionAsync(CookieValidatePrincipalContext context)
     {
-        var validation = Guid.TryParse(context.Principal?.FindFirstValue(SessionIdClaim), out var sessionId)
+        var validation = context.Principal is not null && CurrentSessionId(context.Principal) is { } sessionId
             ? await context.HttpContext.RequestServices.GetRequiredService<SessionService>()
                 .ValidateAsync(sessionId, context.HttpContext.RequestAborted)
             : null;
@@ -216,9 +216,17 @@ public static class AuthEndpoints
     }
 
     /// <summary>The signed-in user, loaded while validating the session; null when anonymous.</summary>
-    private static User? CurrentUser(HttpContext context) =>
+    internal static User? CurrentUser(HttpContext context) =>
         context.User.Identity?.IsAuthenticated == true ? context.Items[typeof(User)] as User : null;
 
-    private static CurrentUserResponse ToResponse(User user) =>
+    /// <summary>The server-side session the request's cookie points to; null when anonymous.</summary>
+    internal static Guid? CurrentSessionId(ClaimsPrincipal principal) =>
+        Guid.TryParse(principal.FindFirstValue(SessionIdClaim), out var sessionId) ? sessionId : null;
+
+    /// <summary>400 validation problem with one error code per field.</summary>
+    internal static IResult ValidationProblem(IReadOnlyDictionary<string, string> errors) =>
+        Results.ValidationProblem(errors.ToDictionary(e => e.Key, e => new[] { e.Value }));
+
+    internal static CurrentUserResponse ToResponse(User user) =>
         new(user.Id, user.Email!, user.DisplayName, user.PreferredLanguage, user.IsAdmin);
 }

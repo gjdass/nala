@@ -11,4 +11,7 @@ public interface IUserRepository
 
     /// <summary>The non-deleted user with this normalized email.</summary>
     Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default);
+
+    /// <summary>Saves the changes made to a user read from this repository.</summary>
+    Task UpdateAsync(User user, CancellationToken cancellationToken = default);
 }
