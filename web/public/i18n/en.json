@@ -27,6 +27,11 @@
       "subtitle": "Create the admin account for this instance.",
       "submit": "Create account"
     },
+    "login": {
+      "title": "Log in to Nala",
+      "subtitle": "Welcome back.",
+      "submit": "Log in"
+    },
     "fields": {
       "email": "Email",
       "displayName": "Display name",
@@ -47,7 +52,9 @@
         "tooShort": "At least 8 characters"
       },
       "form": {
-        "unknown": "Something went wrong. Check your connection and try again."
+        "unknown": "Something went wrong. Check your connection and try again.",
+        "invalidCredentials": "Wrong email or password.",
+        "tooManyAttempts": "Too many attempts. Try again in a few minutes."
       }
     }
   }

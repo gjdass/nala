@@ -8,4 +8,7 @@ public interface IUserRepository
     Task AddAsync(User user, CancellationToken cancellationToken = default);
 
     Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
+
+    /// <summary>The non-deleted user with this normalized email.</summary>
+    Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default);
 }

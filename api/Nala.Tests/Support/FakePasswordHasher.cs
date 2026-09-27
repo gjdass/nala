@@ -4,7 +4,18 @@ namespace Nala.Tests.Support;
 
 public class FakePasswordHasher : IPasswordHasher
 {
-    public string Hash(string password) => $"hashed:{password}";
+    /// <summary>Number of hash or verify operations, i.e. the slow work a real hasher would do.</summary>
+    public int Calls { get; private set; }
 
-    public bool Verify(string hash, string password) => hash == Hash(password);
+    public string Hash(string password)
+    {
+        Calls++;
+        return $"hashed:{password}";
+    }
+
+    public bool Verify(string hash, string password)
+    {
+        Calls++;
+        return hash == $"hashed:{password}";
+    }
 }

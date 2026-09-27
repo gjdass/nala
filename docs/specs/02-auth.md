@@ -34,13 +34,13 @@ Each item becomes at least one test, written failing first.
 - [x] Emails are case-insensitive and trimmed (`Anna@Mail.com ` = `anna@mail.com`).
 
 ### Login and session
-- [ ] Login with a correct email and password succeeds; a wrong email or wrong password returns the same generic error (no hint about which one is wrong).
-- [ ] The session is a secure, httpOnly, same-site cookie (no token readable by JavaScript).
-- [ ] The session is rolling: every use extends it; it expires after 90 days without any use.
-- [ ] After too many failed logins for the same account (5 in 15 minutes), further attempts are temporarily refused.
+- [x] Login with a correct email and password succeeds; a wrong email or wrong password returns the same generic error (no hint about which one is wrong).
+- [x] The session is a secure, httpOnly, same-site cookie (no token readable by JavaScript).
+- [x] The session is rolling: every use extends it; it expires after 90 days without any use.
+- [x] After too many failed logins for the same account (5 in 15 minutes), further attempts are temporarily refused.
 - [ ] A disabled account cannot log in, and its existing sessions stop working.
-- [ ] Logout ends the current session only.
-- [ ] Every API endpoint except health (`GET /api/health`), auth state (`GET /api/auth/state`), setup, login, invitation lookup/registration and password reset requires a valid session (401 otherwise).
+- [x] Logout ends the current session only.
+- [x] Every API endpoint except health (`GET /api/health`), auth state (`GET /api/auth/state`), setup, login, invitation lookup/registration and password reset requires a valid session (401 otherwise).
 
 ### Password rules
 - [x] Passwords must be at least 8 characters; no other composition rules.
@@ -80,14 +80,19 @@ Each item becomes at least one test, written failing first.
 - **Session cookie:** `nala.session`, `HttpOnly`, `SameSite=Strict`, always `Secure`, except in the `Development` environment (`dotnet run`), where it follows the request scheme so plain `http://localhost` works in every browser. Logging in therefore needs HTTPS in production (README).
 - **Language at setup:** the app sends the language it currently shows (browser language, else English); stored as the user's preferred language.
 - **Single admin:** enforced in Core (setup refused once any user exists) and by a unique partial index on `is_admin`; a setup losing that race gets 403.
-- **Auth state:** `GET /api/auth/state` → `{ setupRequired, user }` (public), used by the web guards to route to setup.
+- **Auth state:** `GET /api/auth/state` → `{ setupRequired, user }` (public), used by the web guards to route to setup or login.
+- **Server-side sessions:** the cookie only carries the user id and a session id; each session is a row in `sessions`, checked on every request. Deleting the row ends the session (logout, "end other sessions", disabled accounts). A use extends the session and reissues the cookie (both 90 days from that use); uses less than 1 minute apart don't write, to avoid a database write per request.
+- **Login:** `POST /api/auth/login` → 200 with the auth state and the cookie; 400 validation problem for missing fields; 401 `{ code: "invalidCredentials" }` for a wrong email or password (an unknown email still runs the password hasher, so timing doesn't tell them apart); 429 `{ code: "tooManyAttempts" }` while locked. `POST /api/auth/logout` → 204.
+- **Lockout:** failures are counted per normalized email, whether or not an account has it, so the lockout doesn't reveal which accounts exist. With 5 failures in the last 15 minutes the attempt is refused without checking the password and isn't counted, so the lock lifts at most 15 minutes after the first failure. A successful login clears the failures. The web shows a distinct "too many attempts" message.
+- **Authorization:** every endpoint requires a session by default (fallback policy); public endpoints opt out explicitly, and a test pins the list of public endpoints.
+- **Web session handling:** a 401 from any API call (except login) forgets the user and opens the login screen. When the auth state can't be loaded (offline), the app shell opens anyway.
 
 ## Build slices
 
 Each slice goes red → green → commit on `master`, in this order.
 
 - [x] **Slice 1 — First-run setup.** `User` entity + migration (normalized email, unique among non-deleted users), password hasher behind a Core interface (Identity's `PasswordHasher`), 8-character minimum, `GET /api/auth/state`, `POST /api/auth/setup` (creates the admin and signs them in; 403 once any user exists). Web: shared auth card layout, setup page, guard routing to/away from setup. Covers: all First-run setup criteria, email normalization, both Password rules, the "admin = setup account" part of Admin.
-- [ ] **Slice 2 — Login, session, logout.** Login with a generic error, secure httpOnly same-site cookie backed by server-side sessions, 90-day rolling expiry, lockout after 5 failures in 15 minutes, logout of the current session only, every endpoint requires a session except the public ones (401). Web: login page, auth guard, 401 interceptor. Covers: Login and session criteria except the disabled account one (slice 6).
+- [x] **Slice 2 — Login, session, logout.** Login with a generic error, secure httpOnly same-site cookie backed by server-side sessions, 90-day rolling expiry, lockout after 5 failures in 15 minutes, logout of the current session only, every endpoint requires a session except the public ones (401). Web: login page, auth guard, 401 interceptor. Covers: Login and session criteria except the disabled account one (slice 6).
 - [ ] **Slice 3 — Registration by invitation.** `Invitation` entity + migration (hashed token, 7-day expiry, used, revoked), invitation lookup, registration consuming the invitation and logging in, duplicate email refused, no public sign-up. Web: register page with clear errors for expired / used / unknown links. Invitations are created in 03; tests seed them. Covers: all Registration criteria.
 - [ ] **Slice 4 — Account settings.** Get/update the current user (display name, language; language defaults to the browser's on first login), change password with the current one (ends other sessions). Web: settings page with the Account section (and the theme choice), logout. Covers: both Account settings criteria.
 - [ ] **Slice 5 — Account deletion.** Delete own account after confirming the password: ends all sessions, clears email and password hash, keeps the display name, refused for the admin; no cascade to entries. Web: delete action with confirmation dialog. Covers: all Account deletion criteria.
@@ -98,7 +103,8 @@ Each slice goes red → green → commit on `master`, in this order.
 ## Data
 
 - **User:** id, email (unique among non-deleted users, normalized), display name, password hash, preferred language, is admin, is disabled, deleted at, created at, last activity at. The instance is the family (see 03), so there is no family reference.
-- **Session:** handled by the auth cookie; server-side invalidation needed for "end other sessions" and disabled accounts (e.g. security stamp).
+- **Session:** id, user, created at, last seen at. Expired 90 days after last seen.
+- **Login failure:** normalized email, failed at (lockout window only).
 - **Invitation:** id, token (stored hashed), created by user, created at, expires at, used at, used by user, revoked at.
 - **Password reset token:** token (stored hashed), user, created at, expires at, used at.
 

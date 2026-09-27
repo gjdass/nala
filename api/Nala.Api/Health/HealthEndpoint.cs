@@ -16,7 +16,7 @@ public static class HealthEndpoint
 
     public static IEndpointRouteBuilder MapNalaHealth(this IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapHealthChecks(Path, new HealthCheckOptions { ResponseWriter = WriteAsync });
+        endpoints.MapHealthChecks(Path, new HealthCheckOptions { ResponseWriter = WriteAsync }).AllowAnonymous();
         return endpoints;
     }
 

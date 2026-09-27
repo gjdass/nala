@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { setupOnlyGuard, setupRequiredGuard } from './core/auth/auth.guards';
+import { authGuard, loginOnlyGuard, setupOnlyGuard } from './core/auth/auth.guards';
 
 export const routes: Routes = [
   {
@@ -8,8 +8,13 @@ export const routes: Routes = [
     loadComponent: () => import('./features/auth/setup/setup.page').then((m) => m.SetupPage),
   },
   {
+    path: 'login',
+    canActivate: [loginOnlyGuard],
+    loadComponent: () => import('./features/auth/login/login.page').then((m) => m.LoginPage),
+  },
+  {
     path: '',
-    canActivate: [setupRequiredGuard],
+    canActivate: [authGuard],
     loadComponent: () => import('./features/home/home.page').then((m) => m.HomePage),
   },
   { path: '**', redirectTo: '' },

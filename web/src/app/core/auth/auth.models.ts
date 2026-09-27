@@ -25,3 +25,10 @@ export interface SetupRequest {
 export type FieldErrors = Partial<Record<string, string>>;
 
 export type SetupResult = { ok: true } | { ok: false; errors: FieldErrors };
+
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export type LoginResult = { ok: true } | { ok: false; errors: FieldErrors };

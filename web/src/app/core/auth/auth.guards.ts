@@ -3,14 +3,35 @@ import { CanActivateFn, Router } from '@angular/router';
 import { catchError, map, of } from 'rxjs';
 import { AuthService } from './auth.service';
 
-/** App routes: an instance without any user goes to first-run setup. */
-export const setupRequiredGuard: CanActivateFn = () => {
+/** App routes: first-run setup on an empty instance, the login screen when signed out. */
+export const authGuard: CanActivateFn = () => {
   const router = inject(Router);
   return inject(AuthService)
     .load()
     .pipe(
-      map((state) => (state.setupRequired ? router.createUrlTree(['/setup']) : true)),
-      // Unknown state (API down): let the app open and show it.
+      map((state) => {
+        if (state.setupRequired) {
+          return router.createUrlTree(['/setup']);
+        }
+        return state.user ? true : router.createUrlTree(['/login']);
+      }),
+      // Unknown state (offline, API down): let the app shell open.
+      catchError(() => of(true)),
+    );
+};
+
+/** The login screen is only for signed-out visitors of a set-up instance. */
+export const loginOnlyGuard: CanActivateFn = () => {
+  const router = inject(Router);
+  return inject(AuthService)
+    .load()
+    .pipe(
+      map((state) => {
+        if (state.setupRequired) {
+          return router.createUrlTree(['/setup']);
+        }
+        return state.user ? router.createUrlTree(['/']) : true;
+      }),
       catchError(() => of(true)),
     );
 };
@@ -26,3 +47,4 @@ export const setupOnlyGuard: CanActivateFn = () => {
       catchError(() => of(home)),
     );
 };
+

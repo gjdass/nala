@@ -24,4 +24,7 @@ public class FakeUserRepository : IUserRepository
 
     public Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
         Task.FromResult(Users.SingleOrDefault(u => u.Id == id));
+
+    public Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Users.SingleOrDefault(u => u.Email == email && u.DeletedAt is null));
 }

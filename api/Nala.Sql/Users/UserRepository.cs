@@ -25,4 +25,7 @@ public class UserRepository(NalaDbContext db) : IUserRepository
 
     public Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
         db.Set<User>().SingleOrDefaultAsync(u => u.Id == id, cancellationToken);
+
+    public Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default) =>
+        db.Set<User>().SingleOrDefaultAsync(u => u.Email == email && u.DeletedAt == null, cancellationToken);
 }

@@ -1,12 +1,18 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authorization;
 using Nala.Core.Auth;
 using Nala.Core.Users;
 
 namespace Nala.Api.Auth;
 
 public sealed record SetupRequest(string? Email, string? DisplayName, string? Password, string? Language);
+
+public sealed record LoginRequest(string? Email, string? Password);
+
+/// <summary>A failure not tied to a field (<c>invalidCredentials</c>, <c>tooManyAttempts</c>).</summary>
+public sealed record ErrorResponse(string Code);
 
 public sealed record CurrentUserResponse(Guid Id, string Email, string DisplayName, string Language, bool IsAdmin);
 
@@ -15,6 +21,9 @@ public sealed record AuthStateResponse(bool SetupRequired, CurrentUserResponse? 
 public static class AuthEndpoints
 {
     public const string CookieName = "nala.session";
+
+    /// <summary>The server-side session the cookie points to; the cookie carries nothing else but the user id.</summary>
+    private const string SessionIdClaim = "sid";
 
     public static IServiceCollection AddNalaAuth(this IServiceCollection services, IHostEnvironment environment)
     {
@@ -29,6 +38,10 @@ public static class AuthEndpoints
                 options.Cookie.SecurePolicy = environment.IsDevelopment()
                     ? CookieSecurePolicy.SameAsRequest
                     : CookieSecurePolicy.Always;
+                // Persistent and rolling: the cookie is reissued whenever the server-side session is extended.
+                options.ExpireTimeSpan = SessionPolicy.IdleTimeout;
+                options.SlidingExpiration = false;
+                options.Events.OnValidatePrincipal = ValidateSessionAsync;
                 options.Events.OnRedirectToLogin = context =>
                 {
                     context.Response.StatusCode = StatusCodes.Status401Unauthorized;
@@ -40,31 +53,37 @@ public static class AuthEndpoints
                     return Task.CompletedTask;
                 };
             });
-        services.AddAuthorization();
+        // Every endpoint needs a session unless it opts out with AllowAnonymous.
+        services.AddAuthorization(options =>
+            options.FallbackPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
 
         services.AddSingleton<IPasswordHasher, IdentityPasswordHasher>();
         services.AddScoped<SetupService>();
+        services.AddScoped<LoginService>();
+        services.AddScoped<SessionService>();
         return services;
     }
 
     public static IEndpointRouteBuilder MapNalaAuth(this IEndpointRouteBuilder endpoints)
     {
         var auth = endpoints.MapGroup("/api/auth");
-        auth.MapGet("/state", GetStateAsync);
-        auth.MapPost("/setup", SetupAsync);
+        auth.MapGet("/state", GetState).AllowAnonymous();
+        auth.MapPost("/setup", SetupAsync).AllowAnonymous();
+        auth.MapPost("/login", LoginAsync).AllowAnonymous();
+        auth.MapPost("/logout", LogoutAsync);
         return endpoints;
     }
 
-    private static async Task<AuthStateResponse> GetStateAsync(
-        ClaimsPrincipal principal, IUserRepository users, CancellationToken cancellationToken)
+    private static async Task<AuthStateResponse> GetState(
+        HttpContext context, IUserRepository users, CancellationToken cancellationToken)
     {
-        var user = await CurrentUserAsync(principal, users, cancellationToken);
+        var user = CurrentUser(context);
         var setupRequired = user is null && !await users.AnyAsync(cancellationToken);
         return new AuthStateResponse(setupRequired, user is null ? null : ToResponse(user));
     }
 
     private static async Task<IResult> SetupAsync(
-        SetupRequest request, SetupService setup, HttpContext context, CancellationToken cancellationToken)
+        SetupRequest request, SetupService setup, SessionService sessions, HttpContext context, CancellationToken cancellationToken)
     {
         var result = await setup.SetupAsync(
             new SetupCommand(request.Email, request.DisplayName, request.Password, request.Language), cancellationToken);
@@ -72,7 +91,7 @@ public static class AuthEndpoints
         switch (result)
         {
             case SetupResult.Created created:
-                await SignInAsync(context, created.User);
+                await SignInAsync(context, sessions, created.User, cancellationToken);
                 return Results.Ok(new AuthStateResponse(false, ToResponse(created.User)));
             case SetupResult.Invalid invalid:
                 return Results.ValidationProblem(invalid.Errors.ToDictionary(e => e.Key, e => new[] { e.Value }));
@@ -81,25 +100,78 @@ public static class AuthEndpoints
         }
     }
 
-    private static Task SignInAsync(HttpContext context, User user) =>
-        context.SignInAsync(
-            CookieAuthenticationDefaults.AuthenticationScheme,
-            new ClaimsPrincipal(new ClaimsIdentity(
-                [new Claim(ClaimTypes.NameIdentifier, user.Id.ToString())],
-                CookieAuthenticationDefaults.AuthenticationScheme)));
-
-    /// <summary>The signed-in user, or null when anonymous or the account no longer exists.</summary>
-    private static async Task<User?> CurrentUserAsync(
-        ClaimsPrincipal principal, IUserRepository users, CancellationToken cancellationToken)
+    private static async Task<IResult> LoginAsync(
+        LoginRequest request, LoginService login, SessionService sessions, HttpContext context, CancellationToken cancellationToken)
     {
-        if (!Guid.TryParse(principal.FindFirstValue(ClaimTypes.NameIdentifier), out var id))
+        var result = await login.LoginAsync(new LoginCommand(request.Email, request.Password), cancellationToken);
+
+        switch (result)
         {
-            return null;
+            case LoginResult.Success success:
+                await SignInAsync(context, sessions, success.User, cancellationToken);
+                return Results.Ok(new AuthStateResponse(false, ToResponse(success.User)));
+            case LoginResult.Invalid invalid:
+                return Results.ValidationProblem(invalid.Errors.ToDictionary(e => e.Key, e => new[] { e.Value }));
+            case LoginResult.LockedOut:
+                return Results.Json(new ErrorResponse("tooManyAttempts"), statusCode: StatusCodes.Status429TooManyRequests);
+            default:
+                return Results.Json(new ErrorResponse("invalidCredentials"), statusCode: StatusCodes.Status401Unauthorized);
+        }
+    }
+
+    /// <summary>Ends this device's session only.</summary>
+    private static async Task<IResult> LogoutAsync(
+        ClaimsPrincipal principal, SessionService sessions, HttpContext context, CancellationToken cancellationToken)
+    {
+        if (Guid.TryParse(principal.FindFirstValue(SessionIdClaim), out var sessionId))
+        {
+            await sessions.EndAsync(sessionId, cancellationToken);
         }
 
-        var user = await users.GetByIdAsync(id, cancellationToken);
-        return user is { DeletedAt: null, Email: not null } ? user : null;
+        await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        return Results.NoContent();
     }
+
+    private static async Task SignInAsync(
+        HttpContext context, SessionService sessions, User user, CancellationToken cancellationToken)
+    {
+        var session = await sessions.StartAsync(user, cancellationToken);
+        await context.SignInAsync(
+            CookieAuthenticationDefaults.AuthenticationScheme,
+            new ClaimsPrincipal(new ClaimsIdentity(
+                [
+                    new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                    new Claim(SessionIdClaim, session.Id.ToString()),
+                ],
+                CookieAuthenticationDefaults.AuthenticationScheme)),
+            new AuthenticationProperties { IsPersistent = true });
+    }
+
+    /// <summary>
+    /// Runs on every request carrying the cookie: the server-side session must still exist and be live.
+    /// Each use extends it, and the cookie is reissued with it.
+    /// </summary>
+    private static async Task ValidateSessionAsync(CookieValidatePrincipalContext context)
+    {
+        var validation = Guid.TryParse(context.Principal?.FindFirstValue(SessionIdClaim), out var sessionId)
+            ? await context.HttpContext.RequestServices.GetRequiredService<SessionService>()
+                .ValidateAsync(sessionId, context.HttpContext.RequestAborted)
+            : null;
+
+        if (validation is null)
+        {
+            context.RejectPrincipal();
+            await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            return;
+        }
+
+        context.HttpContext.Items[typeof(User)] = validation.User;
+        context.ShouldRenew = validation.Renewed;
+    }
+
+    /// <summary>The signed-in user, loaded while validating the session; null when anonymous.</summary>
+    private static User? CurrentUser(HttpContext context) =>
+        context.User.Identity?.IsAuthenticated == true ? context.Items[typeof(User)] as User : null;
 
     private static CurrentUserResponse ToResponse(User user) =>
         new(user.Id, user.Email!, user.DisplayName, user.PreferredLanguage, user.IsAdmin);

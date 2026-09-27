@@ -14,6 +14,15 @@ import { AuthCardComponent } from './auth-card.component';
 })
 class Host {}
 
+@Component({
+  imports: [AuthCardComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `<nala-auth-card title="Welcome" [error]="error" />`,
+})
+class ErrorHost {
+  error: string | null = null;
+}
+
 describe('AuthCardComponent', () => {
   const render = async () => {
     const fixture = TestBed.createComponent(Host);
@@ -38,5 +47,20 @@ describe('AuthCardComponent', () => {
   it('is the page main landmark', async () => {
     const host = await render();
     expect(host.querySelector('main mat-card')).not.toBeNull();
+  });
+
+  it('shows no error alert by default', async () => {
+    const host = await render();
+    expect(host.querySelector('[role="alert"]')).toBeNull();
+  });
+
+  it('shows the error as an alert in the card content', async () => {
+    const fixture = TestBed.createComponent(ErrorHost);
+    fixture.componentInstance.error = 'Wrong email or password';
+    await fixture.whenStable();
+    const alert = (fixture.nativeElement as HTMLElement).querySelector(
+      'mat-card-content [role="alert"][data-testid="form-error"]',
+    );
+    expect(alert?.textContent?.trim()).toBe('Wrong email or password');
   });
 });

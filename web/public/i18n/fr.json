@@ -27,6 +27,11 @@
       "subtitle": "Créez le compte administrateur de cette instance.",
       "submit": "Créer le compte"
     },
+    "login": {
+      "title": "Connexion à Nala",
+      "subtitle": "Bon retour.",
+      "submit": "Se connecter"
+    },
     "fields": {
       "email": "E-mail",
       "displayName": "Nom affiché",
@@ -47,7 +52,9 @@
         "tooShort": "8 caractères minimum"
       },
       "form": {
-        "unknown": "Une erreur est survenue. Vérifiez votre connexion et réessayez."
+        "unknown": "Une erreur est survenue. Vérifiez votre connexion et réessayez.",
+        "invalidCredentials": "Email ou mot de passe incorrect.",
+        "tooManyAttempts": "Trop de tentatives. Réessayez dans quelques minutes."
       }
     }
   }

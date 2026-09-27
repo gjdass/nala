@@ -78,4 +78,20 @@ public class UserRepositoryTests
 
         await Assert.ThatAsync(() => AddAsync(NewUser("ben@mail.com", isAdmin: true)), Throws.TypeOf<UserConflictException>());
     }
+
+    [Test]
+    public async Task GetByEmail_finds_the_non_deleted_user()
+    {
+        var deleted = NewUser("anna@mail.com");
+        deleted.DeletedAt = DateTimeOffset.UtcNow;
+        var anna = NewUser("anna@mail.com");
+        await AddAsync(deleted);
+        await AddAsync(anna);
+
+        await using var db = _db();
+        var repository = new UserRepository(db);
+
+        Assert.That((await repository.GetByEmailAsync("anna@mail.com"))?.Id, Is.EqualTo(anna.Id));
+        Assert.That(await repository.GetByEmailAsync("ben@mail.com"), Is.Null);
+    }
 }

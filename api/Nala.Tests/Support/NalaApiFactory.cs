@@ -1,6 +1,8 @@
 using System.Collections.Concurrent;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace Nala.Tests.Support;
@@ -19,6 +21,9 @@ public class NalaApiFactory(string? connectionString, string environment = "Deve
     private readonly ConcurrentQueue<string> _logs = new();
 
     public IEnumerable<string> Logs => _logs;
+
+    /// <summary>Replaces the system clock, so tests can move time forward.</summary>
+    public TimeProvider? Time { get; init; }
 
     /// <summary>Starts the host with the environment variable set only for the duration of startup.</summary>
     public HttpClient Start(Uri? baseAddress = null)
@@ -44,6 +49,11 @@ public class NalaApiFactory(string? connectionString, string environment = "Deve
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment(environment);
+        if (Time is not null)
+        {
+            builder.ConfigureTestServices(services => services.AddSingleton(Time));
+        }
+
         builder.ConfigureLogging(logging =>
         {
             logging.SetMinimumLevel(LogLevel.Trace);
