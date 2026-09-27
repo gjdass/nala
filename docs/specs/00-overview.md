@@ -49,6 +49,3 @@ Built in this order, one spec at a time. Each spec is split into **vertical slic
 | 3 | 03 App layout & section pattern | Shared components, home column, per-user order |
 | 4 | 10 Feed | Slices: bottle → solids → breastfeed timers → live sync + mini-bar → offline queue |
 | 5+ | Remaining sections | Spec each one (Sleep, Diaper, Medication, Growth, Pump) before building it |
-
-Model guidance: Opus for the skeleton, auth, live timer sync and the offline queue; Sonnet is fine for simple form/list slices.
-

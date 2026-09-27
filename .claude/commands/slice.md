@@ -11,26 +11,37 @@ Build the next slice of spec `$ARGUMENTS` from `docs/specs/`.
    - Re-read the hard requirements in the overview that concern this spec.
 
 2. **Slices**
-   - If the spec has no "Build slices" section yet: enter plan mode and propose one. Each slice is a small end-to-end increment (DB → API → UI as needed), lists the acceptance criteria it covers, and is ordered so each builds on the previous. Once I approve, add the section to the spec as a checklist and commit it ("Add build slices to spec NN"), then continue with the first slice.
-   - Otherwise take the first unchecked slice. Tell me which slice and criteria you are building before starting.
+   - If the spec has no "Build slices" section yet: enter plan mode and propose one. Each slice is a small end-to-end increment (DB → API → UI as needed), lists the acceptance criteria it covers, and is ordered so each builds on the previous. Wait for my approval. Once approved, add the section to the spec as a checklist and commit it ("Add build slices to spec NN").
+   - Pick the first unchecked slice.
 
-3. **Red**
+3. **Plan the slice — wait for approval**
+   - Enter plan mode (read-only) and present the slice plan:
+     - the slice and the acceptance criteria it covers;
+     - the tests you will write (file, test name, what each asserts);
+     - the files you will create or change, per layer;
+     - shared components and Core services reused, and new ones created;
+     - database changes (entities, migration);
+     - new dependencies (packages) and why;
+     - anything the spec doesn't settle, as questions.
+   - Do not write or change any file until I approve the plan. If I ask for changes, revise and present it again.
+
+4. **Red**
    - Write the tests for the slice's acceptance criteria (API: NUnit in `Nala.Tests`; web: unit tests next to the component/service).
    - Run them and show that they fail, and that they fail for the expected reason.
 
-4. **Green**
-   - Implement the minimum to make them pass, reusing existing shared components and Core services before creating new ones. Follow the Material 3 mapping in `docs/specs/03-app-layout.md`; no hard-coded colours.
+5. **Green**
+   - Implement the minimum to make them pass, following the approved plan (tell me if you have to deviate from it), reusing existing shared components and Core services before creating new ones. Follow the Material 3 mapping in `docs/specs/03-app-layout.md`; no hard-coded colours.
    - Refactor with tests green.
    - Run the **full** test suites and lint of every touched layer, and the build. All must pass.
 
-5. **Update the spec**
+6. **Update the spec**
    - Tick the acceptance criteria now covered by passing tests, and tick the slice.
    - Set the spec's status (and its row in the overview) to `in progress`, or `done` when every criterion is ticked.
    - If anything was decided or changed during the slice, update the spec to match — never leave the spec and the code disagreeing.
 
-6. **Commit**
+7. **Commit**
    - Commit on `master` with a message naming the spec and the slice. Do not push.
 
-7. **Stop.** Report what was built, the test results, and anything unclear or deferred. Do not start the next slice.
+8. **Stop.** Report what was built, the test results, and anything unclear or deferred. Do not start the next slice.
 
 If the spec is ambiguous or silent on something that matters, ask me instead of inventing behaviour.
