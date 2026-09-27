@@ -58,4 +58,8 @@ export interface ChangePasswordRequest {
   newPassword: string;
 }
 
+export interface DeleteAccountRequest {
+  password: string;
+}
+
 export type AccountResult = { ok: true } | { ok: false; errors: FieldErrors };

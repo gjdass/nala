@@ -46,3 +46,15 @@ mat-form-field {
 [data-testid='logout'] {
   align-self: flex-start;
 }
+
+.delete {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+
+  p {
+    margin: 0 0 16px;
+    font: var(--mat-sys-body-medium);
+    color: var(--mat-sys-on-surface-variant);
+  }
+}

@@ -57,7 +57,8 @@
       },
       "password": {
         "required": "Enter a password",
-        "tooShort": "At least 8 characters"
+        "tooShort": "At least 8 characters",
+        "incorrect": "Wrong password"
       },
       "currentPassword": {
         "required": "Enter your current password",
@@ -74,7 +75,8 @@
         "invitationUnknown": "This invitation link isn't valid. Check the link, or ask a family member for a new one.",
         "invitationExpired": "This invitation has expired. Ask a family member for a new one.",
         "invitationUsed": "This invitation has already been used. Log in, or ask a family member for a new one.",
-        "invitationRevoked": "This invitation was cancelled. Ask a family member for a new one."
+        "invitationRevoked": "This invitation was cancelled. Ask a family member for a new one.",
+        "adminCannotDelete": "The admin account can't be deleted."
       }
     }
   },
@@ -95,6 +97,17 @@
     "appearance": {
       "title": "Appearance",
       "theme": "Theme"
+    },
+    "delete": {
+      "title": "Delete account",
+      "warning": "Your account will be removed and you'll be logged out on every device. What you logged stays for the family, under your name.",
+      "open": "Delete account",
+      "adminNotice": "You're the admin of this Nala: your account can't be deleted.",
+      "dialogTitle": "Delete your account?",
+      "dialogText": "This can't be undone. Enter your password to confirm.",
+      "cancel": "Cancel",
+      "confirm": "Delete",
+      "done": "Your account was deleted"
     },
     "logout": "Log out"
   }

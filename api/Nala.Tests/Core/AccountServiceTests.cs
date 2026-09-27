@@ -1,5 +1,6 @@
 using Nala.Core.Account;
 using Nala.Core.Auth;
+using Nala.Core.Invitations;
 using Nala.Core.Users;
 using Nala.Tests.Support;
 
@@ -11,6 +12,7 @@ public class AccountServiceTests
 
     private FakeUserRepository _users = null!;
     private FakeSessionRepository _sessions = null!;
+    private FakeInvitationRepository _invitations = null!;
     private AccountService _service = null!;
     private User _anna = null!;
 
@@ -19,7 +21,9 @@ public class AccountServiceTests
     {
         _users = new FakeUserRepository();
         _sessions = new FakeSessionRepository();
-        _service = new AccountService(_users, _sessions, new FakePasswordHasher());
+        _invitations = new FakeInvitationRepository(_users);
+        _service = new AccountService(
+            _users, _sessions, _invitations, new FakePasswordHasher(), new FixedTimeProvider(Now));
         _anna = new User
         {
             Id = Guid.NewGuid(),
@@ -36,6 +40,21 @@ public class AccountServiceTests
         var session = new Session { Id = Guid.NewGuid(), UserId = userId, CreatedAt = Now, LastSeenAt = Now };
         _sessions.Sessions.Add(session.Id, session);
         return session;
+    }
+
+    private Invitation AddInvitation(Guid createdBy, Action<Invitation>? change = null)
+    {
+        var invitation = new Invitation
+        {
+            Id = Guid.NewGuid(),
+            TokenHash = Guid.NewGuid().ToString(),
+            CreatedByUserId = createdBy,
+            CreatedAt = Now,
+            ExpiresAt = Now + InvitationPolicy.Lifetime,
+        };
+        change?.Invoke(invitation);
+        _invitations.Invitations.Add(invitation);
+        return invitation;
     }
 
     [Test]
@@ -153,5 +172,91 @@ public class AccountServiceTests
 
         Assert.That(_sessions.Sessions.Keys, Is.EquivalentTo(new[] { current.Id, someoneElse.Id }));
         Assert.That(_sessions.Sessions.Keys, Does.Not.Contain(other.Id));
+    }
+
+    [Test]
+    public async Task Delete_soft_deletes_clearing_email_and_password_hash()
+    {
+        var result = await _service.DeleteAsync(_anna, new DeleteAccountCommand("correct horse"));
+
+        Assert.That(result, Is.InstanceOf<DeleteAccountResult.Deleted>());
+        Assert.That(_anna.DeletedAt, Is.EqualTo(Now));
+        Assert.That(_anna.Email, Is.Null);
+        Assert.That(_anna.PasswordHash, Is.Null);
+        Assert.That(_anna.DisplayName, Is.EqualTo("Anna"), "entries still show who logged them");
+        Assert.That(_users.Users, Does.Contain(_anna), "the account row is kept");
+        Assert.That(_users.Updates, Is.EqualTo(1));
+    }
+
+    [Test]
+    public async Task Delete_ends_all_sessions_of_the_user()
+    {
+        AddSession(_anna.Id);
+        AddSession(_anna.Id);
+        var someoneElse = AddSession(Guid.NewGuid());
+
+        await _service.DeleteAsync(_anna, new DeleteAccountCommand("correct horse"));
+
+        Assert.That(_sessions.Sessions.Keys, Is.EquivalentTo(new[] { someoneElse.Id }));
+    }
+
+    [Test]
+    public async Task Delete_revokes_pending_invitations_created_by_the_user()
+    {
+        var pending = AddInvitation(_anna.Id);
+        var used = AddInvitation(_anna.Id, i => i.UsedAt = Now.AddDays(-1));
+        var expired = AddInvitation(_anna.Id, i => i.ExpiresAt = Now.AddDays(-1));
+        var revoked = AddInvitation(_anna.Id, i => i.RevokedAt = Now.AddDays(-2));
+        var someoneElses = AddInvitation(Guid.NewGuid());
+
+        await _service.DeleteAsync(_anna, new DeleteAccountCommand("correct horse"));
+
+        Assert.That(pending.RevokedAt, Is.EqualTo(Now));
+        Assert.That(used.RevokedAt, Is.Null);
+        Assert.That(expired.RevokedAt, Is.Null);
+        Assert.That(revoked.RevokedAt, Is.EqualTo(Now.AddDays(-2)));
+        Assert.That(someoneElses.RevokedAt, Is.Null);
+    }
+
+    [TestCase("wrong horse", "incorrect")]
+    [TestCase("", "required")]
+    [TestCase(null, "required")]
+    public async Task Delete_needs_the_right_password(string? password, string code)
+    {
+        var session = AddSession(_anna.Id);
+        var pending = AddInvitation(_anna.Id);
+
+        var result = await _service.DeleteAsync(_anna, new DeleteAccountCommand(password));
+
+        Assert.That(((DeleteAccountResult.Invalid)result).Errors["password"], Is.EqualTo(code));
+        Assert.That(_anna.DeletedAt, Is.Null);
+        Assert.That(_anna.Email, Is.EqualTo("anna@mail.com"));
+        Assert.That(_users.Updates, Is.Zero);
+        Assert.That(_sessions.Sessions.Keys, Does.Contain(session.Id));
+        Assert.That(pending.RevokedAt, Is.Null);
+    }
+
+    [Test]
+    public async Task Delete_refuses_the_admin()
+    {
+        var admin = new User
+        {
+            Id = Guid.NewGuid(),
+            Email = "admin@mail.com",
+            DisplayName = "Admin",
+            PasswordHash = "hashed:correct horse",
+            PreferredLanguage = "en",
+            IsAdmin = true,
+        };
+        _users.Users.Add(admin);
+        var session = AddSession(admin.Id);
+
+        var result = await _service.DeleteAsync(admin, new DeleteAccountCommand("correct horse"));
+
+        Assert.That(result, Is.InstanceOf<DeleteAccountResult.AdminCannotDelete>());
+        Assert.That(admin.DeletedAt, Is.Null);
+        Assert.That(admin.Email, Is.EqualTo("admin@mail.com"));
+        Assert.That(_users.Updates, Is.Zero);
+        Assert.That(_sessions.Sessions.Keys, Does.Contain(session.Id));
     }
 }

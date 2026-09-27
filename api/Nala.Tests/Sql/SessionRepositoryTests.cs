@@ -140,4 +140,38 @@ public class SessionRepositoryTests
         Assert.That(await GetAsync(other.Id), Is.Null);
         Assert.That(await GetAsync(bobs.Id), Is.Not.Null);
     }
+
+    [Test]
+    public async Task DeleteAll_deletes_every_session_of_the_user_only()
+    {
+        var bob = new User
+        {
+            Id = Guid.NewGuid(),
+            Email = "bob@mail.com",
+            DisplayName = "Bob",
+            PasswordHash = "hash",
+            PreferredLanguage = "en",
+            CreatedAt = Now,
+        };
+        await using (var db = _db())
+        {
+            await new UserRepository(db).AddAsync(bob);
+        }
+
+        var phone = NewSession();
+        var tablet = NewSession();
+        var bobs = new Session { Id = Guid.NewGuid(), UserId = bob.Id, CreatedAt = Now, LastSeenAt = Now };
+        await AddAsync(phone);
+        await AddAsync(tablet);
+        await AddAsync(bobs);
+
+        await using (var db = _db())
+        {
+            await new SessionRepository(db).DeleteAllAsync(_anna.Id);
+        }
+
+        Assert.That(await GetAsync(phone.Id), Is.Null);
+        Assert.That(await GetAsync(tablet.Id), Is.Null);
+        Assert.That(await GetAsync(bobs.Id), Is.Not.Null);
+    }
 }

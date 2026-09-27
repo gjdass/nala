@@ -5,6 +5,7 @@ import {
   AccountResult,
   ChangePasswordRequest,
   CurrentUser,
+  DeleteAccountRequest,
   UpdateAccountRequest,
 } from '../auth/auth.models';
 import { AuthService } from '../auth/auth.service';
@@ -28,6 +29,15 @@ export class AccountService {
   /** This device stays signed in; the API ends the user's other sessions. */
   changePassword(request: ChangePasswordRequest): Observable<AccountResult> {
     return this.http.post<void>('/api/account/password', request).pipe(
+      map((): AccountResult => ({ ok: true })),
+      catchError(failed),
+    );
+  }
+
+  /** The API ends every session of the user, this one included. */
+  deleteAccount(request: DeleteAccountRequest): Observable<AccountResult> {
+    return this.http.delete<void>('/api/account', { body: request }).pipe(
+      tap(() => this.auth.signedOut()),
       map((): AccountResult => ({ ok: true })),
       catchError(failed),
     );

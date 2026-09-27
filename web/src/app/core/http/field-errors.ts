@@ -7,8 +7,11 @@ const FORM_ERRORS: Partial<Record<number, string>> = {
   429: 'tooManyAttempts',
 };
 
-/** Statuses whose body carries the form code: an unusable invitation link (404 unknown, 410 expired/used/revoked). */
-const CODE_IN_BODY = [404, 410];
+/**
+ * Statuses whose body carries the form code: an unusable invitation link (404 unknown, 410 expired/used/revoked),
+ * a refused action (403, e.g. `adminCannotDelete`).
+ */
+const CODE_IN_BODY = [403, 404, 410];
 
 /**
  * A 400 validation problem (`{ errors: { field: [code] } }`) to one code per field; a known status

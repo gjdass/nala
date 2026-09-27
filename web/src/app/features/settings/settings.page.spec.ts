@@ -1,5 +1,6 @@
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router, provideRouter } from '@angular/router';
 import { Subject, of, throwError } from 'rxjs';
@@ -10,6 +11,7 @@ import { AccountResult, AuthState } from '../../core/auth/auth.models';
 import { AuthService } from '../../core/auth/auth.service';
 import { ThemeMode, ThemeService } from '../../core/theme/theme.service';
 import { translocoTesting } from '../../testing/transloco-testing';
+import { DeleteAccountDialogComponent } from './delete-account-dialog/delete-account-dialog.component';
 import { SettingsPage } from './settings.page';
 
 describe('SettingsPage', () => {
@@ -23,6 +25,8 @@ describe('SettingsPage', () => {
   };
   let theme: { mode: ReturnType<typeof signal<ThemeMode>>; setMode: ReturnType<typeof vi.fn> };
   let snackBar: { open: ReturnType<typeof vi.fn> };
+  let dialogClosed: Subject<boolean | undefined>;
+  let dialog: { open: ReturnType<typeof vi.fn> };
   let router: Router;
 
   const host = () => fixture.nativeElement as HTMLElement;
@@ -72,6 +76,8 @@ describe('SettingsPage', () => {
     };
     theme = { mode: signal<ThemeMode>('system'), setMode: vi.fn() };
     snackBar = { open: vi.fn() };
+    dialogClosed = new Subject<boolean | undefined>();
+    dialog = { open: vi.fn(() => ({ afterClosed: () => dialogClosed })) };
     await TestBed.configureTestingModule({
       imports: [SettingsPage, translocoTesting()],
       providers: [
@@ -80,6 +86,7 @@ describe('SettingsPage', () => {
         { provide: AuthService, useValue: auth },
         { provide: ThemeService, useValue: theme },
         { provide: MatSnackBar, useValue: snackBar },
+        { provide: MatDialog, useValue: dialog },
       ],
     }).compileComponents();
     router = TestBed.inject(Router);
@@ -236,6 +243,53 @@ describe('SettingsPage', () => {
     expect(router.navigateByUrl).not.toHaveBeenCalled();
     expect(snackBar.open).toHaveBeenCalledWith(en.auth.errors.form.unknown, undefined, {
       duration: 3000,
+    });
+  });
+
+  describe('delete account', () => {
+    const signedInAs = async (isAdmin: boolean) => {
+      auth.state.update((state) => ({ ...state!, user: { ...state!.user!, isAdmin } }));
+      await fixture.whenStable();
+    };
+
+    it('the admin sees why their account cannot be deleted, and no delete action', async () => {
+      await signedInAs(true);
+
+      expect(host().querySelector('[data-testid="delete-account"]')).toBeNull();
+      expect(host().querySelector('[data-testid="delete-admin-notice"]')?.textContent?.trim()).toBe(
+        en.settings.delete.adminNotice,
+      );
+    });
+
+    it('a member opens the confirmation dialog', async () => {
+      await signedInAs(false);
+      expect(host().textContent).toContain(en.settings.delete.warning);
+
+      await click(button('delete-account'));
+
+      expect(dialog.open).toHaveBeenCalledWith(DeleteAccountDialogComponent, expect.anything());
+    });
+
+    it('once deleted, opens the login screen and confirms', async () => {
+      await signedInAs(false);
+      await click(button('delete-account'));
+      dialogClosed.next(true);
+      await fixture.whenStable();
+
+      expect(router.navigateByUrl).toHaveBeenCalledWith('/login');
+      expect(snackBar.open).toHaveBeenCalledWith(en.settings.delete.done, undefined, {
+        duration: 3000,
+      });
+    });
+
+    it('does nothing when the dialog is cancelled', async () => {
+      await signedInAs(false);
+      await click(button('delete-account'));
+      dialogClosed.next(undefined);
+      await fixture.whenStable();
+
+      expect(router.navigateByUrl).not.toHaveBeenCalled();
+      expect(snackBar.open).not.toHaveBeenCalled();
     });
   });
 });

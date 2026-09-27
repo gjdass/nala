@@ -104,4 +104,40 @@ describe('AccountService', () => {
       });
     });
   });
+
+  describe('deleteAccount()', () => {
+    it('sends DELETE /api/account with the password and forgets the user', async () => {
+      const result = firstValueFrom(service.deleteAccount({ password: 'correct horse' }));
+      const req = http.expectOne('/api/account');
+      expect(req.request.method).toBe('DELETE');
+      expect(req.request.body).toEqual({ password: 'correct horse' });
+      req.flush(null, { status: 204, statusText: 'No Content' });
+
+      expect(await result).toEqual<AccountResult>({ ok: true });
+      expect(auth.state()).toEqual({ setupRequired: false, user: null });
+    });
+
+    it('maps an incorrect password to its field and keeps the user', async () => {
+      const result = firstValueFrom(service.deleteAccount({ password: 'wrong' }));
+      http
+        .expectOne('/api/account')
+        .flush({ errors: { password: ['incorrect'] } }, { status: 400, statusText: 'Bad Request' });
+
+      expect(await result).toEqual<AccountResult>({ ok: false, errors: { password: 'incorrect' } });
+      expect(auth.state()).toEqual(signedIn);
+    });
+
+    it("maps the admin's refusal to its code", async () => {
+      const result = firstValueFrom(service.deleteAccount({ password: 'correct horse' }));
+      http
+        .expectOne('/api/account')
+        .flush({ code: 'adminCannotDelete' }, { status: 403, statusText: 'Forbidden' });
+
+      expect(await result).toEqual<AccountResult>({
+        ok: false,
+        errors: { form: 'adminCannotDelete' },
+      });
+      expect(auth.state()).toEqual(signedIn);
+    });
+  });
 });

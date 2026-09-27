@@ -57,7 +57,8 @@
       },
       "password": {
         "required": "Saisissez un mot de passe",
-        "tooShort": "8 caractères minimum"
+        "tooShort": "8 caractères minimum",
+        "incorrect": "Mot de passe incorrect"
       },
       "currentPassword": {
         "required": "Saisissez votre mot de passe actuel",
@@ -74,7 +75,8 @@
         "invitationUnknown": "Ce lien d'invitation n'est pas valide. Vérifiez le lien ou demandez-en un nouveau à un membre de la famille.",
         "invitationExpired": "Cette invitation a expiré. Demandez-en une nouvelle à un membre de la famille.",
         "invitationUsed": "Cette invitation a déjà été utilisée. Connectez-vous, ou demandez-en une nouvelle à un membre de la famille.",
-        "invitationRevoked": "Cette invitation a été annulée. Demandez-en une nouvelle à un membre de la famille."
+        "invitationRevoked": "Cette invitation a été annulée. Demandez-en une nouvelle à un membre de la famille.",
+        "adminCannotDelete": "Le compte administrateur ne peut pas être supprimé."
       }
     }
   },
@@ -95,6 +97,17 @@
     "appearance": {
       "title": "Apparence",
       "theme": "Thème"
+    },
+    "delete": {
+      "title": "Supprimer le compte",
+      "warning": "Votre compte sera supprimé et vous serez déconnecté sur tous vos appareils. Ce que vous avez saisi reste pour la famille, à votre nom.",
+      "open": "Supprimer le compte",
+      "adminNotice": "Vous êtes l'administrateur de ce Nala : votre compte ne peut pas être supprimé.",
+      "dialogTitle": "Supprimer votre compte ?",
+      "dialogText": "C'est définitif. Saisissez votre mot de passe pour confirmer.",
+      "cancel": "Annuler",
+      "confirm": "Supprimer",
+      "done": "Votre compte a été supprimé"
     },
     "logout": "Se déconnecter"
   }

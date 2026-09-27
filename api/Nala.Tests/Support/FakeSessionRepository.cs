@@ -38,4 +38,14 @@ public class FakeSessionRepository : ISessionRepository
 
         return Task.CompletedTask;
     }
+
+    public Task DeleteAllAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        foreach (var id in Sessions.Values.Where(s => s.UserId == userId).Select(s => s.Id).ToList())
+        {
+            Sessions.Remove(id);
+        }
+
+        return Task.CompletedTask;
+    }
 }

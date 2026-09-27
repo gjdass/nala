@@ -1,4 +1,7 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Mvc;
 using Nala.Api.Auth;
 using Nala.Core.Account;
 
@@ -7,6 +10,8 @@ namespace Nala.Api.Account;
 public sealed record UpdateAccountRequest(string? DisplayName, string? Language);
 
 public sealed record ChangePasswordRequest(string? CurrentPassword, string? NewPassword);
+
+public sealed record DeleteAccountRequest(string? Password);
 
 /// <summary>The signed-in user's own account. Every endpoint needs a session (fallback policy).</summary>
 public static class AccountEndpoints
@@ -19,6 +24,7 @@ public static class AccountEndpoints
         var account = endpoints.MapGroup("/api/account");
         account.MapPatch("", UpdateAsync);
         account.MapPost("/password", ChangePasswordAsync);
+        account.MapDelete("", DeleteAsync);
         return endpoints;
     }
 
@@ -50,5 +56,24 @@ public static class AccountEndpoints
         return result is ChangePasswordResult.Changed
             ? Results.NoContent()
             : AuthEndpoints.ValidationProblem(((ChangePasswordResult.Invalid)result).Errors);
+    }
+
+    /// <summary>Signs this device out too; 403 for the admin, who must always exist.</summary>
+    private static async Task<IResult> DeleteAsync(
+        [FromBody] DeleteAccountRequest request, AccountService account, HttpContext context, CancellationToken cancellationToken)
+    {
+        var result = await account.DeleteAsync(
+            AuthEndpoints.CurrentUser(context)!, new DeleteAccountCommand(request.Password), cancellationToken);
+
+        switch (result)
+        {
+            case DeleteAccountResult.Deleted:
+                await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+                return Results.NoContent();
+            case DeleteAccountResult.Invalid invalid:
+                return AuthEndpoints.ValidationProblem(invalid.Errors);
+            default:
+                return Results.Json(new ErrorResponse("adminCannotDelete"), statusCode: StatusCodes.Status403Forbidden);
+        }
     }
 }

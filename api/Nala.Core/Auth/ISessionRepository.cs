@@ -13,4 +13,7 @@ public interface ISessionRepository
 
     /// <summary>Deletes every session of the user except <paramref name="keepSessionId"/>.</summary>
     Task DeleteOthersAsync(Guid userId, Guid keepSessionId, CancellationToken cancellationToken = default);
+
+    /// <summary>Deletes every session of the user.</summary>
+    Task DeleteAllAsync(Guid userId, CancellationToken cancellationToken = default);
 }

@@ -8,6 +8,7 @@ import {
 } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleChange, MatButtonToggleModule } from '@angular/material/button-toggle';
+import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -21,10 +22,11 @@ import { LANGS, Lang } from '../../core/i18n/initial-lang';
 import { THEME_MODES, ThemeMode, ThemeService } from '../../core/theme/theme.service';
 import { SettingsSectionComponent } from '../../shared/ui/settings-section/settings-section.component';
 import { displayName, errorCode, newPassword } from '../auth/auth.validators';
+import { DeleteAccountDialogComponent } from './delete-account-dialog/delete-account-dialog.component';
 
 const SNACK_DURATION = 3000;
 
-/** Account (display name, language, password), appearance (theme) and logout. */
+/** Account (display name, language, password, deletion), appearance (theme) and logout. */
 @Component({
   selector: 'nala-settings',
   imports: [
@@ -48,10 +50,12 @@ export class SettingsPage {
   private readonly snackBar = inject(MatSnackBar);
   private readonly transloco = inject(TranslocoService);
   private readonly router = inject(Router);
+  private readonly dialog = inject(MatDialog);
 
   protected readonly langs = LANGS;
   protected readonly themeModes = THEME_MODES;
   protected readonly language = computed(() => this.auth.state()?.user?.language);
+  protected readonly isAdmin = computed(() => this.auth.state()?.user?.isAdmin ?? false);
   protected readonly themeMode = this.theme.mode;
 
   protected readonly profileForm = new FormGroup({
@@ -127,6 +131,21 @@ export class SettingsPage {
       next: () => void this.router.navigateByUrl('/login'),
       error: () => this.notify('auth.errors.form.unknown'),
     });
+  }
+
+  /** The dialog deletes the account; the user is then signed out everywhere. */
+  protected deleteAccount(): void {
+    this.dialog
+      .open<DeleteAccountDialogComponent, void, boolean>(DeleteAccountDialogComponent, {
+        autoFocus: 'first-tabbable',
+      })
+      .afterClosed()
+      .subscribe((deleted) => {
+        if (deleted) {
+          void this.router.navigateByUrl('/login');
+          this.notify('settings.delete.done');
+        }
+      });
   }
 
   /** Field codes go under their field; anything else is a snackbar. */

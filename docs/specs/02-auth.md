@@ -58,11 +58,11 @@ Each item becomes at least one test, written failing first.
 - [x] A user can change their password by giving the current one; other sessions are ended.
 
 ### Account deletion
-- [ ] A user can delete their own account from the app settings, after confirming with their password.
-- [ ] Deletion ends all of the user's sessions; the account can no longer log in.
-- [ ] Deletion removes the user's email and password hash, freeing the email to be invited again. The display name is kept so entries still show who logged them.
-- [ ] Entries logged by the deleted user are not changed or removed.
-- [ ] The admin cannot delete their own account (the instance must always have its admin).
+- [x] A user can delete their own account from the app settings, after confirming with their password.
+- [x] Deletion ends all of the user's sessions; the account can no longer log in.
+- [x] Deletion removes the user's email and password hash, freeing the email to be invited again. The display name is kept so entries still show who logged them.
+- [x] Entries logged by the deleted user are not changed or removed.
+- [x] The admin cannot delete their own account (the instance must always have its admin).
 
 ### Admin
 - [ ] The instance has exactly one admin: the account created at first-run setup. No other user can be made admin.
@@ -92,6 +92,8 @@ Each item becomes at least one test, written failing first.
 - **Account settings:** `PATCH /api/account` with `{ displayName?, language? }` → 200 with the current user; fields left out are unchanged; 400 validation problem (`displayName`: `required`/`tooLong`, `language`: `invalid`), and nothing is saved when a field is invalid. `POST /api/account/password` with `{ currentPassword, newPassword }` → 204; 400 validation problem (`currentPassword`: `required`/`incorrect`, `newPassword`: `required`/`tooShort`). A wrong current password isn't throttled (the caller already has a session). On success every other session of the user is deleted; the current one is kept.
 - **Language in the app:** the language stored at setup or registration (the one the app showed: browser language, else English) is the default. Once signed in, the app shows the user's language and follows any change to it; signed-out screens use the browser language. Changing it in settings saves it and switches right away.
 - **Settings page:** `/settings` (signed in only) with an Account section (display name, language, change password), an Appearance section (theme light / dark / system, per device) and Log out. Sections use the shared `nala-settings-section`. Saves are confirmed with a snackbar. Until the top app bar exists (04), home links to it with a text button.
+- **Account deletion:** `DELETE /api/account` with `{ password }` → 204, and this device's cookie is cleared; 400 validation problem (`password`: `required`/`incorrect`, not throttled, as for a password change); 403 `{ code: "adminCannotDelete" }` for the admin, checked before the password. It is a soft delete: `deleted at` is set, email and password hash become null (the email can be invited again), and the row keeps its id, display name and language, so everything that references the user (entries, invitations) is untouched. Every session of the user is deleted, and the invitations they created that are still pending are revoked. Each activity spec (05+) adds a test that a deleted user's entries remain.
+- **Delete account in settings:** the Account section ends with a Delete account part: a warning and an outlined button opening a confirmation dialog (password field, Cancel / Delete). A wrong password shows under the field and the dialog stays open. Once deleted, the app opens the login screen with a snackbar. The admin sees a notice that their account can't be deleted instead of the button.
 - **Web session handling:** a 401 from any API call (except login) forgets the user and opens the login screen. When the auth state can't be loaded (offline), the app shell opens anyway.
 
 ## Build slices
@@ -102,7 +104,7 @@ Each slice goes red → green → commit on `master`, in this order.
 - [x] **Slice 2 — Login, session, logout.** Login with a generic error, secure httpOnly same-site cookie backed by server-side sessions, 90-day rolling expiry, lockout after 5 failures in 15 minutes, logout of the current session only, every endpoint requires a session except the public ones (401). Web: login page, auth guard, 401 interceptor. Covers: Login and session criteria except the disabled account one (slice 6).
 - [x] **Slice 3 — Registration by invitation.** `Invitation` entity + migration (hashed token, 7-day expiry, used, revoked), invitation lookup, registration consuming the invitation and logging in, duplicate email refused, no public sign-up. Web: register page with clear errors for expired / used / unknown links. Invitations are created in 03; tests seed them. Covers: all Registration criteria.
 - [x] **Slice 4 — Account settings.** Get/update the current user (display name, language; language defaults to the browser's on first login), change password with the current one (ends other sessions). Web: settings page with the Account section (and the theme choice), logout. Covers: both Account settings criteria.
-- [ ] **Slice 5 — Account deletion.** Delete own account after confirming the password: ends all sessions, clears email and password hash, keeps the display name, refused for the admin; no cascade to entries. Web: delete action with confirmation dialog. Covers: all Account deletion criteria.
+- [x] **Slice 5 — Account deletion.** Delete own account after confirming the password: ends all sessions, clears email and password hash, keeps the display name, revokes their pending invitations, refused for the admin; no cascade to entries. Web: delete action with confirmation dialog. Covers: all Account deletion criteria.
 - [ ] **Slice 6 — Admin: users list, disable / re-enable.** Admin-only users list (deleted excluded), disable / re-enable (not self); disabling ends sessions and blocks login. Web: Admin section in settings, admin only. Covers: all Admin criteria, and the disabled account criterion.
 - [ ] **Slice 7 — Admin reset link.** `PasswordResetToken` entity + migration (hashed token), admin generates a one-time link valid 24 hours, reset sets the password, consumes the link and ends other sessions. Web: reset-link action in the admin list, reset-password page. Covers: the admin reset link criterion and the "using a reset link" criterion.
 - [ ] **Slice 8 — Forgot password by email.** SMTP and public base URL env variables (`.env.example`), `smtpEnabled` in the auth state, forgot-password endpoint with an identical confirmation whatever the email, emailed one-time link valid 1 hour. Web: "Forgot password" when SMTP is configured, "ask your admin" otherwise. Covers: the three SMTP reset criteria.

@@ -100,6 +100,23 @@
         </button>
       </div>
     </form>
+
+    <div class="delete">
+      <h3>{{ 'settings.delete.title' | transloco }}</h3>
+      @if (isAdmin()) {
+        <p data-testid="delete-admin-notice">{{ 'settings.delete.adminNotice' | transloco }}</p>
+      } @else {
+        <p>{{ 'settings.delete.warning' | transloco }}</p>
+        <button
+          mat-stroked-button
+          type="button"
+          (click)="deleteAccount()"
+          data-testid="delete-account"
+        >
+          {{ 'settings.delete.open' | transloco }}
+        </button>
+      }
+    </div>
   </nala-settings-section>
 
   <nala-settings-section [title]="'settings.appearance.title' | transloco">

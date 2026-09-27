@@ -1,0 +1,34 @@
+<form [formGroup]="form" (ngSubmit)="confirm()" novalidate>
+  <h2 mat-dialog-title>{{ 'settings.delete.dialogTitle' | transloco }}</h2>
+  <mat-dialog-content>
+    <p>{{ 'settings.delete.dialogText' | transloco }}</p>
+    <mat-form-field>
+      <mat-label>{{ 'auth.fields.password' | transloco }}</mat-label>
+      <input
+        matInput
+        type="password"
+        formControlName="password"
+        autocomplete="current-password"
+        data-testid="password"
+      />
+      @if (passwordError(); as code) {
+        <mat-error data-testid="error-password">{{
+          'auth.errors.password.' + code | transloco
+        }}</mat-error>
+      }
+    </mat-form-field>
+    @if (formError(); as code) {
+      <p class="form-error" role="alert" data-testid="form-error">
+        {{ 'auth.errors.form.' + code | transloco }}
+      </p>
+    }
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button mat-button type="button" (click)="cancel()" data-testid="cancel-delete">
+      {{ 'settings.delete.cancel' | transloco }}
+    </button>
+    <button mat-button type="submit" [disabled]="deleting()" data-testid="confirm-delete">
+      {{ 'settings.delete.confirm' | transloco }}
+    </button>
+  </mat-dialog-actions>
+</form>

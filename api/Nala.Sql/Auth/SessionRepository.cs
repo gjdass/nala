@@ -24,4 +24,7 @@ public class SessionRepository(NalaDbContext db) : ISessionRepository
 
     public Task DeleteOthersAsync(Guid userId, Guid keepSessionId, CancellationToken cancellationToken = default) =>
         db.Set<Session>().Where(s => s.UserId == userId && s.Id != keepSessionId).ExecuteDeleteAsync(cancellationToken);
+
+    public Task DeleteAllAsync(Guid userId, CancellationToken cancellationToken = default) =>
+        db.Set<Session>().Where(s => s.UserId == userId).ExecuteDeleteAsync(cancellationToken);
 }

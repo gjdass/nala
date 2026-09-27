@@ -13,4 +13,7 @@ public interface IInvitationRepository
     /// False when it is not (nothing is saved). Throws <see cref="UserConflictException"/> when the email is taken.
     /// </summary>
     Task<bool> RedeemAsync(Guid invitationId, User user, DateTimeOffset now, CancellationToken cancellationToken = default);
+
+    /// <summary>Revokes, at <paramref name="now"/>, the invitations the user created that are still usable then.</summary>
+    Task RevokePendingAsync(Guid createdByUserId, DateTimeOffset now, CancellationToken cancellationToken = default);
 }

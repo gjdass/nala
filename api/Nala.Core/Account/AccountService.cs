@@ -1,4 +1,5 @@
 using Nala.Core.Auth;
+using Nala.Core.Invitations;
 using Nala.Core.Users;
 
 namespace Nala.Core.Account;
@@ -24,8 +25,26 @@ public abstract record ChangePasswordResult
     public sealed record Invalid(IReadOnlyDictionary<string, string> Errors) : ChangePasswordResult;
 }
 
-/// <summary>The signed-in user's own account: display name, language, password.</summary>
-public class AccountService(IUserRepository users, ISessionRepository sessions, IPasswordHasher hasher)
+public sealed record DeleteAccountCommand(string? Password);
+
+public abstract record DeleteAccountResult
+{
+    public sealed record Deleted : DeleteAccountResult;
+
+    /// <summary>The instance must always have its admin.</summary>
+    public sealed record AdminCannotDelete : DeleteAccountResult;
+
+    /// <summary>Field name → error code (<c>required</c>, <c>incorrect</c>).</summary>
+    public sealed record Invalid(IReadOnlyDictionary<string, string> Errors) : DeleteAccountResult;
+}
+
+/// <summary>The signed-in user's own account: display name, language, password, deletion.</summary>
+public class AccountService(
+    IUserRepository users,
+    ISessionRepository sessions,
+    IInvitationRepository invitations,
+    IPasswordHasher hasher,
+    TimeProvider time)
 {
     public async Task<UpdateAccountResult> UpdateAsync(
         User user, UpdateAccountCommand command, CancellationToken cancellationToken = default)
@@ -87,5 +106,37 @@ public class AccountService(IUserRepository users, ISessionRepository sessions, 
         await users.UpdateAsync(user, cancellationToken);
         await sessions.DeleteOthersAsync(user.Id, currentSessionId, cancellationToken);
         return new ChangePasswordResult.Changed();
+    }
+
+    /// <summary>
+    /// Soft delete confirmed by the password: the row and display name stay so entries still show who logged them;
+    /// the email is freed, sessions end and the user's pending invitations are revoked. Refused for the admin.
+    /// </summary>
+    public async Task<DeleteAccountResult> DeleteAsync(
+        User user, DeleteAccountCommand command, CancellationToken cancellationToken = default)
+    {
+        if (user.IsAdmin)
+        {
+            return new DeleteAccountResult.AdminCannotDelete();
+        }
+
+        if (string.IsNullOrEmpty(command.Password))
+        {
+            return new DeleteAccountResult.Invalid(new Dictionary<string, string> { ["password"] = "required" });
+        }
+
+        if (user.PasswordHash is not { } hash || !hasher.Verify(hash, command.Password))
+        {
+            return new DeleteAccountResult.Invalid(new Dictionary<string, string> { ["password"] = "incorrect" });
+        }
+
+        var now = time.GetUtcNow();
+        user.DeletedAt = now;
+        user.Email = null;
+        user.PasswordHash = null;
+        await users.UpdateAsync(user, cancellationToken);
+        await invitations.RevokePendingAsync(user.Id, now, cancellationToken);
+        await sessions.DeleteAllAsync(user.Id, cancellationToken);
+        return new DeleteAccountResult.Deleted();
     }
 }

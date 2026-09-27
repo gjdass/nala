@@ -117,4 +117,31 @@ public class UserRepositoryTests
         Assert.That(saved.PreferredLanguage, Is.EqualTo("fr"));
         Assert.That(saved.PasswordHash, Is.EqualTo("new hash"));
     }
+
+    [Test]
+    public async Task Update_saves_a_soft_delete()
+    {
+        var user = NewUser("anna@mail.com");
+        await AddAsync(user);
+        var deletedAt = new DateTimeOffset(2026, 9, 27, 20, 0, 0, TimeSpan.Zero);
+
+        await using (var db = _db())
+        {
+            var repository = new UserRepository(db);
+            var read = (await repository.GetByIdAsync(user.Id))!;
+            read.Email = null;
+            read.PasswordHash = null;
+            read.DeletedAt = deletedAt;
+            await repository.UpdateAsync(read);
+        }
+
+        await using var check = _db();
+        var repository2 = new UserRepository(check);
+        var saved = (await repository2.GetByIdAsync(user.Id))!;
+        Assert.That(saved.Email, Is.Null);
+        Assert.That(saved.PasswordHash, Is.Null);
+        Assert.That(saved.DeletedAt, Is.EqualTo(deletedAt));
+        Assert.That(saved.DisplayName, Is.EqualTo("Anna"));
+        Assert.That(await repository2.GetByEmailAsync("anna@mail.com"), Is.Null);
+    }
 }
