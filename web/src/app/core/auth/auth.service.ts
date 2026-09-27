@@ -4,8 +4,12 @@ import { Observable, catchError, map, of, tap } from 'rxjs';
 import {
   AuthState,
   FieldErrors,
+  Invitation,
+  InvitationLookup,
   LoginRequest,
   LoginResult,
+  RegisterRequest,
+  RegisterResult,
   SetupRequest,
   SetupResult,
 } from './auth.models';
@@ -49,6 +53,26 @@ export class AuthService {
     );
   }
 
+  lookupInvitation(token: string): Observable<InvitationLookup> {
+    return this.http.get<Invitation>(invitationUrl(token)).pipe(
+      map((invitation): InvitationLookup => ({ ok: true, invitation })),
+      catchError((error: HttpErrorResponse) =>
+        of<InvitationLookup>({ ok: false, code: toFieldErrors(error)['form'] ?? 'unknown' }),
+      ),
+    );
+  }
+
+  /** Creates an account from an invitation and signs it in. */
+  register(token: string, request: RegisterRequest): Observable<RegisterResult> {
+    return this.http.post<AuthState>(`${invitationUrl(token)}/register`, request).pipe(
+      tap((state) => this.state.set(state)),
+      map((): RegisterResult => ({ ok: true })),
+      catchError((error: HttpErrorResponse) =>
+        of<RegisterResult>({ ok: false, errors: toFieldErrors(error) }),
+      ),
+    );
+  }
+
   /** Ends this device's session only. */
   logout(): Observable<void> {
     return this.http.post<void>('/api/auth/logout', null).pipe(tap(() => this.signedOut()));
@@ -60,11 +84,16 @@ export class AuthService {
   }
 }
 
+const invitationUrl = (token: string) => `/api/auth/invitations/${encodeURIComponent(token)}`;
+
 /** Form-level codes the API answers with, by status. */
 const FORM_ERRORS: Partial<Record<number, string>> = {
   401: 'invalidCredentials',
   429: 'tooManyAttempts',
 };
+
+/** Statuses whose body carries the form code: an unusable invitation link (404 unknown, 410 expired/used/revoked). */
+const CODE_IN_BODY = [404, 410];
 
 /**
  * A 400 validation problem (`{ errors: { field: [code] } }`) to one code per field; a known status
@@ -73,7 +102,8 @@ const FORM_ERRORS: Partial<Record<number, string>> = {
 function toFieldErrors(error: HttpErrorResponse): FieldErrors {
   const problem = error.status === 400 ? (error.error?.errors as Record<string, string[]>) : null;
   if (!problem) {
-    return { form: FORM_ERRORS[error.status] ?? 'unknown' };
+    const bodyCode = CODE_IN_BODY.includes(error.status) ? (error.error?.code as string) : null;
+    return { form: bodyCode ?? FORM_ERRORS[error.status] ?? 'unknown' };
   }
   return Object.fromEntries(Object.entries(problem).map(([field, codes]) => [field, codes[0]]));
 }

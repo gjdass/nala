@@ -24,34 +24,7 @@ public class SetupService(IUserRepository users, IPasswordHasher hasher, TimePro
             return new SetupResult.AlreadySetUp();
         }
 
-        var errors = new Dictionary<string, string>();
-        if (string.IsNullOrWhiteSpace(command.Email))
-        {
-            errors["email"] = "required";
-        }
-        else if (!EmailAddress.TryNormalize(command.Email, out _))
-        {
-            errors["email"] = "invalid";
-        }
-
-        if (string.IsNullOrWhiteSpace(command.DisplayName))
-        {
-            errors["displayName"] = "required";
-        }
-        else if (!DisplayName.TryNormalize(command.DisplayName, out _))
-        {
-            errors["displayName"] = "tooLong";
-        }
-
-        if (string.IsNullOrEmpty(command.Password))
-        {
-            errors["password"] = "required";
-        }
-        else if (!PasswordPolicy.IsValid(command.Password))
-        {
-            errors["password"] = "tooShort";
-        }
-
+        var errors = AccountFields.Validate(command.Email, command.DisplayName, command.Password);
         if (errors.Count > 0)
         {
             return new SetupResult.Invalid(errors);

@@ -1,0 +1,38 @@
+@let current = view();
+@if (current.kind === 'loading') {
+  <nala-auth-card [title]="'auth.register.title' | transloco">
+    <mat-progress-bar
+      mode="indeterminate"
+      [attr.aria-label]="'auth.register.loading' | transloco"
+    />
+  </nala-auth-card>
+} @else if (current.kind === 'unavailable') {
+  <nala-auth-card
+    [title]="'auth.register.title' | transloco"
+    [error]="'auth.errors.form.' + current.code | transloco"
+  >
+    <a authCardActions mat-button routerLink="/login" data-testid="to-login">
+      {{ 'auth.register.toLogin' | transloco }}
+    </a>
+  </nala-auth-card>
+} @else {
+  <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+    <nala-auth-card
+      [title]="'auth.register.title' | transloco"
+      [subtitle]="'auth.register.subtitle' | transloco: { name: current.invitedBy }"
+      [error]="formError() ? ('auth.errors.form.' + formError() | transloco) : null"
+    >
+      <nala-account-fields [form]="form" />
+
+      <button
+        authCardActions
+        mat-flat-button
+        type="submit"
+        [disabled]="pending()"
+        data-testid="submit"
+      >
+        {{ 'auth.register.submit' | transloco }}
+      </button>
+    </nala-auth-card>
+  </form>
+}

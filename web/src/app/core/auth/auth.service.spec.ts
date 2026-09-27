@@ -2,7 +2,14 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { firstValueFrom } from 'rxjs';
-import { AuthState, LoginResult, SetupRequest, SetupResult } from './auth.models';
+import {
+  AuthState,
+  InvitationLookup,
+  LoginResult,
+  RegisterResult,
+  SetupRequest,
+  SetupResult,
+} from './auth.models';
 import { AuthService } from './auth.service';
 
 describe('AuthService', () => {
@@ -130,6 +137,80 @@ describe('AuthService', () => {
       http.expectOne('/api/auth/login').error(new ProgressEvent('error'));
 
       expect(await result).toEqual<LoginResult>({ ok: false, errors: { form: 'unknown' } });
+    });
+  });
+
+  describe('lookupInvitation()', () => {
+    it('gets the invitation by its token', async () => {
+      const result = firstValueFrom(service.lookupInvitation('a-b_c'));
+      const req = http.expectOne('/api/auth/invitations/a-b_c');
+      expect(req.request.method).toBe('GET');
+      req.flush({ invitedBy: 'Anna', expiresAt: '2026-10-04T20:00:00Z' });
+
+      expect(await result).toEqual<InvitationLookup>({
+        ok: true,
+        invitation: { invitedBy: 'Anna', expiresAt: '2026-10-04T20:00:00Z' },
+      });
+    });
+
+    it.each([
+      [404, 'invitationUnknown'],
+      [410, 'invitationExpired'],
+      [410, 'invitationUsed'],
+      [410, 'invitationRevoked'],
+    ])('maps a %i to its %s code', async (status, code) => {
+      const result = firstValueFrom(service.lookupInvitation('t'));
+      http.expectOne('/api/auth/invitations/t').flush({ code }, { status, statusText: 'Error' });
+
+      expect(await result).toEqual<InvitationLookup>({ ok: false, code });
+    });
+
+    it('reports a network failure as unknown', async () => {
+      const result = firstValueFrom(service.lookupInvitation('t'));
+      http.expectOne('/api/auth/invitations/t').error(new ProgressEvent('error'));
+
+      expect(await result).toEqual<InvitationLookup>({ ok: false, code: 'unknown' });
+    });
+  });
+
+  describe('register()', () => {
+    const member: AuthState = {
+      setupRequired: false,
+      user: { id: 'u2', email: 'ben@mail.com', displayName: 'Ben', language: 'fr', isAdmin: false },
+    };
+    const registration = { ...request, email: 'ben@mail.com', displayName: 'Ben' };
+
+    it('posts the account to the invitation and stores the returned state', async () => {
+      const result = firstValueFrom(service.register('tok', registration));
+      const req = http.expectOne('/api/auth/invitations/tok/register');
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual(registration);
+      req.flush(member);
+
+      expect(await result).toEqual<RegisterResult>({ ok: true });
+      expect(service.state()).toEqual(member);
+    });
+
+    it('maps a 400 validation problem to field error codes', async () => {
+      const result = firstValueFrom(service.register('tok', registration));
+      http
+        .expectOne('/api/auth/invitations/tok/register')
+        .flush({ errors: { email: ['taken'] } }, { status: 400, statusText: 'Bad Request' });
+
+      expect(await result).toEqual<RegisterResult>({ ok: false, errors: { email: 'taken' } });
+      expect(service.state()).toBeNull();
+    });
+
+    it.each([
+      [404, 'invitationUnknown'],
+      [410, 'invitationUsed'],
+    ])('maps a %i to the %s form error', async (status, code) => {
+      const result = firstValueFrom(service.register('tok', registration));
+      http
+        .expectOne('/api/auth/invitations/tok/register')
+        .flush({ code }, { status, statusText: 'Error' });
+
+      expect(await result).toEqual<RegisterResult>({ ok: false, errors: { form: code } });
     });
   });
 

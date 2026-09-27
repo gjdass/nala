@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Nala.Core.Auth;
+using Nala.Core.Invitations;
 using Nala.Core.Users;
 
 namespace Nala.Api.Auth;
@@ -11,7 +12,11 @@ public sealed record SetupRequest(string? Email, string? DisplayName, string? Pa
 
 public sealed record LoginRequest(string? Email, string? Password);
 
-/// <summary>A failure not tied to a field (<c>invalidCredentials</c>, <c>tooManyAttempts</c>).</summary>
+public sealed record RegisterRequest(string? Email, string? DisplayName, string? Password, string? Language);
+
+public sealed record InvitationResponse(string InvitedBy, DateTimeOffset ExpiresAt);
+
+/// <summary>A failure not tied to a field (<c>invalidCredentials</c>, <c>tooManyAttempts</c>, <c>invitation…</c>).</summary>
 public sealed record ErrorResponse(string Code);
 
 public sealed record CurrentUserResponse(Guid Id, string Email, string DisplayName, string Language, bool IsAdmin);
@@ -61,6 +66,7 @@ public static class AuthEndpoints
         services.AddScoped<SetupService>();
         services.AddScoped<LoginService>();
         services.AddScoped<SessionService>();
+        services.AddScoped<RegistrationService>();
         return services;
     }
 
@@ -71,6 +77,8 @@ public static class AuthEndpoints
         auth.MapPost("/setup", SetupAsync).AllowAnonymous();
         auth.MapPost("/login", LoginAsync).AllowAnonymous();
         auth.MapPost("/logout", LogoutAsync);
+        auth.MapGet("/invitations/{token}", LookupInvitationAsync).AllowAnonymous();
+        auth.MapPost("/invitations/{token}/register", RegisterAsync).AllowAnonymous();
         return endpoints;
     }
 
@@ -118,6 +126,44 @@ public static class AuthEndpoints
                 return Results.Json(new ErrorResponse("invalidCredentials"), statusCode: StatusCodes.Status401Unauthorized);
         }
     }
+
+    private static async Task<IResult> LookupInvitationAsync(
+        string token, RegistrationService registration, CancellationToken cancellationToken)
+    {
+        var lookup = await registration.LookupAsync(token, cancellationToken);
+        return lookup is InvitationLookup.Valid valid
+            ? Results.Ok(new InvitationResponse(valid.InvitedBy, valid.ExpiresAt))
+            : Unavailable(((InvitationLookup.Unavailable)lookup).Problem);
+    }
+
+    private static async Task<IResult> RegisterAsync(
+        string token,
+        RegisterRequest request,
+        RegistrationService registration,
+        SessionService sessions,
+        HttpContext context,
+        CancellationToken cancellationToken)
+    {
+        var result = await registration.RegisterAsync(
+            new RegisterCommand(token, request.Email, request.DisplayName, request.Password, request.Language), cancellationToken);
+
+        switch (result)
+        {
+            case RegisterResult.Registered registered:
+                await SignInAsync(context, sessions, registered.User, cancellationToken);
+                return Results.Ok(new AuthStateResponse(false, ToResponse(registered.User)));
+            case RegisterResult.Invalid invalid:
+                return Results.ValidationProblem(invalid.Errors.ToDictionary(e => e.Key, e => new[] { e.Value }));
+            default:
+                return Unavailable(((RegisterResult.Unavailable)result).Problem);
+        }
+    }
+
+    /// <summary>404 for an unknown link, 410 for one that existed but can no longer be used; the code tells why.</summary>
+    private static IResult Unavailable(InvitationProblem problem) =>
+        Results.Json(
+            new ErrorResponse($"invitation{problem}"),
+            statusCode: problem == InvitationProblem.Unknown ? StatusCodes.Status404NotFound : StatusCodes.Status410Gone);
 
     /// <summary>Ends this device's session only.</summary>
     private static async Task<IResult> LogoutAsync(

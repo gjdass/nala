@@ -32,6 +32,13 @@
       "subtitle": "Welcome back.",
       "submit": "Log in"
     },
+    "register": {
+      "title": "Join Nala",
+      "subtitle": "{{name}} invited you to join the family. Create your account.",
+      "submit": "Create account",
+      "toLogin": "Go to login",
+      "loading": "Checking your invitation…"
+    },
     "fields": {
       "email": "Email",
       "displayName": "Display name",
@@ -41,7 +48,8 @@
     "errors": {
       "email": {
         "required": "Enter your email",
-        "invalid": "Enter a valid email address"
+        "invalid": "Enter a valid email address",
+        "taken": "An account already uses this email"
       },
       "displayName": {
         "required": "Enter a display name",
@@ -54,7 +62,11 @@
       "form": {
         "unknown": "Something went wrong. Check your connection and try again.",
         "invalidCredentials": "Wrong email or password.",
-        "tooManyAttempts": "Too many attempts. Try again in a few minutes."
+        "tooManyAttempts": "Too many attempts. Try again in a few minutes.",
+        "invitationUnknown": "This invitation link isn't valid. Check the link, or ask a family member for a new one.",
+        "invitationExpired": "This invitation has expired. Ask a family member for a new one.",
+        "invitationUsed": "This invitation has already been used. Log in, or ask a family member for a new one.",
+        "invitationRevoked": "This invitation was cancelled. Ask a family member for a new one."
       }
     }
   }

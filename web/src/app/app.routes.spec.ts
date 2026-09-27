@@ -45,4 +45,16 @@ describe('app routes', () => {
   it('a signed-in user opening the login screen lands on the app', async () => {
     expect(await navigate('/login', signedIn)).toBe('/');
   });
+
+  it('a signed-out visitor can open an invitation link', async () => {
+    expect(await navigate('/invite/a-b_c', signedOut)).toBe('/invite/a-b_c');
+  });
+
+  it('a signed-in user opening an invitation link lands on the app', async () => {
+    expect(await navigate('/invite/a-b_c', signedIn)).toBe('/');
+  });
+
+  it('an invitation link on an empty instance opens the setup screen', async () => {
+    expect(await navigate('/invite/a-b_c', { setupRequired: true, user: null })).toBe('/setup');
+  });
 });

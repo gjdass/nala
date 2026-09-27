@@ -35,6 +35,8 @@ public class AuthorizationTests
             "GET /api/auth/state",
             "POST /api/auth/setup",
             "POST /api/auth/login",
+            "GET /api/auth/invitations/{token}",
+            "POST /api/auth/invitations/{token}/register",
         }));
     }
 

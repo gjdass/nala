@@ -1,0 +1,46 @@
+<mat-form-field>
+  <mat-label>{{ 'auth.fields.email' | transloco }}</mat-label>
+  <input
+    matInput
+    type="email"
+    [formControl]="form().controls.email"
+    autocomplete="email"
+    data-testid="email"
+  />
+  @if (errorOf(form().controls.email); as code) {
+    <mat-error data-testid="error-email">{{ 'auth.errors.email.' + code | transloco }}</mat-error>
+  }
+</mat-form-field>
+
+<mat-form-field>
+  <mat-label>{{ 'auth.fields.displayName' | transloco }}</mat-label>
+  <input
+    matInput
+    type="text"
+    [formControl]="form().controls.displayName"
+    autocomplete="nickname"
+    data-testid="displayName"
+  />
+  @if (errorOf(form().controls.displayName); as code) {
+    <mat-error data-testid="error-displayName">{{
+      'auth.errors.displayName.' + code | transloco
+    }}</mat-error>
+  }
+</mat-form-field>
+
+<mat-form-field>
+  <mat-label>{{ 'auth.fields.password' | transloco }}</mat-label>
+  <input
+    matInput
+    type="password"
+    [formControl]="form().controls.password"
+    autocomplete="new-password"
+    data-testid="password"
+  />
+  <mat-hint>{{ 'auth.fields.passwordHint' | transloco }}</mat-hint>
+  @if (errorOf(form().controls.password); as code) {
+    <mat-error data-testid="error-password">{{
+      'auth.errors.password.' + code | transloco
+    }}</mat-error>
+  }
+</mat-form-field>

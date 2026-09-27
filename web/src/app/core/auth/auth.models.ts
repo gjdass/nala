@@ -32,3 +32,17 @@ export interface LoginRequest {
 }
 
 export type LoginResult = { ok: true } | { ok: false; errors: FieldErrors };
+
+export interface Invitation {
+  /** Display name of the member who created the invitation. */
+  invitedBy: string;
+  expiresAt: string;
+}
+
+/** `code`: `invitationUnknown`, `invitationExpired`, `invitationUsed`, `invitationRevoked` or `unknown`. */
+export type InvitationLookup = { ok: true; invitation: Invitation } | { ok: false; code: string };
+
+/** The same account fields as setup, sent to an invitation. */
+export type RegisterRequest = SetupRequest;
+
+export type RegisterResult = { ok: true } | { ok: false; errors: FieldErrors };

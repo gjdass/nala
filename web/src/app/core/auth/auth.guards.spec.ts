@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { ActivatedRouteSnapshot, Router, RouterStateSnapshot, UrlTree } from '@angular/router';
 import { Observable, of, throwError } from 'rxjs';
 import { firstValueFrom } from 'rxjs';
-import { authGuard, loginOnlyGuard, setupOnlyGuard } from './auth.guards';
+import { authGuard, signedOutGuard, setupOnlyGuard } from './auth.guards';
 import { AuthState } from './auth.models';
 import { AuthService } from './auth.service';
 
@@ -53,25 +53,25 @@ describe('auth guards', () => {
     });
   });
 
-  describe('loginOnlyGuard', () => {
+  describe('signedOutGuard', () => {
     it('redirects to /setup while the instance has no user', async () => {
       load = () => of(setupRequired);
-      expect(url(await run(loginOnlyGuard))).toBe('/setup');
+      expect(url(await run(signedOutGuard))).toBe('/setup');
     });
 
-    it('shows the login screen when signed out', async () => {
+    it('lets a signed-out visitor through', async () => {
       load = () => of(signedOut);
-      expect(await run(loginOnlyGuard)).toBe(true);
+      expect(await run(signedOutGuard)).toBe(true);
     });
 
     it('redirects a signed-in user to /', async () => {
       load = () => of(signedIn);
-      expect(url(await run(loginOnlyGuard))).toBe('/');
+      expect(url(await run(signedOutGuard))).toBe('/');
     });
 
-    it('shows the login screen when the state cannot be loaded', async () => {
+    it('lets the route through when the state cannot be loaded', async () => {
       load = () => throwError(() => new Error('offline'));
-      expect(await run(loginOnlyGuard)).toBe(true);
+      expect(await run(signedOutGuard)).toBe(true);
     });
   });
 

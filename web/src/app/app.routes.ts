@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { authGuard, loginOnlyGuard, setupOnlyGuard } from './core/auth/auth.guards';
+import { authGuard, signedOutGuard, setupOnlyGuard } from './core/auth/auth.guards';
 
 export const routes: Routes = [
   {
@@ -9,8 +9,14 @@ export const routes: Routes = [
   },
   {
     path: 'login',
-    canActivate: [loginOnlyGuard],
+    canActivate: [signedOutGuard],
     loadComponent: () => import('./features/auth/login/login.page').then((m) => m.LoginPage),
+  },
+  {
+    path: 'invite/:token',
+    canActivate: [signedOutGuard],
+    loadComponent: () =>
+      import('./features/auth/register/register.page').then((m) => m.RegisterPage),
   },
   {
     path: '',

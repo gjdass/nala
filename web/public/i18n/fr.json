@@ -32,6 +32,13 @@
       "subtitle": "Bon retour.",
       "submit": "Se connecter"
     },
+    "register": {
+      "title": "Rejoindre Nala",
+      "subtitle": "{{name}} vous invite à rejoindre la famille. Créez votre compte.",
+      "submit": "Créer le compte",
+      "toLogin": "Aller à la connexion",
+      "loading": "Vérification de l'invitation…"
+    },
     "fields": {
       "email": "E-mail",
       "displayName": "Nom affiché",
@@ -41,7 +48,8 @@
     "errors": {
       "email": {
         "required": "Saisissez votre e-mail",
-        "invalid": "Saisissez une adresse e-mail valide"
+        "invalid": "Saisissez une adresse e-mail valide",
+        "taken": "Un compte utilise déjà cet e-mail"
       },
       "displayName": {
         "required": "Saisissez un nom affiché",
@@ -54,7 +62,11 @@
       "form": {
         "unknown": "Une erreur est survenue. Vérifiez votre connexion et réessayez.",
         "invalidCredentials": "Email ou mot de passe incorrect.",
-        "tooManyAttempts": "Trop de tentatives. Réessayez dans quelques minutes."
+        "tooManyAttempts": "Trop de tentatives. Réessayez dans quelques minutes.",
+        "invitationUnknown": "Ce lien d'invitation n'est pas valide. Vérifiez le lien ou demandez-en un nouveau à un membre de la famille.",
+        "invitationExpired": "Cette invitation a expiré. Demandez-en une nouvelle à un membre de la famille.",
+        "invitationUsed": "Cette invitation a déjà été utilisée. Connectez-vous, ou demandez-en une nouvelle à un membre de la famille.",
+        "invitationRevoked": "Cette invitation a été annulée. Demandez-en une nouvelle à un membre de la famille."
       }
     }
   }

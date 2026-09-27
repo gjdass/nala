@@ -20,8 +20,8 @@ export const authGuard: CanActivateFn = () => {
     );
 };
 
-/** The login screen is only for signed-out visitors of a set-up instance. */
-export const loginOnlyGuard: CanActivateFn = () => {
+/** Login and invitation screens: only for signed-out visitors of a set-up instance. */
+export const signedOutGuard: CanActivateFn = () => {
   const router = inject(Router);
   return inject(AuthService)
     .load()
