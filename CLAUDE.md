@@ -1,6 +1,6 @@
 # Nala
 
-Open source baby tracker PWA for parents (similar to Nara Baby), self-hostable with Docker. It tracks a baby's feedings, sleep, diapers, growth and milestones over time. Licensed GPL-3.0.
+Open source baby tracker PWA for parents, self-hostable with Docker. It tracks a baby's feedings, sleep, diapers, growth and milestones over time. Licensed GPL-3.0.
 
 Functional specs will be added later. This file covers the technical baseline.
 
