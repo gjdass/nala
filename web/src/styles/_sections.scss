@@ -1,0 +1,21 @@
+@use 'sass:map';
+@use '@angular/material' as mat;
+
+// Section colour tokens (spec 04): --nala-section-<key> for surfaces such as
+// card header bands, --nala-on-section-<key> for text and icons on them.
+// Placeholder colours taken from Material's M3 palettes until the palette is decided.
+$sections: (
+  feed: mat.$orange-palette,
+  sleep: mat.$violet-palette,
+  diaper: mat.$cyan-palette,
+  pump: mat.$rose-palette,
+  growth: mat.$green-palette,
+  medication: mat.$red-palette,
+);
+
+html {
+  @each $key, $palette in $sections {
+    --nala-section-#{$key}: light-dark(#{map.get($palette, 40)}, #{map.get($palette, 80)});
+    --nala-on-section-#{$key}: light-dark(#{map.get($palette, 100)}, #{map.get($palette, 20)});
+  }
+}

@@ -7,18 +7,23 @@
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "lint": "ng lint"
+    "lint": "ng lint && npm run lint:styles",
+    "lint:styles": "stylelint \"src/app/**/*.scss\" --allow-empty-input",
+    "test:tooling": "node --test \"tools/**/*.test.mjs\""
   },
   "private": true,
   "packageManager": "npm@11.19.0",
   "dependencies": {
+    "@angular/cdk": "^22.2.0",
     "@angular/common": "^22.2.0",
     "@angular/compiler": "^22.2.0",
     "@angular/core": "^22.2.0",
     "@angular/forms": "^22.2.0",
+    "@angular/material": "^22.2.0",
     "@angular/platform-browser": "^22.2.0",
     "@angular/router": "^22.2.0",
     "@angular/service-worker": "^22.2.0",
+    "@fontsource/roboto": "^5.3.0",
     "@jsverse/transloco": "^8.4.0",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0"
@@ -31,7 +36,10 @@
     "angular-eslint": "22.5.0",
     "eslint": "^10.9.1",
     "jsdom": "^30.0.0",
+    "postcss-scss": "^4.0.9",
     "prettier": "^3.8.1",
+    "sass": "^1.105.0",
+    "stylelint": "^17.15.0",
     "typescript": "~6.0.2",
     "typescript-eslint": "8.69.0",
     "vitest": "^5.0.0"

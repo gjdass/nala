@@ -1,21 +1,37 @@
 <main>
-  <h1>{{ 'app.title' | transloco }}</h1>
+  <mat-card appearance="outlined">
+    <mat-card-header>
+      <mat-card-title>{{ 'app.title' | transloco }}</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <p class="status">
+        <span data-testid="api-status-label">{{ 'home.apiStatus' | transloco }}</span>
+        <span data-testid="health-status">{{ 'health.' + status() | transloco }}</span>
+      </p>
+    </mat-card-content>
+  </mat-card>
 
-  <p>
-    <span data-testid="api-status-label">{{ 'home.apiStatus' | transloco }}</span>
-    <span data-testid="health-status">{{ 'health.' + status() | transloco }}</span>
-  </p>
-
-  <div role="group" [attr.aria-label]="'home.language' | transloco">
+  <mat-button-toggle-group
+    [attr.aria-label]="'home.language' | transloco"
+    [value]="activeLang()"
+    (change)="setLang($event.value)"
+  >
     @for (lang of langs; track lang) {
-      <button
-        type="button"
-        [attr.data-testid]="'lang-' + lang"
-        [attr.aria-pressed]="activeLang() === lang"
-        (click)="setLang(lang)"
-      >
+      <mat-button-toggle [value]="lang" [attr.data-testid]="'lang-' + lang">
         {{ 'lang.' + lang | transloco }}
-      </button>
+      </mat-button-toggle>
     }
-  </div>
+  </mat-button-toggle-group>
+
+  <mat-button-toggle-group
+    [attr.aria-label]="'home.theme' | transloco"
+    [value]="themeMode()"
+    (change)="setTheme($event.value)"
+  >
+    @for (mode of themeModes; track mode) {
+      <mat-button-toggle [value]="mode" [attr.data-testid]="'theme-' + mode">
+        {{ 'theme.' + mode | transloco }}
+      </mat-button-toggle>
+    }
+  </mat-button-toggle-group>
 </main>

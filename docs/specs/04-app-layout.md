@@ -98,7 +98,7 @@ Each item becomes at least one test, written failing first.
 - [ ] It reflects timers started or stopped from other devices within a few seconds.
 
 ### Theming
-- [ ] Each section has a colour token (and an "on colour" token for text/icons on it) defined in the global theme, with light and dark values. Components never hard-code these colours.
+- [ ] Each section has a colour token (and an "on colour" token for text/icons on it) defined in the global theme, with light and dark values. Components never hard-code these colours. Tokens: `--nala-section-<key>` / `--nala-on-section-<key>` (placeholders created in 01, `web/src/styles/_sections.scss`).
 
 ## Material 3 mapping
 

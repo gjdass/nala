@@ -1,0 +1,27 @@
+@use '@angular/material' as mat;
+
+// Material 3 theme. `theme-type: color-scheme` emits every --mat-sys-* token as
+// light-dark(), so the theme follows `color-scheme`: the system preference by
+// default, forced to light or dark by ThemeService on <html>.
+// The palette is not decided yet: Material's default (azure) until it is.
+html {
+  color-scheme: light dark;
+
+  @include mat.theme(
+    (
+      color: (
+        primary: mat.$azure-palette,
+        theme-type: color-scheme,
+      ),
+      typography: Roboto,
+      density: 0,
+    )
+  );
+}
+
+body {
+  margin: 0;
+  background: var(--mat-sys-surface);
+  color: var(--mat-sys-on-surface);
+  font: var(--mat-sys-body-large);
+}

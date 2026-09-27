@@ -4,7 +4,8 @@
   },
   "home": {
     "apiStatus": "API status:",
-    "language": "Language"
+    "language": "Language",
+    "theme": "Theme"
   },
   "health": {
     "loading": "Checking…",
@@ -14,5 +15,10 @@
   "lang": {
     "en": "English",
     "fr": "Français"
+  },
+  "theme": {
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
   }
 }
