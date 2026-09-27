@@ -1,4 +1,4 @@
-# 02 — Family & baby profile
+# 03 — Family & baby profile
 
 Status: specified
 
@@ -9,7 +9,7 @@ Let a household share one Nala instance: invite caregivers, let the admin remove
 ## Decisions
 
 - **One instance = one family.** Everyone with an account on the instance is a member of the family. There is no family entity and no family name.
-- **Members are equal, except for destructive actions.** Every member can log and edit entries, add and edit babies, and invite people. Only the admin can delete a baby or remove a member, on top of the admin powers from 01 (reset links, disable/re-enable accounts).
+- **Members are equal, except for destructive actions.** Every member can log and edit entries, add and edit babies, and invite people. Only the admin can delete a baby or remove a member, on top of the admin powers from 02 (reset links, disable/re-enable accounts).
 
 ## User stories
 
@@ -42,31 +42,31 @@ Each item becomes at least one test, written failing first.
 - [ ] The selected baby is remembered per device (not per account) and restored when the app is reopened. If it no longer exists, the first baby is selected.
 
 ### Invitations
-- [ ] Any member can create an invitation link (single-use, expires after 7 days — see 01) and copy or share it with the device's share sheet.
+- [ ] Any member can create an invitation link (single-use, expires after 7 days — see 02) and copy or share it with the device's share sheet.
 - [ ] If SMTP is configured, the member can instead enter an email address and the link is sent to it.
 - [ ] Any member can list pending (unused, unexpired, unrevoked) invitations with who created them and when they expire, and revoke any of them. A revoked link cannot be used.
 
 ### Members
 - [ ] Any member can list the family members (display name, email, admin badge). Disabled and deleted accounts are not listed.
-- [ ] Only the admin can remove a member: this disables their account (sessions end, login refused) — it is the same action as the admin disable in 01, offered from the members list. Their entries are not changed.
+- [ ] Only the admin can remove a member: this disables their account (sessions end, login refused) — it is the same action as the admin disable in 02, offered from the members list. Their entries are not changed.
 - [ ] A non-admin member does not see the remove action, and the endpoint refuses them (403).
-- [ ] The admin cannot remove themselves. A member who wants to leave deletes their own account (see 01).
-- [ ] A removed member can only come back if the admin re-enables them (01) or through a new invitation after their account is deleted.
+- [ ] The admin cannot remove themselves. A member who wants to leave deletes their own account (see 02).
+- [ ] A removed member can only come back if the admin re-enables them (02) or through a new invitation after their account is deleted.
 
 ### Authorization
 - [ ] Every baby and activity endpoint only works for authenticated, enabled members; there is no per-baby access restriction.
-- [ ] Admin-only actions (delete baby, remove member, plus those in 01) are enforced by the API, not only hidden in the UI.
+- [ ] Admin-only actions (delete baby, remove member, plus those in 02) are enforced by the API, not only hidden in the UI.
 
 ## Data
 
 - **Baby:** id, name, birth date (date only, no time), sex, birth weight g (nullable), birth length cm (nullable, one decimal), birth head circumference cm (nullable, one decimal), created at, created by user, updated at.
-- Birth measurements live on the baby. The Growth feature (14) will show them as the first point of the growth history rather than duplicating them as entries.
-- **Invitation:** as defined in 01, plus `revoked at`.
+- Birth measurements live on the baby. The Growth feature (09) will show them as the first point of the growth history rather than duplicating them as entries.
+- **Invitation:** as defined in 02, plus `revoked at`.
 - Deleting a baby cascades to every activity table's entries for that baby.
 
 ## UI notes
 
-- Settings area with sections: Babies, Members & invitations, Account (01), Admin (01, admin only).
+- Settings area with sections: Babies, Members & invitations, Account (02), Admin (02, admin only).
 - Baby switcher: compact control in the top app bar showing the selected baby's name and age.
 - Baby form, member list item and invitation list item are shared UI components.
 - All text through i18n (EN/FR); ages and dates formatted in the user's language.

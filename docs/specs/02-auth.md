@@ -1,4 +1,4 @@
-# 01 — Authentication
+# 02 — Authentication
 
 Status: specified
 
@@ -74,7 +74,7 @@ Each item becomes at least one test, written failing first.
 
 ## Data
 
-- **User:** id, email (unique among non-deleted users, normalized), display name, password hash, preferred language, is admin, is disabled, deleted at, created at, last activity at. The instance is the family (see 02), so there is no family reference.
+- **User:** id, email (unique among non-deleted users, normalized), display name, password hash, preferred language, is admin, is disabled, deleted at, created at, last activity at. The instance is the family (see 03), so there is no family reference.
 - **Session:** handled by the auth cookie; server-side invalidation needed for "end other sessions" and disabled accounts (e.g. security stamp).
 - **Invitation:** id, token (stored hashed), created by user, created at, expires at, used at, used by user, revoked at.
 - **Password reset token:** token (stored hashed), user, created at, expires at, used at.
@@ -90,7 +90,7 @@ Each item becomes at least one test, written failing first.
 - SSO / OpenID Connect, passkeys, two-factor authentication.
 - Public sign-up.
 - Email verification (emails are trusted as typed; they only matter for login and optional reset emails).
-- Creating, listing and revoking invitations, and removing members — covered in 02 Family & baby profile. This spec only covers how an invitation link turns into an account.
+- Creating, listing and revoking invitations, and removing members — covered in 03 Family & baby profile. This spec only covers how an invitation link turns into an account.
 
 ## Open questions
 

@@ -1,8 +1,8 @@
-# 10 — Feed
+# 05 — Feed
 
 Status: specified
 
-Layout vocabulary (section card, kind picker, entry sheet, mini-bar…) is defined in [03 — App layout](03-app-layout.md).
+Layout vocabulary (section card, kind picker, entry sheet, mini-bar…) is defined in [04 — App layout](04-app-layout.md).
 
 ## Goal
 
@@ -105,7 +105,7 @@ A feed is one entity with a kind (breastfeed / bottle / solids) and kind-specifi
 - **BreastFeedSegment:** id (client UUID), feed, side (left / right), started at (UTC), ended at (UTC, null while running). At most one open segment per feed.
 - Derived, not stored: per-side duration (sum of segments), ended-on side (side of the last segment), running side.
 - A breastfeed with durations typed by hand is stored as synthetic segments: one per side with a non-zero duration, ordered so the ended-on side comes last.
-- Feeds are deleted with their baby (02).
+- Feeds are deleted with their baby (03).
 
 ## UI notes
 
@@ -121,4 +121,4 @@ A feed is one entity with a kind (breastfeed / bottle / solids) and kind-specifi
 - Daily totals, statistics and charts.
 - Combined breastfeed + bottle top-up as a single entry (log them as two feeds).
 - A food catalogue or per-food allergy tracking beyond the reaction field.
-- Pumping (feature 15).
+- Pumping (feature 10).

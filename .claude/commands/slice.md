@@ -1,6 +1,6 @@
 ---
 description: Build the next vertical slice of a spec, test-first, and commit it
-argument-hint: <spec number, e.g. 04 or 10>
+argument-hint: <spec number, e.g. 01 or 05>
 ---
 
 Build the next slice of spec `$ARGUMENTS` from `docs/specs/`.
@@ -30,7 +30,7 @@ Build the next slice of spec `$ARGUMENTS` from `docs/specs/`.
    - Run them and show that they fail, and that they fail for the expected reason.
 
 5. **Green**
-   - Implement the minimum to make them pass, following the approved plan (tell me if you have to deviate from it), reusing existing shared components and Core services before creating new ones. Follow the Material 3 mapping in `docs/specs/03-app-layout.md`; no hard-coded colours.
+   - Implement the minimum to make them pass, following the approved plan (tell me if you have to deviate from it), reusing existing shared components and Core services before creating new ones. Follow the Material 3 mapping in `docs/specs/04-app-layout.md`; no hard-coded colours.
    - Refactor with tests green.
    - Run the **full** test suites and lint of every touched layer, and the build. All must pass.
 

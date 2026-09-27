@@ -21,7 +21,7 @@ _Fill in once scaffolded (dev server, unit tests, lint, build)._
 ## Design and theming
 
 - Angular Material (Material 3) for all UI building blocks, used as designed and following the Material 3 guidelines (e.g. FAB shape, button types by emphasis, chips vs segmented buttons). Reference screenshots in specs define layout and flow only, never element styling.
-- Customize Material only through the global theme (color tokens, typography, density). Don't override component shapes, sizes or internals in component styles. `docs/specs/03-app-layout.md` maps each UI pattern to its Material component.
+- Customize Material only through the global theme (color tokens, typography, density). Don't override component shapes, sizes or internals in component styles. `docs/specs/04-app-layout.md` maps each UI pattern to its Material component.
 - **No hard-coded colors in components**: no hex, `rgb()`, `hsl()` or named colors in component styles or templates. Components only use theme tokens (`var(--mat-sys-*)` or app tokens defined in the global theme).
 - All color definitions live in the global theme files under `src/styles/`. The palette is not decided yet, so use a Material default palette until it is.
 - Light and dark themes are both required. The theme follows the system preference by default and can be overridden by the user (light / dark / system), with the choice persisted.

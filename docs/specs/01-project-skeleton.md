@@ -1,10 +1,10 @@
-# 04 — Project skeleton
+# 01 — Project skeleton
 
 Status: specified
 
 ## Goal
 
-Prove the whole chain — Angular PWA → nginx → API → PostgreSQL, built and run with Docker Compose — before any feature is written, with both test suites in place. This is build step 0.
+Prove the whole chain — Angular PWA → nginx → API → PostgreSQL, built and run with Docker Compose — before any feature is written, with both test suites in place. This is the first build step.
 
 ## Acceptance criteria
 
@@ -20,9 +20,9 @@ Each item becomes at least one test or check, written failing first where testab
 ### Web
 - [ ] `web/` contains an Angular app (current version): standalone components, installable PWA (manifest, icons, service worker for the app shell).
 - [ ] Angular Material with a Material 3 theme defined globally under `src/styles/`, light and dark, following the system preference; a theme service supports light / dark / system and persists the choice per device.
-- [ ] Section colour tokens exist in the global theme as placeholders (light and dark), ready for 03.
+- [ ] Section colour tokens exist in the global theme as placeholders (light and dark), ready for 04.
 - [ ] A lint check fails on hard-coded colours (hex, `rgb()`, `hsl()`, named colours) in component style files.
-- [ ] Runtime i18n (EN/FR) is set up with a translation library that can switch language without reloading (the language is a per-user setting, see 01); no user-facing string outside translation files.
+- [ ] Runtime i18n (EN/FR) is set up with a translation library that can switch language without reloading (the language is a per-user setting, see 02); no user-facing string outside translation files.
 - [ ] The unit test runner runs green.
 - [ ] A placeholder home page calls `/api/health` and shows the result; in development, `/api` is proxied to the local API.
 
@@ -39,5 +39,5 @@ Each item becomes at least one test or check, written failing first where testab
 
 ## Out of scope
 
-- Any feature (auth comes in step 1).
+- Any feature (authentication comes next, in 02).
 - CI pipelines.

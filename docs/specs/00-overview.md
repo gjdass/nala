@@ -26,26 +26,24 @@ Status: `idea` → `specified` → `in progress` → `done`. A feature moves to 
 
 | # | Feature | Spec | Status | Notes |
 |---|---------|------|--------|-------|
-| 01 | Authentication (login, register, sessions) | [01-auth.md](01-auth.md) | specified | |
-| 02 | Family & baby profile | [02-family-baby.md](02-family-baby.md) | specified | |
-| 03 | App layout & section pattern (home cards, entry sheet, mini-bar) | [03-app-layout.md](03-app-layout.md) | specified | Shared by every section. |
-| 04 | Project skeleton (solution, Angular PWA, Docker Compose, test setups) | [04-project-skeleton.md](04-project-skeleton.md) | specified | Build step 0. |
-| 10 | Feed | [10-feed.md](10-feed.md) | specified | **Hard requirement:** breast feeding has two independent per-side timers (left/right), side by side in the Breastfeed sheet. A single timer with a "side" field is not acceptable. |
-| 11 | Sleep | — | idea | |
-| 12 | Diaper | — | idea | From the reference screenshots: time, wet / dirty / dry selector, diaper-rash toggle, notes. |
-| 13 | Medication | — | idea | |
-| 14 | Growth | — | idea | Birth weight/length/head circumference are stored on the baby profile (02) and must appear as the starting point of the growth history. **Hard requirement:** simple measurement entries over time — weight, height, head circumference, milestones. Raw logging only, no percentile/trend charts. |
-| 15 | Pump | — | idea | **Hard requirement:** pumping sessions with volume and history. |
+| 01 | Project skeleton (solution, Angular PWA, Docker Compose, test setups) | [01-project-skeleton.md](01-project-skeleton.md) | specified | |
+| 02 | Authentication (login, register, sessions) | [02-auth.md](02-auth.md) | specified | |
+| 03 | Family & baby profile | [03-family-baby.md](03-family-baby.md) | specified | |
+| 04 | App layout & section pattern (home cards, entry sheet, mini-bar) | [04-app-layout.md](04-app-layout.md) | specified | Shared by every section. |
+| 05 | Feed | [05-feed.md](05-feed.md) | specified | **Hard requirement:** breast feeding has two independent per-side timers (left/right), side by side in the Breastfeed sheet. A single timer with a "side" field is not acceptable. |
+| 06 | Sleep | — | idea | |
+| 07 | Diaper | — | idea | From the reference screenshots: time, wet / dirty / dry selector, diaper-rash toggle, notes. |
+| 08 | Medication | — | idea | |
+| 09 | Growth | — | idea | Birth weight/length/head circumference are stored on the baby profile (03) and must appear as the starting point of the growth history. **Hard requirement:** simple measurement entries over time — weight, height, head circumference, milestones. Raw logging only, no percentile/trend charts. |
+| 10 | Pump | — | idea | **Hard requirement:** pumping sessions with volume and history. |
 
 ## Build plan
 
-Built in this order, one spec at a time. Each spec is split into **vertical slices** (small end-to-end increments: DB → API → UI), listed in a "Build slices" section of the spec and approved before the first one is built. Each slice goes red → green → commit on `master`. Use `/slice <spec number>` to build the next slice.
+Specs are numbered in build order: build 01, then 02, and so on. If the order of the remaining sections changes, renumber them before building. Each spec is split into **vertical slices** (small end-to-end increments: DB → API → UI), listed in a "Build slices" section of the spec and approved before the first one is built. Each slice goes red → green → commit on `master`. Use `/slice <spec number>` to build the next slice.
 
-| Step | Spec | Notes |
-|------|------|-------|
-| 0 | 04 Project skeleton | Whole chain incl. `docker compose up` before any feature |
-| 1 | 01 Authentication | First-run setup → login/session → invitations → reset → account settings → admin |
-| 2 | 02 Family & baby profile | |
-| 3 | 03 App layout & section pattern | Shared components, home column, per-user order |
-| 4 | 10 Feed | Slices: bottle → solids → breastfeed timers → live sync + mini-bar → offline queue |
-| 5+ | Remaining sections | Spec each one (Sleep, Diaper, Medication, Growth, Pump) before building it |
+Notes per step:
+- **01 Project skeleton:** the whole chain, incl. `docker compose up`, before any feature.
+- **02 Authentication:** first-run setup → login/session → invitations → reset → account settings → admin.
+- **04 App layout:** shared components, home column, per-user order.
+- **05 Feed:** slices bottle → solids → breastfeed timers → live sync + mini-bar → offline queue.
+- **06+:** spec each remaining section before building it.

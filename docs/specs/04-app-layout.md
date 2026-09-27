@@ -1,4 +1,4 @@
-# 03 — App layout & section pattern
+# 04 — App layout & section pattern
 
 Status: specified
 
@@ -11,7 +11,7 @@ Give every activity section (Feed, Diaper, Sleep, Medication, Growth, Pump…) t
 ## Structure
 
 ### Top app bar
-- Selected baby (name + age) with the baby switcher (02), and a settings button.
+- Selected baby (name + age) with the baby switcher (03), and a settings button.
 
 ### Home
 - A **single column of section cards**, one above the other, scrollable.
