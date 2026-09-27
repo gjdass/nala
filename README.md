@@ -31,6 +31,8 @@ Open `http://<host>:8080`. The API applies database migrations itself at startup
 
 The stack serves plain HTTP. Browsers only install the app and run its service worker (offline support) over HTTPS, except on `localhost`. Put your own TLS reverse proxy (Caddy, Traefik, nginx…) in front of `NALA_HTTP_PORT`.
 
+Logging in needs HTTPS too: the session cookie is `Secure`, so over plain HTTP the browser drops it and you are never logged in (Chrome and Firefox make an exception for `http://localhost`).
+
 ### Update
 
 ```sh

@@ -20,5 +20,35 @@
     "light": "Clair",
     "dark": "Sombre",
     "system": "Système"
+  },
+  "auth": {
+    "setup": {
+      "title": "Bienvenue sur Nala",
+      "subtitle": "Créez le compte administrateur de cette instance.",
+      "submit": "Créer le compte"
+    },
+    "fields": {
+      "email": "E-mail",
+      "displayName": "Nom affiché",
+      "password": "Mot de passe",
+      "passwordHint": "8 caractères minimum"
+    },
+    "errors": {
+      "email": {
+        "required": "Saisissez votre e-mail",
+        "invalid": "Saisissez une adresse e-mail valide"
+      },
+      "displayName": {
+        "required": "Saisissez un nom affiché",
+        "tooLong": "50 caractères maximum"
+      },
+      "password": {
+        "required": "Saisissez un mot de passe",
+        "tooShort": "8 caractères minimum"
+      },
+      "form": {
+        "unknown": "Une erreur est survenue. Vérifiez votre connexion et réessayez."
+      }
+    }
   }
 }

@@ -1,0 +1,17 @@
+main {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-height: 100dvh;
+  padding: 16px;
+}
+
+mat-card {
+  width: 100%;
+  max-width: 440px;
+}
+
+mat-card-header {
+  margin-bottom: 16px;
+}

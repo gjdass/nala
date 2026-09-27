@@ -1,11 +1,10 @@
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { TranslocoTestingModule } from '@jsverse/transloco';
 import { Subject } from 'rxjs';
 import en from '../../../../public/i18n/en.json';
-import fr from '../../../../public/i18n/fr.json';
 import { HealthService, HealthStatus } from '../../core/health/health.service';
 import { ThemeMode, ThemeService } from '../../core/theme/theme.service';
+import { translocoTesting } from '../../testing/transloco-testing';
 import { HomePage } from './home.page';
 
 describe('HomePage', () => {
@@ -24,18 +23,7 @@ describe('HomePage', () => {
     health = new Subject<HealthStatus>();
     theme = { mode: signal<ThemeMode>('system'), setMode: vi.fn() };
     await TestBed.configureTestingModule({
-      imports: [
-        HomePage,
-        TranslocoTestingModule.forRoot({
-          langs: { en, fr },
-          translocoConfig: {
-            availableLangs: ['en', 'fr'],
-            defaultLang: 'en',
-            reRenderOnLangChange: true,
-          },
-          preloadLangs: true,
-        }),
-      ],
+      imports: [HomePage, translocoTesting()],
       providers: [
         { provide: HealthService, useValue: { check: () => health } },
         { provide: ThemeService, useValue: theme },

@@ -1,6 +1,6 @@
 # 02 — Authentication
 
-Status: specified
+Status: in progress
 
 ## Goal
 
@@ -21,9 +21,9 @@ Let each caregiver have their own account on a self-hosted instance, log in once
 Each item becomes at least one test, written failing first.
 
 ### First-run setup
-- [ ] When the instance has no user, the app shows a setup screen instead of the login screen.
-- [ ] Setup creates an account with email, display name and password; that account is the instance admin and is logged in immediately.
-- [ ] Once any user exists, the setup endpoint is refused (403) and the setup screen is no longer reachable.
+- [x] When the instance has no user, the app shows a setup screen instead of the login screen.
+- [x] Setup creates an account with email, display name and password; that account is the instance admin and is logged in immediately.
+- [x] Once any user exists, the setup endpoint is refused (403) and the setup screen is no longer reachable.
 
 ### Registration (by invitation only)
 - [ ] There is no public sign-up once the instance is set up.
@@ -31,7 +31,7 @@ Each item becomes at least one test, written failing first.
 - [ ] Opening a valid invitation link shows a registration form (email, display name, password). Submitting it creates the account, consumes the invitation, and logs the user in.
 - [ ] An expired, already-used or unknown invitation link shows a clear error and cannot create an account.
 - [ ] Registering with an email that already has an account is refused with a clear message.
-- [ ] Emails are case-insensitive and trimmed (`Anna@Mail.com ` = `anna@mail.com`).
+- [x] Emails are case-insensitive and trimmed (`Anna@Mail.com ` = `anna@mail.com`).
 
 ### Login and session
 - [ ] Login with a correct email and password succeeds; a wrong email or wrong password returns the same generic error (no hint about which one is wrong).
@@ -40,11 +40,11 @@ Each item becomes at least one test, written failing first.
 - [ ] After too many failed logins for the same account (5 in 15 minutes), further attempts are temporarily refused.
 - [ ] A disabled account cannot log in, and its existing sessions stop working.
 - [ ] Logout ends the current session only.
-- [ ] Every API endpoint except health (`GET /api/health`), setup, login, invitation lookup/registration and password reset requires a valid session (401 otherwise).
+- [ ] Every API endpoint except health (`GET /api/health`), auth state (`GET /api/auth/state`), setup, login, invitation lookup/registration and password reset requires a valid session (401 otherwise).
 
 ### Password rules
-- [ ] Passwords must be at least 8 characters; no other composition rules.
-- [ ] Passwords are stored only as a salted slow hash (ASP.NET Core Identity's hasher or equivalent), never in plain text or logs.
+- [x] Passwords must be at least 8 characters; no other composition rules.
+- [x] Passwords are stored only as a salted slow hash (ASP.NET Core Identity's hasher or equivalent), never in plain text or logs.
 
 ### Password reset
 - [ ] The admin can generate a one-time reset link for any user; it expires after 24 hours.
@@ -72,11 +72,21 @@ Each item becomes at least one test, written failing first.
 ### Offline interaction
 - Keeping queued entries across a session expiry is specified and tested with the offline queue, in [05 Feed § Offline](05-feed.md#offline).
 
+## Decisions
+
+- **Email:** trimmed and lower-cased before storing or comparing; valid when it has one `@`, text on both sides, a dot in the domain, no spaces, and at most 254 characters. Same rule in the API (`Nala.Core/Auth/EmailAddress`) and the web form.
+- **Display name:** trimmed, 1–50 characters.
+- **Validation errors:** the API answers 400 with a validation problem keyed by field, whose values are codes (`required`, `invalid`, `tooShort`, `tooLong`); the web shows `auth.errors.<field>.<code>`.
+- **Session cookie:** `nala.session`, `HttpOnly`, `SameSite=Strict`, always `Secure`, except in the `Development` environment (`dotnet run`), where it follows the request scheme so plain `http://localhost` works in every browser. Logging in therefore needs HTTPS in production (README).
+- **Language at setup:** the app sends the language it currently shows (browser language, else English); stored as the user's preferred language.
+- **Single admin:** enforced in Core (setup refused once any user exists) and by a unique partial index on `is_admin`; a setup losing that race gets 403.
+- **Auth state:** `GET /api/auth/state` → `{ setupRequired, user }` (public), used by the web guards to route to setup.
+
 ## Build slices
 
 Each slice goes red → green → commit on `master`, in this order.
 
-- [ ] **Slice 1 — First-run setup.** `User` entity + migration (normalized email, unique among non-deleted users), password hasher behind a Core interface (Identity's `PasswordHasher`), 8-character minimum, `GET /api/auth/state`, `POST /api/auth/setup` (creates the admin and signs them in; 403 once any user exists). Web: shared auth card layout, setup page, guard routing to/away from setup. Covers: all First-run setup criteria, email normalization, both Password rules, the "admin = setup account" part of Admin.
+- [x] **Slice 1 — First-run setup.** `User` entity + migration (normalized email, unique among non-deleted users), password hasher behind a Core interface (Identity's `PasswordHasher`), 8-character minimum, `GET /api/auth/state`, `POST /api/auth/setup` (creates the admin and signs them in; 403 once any user exists). Web: shared auth card layout, setup page, guard routing to/away from setup. Covers: all First-run setup criteria, email normalization, both Password rules, the "admin = setup account" part of Admin.
 - [ ] **Slice 2 — Login, session, logout.** Login with a generic error, secure httpOnly same-site cookie backed by server-side sessions, 90-day rolling expiry, lockout after 5 failures in 15 minutes, logout of the current session only, every endpoint requires a session except the public ones (401). Web: login page, auth guard, 401 interceptor. Covers: Login and session criteria except the disabled account one (slice 6).
 - [ ] **Slice 3 — Registration by invitation.** `Invitation` entity + migration (hashed token, 7-day expiry, used, revoked), invitation lookup, registration consuming the invitation and logging in, duplicate email refused, no public sign-up. Web: register page with clear errors for expired / used / unknown links. Invitations are created in 03; tests seed them. Covers: all Registration criteria.
 - [ ] **Slice 4 — Account settings.** Get/update the current user (display name, language; language defaults to the browser's on first login), change password with the current one (ends other sessions). Web: settings page with the Account section (and the theme choice), logout. Covers: both Account settings criteria.

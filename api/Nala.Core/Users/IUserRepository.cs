@@ -1,0 +1,11 @@
+namespace Nala.Core.Users;
+
+public interface IUserRepository
+{
+    Task<bool> AnyAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>Saves a new user. Throws <see cref="UserConflictException"/> when the email or the admin slot is taken.</summary>
+    Task AddAsync(User user, CancellationToken cancellationToken = default);
+
+    Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
+}

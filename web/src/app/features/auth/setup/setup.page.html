@@ -1,0 +1,71 @@
+<form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+  <nala-auth-card
+    [title]="'auth.setup.title' | transloco"
+    [subtitle]="'auth.setup.subtitle' | transloco"
+  >
+    <mat-form-field>
+      <mat-label>{{ 'auth.fields.email' | transloco }}</mat-label>
+      <input
+        matInput
+        type="email"
+        formControlName="email"
+        autocomplete="email"
+        data-testid="email"
+      />
+      @if (errorOf('email'); as code) {
+        <mat-error data-testid="error-email">{{
+          'auth.errors.email.' + code | transloco
+        }}</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field>
+      <mat-label>{{ 'auth.fields.displayName' | transloco }}</mat-label>
+      <input
+        matInput
+        type="text"
+        formControlName="displayName"
+        autocomplete="nickname"
+        data-testid="displayName"
+      />
+      @if (errorOf('displayName'); as code) {
+        <mat-error data-testid="error-displayName">{{
+          'auth.errors.displayName.' + code | transloco
+        }}</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field>
+      <mat-label>{{ 'auth.fields.password' | transloco }}</mat-label>
+      <input
+        matInput
+        type="password"
+        formControlName="password"
+        autocomplete="new-password"
+        data-testid="password"
+      />
+      <mat-hint>{{ 'auth.fields.passwordHint' | transloco }}</mat-hint>
+      @if (errorOf('password'); as code) {
+        <mat-error data-testid="error-password">{{
+          'auth.errors.password.' + code | transloco
+        }}</mat-error>
+      }
+    </mat-form-field>
+
+    @if (formError(); as code) {
+      <p class="form-error" role="alert" data-testid="form-error">
+        {{ 'auth.errors.form.' + code | transloco }}
+      </p>
+    }
+
+    <button
+      authCardActions
+      mat-flat-button
+      type="submit"
+      [disabled]="pending()"
+      data-testid="submit"
+    >
+      {{ 'auth.setup.submit' | transloco }}
+    </button>
+  </nala-auth-card>
+</form>
