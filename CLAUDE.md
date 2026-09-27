@@ -49,10 +49,13 @@ Don't write production code before a failing test exists for it. Don't call a ta
 - All config comes from environment variables (`.env`, never committed). Keep `.env.example` up to date whenever a variable is added.
 - Postgres data lives in a named volume.
 
-## Product requirements (hard, have been dropped before)
+## Specs
 
-Activity types in scope: **Feed, Diaper, Sleep, Medication, Growth, Pump**. Always check these when touching the related area:
+Specs live in `docs/specs/`. The overview (global decisions + full feature list) is loaded below:
 
-- **Breast feeding uses two independent timers, one per side (left / right).** Each side starts and stops on its own; the feed card is split into a left/right layout. A single timer with a "side" field is not acceptable.
-- **Growth** section: simple measurement entries over time — weight, height, head circumference, milestones. Raw logging only, no percentile/trend charts.
-- **Pump** section: pumping sessions with volume and history.
+@docs/specs/00-overview.md
+
+- Before working on a feature, read its spec in `docs/specs/`. If it has no spec yet, write one with the user (from `_template.md`) before coding.
+- A feature is done only when every acceptance criterion in its spec has a passing test.
+- If a decision changes during implementation, update the spec first, then the code.
+- Any new feature idea goes into the overview's feature list immediately, even as a one-liner, so nothing gets lost.
