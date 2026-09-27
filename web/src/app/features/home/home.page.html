@@ -1,0 +1,21 @@
+<main>
+  <h1>{{ 'app.title' | transloco }}</h1>
+
+  <p>
+    <span data-testid="api-status-label">{{ 'home.apiStatus' | transloco }}</span>
+    <span data-testid="health-status">{{ 'health.' + status() | transloco }}</span>
+  </p>
+
+  <div role="group" [attr.aria-label]="'home.language' | transloco">
+    @for (lang of langs; track lang) {
+      <button
+        type="button"
+        [attr.data-testid]="'lang-' + lang"
+        [attr.aria-pressed]="activeLang() === lang"
+        (click)="setLang(lang)"
+      >
+        {{ 'lang.' + lang | transloco }}
+      </button>
+    }
+  </div>
+</main>

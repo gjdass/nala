@@ -18,13 +18,13 @@ Each item becomes at least one test or check, written failing first where testab
 - [x] The connection string comes from an environment variable (`ConnectionStrings__Nala`).
 
 ### Web
-- [ ] `web/` contains an Angular app (current version): standalone components, installable PWA (manifest, icons, service worker for the app shell).
+- [x] `web/` contains an Angular app (current version): standalone components, installable PWA (manifest, icons, service worker for the app shell).
 - [ ] Angular Material with a Material 3 theme defined globally under `src/styles/`, light and dark, following the system preference; a theme service supports light / dark / system and persists the choice per device.
 - [ ] Section colour tokens exist in the global theme as placeholders (light and dark), ready for 04.
 - [ ] A lint check fails on hard-coded colours (hex, `rgb()`, `hsl()`, named colours) in component style files.
-- [ ] Runtime i18n (EN/FR) is set up with a translation library that can switch language without reloading (the language is a per-user setting, see 02); no user-facing string outside translation files.
-- [ ] The unit test runner runs green.
-- [ ] A placeholder home page calls `/api/health` and shows the result; in development, `/api` is proxied to the local API.
+- [x] Runtime i18n (EN/FR) is set up with a translation library that can switch language without reloading (the language is a per-user setting, see 02); no user-facing string outside translation files.
+- [x] The unit test runner runs green.
+- [x] A placeholder home page calls `/api/health` and shows the result; in development, `/api` is proxied to the local API.
 
 ### Docker
 - [ ] Multi-stage Dockerfiles for `api` (SDK build → ASP.NET runtime) and `web` (node build → nginx).
@@ -34,7 +34,7 @@ Each item becomes at least one test or check, written failing first where testab
 - [ ] From a clean clone: `cp .env.example .env && docker compose up -d --build` → the app opens in a browser and shows the API health as ok.
 
 ### Docs
-- [ ] The "Commands" sections of `web/CLAUDE.md` and `api/CLAUDE.md` list the real commands (run, test, lint, build, add migration).
+- [x] The "Commands" sections of `web/CLAUDE.md` and `api/CLAUDE.md` list the real commands (run, test, lint, build, add migration).
 - [ ] `README.md` explains how to deploy with Docker Compose.
 
 ## Build slices
@@ -42,9 +42,15 @@ Each item becomes at least one test or check, written failing first where testab
 Each slice goes red → green → commit on `master`, in this order.
 
 - [x] **Slice 1 — API skeleton + health endpoint.** .NET 10 solution with the four projects and their references, NUnit, `NalaDbContext` (Npgsql) with an initial migration applied at startup, `GET /api/health` (200 / 503), connection string from an environment variable, `api/CLAUDE.md` commands. Covers: all API criteria, api half of Docs / Commands.
-- [ ] **Slice 2 — Web skeleton + health page + i18n.** Angular app (standalone, OnPush, signals), installable PWA (manifest, icons, service worker), unit test runner, runtime EN/FR i18n switchable without reload, placeholder home page calling `/api/health` through the dev proxy, `web/CLAUDE.md` commands. Covers: Web criteria 1, 5, 6, 7, web half of Docs / Commands.
+- [x] **Slice 2 — Web skeleton + health page + i18n.** Angular app (standalone, OnPush, signals), installable PWA (manifest, icons, service worker), unit test runner, runtime EN/FR i18n switchable without reload, placeholder home page calling `/api/health` through the dev proxy, `web/CLAUDE.md` commands. Covers: Web criteria 1, 5, 6, 7, web half of Docs / Commands.
 - [ ] **Slice 3 — Material 3 theme, theme service, colour lint.** Global M3 theme under `src/styles/` (light and dark, system preference), `ThemeService` (light / dark / system, persisted per device), placeholder section colour tokens (`feed`, `sleep`, `diaper`, `pump`, `growth`, `medication`, each with an "on" colour, light and dark), stylelint rule rejecting hard-coded colours in component styles, health page restyled with Material. Covers: Web criteria 2, 3, 4.
 - [ ] **Slice 4 — Docker Compose deployment.** Multi-stage Dockerfiles (`api`: SDK → ASP.NET runtime; `web`: node → nginx with SPA fallback and `/api` proxy), `docker-compose.yml` (`db` with named volume and healthcheck, `api` waiting for healthy `db`, `web` the only published port), `.env.example`, README deployment section, scripted smoke check from a clean clone. Covers: all Docker criteria, README criterion.
+
+## Decisions
+
+- **i18n library:** Transloco (`@jsverse/transloco`), runtime language switching. Translation files are `web/public/i18n/en.json` and `fr.json`, fetched over HTTP and cached by the service worker.
+- **Initial language:** the first of EN/FR in the browser's language preferences, else English, until the per-user setting (spec 02) replaces it.
+- **Web test runner:** Vitest through the Angular CLI (`ng test`).
 
 ## Out of scope
 

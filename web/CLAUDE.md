@@ -2,7 +2,18 @@
 
 ## Commands
 
-_Fill in once scaffolded (dev server, unit tests, lint, build)._
+Run from `web/` (Node 24, npm).
+
+| What | Command |
+|---|---|
+| Install | `npm ci` |
+| Dev server (http://localhost:4200, `/api` proxied to the local API on :5267 via `proxy.conf.json`) | `npm start` |
+| Unit tests (Vitest, single run) | `npm test -- --watch=false` |
+| Lint (ESLint) | `npm run lint` |
+| Build (production, with service worker) | `npm run build` |
+
+- i18n: Transloco, runtime switching. Translations live in `public/i18n/{en,fr}.json`; both files must have the same keys (enforced by `translations.spec.ts`). The initial language is the browser's (first of EN/FR it prefers), falling back to English, until the per-user setting from spec 02 replaces it.
+- The service worker is only enabled in production builds.
 
 ## Architecture
 

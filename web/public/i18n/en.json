@@ -1,0 +1,18 @@
+{
+  "app": {
+    "title": "Nala"
+  },
+  "home": {
+    "apiStatus": "API status:",
+    "language": "Language"
+  },
+  "health": {
+    "loading": "Checking…",
+    "ok": "OK",
+    "unavailable": "Unavailable"
+  },
+  "lang": {
+    "en": "English",
+    "fr": "Français"
+  }
+}
