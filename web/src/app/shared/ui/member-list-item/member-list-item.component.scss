@@ -1,0 +1,13 @@
+:host {
+  display: block;
+}
+
+.badge {
+  margin-inline-start: 8px;
+  padding: 2px 8px;
+  border-radius: var(--mat-sys-corner-small);
+  background: var(--mat-sys-secondary-container);
+  color: var(--mat-sys-on-secondary-container);
+  font: var(--mat-sys-label-small);
+  vertical-align: middle;
+}

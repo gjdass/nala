@@ -76,7 +76,11 @@
         "invitationExpired": "This invitation has expired. Ask a family member for a new one.",
         "invitationUsed": "This invitation has already been used. Log in, or ask a family member for a new one.",
         "invitationRevoked": "This invitation was cancelled. Ask a family member for a new one.",
-        "adminCannotDelete": "The admin account can't be deleted."
+        "adminCannotDelete": "The admin account can't be deleted.",
+        "accountDisabled": "This account is disabled. Ask the admin of this Nala.",
+        "adminOnly": "Only the admin can do this.",
+        "adminCannotDisable": "The admin account can't be disabled.",
+        "userNotFound": "This user no longer exists."
       }
     }
   },
@@ -109,6 +113,24 @@
       "confirm": "Delete",
       "done": "Your account was deleted"
     },
+    "admin": {
+      "title": "Admin",
+      "users": "Users",
+      "disabled": "Disabled",
+      "lastActive": "Last active {{date}}",
+      "noActivity": "No activity yet",
+      "disable": "Disable",
+      "enable": "Enable",
+      "disableTitle": "Disable {{name}}?",
+      "disableText": "{{name}} will be logged out on every device and won't be able to log in until you enable the account again. What they logged stays.",
+      "cancel": "Cancel",
+      "confirm": "Disable",
+      "disabledDone": "{{name}}'s account was disabled",
+      "enabledDone": "{{name}}'s account was enabled"
+    },
     "logout": "Log out"
+  },
+  "members": {
+    "admin": "Admin"
   }
 }

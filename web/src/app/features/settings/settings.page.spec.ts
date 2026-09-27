@@ -7,6 +7,7 @@ import { Subject, of, throwError } from 'rxjs';
 import en from '../../../../public/i18n/en.json';
 import fr from '../../../../public/i18n/fr.json';
 import { AccountService } from '../../core/account/account.service';
+import { AdminService } from '../../core/admin/admin.service';
 import { AccountResult, AuthState } from '../../core/auth/auth.models';
 import { AuthService } from '../../core/auth/auth.service';
 import { ThemeMode, ThemeService } from '../../core/theme/theme.service';
@@ -87,6 +88,7 @@ describe('SettingsPage', () => {
         { provide: ThemeService, useValue: theme },
         { provide: MatSnackBar, useValue: snackBar },
         { provide: MatDialog, useValue: dialog },
+        { provide: AdminService, useValue: { users: vi.fn(() => of({ ok: true, users: [] })) } },
       ],
     }).compileComponents();
     router = TestBed.inject(Router);
@@ -95,9 +97,24 @@ describe('SettingsPage', () => {
     await fixture.whenStable();
   });
 
-  it('shows the Account and Appearance sections', () => {
-    const titles = [...host().querySelectorAll('mat-card-title')].map((t) => t.textContent?.trim());
-    expect(titles).toEqual([en.settings.account.title, en.settings.appearance.title]);
+  const sectionTitles = () =>
+    [...host().querySelectorAll('mat-card-title')].map((t) => t.textContent?.trim());
+
+  it('shows the Account, Admin and Appearance sections to the admin', () => {
+    expect(sectionTitles()).toEqual([
+      en.settings.account.title,
+      en.settings.admin.title,
+      en.settings.appearance.title,
+    ]);
+    expect(host().querySelector('nala-admin-users')).not.toBeNull();
+  });
+
+  it('hides the Admin section from a member', async () => {
+    auth.state.update((state) => ({ ...state!, user: { ...state!.user!, isAdmin: false } }));
+    await fixture.whenStable();
+
+    expect(sectionTitles()).toEqual([en.settings.account.title, en.settings.appearance.title]);
+    expect(host().querySelector('nala-admin-users')).toBeNull();
   });
 
   it('has a link back to home', () => {

@@ -14,4 +14,10 @@ public interface IUserRepository
 
     /// <summary>Saves the changes made to a user read from this repository.</summary>
     Task UpdateAsync(User user, CancellationToken cancellationToken = default);
+
+    /// <summary>Every non-deleted user, in no particular order.</summary>
+    Task<IReadOnlyList<User>> ListActiveAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>Saves <see cref="User.LastActivityAt"/> only.</summary>
+    Task SetLastActivityAsync(Guid id, DateTimeOffset at, CancellationToken cancellationToken = default);
 }

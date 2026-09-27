@@ -16,7 +16,7 @@ public sealed record RegisterRequest(string? Email, string? DisplayName, string?
 
 public sealed record InvitationResponse(string InvitedBy, DateTimeOffset ExpiresAt);
 
-/// <summary>A failure not tied to a field (<c>invalidCredentials</c>, <c>tooManyAttempts</c>, <c>invitation…</c>).</summary>
+/// <summary>A failure not tied to a field (<c>invalidCredentials</c>, <c>tooManyAttempts</c>, <c>accountDisabled</c>, <c>invitation…</c>).</summary>
 public sealed record ErrorResponse(string Code);
 
 public sealed record CurrentUserResponse(Guid Id, string Email, string DisplayName, string Language, bool IsAdmin);
@@ -120,6 +120,8 @@ public static class AuthEndpoints
                 return Results.Ok(new AuthStateResponse(false, ToResponse(success.User)));
             case LoginResult.Invalid invalid:
                 return ValidationProblem(invalid.Errors);
+            case LoginResult.AccountDisabled:
+                return Results.Json(new ErrorResponse("accountDisabled"), statusCode: StatusCodes.Status403Forbidden);
             case LoginResult.LockedOut:
                 return Results.Json(new ErrorResponse("tooManyAttempts"), statusCode: StatusCodes.Status429TooManyRequests);
             default:

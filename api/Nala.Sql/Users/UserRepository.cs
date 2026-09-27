@@ -34,4 +34,12 @@ public class UserRepository(NalaDbContext db) : IUserRepository
         db.Set<User>().Update(user);
         await db.SaveChangesAsync(cancellationToken);
     }
+
+    public async Task<IReadOnlyList<User>> ListActiveAsync(CancellationToken cancellationToken = default) =>
+        await db.Set<User>().Where(u => u.DeletedAt == null).ToListAsync(cancellationToken);
+
+    public Task SetLastActivityAsync(Guid id, DateTimeOffset at, CancellationToken cancellationToken = default) =>
+        db.Set<User>()
+            .Where(u => u.Id == id)
+            .ExecuteUpdateAsync(u => u.SetProperty(x => x.LastActivityAt, at), cancellationToken);
 }

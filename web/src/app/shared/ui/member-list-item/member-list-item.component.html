@@ -1,0 +1,11 @@
+<mat-list-item lines="3">
+  <span matListItemTitle>
+    {{ displayName() }}
+    @if (isAdmin()) {
+      <span class="badge" data-testid="admin-badge">{{ 'members.admin' | transloco }}</span>
+    }
+  </span>
+  <span matListItemLine data-testid="email">{{ email() }}</span>
+  <span matListItemLine><ng-content select="[memberDetail]" /></span>
+  <span matListItemMeta><ng-content select="[memberAction]" /></span>
+</mat-list-item>

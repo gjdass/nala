@@ -114,6 +114,7 @@ describe('AuthService', () => {
     it.each([
       [401, 'invalidCredentials'],
       [429, 'tooManyAttempts'],
+      [403, 'accountDisabled'],
       [500, 'unknown'],
     ])('maps a %i to the %s form error', async (status, code) => {
       const result = firstValueFrom(service.login(credentials));

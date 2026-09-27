@@ -144,4 +144,56 @@ public class UserRepositoryTests
         Assert.That(saved.DisplayName, Is.EqualTo("Anna"));
         Assert.That(await repository2.GetByEmailAsync("anna@mail.com"), Is.Null);
     }
+
+    [Test]
+    public async Task ListActive_excludes_deleted_users()
+    {
+        var deleted = NewUser("ben@mail.com");
+        deleted.DeletedAt = DateTimeOffset.UtcNow;
+        var anna = NewUser("anna@mail.com", isAdmin: true);
+        var chloe = NewUser("chloe@mail.com");
+        chloe.IsDisabled = true;
+        await AddAsync(deleted);
+        await AddAsync(anna);
+        await AddAsync(chloe);
+
+        await using var db = _db();
+        var users = await new UserRepository(db).ListActiveAsync();
+
+        Assert.That(users.Select(u => u.Id), Is.EquivalentTo(new[] { anna.Id, chloe.Id }));
+    }
+
+    [Test]
+    public async Task SetLastActivity_saves_the_time()
+    {
+        var user = NewUser("anna@mail.com");
+        await AddAsync(user);
+        var at = new DateTimeOffset(2026, 9, 27, 20, 0, 0, TimeSpan.Zero);
+
+        await using (var db = _db())
+        {
+            await new UserRepository(db).SetLastActivityAsync(user.Id, at);
+        }
+
+        await using var check = _db();
+        Assert.That((await new UserRepository(check).GetByIdAsync(user.Id))!.LastActivityAt, Is.EqualTo(at));
+    }
+
+    [Test]
+    public async Task Update_saves_the_disabled_flag()
+    {
+        var user = NewUser("anna@mail.com");
+        await AddAsync(user);
+
+        await using (var db = _db())
+        {
+            var repository = new UserRepository(db);
+            var read = (await repository.GetByIdAsync(user.Id))!;
+            read.IsDisabled = true;
+            await repository.UpdateAsync(read);
+        }
+
+        await using var check = _db();
+        Assert.That((await new UserRepository(check).GetByIdAsync(user.Id))!.IsDisabled, Is.True);
+    }
 }

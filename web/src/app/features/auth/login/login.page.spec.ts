@@ -104,6 +104,7 @@ describe('LoginPage', () => {
   it.each([
     ['invalidCredentials', en.auth.errors.form.invalidCredentials],
     ['tooManyAttempts', en.auth.errors.form.tooManyAttempts],
+    ['accountDisabled', en.auth.errors.form.accountDisabled],
     ['unknown', en.auth.errors.form.unknown],
   ])('shows the %s error', async (code, message) => {
     fillValid();

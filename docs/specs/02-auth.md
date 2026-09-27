@@ -38,7 +38,7 @@ Each item becomes at least one test, written failing first.
 - [x] The session is a secure, httpOnly, same-site cookie (no token readable by JavaScript).
 - [x] The session is rolling: every use extends it; it expires after 90 days without any use.
 - [x] After too many failed logins for the same account (5 in 15 minutes), further attempts are temporarily refused.
-- [ ] A disabled account cannot log in, and its existing sessions stop working.
+- [x] A disabled account cannot log in, and its existing sessions stop working.
 - [x] Logout ends the current session only.
 - [x] Every API endpoint except health (`GET /api/health`), auth state (`GET /api/auth/state`), setup, login, invitation lookup/registration and password reset requires a valid session (401 otherwise).
 
@@ -65,9 +65,9 @@ Each item becomes at least one test, written failing first.
 - [x] The admin cannot delete their own account (the instance must always have its admin).
 
 ### Admin
-- [ ] The instance has exactly one admin: the account created at first-run setup. No other user can be made admin.
-- [ ] The admin can list all users (display name, email, disabled or not, last activity). Deleted accounts are not listed.
-- [ ] The admin can disable and re-enable a user; the admin cannot disable themselves.
+- [x] The instance has exactly one admin: the account created at first-run setup. No other user can be made admin.
+- [x] The admin can list all users (display name, email, disabled or not, last activity). Deleted accounts are not listed.
+- [x] The admin can disable and re-enable a user; the admin cannot disable themselves.
 
 ### Offline interaction
 - Keeping queued entries across a session expiry is specified and tested with the offline queue, in [05 Feed § Offline](05-feed.md#offline).
@@ -94,6 +94,10 @@ Each item becomes at least one test, written failing first.
 - **Settings page:** `/settings` (signed in only) with an Account section (display name, language, change password), an Appearance section (theme light / dark / system, per device) and Log out. Sections use the shared `nala-settings-section`. Saves are confirmed with a snackbar. Until the top app bar exists (04), home links to it with a text button.
 - **Account deletion:** `DELETE /api/account` with `{ password }` → 204, and this device's cookie is cleared; 400 validation problem (`password`: `required`/`incorrect`, not throttled, as for a password change); 403 `{ code: "adminCannotDelete" }` for the admin, checked before the password. It is a soft delete: `deleted at` is set, email and password hash become null (the email can be invited again), and the row keeps its id, display name and language, so everything that references the user (entries, invitations) is untouched. Every session of the user is deleted, and the invitations they created that are still pending are revoked. Each activity spec (05+) adds a test that a deleted user's entries remain.
 - **Delete account in settings:** the Account section ends with a Delete account part: a warning and an outlined button opening a confirmation dialog (password field, Cancel / Delete). A wrong password shows under the field and the dialog stays open. Once deleted, the app opens the login screen with a snackbar. The admin sees a notice that their account can't be deleted instead of the button.
+- **Disabled account at login:** with the right password, `POST /api/auth/login` answers 403 `{ code: "accountDisabled" }` (checked only after the password, so it tells nothing to someone without it; not counted as a failure); with a wrong password, the usual 401 `invalidCredentials`. The login screen says the account is disabled and to ask the admin. A disabled user's session is rejected (and deleted) on its next use.
+- **Last activity:** set at sign-in (setup, login, registration) and whenever a session use is written (uses at least 1 minute apart, as for the rolling session), so it costs no extra write per request.
+- **Admin endpoints:** `GET /api/admin/users` → 200 `[{ id, displayName, email, isAdmin, isDisabled, lastActivityAt }]`, non-deleted users only (disabled included), the admin first then by display name (case-insensitive). `POST /api/admin/users/{id}/disable` and `/enable` → 200 with the updated user; idempotent; disabling deletes every session of the user. Errors: 403 `{ code: "adminOnly" }` for anyone but the admin (checked in Core), 403 `{ code: "adminCannotDisable" }` when the target is the admin, 404 `{ code: "userNotFound" }` for an unknown or deleted user.
+- **Admin section in settings:** shown to the admin only, between Account and Appearance. Each user is a shared `nala-member-list-item` (name, email, admin badge) with "Disabled" and "Last active …" (date and time in the app's language, "No activity yet" when never signed in), and a Disable / Enable text button (none on the admin's row). Disable asks for confirmation in the shared `nala-confirm-dialog`; Enable is immediate; both are confirmed with a snackbar.
 - **Web session handling:** a 401 from any API call (except login) forgets the user and opens the login screen. When the auth state can't be loaded (offline), the app shell opens anyway.
 
 ## Build slices
@@ -105,7 +109,7 @@ Each slice goes red → green → commit on `master`, in this order.
 - [x] **Slice 3 — Registration by invitation.** `Invitation` entity + migration (hashed token, 7-day expiry, used, revoked), invitation lookup, registration consuming the invitation and logging in, duplicate email refused, no public sign-up. Web: register page with clear errors for expired / used / unknown links. Invitations are created in 03; tests seed them. Covers: all Registration criteria.
 - [x] **Slice 4 — Account settings.** Get/update the current user (display name, language; language defaults to the browser's on first login), change password with the current one (ends other sessions). Web: settings page with the Account section (and the theme choice), logout. Covers: both Account settings criteria.
 - [x] **Slice 5 — Account deletion.** Delete own account after confirming the password: ends all sessions, clears email and password hash, keeps the display name, revokes their pending invitations, refused for the admin; no cascade to entries. Web: delete action with confirmation dialog. Covers: all Account deletion criteria.
-- [ ] **Slice 6 — Admin: users list, disable / re-enable.** Admin-only users list (deleted excluded), disable / re-enable (not self); disabling ends sessions and blocks login. Web: Admin section in settings, admin only. Covers: all Admin criteria, and the disabled account criterion.
+- [x] **Slice 6 — Admin: users list, disable / re-enable.** Admin-only users list (deleted excluded), disable / re-enable (not self); disabling ends sessions and blocks login. Web: Admin section in settings, admin only. Covers: all Admin criteria, and the disabled account criterion.
 - [ ] **Slice 7 — Admin reset link.** `PasswordResetToken` entity + migration (hashed token), admin generates a one-time link valid 24 hours, reset sets the password, consumes the link and ends other sessions. Web: reset-link action in the admin list, reset-password page. Covers: the admin reset link criterion and the "using a reset link" criterion.
 - [ ] **Slice 8 — Forgot password by email.** SMTP and public base URL env variables (`.env.example`), `smtpEnabled` in the auth state, forgot-password endpoint with an identical confirmation whatever the email, emailed one-time link valid 1 hour. Web: "Forgot password" when SMTP is configured, "ask your admin" otherwise. Covers: the three SMTP reset criteria.
 

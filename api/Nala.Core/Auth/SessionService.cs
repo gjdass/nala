@@ -13,10 +13,11 @@ public class SessionService(ISessionRepository sessions, IUserRepository users, 
         var now = time.GetUtcNow();
         var session = new Session { Id = Guid.NewGuid(), UserId = user.Id, CreatedAt = now, LastSeenAt = now };
         await sessions.AddAsync(session, cancellationToken);
+        await RecordActivityAsync(user, now, cancellationToken);
         return session;
     }
 
-    /// <summary>The session's user, extending the session; null when it is unknown, expired or its user is gone.</summary>
+    /// <summary>The session's user, extending the session; null when it is unknown, expired or its user is deleted or disabled.</summary>
     public async Task<SessionValidation?> ValidateAsync(Guid sessionId, CancellationToken cancellationToken = default)
     {
         var session = await sessions.GetAsync(sessionId, cancellationToken);
@@ -27,7 +28,7 @@ public class SessionService(ISessionRepository sessions, IUserRepository users, 
 
         var now = time.GetUtcNow();
         var user = await users.GetByIdAsync(session.UserId, cancellationToken);
-        if (now - session.LastSeenAt >= SessionPolicy.IdleTimeout || user is not { DeletedAt: null })
+        if (now - session.LastSeenAt >= SessionPolicy.IdleTimeout || user is not { DeletedAt: null, IsDisabled: false })
         {
             await sessions.DeleteAsync(sessionId, cancellationToken);
             return null;
@@ -40,7 +41,15 @@ public class SessionService(ISessionRepository sessions, IUserRepository users, 
 
         session.LastSeenAt = now;
         await sessions.TouchAsync(session, cancellationToken);
+        await RecordActivityAsync(user, now, cancellationToken);
         return new SessionValidation(user, Renewed: true);
+    }
+
+    /// <summary>Last activity follows sign-ins and written session uses, so it costs no extra write per request.</summary>
+    private async Task RecordActivityAsync(User user, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        user.LastActivityAt = now;
+        await users.SetLastActivityAsync(user.Id, now, cancellationToken);
     }
 
     public Task EndAsync(Guid sessionId, CancellationToken cancellationToken = default) =>

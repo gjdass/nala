@@ -119,6 +119,12 @@
     </div>
   </nala-settings-section>
 
+  @if (isAdmin()) {
+    <nala-settings-section [title]="'settings.admin.title' | transloco">
+      <nala-admin-users />
+    </nala-settings-section>
+  }
+
   <nala-settings-section [title]="'settings.appearance.title' | transloco">
     <div class="choice">
       <span id="settings-theme" class="label">{{ 'settings.appearance.theme' | transloco }}</span>

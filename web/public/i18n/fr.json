@@ -76,7 +76,11 @@
         "invitationExpired": "Cette invitation a expiré. Demandez-en une nouvelle à un membre de la famille.",
         "invitationUsed": "Cette invitation a déjà été utilisée. Connectez-vous, ou demandez-en une nouvelle à un membre de la famille.",
         "invitationRevoked": "Cette invitation a été annulée. Demandez-en une nouvelle à un membre de la famille.",
-        "adminCannotDelete": "Le compte administrateur ne peut pas être supprimé."
+        "adminCannotDelete": "Le compte administrateur ne peut pas être supprimé.",
+        "accountDisabled": "Ce compte est désactivé. Demandez à l'administrateur de ce Nala.",
+        "adminOnly": "Seul l'administrateur peut faire cela.",
+        "adminCannotDisable": "Le compte administrateur ne peut pas être désactivé.",
+        "userNotFound": "Cet utilisateur n'existe plus."
       }
     }
   },
@@ -109,6 +113,24 @@
       "confirm": "Supprimer",
       "done": "Votre compte a été supprimé"
     },
+    "admin": {
+      "title": "Administration",
+      "users": "Utilisateurs",
+      "disabled": "Désactivé",
+      "lastActive": "Dernière activité {{date}}",
+      "noActivity": "Aucune activité",
+      "disable": "Désactiver",
+      "enable": "Réactiver",
+      "disableTitle": "Désactiver {{name}} ?",
+      "disableText": "{{name}} sera déconnecté(e) sur tous ses appareils et ne pourra plus se connecter tant que vous n'aurez pas réactivé le compte. Ce qui a été saisi reste.",
+      "cancel": "Annuler",
+      "confirm": "Désactiver",
+      "disabledDone": "Compte de {{name}} désactivé",
+      "enabledDone": "Compte de {{name}} réactivé"
+    },
     "logout": "Se déconnecter"
+  },
+  "members": {
+    "admin": "Admin"
   }
 }

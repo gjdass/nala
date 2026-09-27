@@ -1,0 +1,32 @@
+<h3>{{ 'settings.admin.users' | transloco }}</h3>
+@if (loadError(); as code) {
+  <p class="error" role="alert" data-testid="load-error">
+    {{ 'auth.errors.form.' + code | transloco }}
+  </p>
+} @else {
+  <mat-list>
+    @for (user of users(); track user.id) {
+      <nala-member-list-item
+        [displayName]="user.displayName"
+        [email]="user.email"
+        [isAdmin]="user.isAdmin"
+      >
+        <span memberDetail>
+          @if (user.isDisabled) {
+            {{ 'settings.admin.disabled' | transloco }} ·
+          }
+          @if (user.lastActivityAt; as at) {
+            {{ 'settings.admin.lastActive' | transloco: { date: lastActive(at) } }}
+          } @else {
+            {{ 'settings.admin.noActivity' | transloco }}
+          }
+        </span>
+        @if (!user.isAdmin) {
+          <button memberAction mat-button type="button" (click)="toggle(user)">
+            {{ (user.isDisabled ? 'settings.admin.enable' : 'settings.admin.disable') | transloco }}
+          </button>
+        }
+      </nala-member-list-item>
+    }
+  </mat-list>
+}

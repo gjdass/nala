@@ -112,6 +112,49 @@ public class SessionServiceTests
     }
 
     [Test]
+    public async Task Session_of_a_disabled_user_is_rejected_and_deleted()
+    {
+        var session = await _service.StartAsync(_anna);
+        _anna.IsDisabled = true;
+
+        Assert.That(await _service.ValidateAsync(session.Id), Is.Null);
+        Assert.That(_sessions.Sessions, Is.Empty);
+    }
+
+    [Test]
+    public async Task Starting_a_session_sets_last_activity()
+    {
+        await _service.StartAsync(_anna);
+
+        Assert.That(_anna.LastActivityAt, Is.EqualTo(Now));
+        Assert.That(_users.ActivityWrites, Is.EqualTo(1));
+    }
+
+    [Test]
+    public async Task A_written_touch_updates_last_activity()
+    {
+        var session = await _service.StartAsync(_anna);
+        _time.Now = Now + TimeSpan.FromDays(3);
+
+        await _service.ValidateAsync(session.Id);
+
+        Assert.That(_anna.LastActivityAt, Is.EqualTo(_time.Now));
+        Assert.That(_users.ActivityWrites, Is.EqualTo(2));
+    }
+
+    [Test]
+    public async Task A_use_within_the_touch_interval_does_not_update_last_activity()
+    {
+        var session = await _service.StartAsync(_anna);
+        _time.Now = Now + SessionPolicy.TouchInterval - TimeSpan.FromSeconds(1);
+
+        await _service.ValidateAsync(session.Id);
+
+        Assert.That(_anna.LastActivityAt, Is.EqualTo(Now));
+        Assert.That(_users.ActivityWrites, Is.EqualTo(1));
+    }
+
+    [Test]
     public async Task End_deletes_only_that_session()
     {
         var phone = await _service.StartAsync(_anna);

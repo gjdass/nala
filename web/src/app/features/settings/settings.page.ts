@@ -22,14 +22,16 @@ import { LANGS, Lang } from '../../core/i18n/initial-lang';
 import { THEME_MODES, ThemeMode, ThemeService } from '../../core/theme/theme.service';
 import { SettingsSectionComponent } from '../../shared/ui/settings-section/settings-section.component';
 import { displayName, errorCode, newPassword } from '../auth/auth.validators';
+import { AdminUsersComponent } from './admin-users/admin-users.component';
 import { DeleteAccountDialogComponent } from './delete-account-dialog/delete-account-dialog.component';
 
 const SNACK_DURATION = 3000;
 
-/** Account (display name, language, password, deletion), appearance (theme) and logout. */
+/** Account (display name, language, password, deletion), admin (admin only), appearance (theme) and logout. */
 @Component({
   selector: 'nala-settings',
   imports: [
+    AdminUsersComponent,
     MatButtonModule,
     MatButtonToggleModule,
     MatFormFieldModule,

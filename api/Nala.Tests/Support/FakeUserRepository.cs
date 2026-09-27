@@ -11,6 +11,8 @@ public class FakeUserRepository : IUserRepository
 
     public int Updates { get; private set; }
 
+    public int ActivityWrites { get; private set; }
+
     public Task<bool> AnyAsync(CancellationToken cancellationToken = default) => Task.FromResult(Users.Count > 0);
 
     public Task AddAsync(User user, CancellationToken cancellationToken = default)
@@ -33,6 +35,16 @@ public class FakeUserRepository : IUserRepository
     public Task UpdateAsync(User user, CancellationToken cancellationToken = default)
     {
         Updates++;
+        return Task.CompletedTask;
+    }
+
+    public Task<IReadOnlyList<User>> ListActiveAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<User>>(Users.Where(u => u.DeletedAt is null).ToList());
+
+    public Task SetLastActivityAsync(Guid id, DateTimeOffset at, CancellationToken cancellationToken = default)
+    {
+        ActivityWrites++;
+        Users.Single(u => u.Id == id).LastActivityAt = at;
         return Task.CompletedTask;
     }
 }
