@@ -15,6 +15,7 @@ Run from `api/`. Tests need Docker running (Testcontainers starts PostgreSQL).
 
 - The connection string comes only from the `ConnectionStrings__Nala` environment variable; the API refuses to start without it.
 - Pending migrations are applied at startup. `dotnet ef` uses `DesignTimeDbContextFactory` in `Nala.Sql`, so generating a migration needs no database.
+- Docker: `api/Dockerfile` (SDK build → ASP.NET runtime, non-root, port 8080). `Nala.Tests` is not in the image.
 - Health: `GET /api/health` → 200 `{"status":"ok"}`, or 503 `{"status":"unavailable"}` when the database is unreachable.
 
 ## Solution structure

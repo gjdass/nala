@@ -1,6 +1,6 @@
 # 01 — Project skeleton
 
-Status: in progress
+Status: done
 
 ## Goal
 
@@ -27,15 +27,15 @@ Each item becomes at least one test or check, written failing first where testab
 - [x] A placeholder home page calls `/api/health` and shows the result; in development, `/api` is proxied to the local API.
 
 ### Docker
-- [ ] Multi-stage Dockerfiles for `api` (SDK build → ASP.NET runtime) and `web` (node build → nginx).
-- [ ] nginx serves the Angular build (SPA fallback to `index.html`) and reverse-proxies `/api` to the `api` container.
-- [ ] `docker-compose.yml` defines `db` (PostgreSQL, named volume, healthcheck), `api` (waits for a healthy `db`) and `web` (the only published port).
-- [ ] `.env.example` lists every variable compose needs, with placeholder values.
-- [ ] From a clean clone: `cp .env.example .env && docker compose up -d --build` → the app opens in a browser and shows the API health as ok.
+- [x] Multi-stage Dockerfiles for `api` (SDK build → ASP.NET runtime) and `web` (node build → nginx).
+- [x] nginx serves the Angular build (SPA fallback to `index.html`) and reverse-proxies `/api` to the `api` container.
+- [x] `docker-compose.yml` defines `db` (PostgreSQL, named volume, healthcheck), `api` (waits for a healthy `db`) and `web` (the only published port).
+- [x] `.env.example` lists every variable compose needs, with placeholder values.
+- [x] From a clean clone: `cp .env.example .env && docker compose up -d --build` → the app opens in a browser and shows the API health as ok.
 
 ### Docs
 - [x] The "Commands" sections of `web/CLAUDE.md` and `api/CLAUDE.md` list the real commands (run, test, lint, build, add migration).
-- [ ] `README.md` explains how to deploy with Docker Compose.
+- [x] `README.md` explains how to deploy with Docker Compose.
 
 ## Build slices
 
@@ -44,7 +44,7 @@ Each slice goes red → green → commit on `master`, in this order.
 - [x] **Slice 1 — API skeleton + health endpoint.** .NET 10 solution with the four projects and their references, NUnit, `NalaDbContext` (Npgsql) with an initial migration applied at startup, `GET /api/health` (200 / 503), connection string from an environment variable, `api/CLAUDE.md` commands. Covers: all API criteria, api half of Docs / Commands.
 - [x] **Slice 2 — Web skeleton + health page + i18n.** Angular app (standalone, OnPush, signals), installable PWA (manifest, icons, service worker), unit test runner, runtime EN/FR i18n switchable without reload, placeholder home page calling `/api/health` through the dev proxy, `web/CLAUDE.md` commands. Covers: Web criteria 1, 5, 6, 7, web half of Docs / Commands.
 - [x] **Slice 3 — Material 3 theme, theme service, colour lint.** Global M3 theme under `src/styles/` (light and dark, system preference), `ThemeService` (light / dark / system, persisted per device), placeholder section colour tokens (`feed`, `sleep`, `diaper`, `pump`, `growth`, `medication`, each with an "on" colour, light and dark), stylelint rule rejecting hard-coded colours in component styles, health page restyled with Material. Covers: Web criteria 2, 3, 4.
-- [ ] **Slice 4 — Docker Compose deployment.** Multi-stage Dockerfiles (`api`: SDK → ASP.NET runtime; `web`: node → nginx with SPA fallback and `/api` proxy), `docker-compose.yml` (`db` with named volume and healthcheck, `api` waiting for healthy `db`, `web` the only published port), `.env.example`, README deployment section, scripted smoke check from a clean clone. Covers: all Docker criteria, README criterion.
+- [x] **Slice 4 — Docker Compose deployment.** Multi-stage Dockerfiles (`api`: SDK → ASP.NET runtime; `web`: node → nginx with SPA fallback and `/api` proxy), `docker-compose.yml` (`db` with named volume and healthcheck, `api` waiting for healthy `db`, `web` the only published port), `.env.example`, README deployment section, scripted smoke check from a clean clone. Covers: all Docker criteria, README criterion.
 
 ## Decisions
 
@@ -55,6 +55,8 @@ Each slice goes red → green → commit on `master`, in this order.
 - **Section colour tokens:** `--nala-section-<key>` (surface) and `--nala-on-section-<key>` (text/icons on it) for `feed`, `sleep`, `diaper`, `pump`, `growth`, `medication`, defined in `web/src/styles/_sections.scss`. Placeholder values from Material's M3 palettes (tone 40/80 for the colour, 100/20 for the on-colour, light/dark): feed orange, sleep violet, diaper cyan, pump rose, growth green, medication red.
 - **Font:** Roboto bundled with the app (`@fontsource/roboto`), no Google Fonts request.
 - **Colour lint:** stylelint on component styles (`src/app/**/*.scss`) rejects hex, named colours and colour functions (`rgb()`, `hsl()`, `oklch()`…). Theme files under `src/styles/` are the only place colours are defined.
+
+- **Deployment:** the `web` host port comes from `NALA_HTTP_PORT` (default 8080); `db` and `api` publish nothing. PostgreSQL 18 (`postgres:18-alpine`, same as the tests) with the named volume `nala-db` mounted at `/var/lib/postgresql` (the PG 18 layout). Both runtime images are non-root and listen on 8080 (`aspnet:10.0` as `app`, `nginx-unprivileged`). The stack serves plain HTTP; HTTPS is the host's own reverse proxy, documented in the README. Deployment checks live in `tests/deploy/` (Node test runner on the resolved compose model, plus `smoke.sh` from a clean copy).
 
 ## Out of scope
 

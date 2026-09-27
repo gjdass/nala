@@ -22,7 +22,10 @@ docker-compose.yml     # prod stack: db + api + web
 .env.example           # every variable compose needs, with safe placeholder values
 web/                   # Angular app (own Dockerfile)
 api/                   # .NET solution (own Dockerfile)
+tests/deploy/          # deployment checks
 ```
+
+Deployment checks (from the root, Docker needed): `node --test "tests/**/*.test.mjs"` (compose and Dockerfiles), `tests/deploy/smoke.sh` (full stack from a clean copy).
 
 ## Development workflow: test first, always
 
