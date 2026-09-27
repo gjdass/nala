@@ -17,6 +17,7 @@ These change the data model or architecture. Changing one later means updating t
 - **Time zones:** all times stored in UTC; each device displays them in its own local time zone.
 - **Units:** metric only (ml, g/kg, cm).
 - **Languages:** English and French at launch. Angular i18n from day one: no user-facing string is hard-coded outside translation files.
+- **No photos and no reminders/notifications** anywhere in the app.
 - **Activity model:** each activity type (feed, sleep, diaper…) is fully separate: its own entity, table and API endpoints, no shared base table. Because of the decisions above, every type still carries a client-generated UUID, the baby, who logged it and UTC timestamps. A combined timeline, if wanted later, has to aggregate across types explicitly.
 
 ## Features
@@ -27,9 +28,10 @@ Status: `idea` → `specified` → `in progress` → `done`. A feature moves to 
 |---|---------|------|--------|-------|
 | 01 | Authentication (login, register, sessions) | [01-auth.md](01-auth.md) | specified | |
 | 02 | Family & baby profile | [02-family-baby.md](02-family-baby.md) | specified | |
-| 10 | Feed | — | idea | **Hard requirement:** breast feeding has two independent timers, one per side (left/right). Each side starts and stops on its own; the card is split left/right. A single timer with a "side" field is not acceptable. |
+| 03 | App layout & section pattern (home cards, entry sheet, mini-bar) | [03-app-layout.md](03-app-layout.md) | specified | Shared by every section. |
+| 10 | Feed | [10-feed.md](10-feed.md) | specified | **Hard requirement:** breast feeding has two independent per-side timers (left/right), side by side in the Breastfeed sheet. A single timer with a "side" field is not acceptable. |
 | 11 | Sleep | — | idea | |
-| 12 | Diaper | — | idea | |
+| 12 | Diaper | — | idea | From the reference screenshots: time, wet / dirty / dry selector, diaper-rash toggle, notes. |
 | 13 | Medication | — | idea | |
 | 14 | Growth | — | idea | Birth weight/length/head circumference are stored on the baby profile (02) and must appear as the starting point of the growth history. **Hard requirement:** simple measurement entries over time — weight, height, head circumference, milestones. Raw logging only, no percentile/trend charts. |
 | 15 | Pump | — | idea | **Hard requirement:** pumping sessions with volume and history. |
