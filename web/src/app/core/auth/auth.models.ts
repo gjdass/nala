@@ -47,6 +47,21 @@ export type RegisterRequest = SetupRequest;
 
 export type RegisterResult = { ok: true } | { ok: false; errors: FieldErrors };
 
+export interface ResetLink {
+  /** The account whose password the link resets. */
+  email: string;
+  expiresAt: string;
+}
+
+/** `code`: `resetLinkUnknown`, `resetLinkExpired`, `resetLinkUsed`, `accountDisabled` or `unknown`. */
+export type ResetLinkLookup = { ok: true; link: ResetLink } | { ok: false; code: string };
+
+export interface ResetPasswordRequest {
+  password: string;
+}
+
+export type ResetPasswordResult = { ok: true } | { ok: false; errors: FieldErrors };
+
 /** Fields left out are unchanged. */
 export interface UpdateAccountRequest {
   displayName?: string;

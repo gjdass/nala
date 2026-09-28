@@ -7,6 +7,8 @@ import {
   InvitationLookup,
   LoginResult,
   RegisterResult,
+  ResetLinkLookup,
+  ResetPasswordResult,
   SetupRequest,
   SetupResult,
 } from './auth.models';
@@ -212,6 +214,82 @@ describe('AuthService', () => {
         .flush({ code }, { status, statusText: 'Error' });
 
       expect(await result).toEqual<RegisterResult>({ ok: false, errors: { form: code } });
+    });
+  });
+
+  describe('lookupResetLink()', () => {
+    it('gets the reset link by its token', async () => {
+      const result = firstValueFrom(service.lookupResetLink('a-b_c'));
+      const req = http.expectOne('/api/auth/password-resets/a-b_c');
+      expect(req.request.method).toBe('GET');
+      req.flush({ email: 'ben@mail.com', expiresAt: '2026-09-28T20:00:00Z' });
+
+      expect(await result).toEqual<ResetLinkLookup>({
+        ok: true,
+        link: { email: 'ben@mail.com', expiresAt: '2026-09-28T20:00:00Z' },
+      });
+    });
+
+    it.each([
+      [404, 'resetLinkUnknown'],
+      [410, 'resetLinkExpired'],
+      [410, 'resetLinkUsed'],
+      [403, 'accountDisabled'],
+    ])('maps a %i to its %s code', async (status, code) => {
+      const result = firstValueFrom(service.lookupResetLink('t'));
+      http.expectOne('/api/auth/password-resets/t').flush({ code }, { status, statusText: 'Error' });
+
+      expect(await result).toEqual<ResetLinkLookup>({ ok: false, code });
+    });
+
+    it('reports a network failure as unknown', async () => {
+      const result = firstValueFrom(service.lookupResetLink('t'));
+      http.expectOne('/api/auth/password-resets/t').error(new ProgressEvent('error'));
+
+      expect(await result).toEqual<ResetLinkLookup>({ ok: false, code: 'unknown' });
+    });
+  });
+
+  describe('resetPassword()', () => {
+    const ben: AuthState = {
+      setupRequired: false,
+      user: { id: 'u2', email: 'ben@mail.com', displayName: 'Ben', language: 'en', isAdmin: false },
+    };
+
+    it('posts the new password to the link and stores the returned state', async () => {
+      const result = firstValueFrom(service.resetPassword('tok', { password: 'battery staple' }));
+      const req = http.expectOne('/api/auth/password-resets/tok');
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual({ password: 'battery staple' });
+      req.flush(ben);
+
+      expect(await result).toEqual<ResetPasswordResult>({ ok: true });
+      expect(service.state()).toEqual(ben);
+    });
+
+    it('maps a 400 validation problem to field error codes', async () => {
+      const result = firstValueFrom(service.resetPassword('tok', { password: 'short' }));
+      http
+        .expectOne('/api/auth/password-resets/tok')
+        .flush({ errors: { password: ['tooShort'] } }, { status: 400, statusText: 'Bad Request' });
+
+      expect(await result).toEqual<ResetPasswordResult>({
+        ok: false,
+        errors: { password: 'tooShort' },
+      });
+      expect(service.state()).toBeNull();
+    });
+
+    it('maps a 410 to its form code', async () => {
+      const result = firstValueFrom(service.resetPassword('tok', { password: 'battery staple' }));
+      http
+        .expectOne('/api/auth/password-resets/tok')
+        .flush({ code: 'resetLinkUsed' }, { status: 410, statusText: 'Gone' });
+
+      expect(await result).toEqual<ResetPasswordResult>({
+        ok: false,
+        errors: { form: 'resetLinkUsed' },
+      });
     });
   });
 

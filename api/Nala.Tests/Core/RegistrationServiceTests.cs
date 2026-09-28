@@ -38,11 +38,11 @@ public class RegistrationServiceTests
     /// <summary>Seeds an invitation created by Anna now; returns its token.</summary>
     private string Invite(Action<Invitation>? change = null)
     {
-        var token = InvitationToken.Generate();
+        var token = LinkToken.Generate();
         var invitation = new Invitation
         {
             Id = Guid.NewGuid(),
-            TokenHash = InvitationToken.Hash(token),
+            TokenHash = LinkToken.Hash(token),
             CreatedByUserId = _anna.Id,
             CreatedAt = Now,
             ExpiresAt = Now + InvitationPolicy.Lifetime,

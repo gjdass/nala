@@ -47,11 +47,11 @@ Each item becomes at least one test, written failing first.
 - [x] Passwords are stored only as a salted slow hash (ASP.NET Core Identity's hasher or equivalent), never in plain text or logs.
 
 ### Password reset
-- [ ] The admin can generate a one-time reset link for any user; it expires after 24 hours.
+- [x] The admin can generate a one-time reset link for any user; it expires after 24 hours.
 - [ ] If SMTP is configured (env variables), the login screen offers "Forgot password", which emails a one-time reset link valid 1 hour.
 - [ ] If SMTP is not configured, "Forgot password" is hidden and the screen tells the user to ask the admin.
 - [ ] Requesting a reset by email always shows the same confirmation, whether the email exists or not.
-- [ ] Using a reset link sets the new password, consumes the link, and ends all other sessions of that user.
+- [x] Using a reset link sets the new password, consumes the link, and ends all other sessions of that user.
 
 ### Account settings
 - [x] A user can change their display name and preferred language (EN/FR). The language defaults to the browser language on first login, falling back to English.
@@ -98,6 +98,13 @@ Each item becomes at least one test, written failing first.
 - **Last activity:** set at sign-in (setup, login, registration) and whenever a session use is written (uses at least 1 minute apart, as for the rolling session), so it costs no extra write per request.
 - **Admin endpoints:** `GET /api/admin/users` → 200 `[{ id, displayName, email, isAdmin, isDisabled, lastActivityAt }]`, non-deleted users only (disabled included), the admin first then by display name (case-insensitive). `POST /api/admin/users/{id}/disable` and `/enable` → 200 with the updated user; idempotent; disabling deletes every session of the user. Errors: 403 `{ code: "adminOnly" }` for anyone but the admin (checked in Core), 403 `{ code: "adminCannotDisable" }` when the target is the admin, 404 `{ code: "userNotFound" }` for an unknown or deleted user.
 - **Admin section in settings:** shown to the admin only, between Account and Appearance. Each user is a shared `nala-member-list-item` (name, email, admin badge) with "Disabled" and "Last active …" (date and time in the app's language, "No activity yet" when never signed in), and a Disable / Enable text button (none on the admin's row). Disable asks for confirmation in the shared `nala-confirm-dialog`; Enable is immediate; both are confirmed with a snackbar.
+- **Reset link token:** same scheme as invitations (the shared `Nala.Core/Auth/LinkToken`): 32 random bytes, base64url, only the SHA-256 hash stored. Link: `/reset/{token}`, built by the web from its own origin.
+- **Admin reset link:** `POST /api/admin/users/{id}/reset-link` → 200 `{ token, expiresAt }` (24 hours). Errors: 403 `{ code: "adminOnly" }`, 404 `{ code: "userNotFound" }` (unknown or deleted user), 403 `{ code: "accountDisabled" }` (a disabled user gets no link). Creating a link deletes the user's earlier unused links: only the newest one works. The API allows the admin a link for themselves; the UI doesn't offer it (they use Change password).
+- **Reset link lookup:** `GET /api/auth/password-resets/{token}` (public) → 200 `{ email, expiresAt }`; 404 `{ code: "resetLinkUnknown" }` (unknown link, or its user is deleted); 410 `{ code }` with `resetLinkExpired` or `resetLinkUsed`; 403 `{ code: "accountDisabled" }` when the user was disabled since. A link expires exactly at `expires at`.
+- **Reset:** `POST /api/auth/password-resets/{token}` (public) with `{ password }` → 200 with the auth state and the cookie: the password is set, the link consumed, every session of the user deleted and their login failures cleared, then this device is signed in. The link is checked before the field; same 404/410/403 as the lookup; 400 validation problem (`password`: `required`/`tooShort`). The link is consumed by a conditional update, so concurrent resets with one link succeed once.
+- **Reset link in the admin list:** each row but the admin's has a ⋮ icon button (`mat-menu`) with Reset link (enabled users only) and Disable / Enable. Reset link opens the shared `nala-share-link-dialog`: the link read-only, its expiry, Copy (snackbar "Link copied") and Share (the device's share sheet, shown only when the browser has one). 03 reuses the dialog for invitation links.
+- **Reset password page:** `/reset/{token}`, signed-out visitors only (signed-in ones are sent to the app, as for invitations), in the shared auth card: the account's email, a new password field (and a hidden username field for password managers), or the link's error with a link to the login screen. On success the app opens, signed in.
+- **Icons:** Material Symbols Outlined, bundled with the app (`@fontsource/material-symbols-outlined`, like Roboto), is the default `mat-icon` font set.
 - **Web session handling:** a 401 from any API call (except login) forgets the user and opens the login screen. When the auth state can't be loaded (offline), the app shell opens anyway.
 
 ## Build slices
@@ -110,7 +117,7 @@ Each slice goes red → green → commit on `master`, in this order.
 - [x] **Slice 4 — Account settings.** Get/update the current user (display name, language; language defaults to the browser's on first login), change password with the current one (ends other sessions). Web: settings page with the Account section (and the theme choice), logout. Covers: both Account settings criteria.
 - [x] **Slice 5 — Account deletion.** Delete own account after confirming the password: ends all sessions, clears email and password hash, keeps the display name, revokes their pending invitations, refused for the admin; no cascade to entries. Web: delete action with confirmation dialog. Covers: all Account deletion criteria.
 - [x] **Slice 6 — Admin: users list, disable / re-enable.** Admin-only users list (deleted excluded), disable / re-enable (not self); disabling ends sessions and blocks login. Web: Admin section in settings, admin only. Covers: all Admin criteria, and the disabled account criterion.
-- [ ] **Slice 7 — Admin reset link.** `PasswordResetToken` entity + migration (hashed token), admin generates a one-time link valid 24 hours, reset sets the password, consumes the link and ends other sessions. Web: reset-link action in the admin list, reset-password page. Covers: the admin reset link criterion and the "using a reset link" criterion.
+- [x] **Slice 7 — Admin reset link.** `PasswordResetToken` entity + migration (hashed token), admin generates a one-time link valid 24 hours, reset sets the password, consumes the link and ends other sessions. Web: reset-link action in the admin list, reset-password page. Covers: the admin reset link criterion and the "using a reset link" criterion.
 - [ ] **Slice 8 — Forgot password by email.** SMTP and public base URL env variables (`.env.example`), `smtpEnabled` in the auth state, forgot-password endpoint with an identical confirmation whatever the email, emailed one-time link valid 1 hour. Web: "Forgot password" when SMTP is configured, "ask your admin" otherwise. Covers: the three SMTP reset criteria.
 
 ## Data

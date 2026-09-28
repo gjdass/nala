@@ -2,7 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { firstValueFrom } from 'rxjs';
-import { AdminUser, AdminUserResult, AdminUsersResult } from './admin.models';
+import { AdminUser, AdminUserResult, AdminUsersResult, ResetLinkResult } from './admin.models';
 import { AdminService } from './admin.service';
 
 describe('AdminService', () => {
@@ -81,6 +81,33 @@ describe('AdminService', () => {
       http.expectOne('/api/admin/users/u2/disable').error(new ProgressEvent('error'));
 
       expect(await result).toEqual<AdminUserResult>({ ok: false, errors: { form: 'unknown' } });
+    });
+  });
+
+  describe('createResetLink()', () => {
+    it('posts to /reset-link and returns the token and expiry', async () => {
+      const result = firstValueFrom(service.createResetLink('u2'));
+      const req = http.expectOne('/api/admin/users/u2/reset-link');
+      expect(req.request.method).toBe('POST');
+      req.flush({ token: 'a-b_c', expiresAt: '2026-09-28T20:00:00Z' });
+
+      expect(await result).toEqual<ResetLinkResult>({
+        ok: true,
+        link: { token: 'a-b_c', expiresAt: '2026-09-28T20:00:00Z' },
+      });
+    });
+
+    it.each([
+      [403, 'adminOnly'],
+      [403, 'accountDisabled'],
+      [404, 'userNotFound'],
+    ])('maps a %s to its %s code', async (status, code) => {
+      const result = firstValueFrom(service.createResetLink('u2'));
+      http
+        .expectOne('/api/admin/users/u2/reset-link')
+        .flush({ code }, { status, statusText: 'Error' });
+
+      expect(await result).toEqual<ResetLinkResult>({ ok: false, errors: { form: code } });
     });
   });
 });

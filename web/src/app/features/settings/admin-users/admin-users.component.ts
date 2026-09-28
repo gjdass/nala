@@ -1,8 +1,11 @@
+import { DOCUMENT } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
+import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
+import { MatMenuModule } from '@angular/material/menu';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { filter, take } from 'rxjs';
@@ -13,13 +16,24 @@ import {
   ConfirmDialogData,
 } from '../../../shared/ui/confirm-dialog/confirm-dialog.component';
 import { MemberListItemComponent } from '../../../shared/ui/member-list-item/member-list-item.component';
+import {
+  ShareLinkDialogComponent,
+  ShareLinkDialogData,
+} from '../../../shared/ui/share-link-dialog/share-link-dialog.component';
 
 const SNACK_DURATION = 3000;
 
-/** The admin's users list with disable / re-enable. Only rendered for the admin. */
+/** The admin's users list with reset links and disable / re-enable. Only rendered for the admin. */
 @Component({
   selector: 'nala-admin-users',
-  imports: [MatButtonModule, MatListModule, MemberListItemComponent, TranslocoPipe],
+  imports: [
+    MatButtonModule,
+    MatIconModule,
+    MatListModule,
+    MatMenuModule,
+    MemberListItemComponent,
+    TranslocoPipe,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './admin-users.component.html',
   styleUrl: './admin-users.component.scss',
@@ -29,6 +43,7 @@ export class AdminUsersComponent {
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
   private readonly transloco = inject(TranslocoService);
+  private readonly origin = inject(DOCUMENT).location.origin;
 
   private readonly lang = toSignal(this.transloco.langChanges$, {
     initialValue: this.transloco.getActiveLang(),
@@ -48,7 +63,7 @@ export class AdminUsersComponent {
   }
 
   /** In the language the app shows, e.g. "Sep 20, 2026, 10:30 AM". */
-  protected lastActive(iso: string): string {
+  protected dateTime(iso: string): string {
     return new Intl.DateTimeFormat(this.lang(), { dateStyle: 'medium', timeStyle: 'short' }).format(
       new Date(iso),
     );
@@ -61,6 +76,27 @@ export class AdminUsersComponent {
     } else {
       this.confirmDisable(user);
     }
+  }
+
+  /** A new one-time link, handed over through the share dialog; the user's earlier links stop working. */
+  protected resetLink(user: AdminUser): void {
+    this.admin.createResetLink(user.id).subscribe((result) => {
+      if (!result.ok) {
+        this.notify(`auth.errors.form.${result.errors['form'] ?? 'unknown'}`);
+        return;
+      }
+      const name = user.displayName;
+      this.dialog.open<ShareLinkDialogComponent, ShareLinkDialogData>(ShareLinkDialogComponent, {
+        data: {
+          title: this.transloco.translate('settings.admin.resetLinkTitle', { name }),
+          text: this.transloco.translate('settings.admin.resetLinkText', {
+            name,
+            date: this.dateTime(result.link.expiresAt),
+          }),
+          url: `${this.origin}/reset/${result.link.token}`,
+        },
+      });
+    });
   }
 
   private confirmDisable(user: AdminUser): void {

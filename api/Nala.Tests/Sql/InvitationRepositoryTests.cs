@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Nala.Core.Auth;
 using Nala.Core.Invitations;
 using Nala.Core.Users;
 using Nala.Sql;
@@ -39,7 +40,7 @@ public class InvitationRepositoryTests
         var invitation = new Invitation
         {
             Id = Guid.NewGuid(),
-            TokenHash = InvitationToken.Hash(InvitationToken.Generate()),
+            TokenHash = LinkToken.Hash(LinkToken.Generate()),
             CreatedByUserId = createdBy ?? _anna.Id,
             CreatedAt = Now,
             ExpiresAt = Now + InvitationPolicy.Lifetime,

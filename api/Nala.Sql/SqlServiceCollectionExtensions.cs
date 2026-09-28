@@ -17,5 +17,6 @@ public static class SqlServiceCollectionExtensions
             .AddScoped<IUserRepository, UserRepository>()
             .AddScoped<ISessionRepository, SessionRepository>()
             .AddScoped<ILoginFailureRepository, LoginFailureRepository>()
-            .AddScoped<IInvitationRepository, InvitationRepository>();
+            .AddScoped<IInvitationRepository, InvitationRepository>()
+            .AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
 }

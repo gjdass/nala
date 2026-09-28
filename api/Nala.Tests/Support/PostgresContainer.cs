@@ -15,10 +15,14 @@ public static class PostgresContainer
         return container;
     }
 
-    /// <summary>Connection string to a fresh, not yet created database on the given server.</summary>
+    /// <summary>
+    /// Connection string to a fresh, not yet created database on the given server. Without pooling: every test has its own
+    /// database, and idle pooled connections to each of them would exhaust the shared server's connection limit.
+    /// </summary>
     public static string FreshDatabase(PostgreSqlContainer container) =>
         new NpgsqlConnectionStringBuilder(container.GetConnectionString())
         {
             Database = $"nala_{Guid.NewGuid():N}",
+            Pooling = false,
         }.ConnectionString;
 }

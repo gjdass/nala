@@ -15,3 +15,11 @@ export type AdminUsersResult =
   { ok: true; users: AdminUser[] } | { ok: false; errors: FieldErrors };
 
 export type AdminUserResult = { ok: true; user: AdminUser } | { ok: false; errors: FieldErrors };
+
+/** A one-time password reset link; the web builds `/reset/{token}` from it. */
+export interface ResetLinkToken {
+  token: string;
+  expiresAt: string;
+}
+
+export type ResetLinkResult = { ok: true; link: ResetLinkToken } | { ok: false; errors: FieldErrors };

@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
+using Nala.Core.Auth;
 using Nala.Core.Invitations;
 using Nala.Core.Users;
 using Nala.Tests.Support;
@@ -45,12 +46,12 @@ public class RegisterEndpointTests
     /// <summary>Seeds an invitation from Anna (created in 03 later); returns its token.</summary>
     private async Task<string> InviteAsync(Action<Invitation>? change = null)
     {
-        var token = InvitationToken.Generate();
+        var token = LinkToken.Generate();
         var now = _time.GetUtcNow();
         var invitation = new Invitation
         {
             Id = Guid.NewGuid(),
-            TokenHash = InvitationToken.Hash(token),
+            TokenHash = LinkToken.Hash(token),
             CreatedByUserId = _annaId,
             CreatedAt = now,
             ExpiresAt = now + InvitationPolicy.Lifetime,

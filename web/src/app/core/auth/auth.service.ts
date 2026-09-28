@@ -9,6 +9,10 @@ import {
   LoginResult,
   RegisterRequest,
   RegisterResult,
+  ResetLink,
+  ResetLinkLookup,
+  ResetPasswordRequest,
+  ResetPasswordResult,
   SetupRequest,
   SetupResult,
 } from './auth.models';
@@ -73,6 +77,26 @@ export class AuthService {
     );
   }
 
+  lookupResetLink(token: string): Observable<ResetLinkLookup> {
+    return this.http.get<ResetLink>(resetUrl(token)).pipe(
+      map((link): ResetLinkLookup => ({ ok: true, link })),
+      catchError((error: HttpErrorResponse) =>
+        of<ResetLinkLookup>({ ok: false, code: toFieldErrors(error)['form'] ?? 'unknown' }),
+      ),
+    );
+  }
+
+  /** Sets a new password from a reset link; the user's other sessions end and this device is signed in. */
+  resetPassword(token: string, request: ResetPasswordRequest): Observable<ResetPasswordResult> {
+    return this.http.post<AuthState>(resetUrl(token), request).pipe(
+      tap((state) => this.state.set(state)),
+      map((): ResetPasswordResult => ({ ok: true })),
+      catchError((error: HttpErrorResponse) =>
+        of<ResetPasswordResult>({ ok: false, errors: toFieldErrors(error) }),
+      ),
+    );
+  }
+
   /** Ends this device's session only. */
   logout(): Observable<void> {
     return this.http.post<void>('/api/auth/logout', null).pipe(tap(() => this.signedOut()));
@@ -85,3 +109,4 @@ export class AuthService {
 }
 
 const invitationUrl = (token: string) => `/api/auth/invitations/${encodeURIComponent(token)}`;
+const resetUrl = (token: string) => `/api/auth/password-resets/${encodeURIComponent(token)}`;

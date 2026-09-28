@@ -1,0 +1,29 @@
+<h2 mat-dialog-title>{{ data.title }}</h2>
+<mat-dialog-content>
+  <p>{{ data.text }}</p>
+  <mat-form-field>
+    <mat-label>{{ 'shareLink.link' | transloco }}</mat-label>
+    <input
+      #link
+      matInput
+      type="url"
+      readonly
+      [value]="data.url"
+      (focus)="link.select()"
+      data-testid="link"
+    />
+  </mat-form-field>
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button mat-button type="button" (click)="close()" data-testid="close">
+    {{ 'shareLink.close' | transloco }}
+  </button>
+  @if (canShare) {
+    <button mat-button type="button" (click)="share()" data-testid="share">
+      {{ 'shareLink.share' | transloco }}
+    </button>
+  }
+  <button mat-flat-button type="button" (click)="copy()" data-testid="copy">
+    {{ 'shareLink.copy' | transloco }}
+  </button>
+</mat-dialog-actions>

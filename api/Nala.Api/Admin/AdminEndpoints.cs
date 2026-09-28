@@ -1,11 +1,15 @@
 using Nala.Api.Auth;
 using Nala.Core.Admin;
+using Nala.Core.Auth;
 using Nala.Core.Users;
 
 namespace Nala.Api.Admin;
 
 public sealed record AdminUserResponse(
     Guid Id, string Email, string DisplayName, bool IsAdmin, bool IsDisabled, DateTimeOffset? LastActivityAt);
+
+/// <summary>The web builds the link <c>/reset/{token}</c> from it.</summary>
+public sealed record ResetLinkResponse(string Token, DateTimeOffset ExpiresAt);
 
 /// <summary>The admin's view of the instance's users. Needs a session (fallback policy); the admin check is in Core.</summary>
 public static class AdminEndpoints
@@ -21,6 +25,7 @@ public static class AdminEndpoints
             SetDisabledAsync(id, disabled: true, admin, context, ct));
         users.MapPost("/{id:guid}/enable", (Guid id, AdminService admin, HttpContext context, CancellationToken ct) =>
             SetDisabledAsync(id, disabled: false, admin, context, ct));
+        users.MapPost("/{id:guid}/reset-link", CreateResetLinkAsync);
         return endpoints;
     }
 
@@ -39,12 +44,25 @@ public static class AdminEndpoints
         return result switch
         {
             SetDisabledResult.Updated updated => Results.Ok(ToResponse(updated.User)),
-            SetDisabledResult.NotFound => Results.Json(new ErrorResponse("userNotFound"), statusCode: StatusCodes.Status404NotFound),
+            SetDisabledResult.NotFound => UserNotFound(),
             SetDisabledResult.AdminCannotDisable =>
                 Results.Json(new ErrorResponse("adminCannotDisable"), statusCode: StatusCodes.Status403Forbidden),
             _ => AdminOnly(),
         };
     }
+
+    private static async Task<IResult> CreateResetLinkAsync(
+        Guid id, PasswordResetService resets, HttpContext context, CancellationToken cancellationToken) =>
+        await resets.CreateLinkAsync(AuthEndpoints.CurrentUser(context)!, id, cancellationToken) switch
+        {
+            CreateResetLinkResult.Created created => Results.Ok(new ResetLinkResponse(created.Token, created.ExpiresAt)),
+            CreateResetLinkResult.NotFound => UserNotFound(),
+            CreateResetLinkResult.AccountDisabled => AuthEndpoints.AccountDisabled(),
+            _ => AdminOnly(),
+        };
+
+    private static IResult UserNotFound() =>
+        Results.Json(new ErrorResponse("userNotFound"), statusCode: StatusCodes.Status404NotFound);
 
     private static IResult AdminOnly() =>
         Results.Json(new ErrorResponse("adminOnly"), statusCode: StatusCodes.Status403Forbidden);

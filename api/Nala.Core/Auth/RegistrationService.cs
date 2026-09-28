@@ -91,7 +91,7 @@ public class RegistrationService(IInvitationRepository invitations, IUserReposit
     {
         var invitation = string.IsNullOrEmpty(token)
             ? null
-            : await invitations.GetByTokenHashAsync(InvitationToken.Hash(token), cancellationToken);
+            : await invitations.GetByTokenHashAsync(LinkToken.Hash(token), cancellationToken);
         if (invitation is null)
         {
             return (null, InvitationProblem.Unknown);

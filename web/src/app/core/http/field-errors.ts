@@ -8,7 +8,7 @@ const FORM_ERRORS: Partial<Record<number, string>> = {
 };
 
 /**
- * Statuses whose body carries the form code: an unusable invitation link (404 unknown, 410 expired/used/revoked),
+ * Statuses whose body carries the form code: an unusable invitation or reset link (404 unknown, 410 expired/used/revoked),
  * a refused action (403, e.g. `adminCannotDelete`).
  */
 const CODE_IN_BODY = [403, 404, 410];

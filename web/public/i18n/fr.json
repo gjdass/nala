@@ -37,6 +37,13 @@
       "toLogin": "Aller à la connexion",
       "loading": "Vérification de l'invitation…"
     },
+    "reset": {
+      "title": "Choisir un nouveau mot de passe",
+      "subtitle": "Pour {{email}}",
+      "loading": "Vérification du lien…",
+      "submit": "Enregistrer le nouveau mot de passe",
+      "toLogin": "Aller à la connexion"
+    },
     "fields": {
       "email": "E-mail",
       "displayName": "Nom affiché",
@@ -80,7 +87,10 @@
         "accountDisabled": "Ce compte est désactivé. Demandez à l'administrateur de ce Nala.",
         "adminOnly": "Seul l'administrateur peut faire cela.",
         "adminCannotDisable": "Le compte administrateur ne peut pas être désactivé.",
-        "userNotFound": "Cet utilisateur n'existe plus."
+        "userNotFound": "Cet utilisateur n'existe plus.",
+        "resetLinkUnknown": "Ce lien de réinitialisation n'est pas valide. Demandez-en un nouveau à l'admin.",
+        "resetLinkExpired": "Ce lien de réinitialisation a expiré. Demandez-en un nouveau à l'admin.",
+        "resetLinkUsed": "Ce lien de réinitialisation a déjà été utilisé. Connectez-vous, ou demandez-en un nouveau à l'admin."
       }
     }
   },
@@ -126,11 +136,23 @@
       "cancel": "Annuler",
       "confirm": "Désactiver",
       "disabledDone": "Compte de {{name}} désactivé",
-      "enabledDone": "Compte de {{name}} réactivé"
+      "enabledDone": "Compte de {{name}} réactivé",
+      "actions": "Actions pour {{name}}",
+      "resetLink": "Lien de réinitialisation",
+      "resetLinkTitle": "Lien de réinitialisation pour {{name}}",
+      "resetLinkText": "Envoyez ce lien à {{name}} : il permet de choisir un nouveau mot de passe, une seule fois, jusqu'au {{date}}. Les liens précédents ne fonctionnent plus."
     },
     "logout": "Se déconnecter"
   },
   "members": {
     "admin": "Admin"
+  },
+  "shareLink": {
+    "link": "Lien",
+    "copy": "Copier",
+    "share": "Partager",
+    "close": "Fermer",
+    "copied": "Lien copié",
+    "copyFailed": "Impossible de copier le lien. Sélectionnez-le et copiez-le à la main."
   }
 }

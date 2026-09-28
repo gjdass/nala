@@ -16,7 +16,14 @@ public sealed record RegisterRequest(string? Email, string? DisplayName, string?
 
 public sealed record InvitationResponse(string InvitedBy, DateTimeOffset ExpiresAt);
 
-/// <summary>A failure not tied to a field (<c>invalidCredentials</c>, <c>tooManyAttempts</c>, <c>accountDisabled</c>, <c>invitation…</c>).</summary>
+public sealed record PasswordResetLookupResponse(string Email, DateTimeOffset ExpiresAt);
+
+public sealed record ResetPasswordRequest(string? Password);
+
+/// <summary>
+/// A failure not tied to a field (<c>invalidCredentials</c>, <c>tooManyAttempts</c>, <c>accountDisabled</c>, <c>invitation…</c>,
+/// <c>resetLink…</c>).
+/// </summary>
 public sealed record ErrorResponse(string Code);
 
 public sealed record CurrentUserResponse(Guid Id, string Email, string DisplayName, string Language, bool IsAdmin);
@@ -67,6 +74,7 @@ public static class AuthEndpoints
         services.AddScoped<LoginService>();
         services.AddScoped<SessionService>();
         services.AddScoped<RegistrationService>();
+        services.AddScoped<PasswordResetService>();
         return services;
     }
 
@@ -79,6 +87,8 @@ public static class AuthEndpoints
         auth.MapPost("/logout", LogoutAsync);
         auth.MapGet("/invitations/{token}", LookupInvitationAsync).AllowAnonymous();
         auth.MapPost("/invitations/{token}/register", RegisterAsync).AllowAnonymous();
+        auth.MapGet("/password-resets/{token}", LookupResetLinkAsync).AllowAnonymous();
+        auth.MapPost("/password-resets/{token}", ResetPasswordAsync).AllowAnonymous();
         return endpoints;
     }
 
@@ -121,7 +131,7 @@ public static class AuthEndpoints
             case LoginResult.Invalid invalid:
                 return ValidationProblem(invalid.Errors);
             case LoginResult.AccountDisabled:
-                return Results.Json(new ErrorResponse("accountDisabled"), statusCode: StatusCodes.Status403Forbidden);
+                return AccountDisabled();
             case LoginResult.LockedOut:
                 return Results.Json(new ErrorResponse("tooManyAttempts"), statusCode: StatusCodes.Status429TooManyRequests);
             default:
@@ -166,6 +176,49 @@ public static class AuthEndpoints
         Results.Json(
             new ErrorResponse($"invitation{problem}"),
             statusCode: problem == InvitationProblem.Unknown ? StatusCodes.Status404NotFound : StatusCodes.Status410Gone);
+
+    private static async Task<IResult> LookupResetLinkAsync(
+        string token, PasswordResetService resets, CancellationToken cancellationToken) =>
+        await resets.LookupAsync(token, cancellationToken) switch
+        {
+            ResetLinkLookup.Valid valid => Results.Ok(new PasswordResetLookupResponse(valid.Email, valid.ExpiresAt)),
+            ResetLinkLookup.Unavailable unavailable => Unavailable(unavailable.Problem),
+            _ => AccountDisabled(),
+        };
+
+    /// <summary>Sets the new password, ends every session of the user, then signs them in on this device.</summary>
+    private static async Task<IResult> ResetPasswordAsync(
+        string token,
+        ResetPasswordRequest request,
+        PasswordResetService resets,
+        SessionService sessions,
+        HttpContext context,
+        CancellationToken cancellationToken)
+    {
+        var result = await resets.ResetAsync(new ResetPasswordCommand(token, request.Password), cancellationToken);
+
+        switch (result)
+        {
+            case ResetPasswordResult.Reset reset:
+                await SignInAsync(context, sessions, reset.User, cancellationToken);
+                return Results.Ok(new AuthStateResponse(false, ToResponse(reset.User)));
+            case ResetPasswordResult.Invalid invalid:
+                return ValidationProblem(invalid.Errors);
+            case ResetPasswordResult.Unavailable unavailable:
+                return Unavailable(unavailable.Problem);
+            default:
+                return AccountDisabled();
+        }
+    }
+
+    /// <summary>404 for an unknown link, 410 for one that existed but can no longer be used; the code tells why.</summary>
+    private static IResult Unavailable(ResetLinkProblem problem) =>
+        Results.Json(
+            new ErrorResponse($"resetLink{problem}"),
+            statusCode: problem == ResetLinkProblem.Unknown ? StatusCodes.Status404NotFound : StatusCodes.Status410Gone);
+
+    internal static IResult AccountDisabled() =>
+        Results.Json(new ErrorResponse("accountDisabled"), statusCode: StatusCodes.Status403Forbidden);
 
     /// <summary>Ends this device's session only.</summary>
     private static async Task<IResult> LogoutAsync(

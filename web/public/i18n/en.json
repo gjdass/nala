@@ -37,6 +37,13 @@
       "toLogin": "Go to login",
       "loading": "Checking your invitation…"
     },
+    "reset": {
+      "title": "Set a new password",
+      "subtitle": "For {{email}}",
+      "loading": "Checking the link…",
+      "submit": "Save the new password",
+      "toLogin": "Go to login"
+    },
     "fields": {
       "email": "Email",
       "displayName": "Display name",
@@ -80,7 +87,10 @@
         "accountDisabled": "This account is disabled. Ask the admin of this Nala.",
         "adminOnly": "Only the admin can do this.",
         "adminCannotDisable": "The admin account can't be disabled.",
-        "userNotFound": "This user no longer exists."
+        "userNotFound": "This user no longer exists.",
+        "resetLinkUnknown": "This reset link isn't valid. Ask the admin for a new one.",
+        "resetLinkExpired": "This reset link has expired. Ask the admin for a new one.",
+        "resetLinkUsed": "This reset link has already been used. Log in, or ask the admin for a new one."
       }
     }
   },
@@ -126,11 +136,23 @@
       "cancel": "Cancel",
       "confirm": "Disable",
       "disabledDone": "{{name}}'s account was disabled",
-      "enabledDone": "{{name}}'s account was enabled"
+      "enabledDone": "{{name}}'s account was enabled",
+      "actions": "Actions for {{name}}",
+      "resetLink": "Reset link",
+      "resetLinkTitle": "Reset link for {{name}}",
+      "resetLinkText": "Send this link to {{name}}: it lets them set a new password, once, until {{date}}. Any earlier link stops working."
     },
     "logout": "Log out"
   },
   "members": {
     "admin": "Admin"
+  },
+  "shareLink": {
+    "link": "Link",
+    "copy": "Copy",
+    "share": "Share",
+    "close": "Close",
+    "copied": "Link copied",
+    "copyFailed": "Couldn't copy the link. Select it and copy it by hand."
   }
 }

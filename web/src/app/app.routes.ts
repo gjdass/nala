@@ -19,6 +19,14 @@ export const routes: Routes = [
       import('./features/auth/register/register.page').then((m) => m.RegisterPage),
   },
   {
+    path: 'reset/:token',
+    canActivate: [signedOutGuard],
+    loadComponent: () =>
+      import('./features/auth/reset-password/reset-password.page').then(
+        (m) => m.ResetPasswordPage,
+      ),
+  },
+  {
     path: 'settings',
     canActivate: [authGuard],
     loadComponent: () => import('./features/settings/settings.page').then((m) => m.SettingsPage),

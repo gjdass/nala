@@ -2,3 +2,21 @@
 @use '@fontsource/roboto/400' as roboto-400;
 @use '@fontsource/roboto/500' as roboto-500;
 @use '@fontsource/roboto/700' as roboto-700;
+
+// Material Symbols (mat-icon ligatures), bundled the same way. Only the default weight is loaded.
+@use '@fontsource/material-symbols-outlined/400' as material-symbols-400;
+
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+}

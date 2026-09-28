@@ -16,17 +16,38 @@
             {{ 'settings.admin.disabled' | transloco }} ·
           }
           @if (user.lastActivityAt; as at) {
-            {{ 'settings.admin.lastActive' | transloco: { date: lastActive(at) } }}
+            {{ 'settings.admin.lastActive' | transloco: { date: dateTime(at) } }}
           } @else {
             {{ 'settings.admin.noActivity' | transloco }}
           }
         </span>
         @if (!user.isAdmin) {
-          <button memberAction mat-button type="button" (click)="toggle(user)">
-            {{ (user.isDisabled ? 'settings.admin.enable' : 'settings.admin.disable') | transloco }}
+          <button
+            memberAction
+            mat-icon-button
+            type="button"
+            [matMenuTriggerFor]="actions"
+            [matMenuTriggerData]="{ user }"
+            [attr.aria-label]="'settings.admin.actions' | transloco: { name: user.displayName }"
+            data-testid="actions"
+          >
+            <mat-icon>more_vert</mat-icon>
           </button>
         }
       </nala-member-list-item>
     }
   </mat-list>
 }
+
+<mat-menu #actions="matMenu" xPosition="before">
+  <ng-template matMenuContent let-user="user">
+    @if (!user.isDisabled) {
+      <button mat-menu-item type="button" (click)="resetLink(user)" data-testid="reset-link">
+        {{ 'settings.admin.resetLink' | transloco }}
+      </button>
+    }
+    <button mat-menu-item type="button" (click)="toggle(user)" data-testid="toggle">
+      {{ (user.isDisabled ? 'settings.admin.enable' : 'settings.admin.disable') | transloco }}
+    </button>
+  </ng-template>
+</mat-menu>

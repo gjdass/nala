@@ -58,6 +58,14 @@ describe('app routes', () => {
     expect(await navigate('/invite/a-b_c', { setupRequired: true, user: null })).toBe('/setup');
   });
 
+  it('a signed-out visitor can open a password reset link', async () => {
+    expect(await navigate('/reset/a-b_c', signedOut)).toBe('/reset/a-b_c');
+  });
+
+  it('a signed-in user opening a password reset link lands on the app', async () => {
+    expect(await navigate('/reset/a-b_c', signedIn)).toBe('/');
+  });
+
   it('a signed-in user can open the settings', async () => {
     expect(await navigate('/settings', signedIn)).toBe('/settings');
   });
