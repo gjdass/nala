@@ -57,6 +57,18 @@ Each item becomes at least one test, written failing first.
 - [ ] Every baby and activity endpoint only works for authenticated, enabled members; there is no per-baby access restriction.
 - [ ] Admin-only actions (delete baby, remove member, plus those in 02) are enforced by the API, not only hidden in the UI.
 
+## Build slices
+
+Each slice goes red → green → commit on `master`, in this order.
+
+- [ ] **Slice 1 — Add a first baby.** `Baby` entity + migration (name, birth date, sex, optional birth weight / length / head circumference, created at/by, updated at), Core validation (name 1–50, birth date not in the future, sex girl / boy / unspecified defaulting to unspecified, measurement bounds), `POST /api/babies`, `GET /api/babies` (oldest first), session-only via the fallback policy (disabled members refused). Web: `BabyService`, shared `nala-baby-form`, home empty state that opens the form; while no baby exists home shows only the empty state. Covers: First baby, baby fields, measurement bounds, "any member can add", oldest-first listing, the baby-endpoint part of Authorization.
+- [ ] **Slice 2 — Babies in settings, edit, age.** `PATCH /api/babies/{id}` (any member, any field, 404 unknown). Age formatting (EN/FR): days until 2 weeks, weeks + days until 3 months, then months + days. Web: Babies settings section (name + age), Add and Edit through `nala-baby-form`. Covers: "any member can edit any field", the age display.
+- [ ] **Slice 3 — Selected baby and switcher.** Selection per device in `localStorage` (`nala.baby`), restored at start, falling back to the first baby when missing. Minimal top app bar (`mat-toolbar`) with the selected baby's name + age, a switcher when there is more than one baby, and the settings button; 04 extends this bar. Covers: both Baby switcher criteria.
+- [ ] **Slice 4 — Delete a baby (admin only).** `DELETE /api/babies/{id}`: 204 for the admin, 403 `{ code: "adminOnly" }` otherwise (checked in Core), 404 unknown. FK cascade ready for activity tables (each activity spec adds its own cascade test). Web: Delete shown to the admin only, confirmation requiring the baby's name, selection falls back to the first baby. Covers: both delete criteria, the delete-baby part of admin-only Authorization.
+- [ ] **Slice 5 — Invitation links: create, list, revoke.** `POST /api/invitations` → `{ token, expiresAt }` (7 days), `GET /api/invitations` (pending only, with creator and expiry), `POST /api/invitations/{id}/revoke` (any member). Web: Members & invitations section, Invite → `nala-share-link-dialog`, pending list with a shared `nala-invitation-list-item` and Revoke. Covers: invitation criteria 1 and 3.
+- [ ] **Slice 6 — Invitation by email.** With SMTP configured, the invite dialog takes an email address; the API creates the invitation and queues the email (link `{NALA_PUBLIC_URL}/invite/{token}`) in the user's language through `IEmailOutbox`; refused when SMTP is off; field hidden without `smtpEnabled`. Covers: invitation criterion 2.
+- [ ] **Slice 7 — Members list and remove.** `GET /api/members` (any member; enabled, non-deleted; display name, email, admin), `POST /api/members/{id}/remove` (admin only, reuses `AdminService` disable: 403 `adminOnly`, 403 `adminCannotDisable` for self). Web: members list with `nala-member-list-item`, Remove (confirmation) for the admin only. Covers: all Members criteria, the rest of Authorization.
+
 ## Data
 
 - **Baby:** id, name, birth date (date only, no time), sex, birth weight g (nullable), birth length cm (nullable, one decimal), birth head circumference cm (nullable, one decimal), created at, created by user, updated at.
