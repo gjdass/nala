@@ -164,5 +164,69 @@
     "close": "Close",
     "copied": "Link copied",
     "copyFailed": "Couldn't copy the link. Select it and copy it by hand."
+  },
+  "sheet": {
+    "close": "Close",
+    "save": "Save"
+  },
+  "babies": {
+    "loadError": "Couldn't load your babies. Check your connection and try again.",
+    "empty": {
+      "title": "Add your baby",
+      "text": "Nala logs your baby's feedings, sleep, diapers and growth. Start by adding your baby.",
+      "add": "Add a baby"
+    },
+    "sheet": {
+      "addTitle": "Add a baby"
+    },
+    "fields": {
+      "name": "Name",
+      "birthDate": "Birth date",
+      "sex": "Sex",
+      "birthWeightG": "Birth weight",
+      "birthLengthCm": "Birth length",
+      "birthHeadCircumferenceCm": "Birth head circumference"
+    },
+    "optional": "Optional",
+    "sex": {
+      "girl": "Girl",
+      "boy": "Boy",
+      "unspecified": "Unspecified"
+    },
+    "units": {
+      "g": "g",
+      "cm": "cm"
+    },
+    "errors": {
+      "name": {
+        "required": "Enter a name",
+        "tooLong": "50 characters maximum"
+      },
+      "birthDate": {
+        "required": "Choose the birth date",
+        "inFuture": "The birth date can't be in the future"
+      },
+      "sex": {
+        "invalid": "Choose girl, boy or unspecified"
+      },
+      "birthWeightG": {
+        "outOfRange": "Between 300 and 7000 g",
+        "invalid": "Whole grams only"
+      },
+      "birthLengthCm": {
+        "outOfRange": "Between 20 and 70 cm",
+        "invalid": "One decimal at most"
+      },
+      "birthHeadCircumferenceCm": {
+        "outOfRange": "Between 15 and 50 cm",
+        "invalid": "One decimal at most"
+      }
+    },
+    "discard": {
+      "title": "Discard this baby?",
+      "text": "What you entered will be lost.",
+      "confirm": "Discard",
+      "cancel": "Keep editing"
+    }
   }
 }

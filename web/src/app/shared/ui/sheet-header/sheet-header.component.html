@@ -1,0 +1,21 @@
+<mat-toolbar>
+  <button
+    mat-icon-button
+    type="button"
+    [attr.aria-label]="'sheet.close' | transloco"
+    (click)="closed.emit()"
+    data-testid="sheet-close"
+  >
+    <mat-icon>close</mat-icon>
+  </button>
+  <h2 class="title" data-testid="sheet-title">{{ title() }}</h2>
+  <button
+    mat-button
+    type="button"
+    [disabled]="saveDisabled()"
+    (click)="saved.emit()"
+    data-testid="sheet-save"
+  >
+    {{ 'sheet.save' | transloco }}
+  </button>
+</mat-toolbar>

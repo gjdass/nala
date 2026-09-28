@@ -164,5 +164,69 @@
     "close": "Fermer",
     "copied": "Lien copié",
     "copyFailed": "Impossible de copier le lien. Sélectionnez-le et copiez-le à la main."
+  },
+  "sheet": {
+    "close": "Fermer",
+    "save": "Enregistrer"
+  },
+  "babies": {
+    "loadError": "Impossible de charger vos bébés. Vérifiez votre connexion et réessayez.",
+    "empty": {
+      "title": "Ajoutez votre bébé",
+      "text": "Nala note les repas, le sommeil, les couches et la croissance de votre bébé. Commencez par ajouter votre bébé.",
+      "add": "Ajouter un bébé"
+    },
+    "sheet": {
+      "addTitle": "Ajouter un bébé"
+    },
+    "fields": {
+      "name": "Prénom",
+      "birthDate": "Date de naissance",
+      "sex": "Sexe",
+      "birthWeightG": "Poids de naissance",
+      "birthLengthCm": "Taille de naissance",
+      "birthHeadCircumferenceCm": "Périmètre crânien de naissance"
+    },
+    "optional": "Facultatif",
+    "sex": {
+      "girl": "Fille",
+      "boy": "Garçon",
+      "unspecified": "Non précisé"
+    },
+    "units": {
+      "g": "g",
+      "cm": "cm"
+    },
+    "errors": {
+      "name": {
+        "required": "Saisissez un prénom",
+        "tooLong": "50 caractères maximum"
+      },
+      "birthDate": {
+        "required": "Choisissez la date de naissance",
+        "inFuture": "La date de naissance ne peut pas être dans le futur"
+      },
+      "sex": {
+        "invalid": "Choisissez fille, garçon ou non précisé"
+      },
+      "birthWeightG": {
+        "outOfRange": "Entre 300 et 7000 g",
+        "invalid": "Grammes entiers uniquement"
+      },
+      "birthLengthCm": {
+        "outOfRange": "Entre 20 et 70 cm",
+        "invalid": "Une décimale au maximum"
+      },
+      "birthHeadCircumferenceCm": {
+        "outOfRange": "Entre 15 et 50 cm",
+        "invalid": "Une décimale au maximum"
+      }
+    },
+    "discard": {
+      "title": "Abandonner ce bébé ?",
+      "text": "Ce que vous avez saisi sera perdu.",
+      "confirm": "Abandonner",
+      "cancel": "Continuer"
+    }
   }
 }

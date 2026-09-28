@@ -1,0 +1,9 @@
+:host {
+  display: block;
+}
+
+.title {
+  flex: 1;
+  margin: 0 0 0 8px;
+  font: var(--mat-sys-title-large);
+}

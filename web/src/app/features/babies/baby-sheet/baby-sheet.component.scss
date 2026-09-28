@@ -1,0 +1,12 @@
+:host {
+  display: block;
+}
+
+.body {
+  padding: 16px;
+}
+
+.form-error {
+  margin: 0 0 16px;
+  color: var(--mat-sys-error);
+}

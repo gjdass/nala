@@ -1,15 +1,34 @@
 <main>
-  <mat-card appearance="outlined">
-    <mat-card-header>
-      <mat-card-title>{{ 'app.title' | transloco }}</mat-card-title>
-    </mat-card-header>
-    <mat-card-content>
-      <p class="status">
-        <span data-testid="api-status-label">{{ 'home.apiStatus' | transloco }}</span>
-        <span data-testid="health-status">{{ 'health.' + status() | transloco }}</span>
-      </p>
-    </mat-card-content>
-  </mat-card>
+  @if (loadError()) {
+    <p class="error" role="alert" data-testid="babies-error">
+      {{ 'babies.loadError' | transloco }}
+    </p>
+  } @else if (babies(); as babies) {
+    @if (babies.length === 0) {
+      <nala-empty-state
+        icon="child_care"
+        [title]="'babies.empty.title' | transloco"
+        [text]="'babies.empty.text' | transloco"
+        data-testid="empty-state"
+      >
+        <button mat-flat-button type="button" (click)="addBaby()" data-testid="add-baby">
+          {{ 'babies.empty.add' | transloco }}
+        </button>
+      </nala-empty-state>
+    } @else {
+      <mat-card appearance="outlined" data-testid="home-content">
+        <mat-card-header>
+          <mat-card-title>{{ 'app.title' | transloco }}</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <p class="status">
+            <span data-testid="api-status-label">{{ 'home.apiStatus' | transloco }}</span>
+            <span data-testid="health-status">{{ 'health.' + status() | transloco }}</span>
+          </p>
+        </mat-card-content>
+      </mat-card>
+    }
+  }
 
   <a mat-button routerLink="/settings" data-testid="settings">{{ 'settings.title' | transloco }}</a>
 </main>

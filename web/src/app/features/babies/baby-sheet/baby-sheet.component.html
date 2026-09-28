@@ -1,0 +1,14 @@
+<nala-sheet-header
+  [title]="'babies.sheet.addTitle' | transloco"
+  [saveDisabled]="invalid() || saving()"
+  (closed)="close()"
+  (saved)="save()"
+/>
+<div class="body">
+  @if (formError(); as code) {
+    <p class="form-error" role="alert" data-testid="form-error">
+      {{ 'auth.errors.form.' + code | transloco }}
+    </p>
+  }
+  <nala-baby-form [form]="form" />
+</div>

@@ -1,0 +1,64 @@
+<mat-form-field>
+  <mat-label>{{ 'babies.fields.name' | transloco }}</mat-label>
+  <input
+    matInput
+    type="text"
+    [formControl]="form().controls.name"
+    autocomplete="off"
+    data-testid="name"
+  />
+  @if (errorOf(form().controls.name); as code) {
+    <mat-error data-testid="error-name">{{ 'babies.errors.name.' + code | transloco }}</mat-error>
+  }
+</mat-form-field>
+
+<mat-form-field>
+  <mat-label>{{ 'babies.fields.birthDate' | transloco }}</mat-label>
+  <input
+    matInput
+    readonly
+    [matDatepicker]="picker"
+    [max]="today"
+    [formControl]="form().controls.birthDate"
+    (click)="picker.open()"
+    data-testid="birthDate"
+  />
+  <mat-datepicker-toggle matIconSuffix [for]="picker" />
+  <mat-datepicker #picker />
+  @if (errorOf(form().controls.birthDate); as code) {
+    <mat-error data-testid="error-birthDate">{{
+      'babies.errors.birthDate.' + code | transloco
+    }}</mat-error>
+  }
+</mat-form-field>
+
+<div class="choice">
+  <span id="baby-sex" class="label">{{ 'babies.fields.sex' | transloco }}</span>
+  <mat-button-toggle-group aria-labelledby="baby-sex" [formControl]="form().controls.sex">
+    @for (sex of sexes; track sex) {
+      <mat-button-toggle [value]="sex" [attr.data-testid]="'sex-' + sex">
+        {{ 'babies.sex.' + sex | transloco }}
+      </mat-button-toggle>
+    }
+  </mat-button-toggle-group>
+</div>
+
+@for (m of measurements; track m.field) {
+  <mat-form-field>
+    <mat-label>{{ 'babies.fields.' + m.field | transloco }}</mat-label>
+    <input
+      matInput
+      type="number"
+      inputmode="decimal"
+      [formControl]="form().controls[m.field]"
+      [attr.data-testid]="m.field"
+    />
+    <span matTextSuffix>{{ 'babies.units.' + m.unit | transloco }}</span>
+    <mat-hint>{{ 'babies.optional' | transloco }}</mat-hint>
+    @if (errorOf(form().controls[m.field]); as code) {
+      <mat-error [attr.data-testid]="'error-' + m.field">{{
+        'babies.errors.' + m.field + '.' + code | transloco
+      }}</mat-error>
+    }
+  </mat-form-field>
+}

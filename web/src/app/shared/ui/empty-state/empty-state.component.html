@@ -1,0 +1,6 @@
+<mat-icon class="icon" aria-hidden="true" data-testid="empty-icon">{{ icon() }}</mat-icon>
+<h2 class="title" data-testid="empty-title">{{ title() }}</h2>
+@if (text()) {
+  <p class="text" data-testid="empty-text">{{ text() }}</p>
+}
+<ng-content />
