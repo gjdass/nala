@@ -66,6 +66,39 @@ describe('docker-compose.yml', () => {
     );
   });
 
+  it('api gets the public URL and SMTP settings from the environment', () => {
+    const env = envExample();
+    const variables = ['NALA_PUBLIC_URL', 'SMTP_HOST', 'SMTP_PORT', 'SMTP_USERNAME', 'SMTP_PASSWORD', 'SMTP_FROM', 'SMTP_SECURITY'];
+    for (const variable of variables) {
+      assert.ok(variable in env, `.env.example declares ${variable}`);
+    }
+    const { environment } = composeConfig().services.api;
+    assert.deepEqual(
+      {
+        Nala__PublicUrl: environment.Nala__PublicUrl,
+        Smtp__Host: environment.Smtp__Host,
+        Smtp__Port: environment.Smtp__Port,
+        Smtp__Username: environment.Smtp__Username,
+        Smtp__Password: environment.Smtp__Password,
+        Smtp__From: environment.Smtp__From,
+        Smtp__Security: environment.Smtp__Security,
+      },
+      {
+        Nala__PublicUrl: env.NALA_PUBLIC_URL,
+        Smtp__Host: env.SMTP_HOST,
+        Smtp__Port: env.SMTP_PORT,
+        Smtp__Username: env.SMTP_USERNAME,
+        Smtp__Password: env.SMTP_PASSWORD,
+        Smtp__From: env.SMTP_FROM,
+        Smtp__Security: env.SMTP_SECURITY,
+      },
+    );
+  });
+
+  it('email reset stays off by default: SMTP_HOST is empty in .env.example', () => {
+    assert.equal(envExample().SMTP_HOST, '');
+  });
+
   it('web is the only service publishing a port', () => {
     const { services } = composeConfig();
     assert.equal(services.db.ports, undefined);

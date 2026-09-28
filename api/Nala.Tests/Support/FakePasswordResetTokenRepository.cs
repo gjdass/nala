@@ -30,4 +30,7 @@ public class FakePasswordResetTokenRepository : IPasswordResetTokenRepository
         token.UsedAt = now;
         return Task.FromResult(true);
     }
+
+    public Task<DateTimeOffset?> LatestCreatedAtAsync(Guid userId, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Tokens.Where(t => t.UserId == userId).Max(t => (DateTimeOffset?)t.CreatedAt));
 }

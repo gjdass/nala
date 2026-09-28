@@ -9,4 +9,7 @@ public interface IPasswordResetTokenRepository
 
     /// <summary>Marks the token used at <paramref name="now"/> if it is still usable then; false when it is not.</summary>
     Task<bool> ConsumeAsync(Guid id, DateTimeOffset now, CancellationToken cancellationToken = default);
+
+    /// <summary>When the user's newest token (used or not) was created; null when they have none.</summary>
+    Task<DateTimeOffset?> LatestCreatedAtAsync(Guid userId, CancellationToken cancellationToken = default);
 }

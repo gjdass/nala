@@ -1,8 +1,10 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
-import { Observable, catchError, map, of, tap } from 'rxjs';
+import { Observable, catchError, finalize, map, of, shareReplay, tap } from 'rxjs';
 import {
   AuthState,
+  ForgotPasswordRequest,
+  ForgotPasswordResult,
   Invitation,
   InvitationLookup,
   LoginRequest,
@@ -25,12 +27,20 @@ export class AuthService {
   /** Last known auth state; null until first loaded. */
   readonly state = signal<AuthState | null>(null);
 
+  /** The request in flight, shared by concurrent callers (e.g. several guards on one route). */
+  private loading: Observable<AuthState> | null = null;
+
   load(): Observable<AuthState> {
     const known = this.state();
     if (known) {
       return of(known);
     }
-    return this.http.get<AuthState>('/api/auth/state').pipe(tap((state) => this.state.set(state)));
+    this.loading ??= this.http.get<AuthState>('/api/auth/state').pipe(
+      tap((state) => this.state.set(state)),
+      finalize(() => (this.loading = null)),
+      shareReplay(1),
+    );
+    return this.loading;
   }
 
   setup(request: SetupRequest): Observable<SetupResult> {
@@ -39,7 +49,7 @@ export class AuthService {
       map((): SetupResult => ({ ok: true })),
       catchError((error: HttpErrorResponse) => {
         if (error.status === 403) {
-          this.state.set({ setupRequired: false, user: null });
+          this.signedOut();
           return of<SetupResult>({ ok: false, errors: { form: 'alreadySetUp' } });
         }
         return of<SetupResult>({ ok: false, errors: toFieldErrors(error) });
@@ -77,6 +87,16 @@ export class AuthService {
     );
   }
 
+  /** "Forgot password": ok whether or not the email has an account; the API emails the link in the background. */
+  requestPasswordReset(request: ForgotPasswordRequest): Observable<ForgotPasswordResult> {
+    return this.http.post<void>('/api/auth/password-resets', request).pipe(
+      map((): ForgotPasswordResult => ({ ok: true })),
+      catchError((error: HttpErrorResponse) =>
+        of<ForgotPasswordResult>({ ok: false, errors: toFieldErrors(error) }),
+      ),
+    );
+  }
+
   lookupResetLink(token: string): Observable<ResetLinkLookup> {
     return this.http.get<ResetLink>(resetUrl(token)).pipe(
       map((link): ResetLinkLookup => ({ ok: true, link })),
@@ -102,9 +122,13 @@ export class AuthService {
     return this.http.post<void>('/api/auth/logout', null).pipe(tap(() => this.signedOut()));
   }
 
-  /** The session is gone (logout or expiry); the instance itself stays set up. */
+  /** The session is gone (logout or expiry); the instance itself stays set up and keeps its email setting. */
   signedOut(): void {
-    this.state.set({ setupRequired: false, user: null });
+    this.state.set({
+      setupRequired: false,
+      user: null,
+      smtpEnabled: this.state()?.smtpEnabled ?? false,
+    });
   }
 }
 

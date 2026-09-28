@@ -28,7 +28,16 @@
     "login": {
       "title": "Log in to Nala",
       "subtitle": "Welcome back.",
-      "submit": "Log in"
+      "submit": "Log in",
+      "forgot": "Forgot password?",
+      "askAdmin": "Forgot your password? Ask your family's admin for a reset link."
+    },
+    "forgot": {
+      "title": "Reset your password",
+      "subtitle": "Enter your account's email. We'll send it a link to set a new password.",
+      "submit": "Send the link",
+      "toLogin": "Back to login",
+      "sent": "If an account exists for {{email}}, we've sent it a link to set a new password. It works for 1 hour."
     },
     "register": {
       "title": "Join Nala",
@@ -90,7 +99,8 @@
         "userNotFound": "This user no longer exists.",
         "resetLinkUnknown": "This reset link isn't valid. Ask the admin for a new one.",
         "resetLinkExpired": "This reset link has expired. Ask the admin for a new one.",
-        "resetLinkUsed": "This reset link has already been used. Log in, or ask the admin for a new one."
+        "resetLinkUsed": "This reset link has already been used. Log in, or ask the admin for a new one.",
+        "emailResetDisabled": "This Nala can't send emails. Ask your family's admin for a reset link."
       }
     }
   },

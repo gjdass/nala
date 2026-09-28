@@ -71,7 +71,7 @@ public class LoginEndpointTests
         Assert.That(cookie, Does.Contain("httponly").And.Contain("secure").And.Contain("samesite=strict").And.Contain("expires="));
 
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
-        Assert.That(body.EnumerateObject().Select(p => p.Name), Is.EquivalentTo(new[] { "setupRequired", "user" }));
+        Assert.That(body.EnumerateObject().Select(p => p.Name), Is.EquivalentTo(new[] { "setupRequired", "user", "smtpEnabled" }));
         Assert.That(body.GetProperty("user").GetProperty("email").GetString(), Is.EqualTo("anna@mail.com"));
         Assert.That((await UserAsync(_client)).GetProperty("displayName").GetString(), Is.EqualTo("Anna"));
     }

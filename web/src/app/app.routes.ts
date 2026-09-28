@@ -1,5 +1,10 @@
 import { Routes } from '@angular/router';
-import { authGuard, signedOutGuard, setupOnlyGuard } from './core/auth/auth.guards';
+import {
+  authGuard,
+  emailResetGuard,
+  signedOutGuard,
+  setupOnlyGuard,
+} from './core/auth/auth.guards';
 
 export const routes: Routes = [
   {
@@ -17,6 +22,14 @@ export const routes: Routes = [
     canActivate: [signedOutGuard],
     loadComponent: () =>
       import('./features/auth/register/register.page').then((m) => m.RegisterPage),
+  },
+  {
+    path: 'forgot',
+    canActivate: [signedOutGuard, emailResetGuard],
+    loadComponent: () =>
+      import('./features/auth/forgot-password/forgot-password.page').then(
+        (m) => m.ForgotPasswordPage,
+      ),
   },
   {
     path: 'reset/:token',

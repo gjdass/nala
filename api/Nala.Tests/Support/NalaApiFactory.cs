@@ -25,6 +25,12 @@ public class NalaApiFactory(string? connectionString, string environment = "Deve
     /// <summary>Replaces the system clock, so tests can move time forward.</summary>
     public TimeProvider? Time { get; init; }
 
+    /// <summary>Configuration keys set on the host, as the matching environment variables would (<c>Smtp:Host</c> = <c>Smtp__Host</c>).</summary>
+    public IReadOnlyDictionary<string, string?> Settings { get; init; } = new Dictionary<string, string?>();
+
+    /// <summary>Replaces services after the app's own registrations.</summary>
+    public Action<IServiceCollection>? ServiceOverrides { get; init; }
+
     /// <summary>Starts the host with the environment variable set only for the duration of startup.</summary>
     public HttpClient Start(Uri? baseAddress = null)
     {
@@ -49,9 +55,19 @@ public class NalaApiFactory(string? connectionString, string environment = "Deve
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment(environment);
+        foreach (var (key, value) in Settings)
+        {
+            builder.UseSetting(key, value);
+        }
+
         if (Time is not null)
         {
             builder.ConfigureTestServices(services => services.AddSingleton(Time));
+        }
+
+        if (ServiceOverrides is not null)
+        {
+            builder.ConfigureTestServices(ServiceOverrides);
         }
 
         builder.ConfigureLogging(logging =>

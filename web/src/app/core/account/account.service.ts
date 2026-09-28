@@ -20,7 +20,14 @@ export class AccountService {
   /** Saves the given fields; the returned user replaces the signed-in one. */
   update(request: UpdateAccountRequest): Observable<AccountResult> {
     return this.http.patch<CurrentUser>('/api/account', request).pipe(
-      tap((user) => this.auth.state.update((state) => ({ setupRequired: false, ...state, user }))),
+      tap((user) =>
+        this.auth.state.update((state) => ({
+          setupRequired: false,
+          smtpEnabled: false,
+          ...state,
+          user,
+        })),
+      ),
       map((): AccountResult => ({ ok: true })),
       catchError(failed),
     );

@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
+using Nala.Api.Email;
 using Nala.Core.Auth;
 using Nala.Core.Invitations;
 using Nala.Core.Users;
@@ -16,19 +17,22 @@ public sealed record RegisterRequest(string? Email, string? DisplayName, string?
 
 public sealed record InvitationResponse(string InvitedBy, DateTimeOffset ExpiresAt);
 
+public sealed record ForgotPasswordRequest(string? Email);
+
 public sealed record PasswordResetLookupResponse(string Email, DateTimeOffset ExpiresAt);
 
 public sealed record ResetPasswordRequest(string? Password);
 
 /// <summary>
 /// A failure not tied to a field (<c>invalidCredentials</c>, <c>tooManyAttempts</c>, <c>accountDisabled</c>, <c>invitation…</c>,
-/// <c>resetLink…</c>).
+/// <c>resetLink…</c>, <c>emailResetDisabled</c>).
 /// </summary>
 public sealed record ErrorResponse(string Code);
 
 public sealed record CurrentUserResponse(Guid Id, string Email, string DisplayName, string Language, bool IsAdmin);
 
-public sealed record AuthStateResponse(bool SetupRequired, CurrentUserResponse? User);
+/// <summary><c>SmtpEnabled</c>: "Forgot password" can email a reset link.</summary>
+public sealed record AuthStateResponse(bool SetupRequired, CurrentUserResponse? User, bool SmtpEnabled);
 
 public static class AuthEndpoints
 {
@@ -87,18 +91,24 @@ public static class AuthEndpoints
         auth.MapPost("/logout", LogoutAsync);
         auth.MapGet("/invitations/{token}", LookupInvitationAsync).AllowAnonymous();
         auth.MapPost("/invitations/{token}/register", RegisterAsync).AllowAnonymous();
+        auth.MapPost("/password-resets", RequestPasswordResetAsync).AllowAnonymous();
         auth.MapGet("/password-resets/{token}", LookupResetLinkAsync).AllowAnonymous();
         auth.MapPost("/password-resets/{token}", ResetPasswordAsync).AllowAnonymous();
         return endpoints;
     }
 
     private static async Task<AuthStateResponse> GetState(
-        HttpContext context, IUserRepository users, CancellationToken cancellationToken)
+        HttpContext context, IUserRepository users, EmailOptions email, CancellationToken cancellationToken)
     {
         var user = CurrentUser(context);
         var setupRequired = user is null && !await users.AnyAsync(cancellationToken);
-        return new AuthStateResponse(setupRequired, user is null ? null : ToResponse(user));
+        return new AuthStateResponse(setupRequired, user is null ? null : ToResponse(user), email.Enabled);
     }
+
+    /// <summary>The state after signing <paramref name="user"/> in.</summary>
+    private static IResult SignedIn(HttpContext context, User user) =>
+        Results.Ok(new AuthStateResponse(
+            false, ToResponse(user), context.RequestServices.GetRequiredService<EmailOptions>().Enabled));
 
     private static async Task<IResult> SetupAsync(
         SetupRequest request, SetupService setup, SessionService sessions, HttpContext context, CancellationToken cancellationToken)
@@ -110,7 +120,7 @@ public static class AuthEndpoints
         {
             case SetupResult.Created created:
                 await SignInAsync(context, sessions, created.User, cancellationToken);
-                return Results.Ok(new AuthStateResponse(false, ToResponse(created.User)));
+                return SignedIn(context, created.User);
             case SetupResult.Invalid invalid:
                 return ValidationProblem(invalid.Errors);
             default:
@@ -127,7 +137,7 @@ public static class AuthEndpoints
         {
             case LoginResult.Success success:
                 await SignInAsync(context, sessions, success.User, cancellationToken);
-                return Results.Ok(new AuthStateResponse(false, ToResponse(success.User)));
+                return SignedIn(context, success.User);
             case LoginResult.Invalid invalid:
                 return ValidationProblem(invalid.Errors);
             case LoginResult.AccountDisabled:
@@ -163,7 +173,7 @@ public static class AuthEndpoints
         {
             case RegisterResult.Registered registered:
                 await SignInAsync(context, sessions, registered.User, cancellationToken);
-                return Results.Ok(new AuthStateResponse(false, ToResponse(registered.User)));
+                return SignedIn(context, registered.User);
             case RegisterResult.Invalid invalid:
                 return ValidationProblem(invalid.Errors);
             default:
@@ -176,6 +186,22 @@ public static class AuthEndpoints
         Results.Json(
             new ErrorResponse($"invitation{problem}"),
             statusCode: problem == InvitationProblem.Unknown ? StatusCodes.Status404NotFound : StatusCodes.Status410Gone);
+
+    /// <summary>"Forgot password": the same 202 whether or not an email goes out, which happens in the background.</summary>
+    private static async Task<IResult> RequestPasswordResetAsync(
+        ForgotPasswordRequest request, PasswordResetService resets, EmailOptions email, CancellationToken cancellationToken)
+    {
+        if (!email.Enabled)
+        {
+            return Results.Json(new ErrorResponse("emailResetDisabled"), statusCode: StatusCodes.Status404NotFound);
+        }
+
+        return await resets.RequestByEmailAsync(request.Email, email.PublicUrl!, cancellationToken) switch
+        {
+            RequestResetResult.Invalid invalid => ValidationProblem(invalid.Errors),
+            _ => Results.Accepted(),
+        };
+    }
 
     private static async Task<IResult> LookupResetLinkAsync(
         string token, PasswordResetService resets, CancellationToken cancellationToken) =>
@@ -201,7 +227,7 @@ public static class AuthEndpoints
         {
             case ResetPasswordResult.Reset reset:
                 await SignInAsync(context, sessions, reset.User, cancellationToken);
-                return Results.Ok(new AuthStateResponse(false, ToResponse(reset.User)));
+                return SignedIn(context, reset.User);
             case ResetPasswordResult.Invalid invalid:
                 return ValidationProblem(invalid.Errors);
             case ResetPasswordResult.Unavailable unavailable:

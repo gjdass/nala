@@ -48,3 +48,15 @@ export const setupOnlyGuard: CanActivateFn = () => {
     );
 };
 
+
+/** "Forgot password" only exists when the instance can email reset links; otherwise the login screen says to ask the admin. */
+export const emailResetGuard: CanActivateFn = () => {
+  const router = inject(Router);
+  const login = router.createUrlTree(['/login']);
+  return inject(AuthService)
+    .load()
+    .pipe(
+      map((state) => (state.smtpEnabled ? true : login)),
+      catchError(() => of(login)),
+    );
+};

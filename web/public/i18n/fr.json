@@ -28,7 +28,16 @@
     "login": {
       "title": "Connexion à Nala",
       "subtitle": "Bon retour.",
-      "submit": "Se connecter"
+      "submit": "Se connecter",
+      "forgot": "Mot de passe oublié ?",
+      "askAdmin": "Mot de passe oublié ? Demandez un lien de réinitialisation à l'administrateur de la famille."
+    },
+    "forgot": {
+      "title": "Réinitialiser le mot de passe",
+      "subtitle": "Saisissez l'email de votre compte. Nous y enverrons un lien pour choisir un nouveau mot de passe.",
+      "submit": "Envoyer le lien",
+      "toLogin": "Retour à la connexion",
+      "sent": "Si un compte existe pour {{email}}, nous y avons envoyé un lien pour choisir un nouveau mot de passe. Il est valable 1 heure."
     },
     "register": {
       "title": "Rejoindre Nala",
@@ -90,7 +99,8 @@
         "userNotFound": "Cet utilisateur n'existe plus.",
         "resetLinkUnknown": "Ce lien de réinitialisation n'est pas valide. Demandez-en un nouveau à l'admin.",
         "resetLinkExpired": "Ce lien de réinitialisation a expiré. Demandez-en un nouveau à l'admin.",
-        "resetLinkUsed": "Ce lien de réinitialisation a déjà été utilisé. Connectez-vous, ou demandez-en un nouveau à l'admin."
+        "resetLinkUsed": "Ce lien de réinitialisation a déjà été utilisé. Connectez-vous, ou demandez-en un nouveau à l'admin.",
+        "emailResetDisabled": "Ce Nala ne peut pas envoyer d'emails. Demandez un lien de réinitialisation à l'administrateur de la famille."
       }
     }
   },

@@ -1,3 +1,4 @@
+using Nala.Core.Email;
 using Nala.Core.Users;
 
 namespace Nala.Core.Auth;
@@ -23,6 +24,15 @@ public abstract record ResetLinkLookup
     public sealed record AccountDisabled : ResetLinkLookup;
 }
 
+public abstract record RequestResetResult
+{
+    /// <summary>The same answer whether or not an email was sent.</summary>
+    public sealed record Requested : RequestResetResult;
+
+    /// <summary>Field name → error code (<c>email</c>: <c>required</c>, <c>invalid</c>).</summary>
+    public sealed record Invalid(IReadOnlyDictionary<string, string> Errors) : RequestResetResult;
+}
+
 public sealed record ResetPasswordCommand(string? Token, string? Password);
 
 public abstract record ResetPasswordResult
@@ -44,6 +54,7 @@ public class PasswordResetService(
     ISessionRepository sessions,
     ILoginFailureRepository loginFailures,
     IPasswordHasher hasher,
+    IEmailOutbox outbox,
     TimeProvider time)
 {
     /// <summary>Admin only. Replaces the user's earlier unused links.</summary>
@@ -78,6 +89,48 @@ public class PasswordResetService(
         };
         await resets.ReplaceAsync(reset, cancellationToken);
         return new CreateResetLinkResult.Created(token, reset.ExpiresAt);
+    }
+
+    /// <summary>"Forgot password": emails a link to an active account, at most once per interval. The result never tells whether one was sent.</summary>
+    public async Task<RequestResetResult> RequestByEmailAsync(
+        string? email, Uri publicUrl, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            return new RequestResetResult.Invalid(new Dictionary<string, string> { ["email"] = "required" });
+        }
+
+        if (!EmailAddress.TryNormalize(email, out var normalized))
+        {
+            return new RequestResetResult.Invalid(new Dictionary<string, string> { ["email"] = "invalid" });
+        }
+
+        var user = await users.GetByEmailAsync(normalized, cancellationToken);
+        if (user is not { DeletedAt: null, IsDisabled: false })
+        {
+            return new RequestResetResult.Requested();
+        }
+
+        var now = time.GetUtcNow();
+        if (await resets.LatestCreatedAtAsync(user.Id, cancellationToken) is { } latest
+            && now - latest < PasswordResetPolicy.EmailInterval)
+        {
+            return new RequestResetResult.Requested();
+        }
+
+        var token = LinkToken.Generate();
+        await resets.ReplaceAsync(
+            new PasswordResetToken
+            {
+                Id = Guid.NewGuid(),
+                TokenHash = LinkToken.Hash(token),
+                UserId = user.Id,
+                CreatedAt = now,
+                ExpiresAt = now + PasswordResetPolicy.EmailLinkLifetime,
+            },
+            cancellationToken);
+        outbox.Enqueue(PasswordResetEmail.Compose(user, publicUrl, token));
+        return new RequestResetResult.Requested();
     }
 
     public async Task<ResetLinkLookup> LookupAsync(string? token, CancellationToken cancellationToken = default)

@@ -4,6 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { firstValueFrom } from 'rxjs';
 import {
   AuthState,
+  ForgotPasswordResult,
   InvitationLookup,
   LoginResult,
   RegisterResult,
@@ -20,6 +21,7 @@ describe('AuthService', () => {
 
   const admin: AuthState = {
     setupRequired: false,
+    smtpEnabled: false,
     user: { id: 'u1', email: 'anna@mail.com', displayName: 'Anna', language: 'fr', isAdmin: true },
   };
   const request: SetupRequest = {
@@ -43,10 +45,10 @@ describe('AuthService', () => {
     const result = firstValueFrom(service.load());
     const req = http.expectOne('/api/auth/state');
     expect(req.request.method).toBe('GET');
-    req.flush({ setupRequired: true, user: null });
+    req.flush({ setupRequired: true, user: null, smtpEnabled: false });
 
-    expect(await result).toEqual({ setupRequired: true, user: null });
-    expect(service.state()).toEqual({ setupRequired: true, user: null });
+    expect(await result).toEqual({ setupRequired: true, user: null, smtpEnabled: false });
+    expect(service.state()).toEqual({ setupRequired: true, user: null, smtpEnabled: false });
   });
 
   it('load() is cached once the state is known', async () => {
@@ -56,6 +58,25 @@ describe('AuthService', () => {
 
     expect(await firstValueFrom(service.load())).toEqual(admin);
     http.expectNone('/api/auth/state');
+  });
+
+  it('load() shares one request between concurrent callers', async () => {
+    const first = firstValueFrom(service.load());
+    const second = firstValueFrom(service.load());
+    http.expectOne('/api/auth/state').flush(admin);
+
+    expect(await first).toEqual(admin);
+    expect(await second).toEqual(admin);
+  });
+
+  it('load() asks again after a failed request', async () => {
+    const failed = firstValueFrom(service.load());
+    http.expectOne('/api/auth/state').error(new ProgressEvent('error'));
+    await expect(failed).rejects.toBeDefined();
+
+    const retried = firstValueFrom(service.load());
+    http.expectOne('/api/auth/state').flush(admin);
+    expect(await retried).toEqual(admin);
   });
 
   it('setup() posts the request and stores the returned state', async () => {
@@ -89,7 +110,7 @@ describe('AuthService', () => {
     http.expectOne('/api/auth/setup').flush(null, { status: 403, statusText: 'Forbidden' });
 
     expect(await result).toEqual<SetupResult>({ ok: false, errors: { form: 'alreadySetUp' } });
-    expect(service.state()).toEqual({ setupRequired: false, user: null });
+    expect(service.state()).toEqual({ setupRequired: false, user: null, smtpEnabled: false });
   });
 
   it('setup() reports other failures as unknown', async () => {
@@ -179,6 +200,7 @@ describe('AuthService', () => {
   describe('register()', () => {
     const member: AuthState = {
       setupRequired: false,
+      smtpEnabled: false,
       user: { id: 'u2', email: 'ben@mail.com', displayName: 'Ben', language: 'fr', isAdmin: false },
     };
     const registration = { ...request, email: 'ben@mail.com', displayName: 'Ben' };
@@ -253,6 +275,7 @@ describe('AuthService', () => {
   describe('resetPassword()', () => {
     const ben: AuthState = {
       setupRequired: false,
+      smtpEnabled: false,
       user: { id: 'u2', email: 'ben@mail.com', displayName: 'Ben', language: 'en', isAdmin: false },
     };
 
@@ -293,6 +316,47 @@ describe('AuthService', () => {
     });
   });
 
+  describe('requestPasswordReset()', () => {
+    it('posts the email and reports ok on 202', async () => {
+      const result = firstValueFrom(service.requestPasswordReset({ email: 'anna@mail.com' }));
+      const req = http.expectOne('/api/auth/password-resets');
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual({ email: 'anna@mail.com' });
+      req.flush(null, { status: 202, statusText: 'Accepted' });
+
+      expect(await result).toEqual<ForgotPasswordResult>({ ok: true });
+    });
+
+    it('maps a 400 validation problem to field error codes', async () => {
+      const result = firstValueFrom(service.requestPasswordReset({ email: 'anna' }));
+      http
+        .expectOne('/api/auth/password-resets')
+        .flush({ errors: { email: ['invalid'] } }, { status: 400, statusText: 'Bad Request' });
+
+      expect(await result).toEqual<ForgotPasswordResult>({ ok: false, errors: { email: 'invalid' } });
+    });
+
+    it('maps a 404 to emailResetDisabled', async () => {
+      const result = firstValueFrom(service.requestPasswordReset({ email: 'anna@mail.com' }));
+      http
+        .expectOne('/api/auth/password-resets')
+        .flush({ code: 'emailResetDisabled' }, { status: 404, statusText: 'Not Found' });
+
+      expect(await result).toEqual<ForgotPasswordResult>({
+        ok: false,
+        errors: { form: 'emailResetDisabled' },
+      });
+    });
+  });
+
+  it('signedOut() keeps whether the instance can email reset links', () => {
+    service.state.set({ ...admin, smtpEnabled: true });
+
+    service.signedOut();
+
+    expect(service.state()).toEqual({ setupRequired: false, user: null, smtpEnabled: true });
+  });
+
   it('logout() posts to /api/auth/logout and forgets the user', async () => {
     service.state.set(admin);
 
@@ -302,7 +366,7 @@ describe('AuthService', () => {
     req.flush(null, { status: 204, statusText: 'No Content' });
     await result;
 
-    expect(service.state()).toEqual({ setupRequired: false, user: null });
+    expect(service.state()).toEqual({ setupRequired: false, user: null, smtpEnabled: false });
   });
 
   it('signedOut() forgets the user, the instance stays set up', () => {
@@ -310,6 +374,6 @@ describe('AuthService', () => {
 
     service.signedOut();
 
-    expect(service.state()).toEqual({ setupRequired: false, user: null });
+    expect(service.state()).toEqual({ setupRequired: false, user: null, smtpEnabled: false });
   });
 });

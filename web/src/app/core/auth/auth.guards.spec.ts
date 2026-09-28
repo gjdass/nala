@@ -2,17 +2,18 @@ import { TestBed } from '@angular/core/testing';
 import { ActivatedRouteSnapshot, Router, RouterStateSnapshot, UrlTree } from '@angular/router';
 import { Observable, of, throwError } from 'rxjs';
 import { firstValueFrom } from 'rxjs';
-import { authGuard, signedOutGuard, setupOnlyGuard } from './auth.guards';
+import { authGuard, emailResetGuard, signedOutGuard, setupOnlyGuard } from './auth.guards';
 import { AuthState } from './auth.models';
 import { AuthService } from './auth.service';
 
 describe('auth guards', () => {
   let load: () => Observable<AuthState>;
 
-  const setupRequired: AuthState = { setupRequired: true, user: null };
-  const signedOut: AuthState = { setupRequired: false, user: null };
+  const setupRequired: AuthState = { setupRequired: true, user: null, smtpEnabled: false };
+  const signedOut: AuthState = { setupRequired: false, user: null, smtpEnabled: false };
   const signedIn: AuthState = {
     setupRequired: false,
+    smtpEnabled: false,
     user: { id: 'u1', email: 'anna@mail.com', displayName: 'Anna', language: 'en', isAdmin: true },
   };
 
@@ -89,6 +90,23 @@ describe('auth guards', () => {
     it('redirects to / when the state cannot be loaded', async () => {
       load = () => throwError(() => new Error('offline'));
       expect(url(await run(setupOnlyGuard))).toBe('/');
+    });
+  });
+
+  describe('emailResetGuard', () => {
+    it('allows the route when the instance can email reset links', async () => {
+      load = () => of({ ...signedOut, smtpEnabled: true });
+      expect(await run(emailResetGuard)).toBe(true);
+    });
+
+    it('redirects to /login when it cannot', async () => {
+      load = () => of(signedOut);
+      expect(url(await run(emailResetGuard))).toBe('/login');
+    });
+
+    it('redirects to /login when the state cannot be loaded', async () => {
+      load = () => throwError(() => new Error('offline'));
+      expect(url(await run(emailResetGuard))).toBe('/login');
     });
   });
 });

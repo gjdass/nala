@@ -18,7 +18,7 @@ describe('AccountService', () => {
     language: 'en',
     isAdmin: true,
   };
-  const signedIn: AuthState = { setupRequired: false, user: anna };
+  const signedIn: AuthState = { setupRequired: false, user: anna, smtpEnabled: false };
 
   beforeEach(() => {
     TestBed.configureTestingModule({
@@ -43,6 +43,7 @@ describe('AccountService', () => {
       expect(await result).toEqual<AccountResult>({ ok: true });
       expect(auth.state()).toEqual({
         setupRequired: false,
+        smtpEnabled: false,
         user: { ...anna, displayName: 'Anna B.', language: 'fr' },
       });
     });
@@ -114,7 +115,7 @@ describe('AccountService', () => {
       req.flush(null, { status: 204, statusText: 'No Content' });
 
       expect(await result).toEqual<AccountResult>({ ok: true });
-      expect(auth.state()).toEqual({ setupRequired: false, user: null });
+      expect(auth.state()).toEqual({ setupRequired: false, user: null, smtpEnabled: false });
     });
 
     it('maps an incorrect password to its field and keeps the user', async () => {

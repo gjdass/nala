@@ -37,14 +37,14 @@ public class PasswordResetTokenRepositoryTests
         CreatedAt = Now,
     };
 
-    private static PasswordResetToken NewToken(User user, Action<PasswordResetToken>? change = null)
+    private static PasswordResetToken NewToken(User user, Action<PasswordResetToken>? change = null, DateTimeOffset? createdAt = null)
     {
         var token = new PasswordResetToken
         {
             Id = Guid.NewGuid(),
             TokenHash = LinkToken.Hash(LinkToken.Generate()),
             UserId = user.Id,
-            CreatedAt = Now,
+            CreatedAt = createdAt ?? Now,
             ExpiresAt = Now + PasswordResetPolicy.AdminLinkLifetime,
         };
         change?.Invoke(token);
@@ -117,5 +117,25 @@ public class PasswordResetTokenRepositoryTests
 
         Assert.That(await ConsumeAsync(token, token.ExpiresAt), Is.False);
         Assert.That((await ReadAsync(token))!.UsedAt, Is.Null);
+    }
+
+    [Test]
+    public async Task Latest_created_at_is_the_newest_token_of_the_user()
+    {
+        await using (var db = _db())
+        {
+            Assert.That(await new PasswordResetTokenRepository(db).LatestCreatedAtAsync(_ben.Id), Is.Null);
+        }
+
+        await ReplaceAsync(NewToken(_ben, t => t.UsedAt = Now));
+        await ReplaceAsync(NewToken(_ben, createdAt: Now + TimeSpan.FromMinutes(1)));
+        await ReplaceAsync(NewToken(_anna, createdAt: Now + TimeSpan.FromMinutes(2)));
+
+        await using (var db = _db())
+        {
+            Assert.That(
+                await new PasswordResetTokenRepository(db).LatestCreatedAtAsync(_ben.Id),
+                Is.EqualTo(Now + TimeSpan.FromMinutes(1)));
+        }
     }
 }

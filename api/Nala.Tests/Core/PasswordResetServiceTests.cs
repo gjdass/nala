@@ -12,6 +12,7 @@ public class PasswordResetServiceTests
     private FakeSessionRepository _sessions = null!;
     private FakeLoginFailureRepository _failures = null!;
     private FakePasswordResetTokenRepository _resets = null!;
+    private FakeEmailOutbox _outbox = null!;
     private FixedTimeProvider _time = null!;
     private PasswordResetService _service = null!;
     private User _anna = null!;
@@ -24,8 +25,9 @@ public class PasswordResetServiceTests
         _sessions = new FakeSessionRepository();
         _failures = new FakeLoginFailureRepository();
         _resets = new FakePasswordResetTokenRepository();
+        _outbox = new FakeEmailOutbox();
         _time = new FixedTimeProvider(Now);
-        _service = new PasswordResetService(_resets, _users, _sessions, _failures, new FakePasswordHasher(), _time);
+        _service = new PasswordResetService(_resets, _users, _sessions, _failures, new FakePasswordHasher(), _outbox, _time);
         _anna = NewUser("Anna", isAdmin: true);
         _ben = NewUser("Ben");
     }
@@ -51,6 +53,20 @@ public class PasswordResetServiceTests
     {
         var result = await _service.CreateLinkAsync(_anna, (user ?? _ben).Id);
         return ((CreateResetLinkResult.Created)result).Token;
+    }
+
+    private static readonly Uri PublicUrl = new("https://nala.example.com");
+
+    private Task<RequestResetResult> RequestAsync(string? email = "ben@mail.com") =>
+        _service.RequestByEmailAsync(email, PublicUrl);
+
+    /// <summary>The token in the link of the only queued email.</summary>
+    private string EmailedToken()
+    {
+        var body = _outbox.Messages.Single().Body;
+        var start = body.IndexOf("https://nala.example.com/reset/", StringComparison.Ordinal);
+        Assert.That(start, Is.GreaterThanOrEqualTo(0), body);
+        return new string(body[(start + "https://nala.example.com/reset/".Length)..].TakeWhile(c => !char.IsWhiteSpace(c)).ToArray());
     }
 
     private void AddSession(User user)
@@ -245,5 +261,119 @@ public class PasswordResetServiceTests
             Is.EqualTo(new ResetPasswordResult.Unavailable(ResetLinkProblem.Used)));
         Assert.That(_ben.PasswordHash, Is.EqualTo("hashed:old password"));
         Assert.That(_users.Updates, Is.Zero);
+    }
+
+    [Test]
+    public async Task Request_for_an_active_account_queues_one_email_with_a_one_hour_link()
+    {
+        var result = await RequestAsync();
+
+        Assert.That(result, Is.InstanceOf<RequestResetResult.Requested>());
+        var message = _outbox.Messages.Single();
+        Assert.That(message.To, Is.EqualTo("ben@mail.com"));
+        var stored = _resets.Tokens.Single();
+        Assert.That(stored.UserId, Is.EqualTo(_ben.Id));
+        Assert.That(stored.CreatedAt, Is.EqualTo(Now));
+        Assert.That(stored.ExpiresAt, Is.EqualTo(Now + TimeSpan.FromHours(1)));
+        Assert.That(stored.TokenHash, Is.EqualTo(LinkToken.Hash(EmailedToken())));
+    }
+
+    [Test]
+    public async Task Request_normalizes_the_email()
+    {
+        await RequestAsync(" Ben@Mail.com ");
+
+        Assert.That(_outbox.Messages.Single().To, Is.EqualTo("ben@mail.com"));
+    }
+
+    [Test]
+    public async Task Emailed_link_resets_the_password()
+    {
+        await RequestAsync();
+
+        var result = await _service.ResetAsync(new ResetPasswordCommand(EmailedToken(), "new password"));
+
+        Assert.That(result, Is.EqualTo(new ResetPasswordResult.Reset(_ben)));
+        Assert.That(_ben.PasswordHash, Is.EqualTo("hashed:new password"));
+    }
+
+    [TestCase("unknown")]
+    [TestCase("disabled")]
+    [TestCase("deleted")]
+    public async Task Request_for_an_unknown_disabled_or_deleted_account_sends_nothing_and_succeeds(string account)
+    {
+        switch (account)
+        {
+            case "disabled":
+                _ben.IsDisabled = true;
+                break;
+            case "deleted":
+                _ben.DeletedAt = Now;
+                _ben.Email = null;
+                break;
+        }
+
+        var result = await RequestAsync(account == "unknown" ? "nobody@mail.com" : "ben@mail.com");
+
+        Assert.That(result, Is.InstanceOf<RequestResetResult.Requested>());
+        Assert.That(_outbox.Messages, Is.Empty);
+        Assert.That(_resets.Tokens, Is.Empty);
+    }
+
+    [Test]
+    public async Task Request_within_5_minutes_of_the_newest_link_sends_nothing()
+    {
+        await CreateLinkAsync();
+        _time.Now = Now + TimeSpan.FromMinutes(5) - TimeSpan.FromSeconds(1);
+
+        var result = await RequestAsync();
+
+        Assert.That(result, Is.InstanceOf<RequestResetResult.Requested>());
+        Assert.That(_outbox.Messages, Is.Empty);
+        Assert.That(_resets.Tokens, Has.Count.EqualTo(1));
+    }
+
+    [Test]
+    public async Task Request_5_minutes_after_the_newest_link_sends_again()
+    {
+        await RequestAsync();
+        _time.Now = Now + TimeSpan.FromMinutes(5);
+
+        await RequestAsync();
+
+        Assert.That(_outbox.Messages, Has.Count.EqualTo(2));
+    }
+
+    [Test]
+    public async Task Emailed_link_replaces_the_earlier_unused_ones()
+    {
+        var adminLink = await CreateLinkAsync();
+        _time.Now = Now + TimeSpan.FromMinutes(10);
+
+        await RequestAsync();
+
+        Assert.That(await _service.LookupAsync(adminLink), Is.EqualTo(new ResetLinkLookup.Unavailable(ResetLinkProblem.Unknown)));
+        Assert.That(await _service.LookupAsync(EmailedToken()), Is.InstanceOf<ResetLinkLookup.Valid>());
+    }
+
+    [TestCase(null, "required")]
+    [TestCase("  ", "required")]
+    [TestCase("ben", "invalid")]
+    public async Task Missing_or_malformed_email_is_invalid(string? email, string code)
+    {
+        var result = await RequestAsync(email);
+
+        Assert.That(((RequestResetResult.Invalid)result).Errors, Is.EqualTo(new Dictionary<string, string> { ["email"] = code }));
+        Assert.That(_outbox.Messages, Is.Empty);
+    }
+
+    [Test]
+    public async Task Email_is_in_the_users_language()
+    {
+        _ben.PreferredLanguage = "fr";
+
+        await RequestAsync();
+
+        Assert.That(_outbox.Messages.Single().Subject, Is.EqualTo("Réinitialiser votre mot de passe Nala"));
     }
 }

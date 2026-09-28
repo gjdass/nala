@@ -1,8 +1,9 @@
+import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { Router } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
 import { Subject } from 'rxjs';
 import en from '../../../../../public/i18n/en.json';
-import { LoginResult } from '../../../core/auth/auth.models';
+import { AuthState, LoginResult } from '../../../core/auth/auth.models';
 import { AuthService } from '../../../core/auth/auth.service';
 import { translocoTesting } from '../../../testing/transloco-testing';
 import { LoginPage } from './login.page';
@@ -10,8 +11,8 @@ import { LoginPage } from './login.page';
 describe('LoginPage', () => {
   let fixture: ComponentFixture<LoginPage>;
   let result: Subject<LoginResult>;
-  let auth: { login: ReturnType<typeof vi.fn> };
-  let router: { navigateByUrl: ReturnType<typeof vi.fn> };
+  let auth: { login: ReturnType<typeof vi.fn>; state: ReturnType<typeof signal<AuthState | null>> };
+  let router: { navigateByUrl: ReturnType<typeof vi.spyOn> };
 
   const host = () => fixture.nativeElement as HTMLElement;
   const input = (field: string) =>
@@ -20,6 +21,12 @@ describe('LoginPage', () => {
     host().querySelector(`[data-testid="error-${field}"]`)?.textContent?.trim();
   const formError = () => host().querySelector('[data-testid="form-error"]')?.textContent?.trim();
   const submit = () => host().querySelector<HTMLButtonElement>('button[data-testid="submit"]')!;
+  const forgot = () => host().querySelector<HTMLAnchorElement>('a[data-testid="forgot"]');
+  const askAdmin = () => host().querySelector('[data-testid="ask-admin"]')?.textContent?.trim();
+  const smtp = async (enabled: boolean) => {
+    auth.state.set({ setupRequired: false, user: null, smtpEnabled: enabled });
+    await fixture.whenStable();
+  };
 
   const type = (field: string, value: string) => {
     input(field).value = value;
@@ -41,15 +48,14 @@ describe('LoginPage', () => {
 
   beforeEach(async () => {
     result = new Subject<LoginResult>();
-    auth = { login: vi.fn(() => result) };
-    router = { navigateByUrl: vi.fn() };
+    auth = { login: vi.fn(() => result), state: signal<AuthState | null>(null) };
     await TestBed.configureTestingModule({
       imports: [LoginPage, translocoTesting()],
-      providers: [
-        { provide: AuthService, useValue: auth },
-        { provide: Router, useValue: router },
-      ],
+      providers: [provideRouter([]), { provide: AuthService, useValue: auth }],
     }).compileComponents();
+    router = {
+      navigateByUrl: vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true),
+    };
     fixture = TestBed.createComponent(LoginPage);
     await fixture.whenStable();
   });
@@ -123,5 +129,20 @@ describe('LoginPage', () => {
     await send();
 
     expect(formError()).toBeUndefined();
+  });
+
+  it('offers "Forgot password" when the instance can email reset links', async () => {
+    await smtp(true);
+
+    expect(forgot()?.textContent?.trim()).toBe(en.auth.login.forgot);
+    expect(forgot()?.getAttribute('href')).toBe('/forgot');
+    expect(askAdmin()).toBeUndefined();
+  });
+
+  it('hides "Forgot password" and says to ask the admin when it cannot', async () => {
+    await smtp(false);
+
+    expect(forgot()).toBeNull();
+    expect(askAdmin()).toBe(en.auth.login.askAdmin);
   });
 });

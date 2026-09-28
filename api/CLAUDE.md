@@ -14,6 +14,7 @@ Run from `api/`. Tests need Docker running (Testcontainers starts PostgreSQL).
 | Add a migration | `dotnet ef migrations add <Name> -p Nala.Sql -s Nala.Sql -o Migrations` |
 
 - The connection string comes only from the `ConnectionStrings__Nala` environment variable; the API refuses to start without it.
+- Email (optional): `Smtp__Host`, `Smtp__Port`, `Smtp__Username`, `Smtp__Password`, `Smtp__From`, `Smtp__Security` and `Nala__PublicUrl` (compose maps them from `SMTP_*` / `NALA_PUBLIC_URL`). Off when `Smtp__Host` is empty; when it is set, `EmailOptions.Load` refuses to start on a missing/invalid sender or public URL. Emails go through `IEmailOutbox` (Core) and are sent in the background (`EmailDispatcher`, MailKit); tests replace `IEmailSender`, and `SmtpEmailSenderTests` uses a Mailpit container.
 - Pending migrations are applied at startup. `dotnet ef` uses `DesignTimeDbContextFactory` in `Nala.Sql`, so generating a migration needs no database.
 - Docker: `api/Dockerfile` (SDK build → ASP.NET runtime, non-root, port 8080). `Nala.Tests` is not in the image.
 - Health: `GET /api/health` → 200 `{"status":"ok"}`, or 503 `{"status":"unavailable"}` when the database is unreachable.

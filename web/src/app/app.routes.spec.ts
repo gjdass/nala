@@ -9,9 +9,10 @@ describe('app routes', () => {
   let router: Router;
   let http: HttpTestingController;
 
-  const signedOut: AuthState = { setupRequired: false, user: null };
+  const signedOut: AuthState = { setupRequired: false, user: null, smtpEnabled: false };
   const signedIn: AuthState = {
     setupRequired: false,
+    smtpEnabled: false,
     user: { id: 'u1', email: 'anna@mail.com', displayName: 'Anna', language: 'en', isAdmin: true },
   };
 
@@ -31,7 +32,9 @@ describe('app routes', () => {
   });
 
   it('an empty instance opens the setup screen instead of the app', async () => {
-    expect(await navigate('/', { setupRequired: true, user: null })).toBe('/setup');
+    expect(await navigate('/', { setupRequired: true, user: null, smtpEnabled: false })).toBe(
+      '/setup',
+    );
   });
 
   it('the setup screen is no longer reachable once a user exists', async () => {
@@ -55,7 +58,9 @@ describe('app routes', () => {
   });
 
   it('an invitation link on an empty instance opens the setup screen', async () => {
-    expect(await navigate('/invite/a-b_c', { setupRequired: true, user: null })).toBe('/setup');
+    expect(
+      await navigate('/invite/a-b_c', { setupRequired: true, user: null, smtpEnabled: false }),
+    ).toBe('/setup');
   });
 
   it('a signed-out visitor can open a password reset link', async () => {
@@ -64,6 +69,18 @@ describe('app routes', () => {
 
   it('a signed-in user opening a password reset link lands on the app', async () => {
     expect(await navigate('/reset/a-b_c', signedIn)).toBe('/');
+  });
+
+  it('a signed-out visitor can open "Forgot password" when the instance can email', async () => {
+    expect(await navigate('/forgot', { ...signedOut, smtpEnabled: true })).toBe('/forgot');
+  });
+
+  it('"Forgot password" leads to the login screen when the instance cannot email', async () => {
+    expect(await navigate('/forgot', signedOut)).toBe('/login');
+  });
+
+  it('a signed-in user opening "Forgot password" lands on the app', async () => {
+    expect(await navigate('/forgot', { ...signedIn, smtpEnabled: true })).toBe('/');
   });
 
   it('a signed-in user can open the settings', async () => {

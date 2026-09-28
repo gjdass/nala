@@ -28,23 +28,23 @@ describe('provideUserLanguage', () => {
   });
 
   it('leaves the language alone while nobody is signed in', () => {
-    auth.state.set({ setupRequired: false, user: null });
+    auth.state.set({ setupRequired: false, user: null, smtpEnabled: false });
     TestBed.tick();
 
     expect(transloco.getActiveLang()).toBe('en');
   });
 
   it("switches to the signed-in user's language", () => {
-    auth.state.set({ setupRequired: false, user: user('fr') });
+    auth.state.set({ setupRequired: false, user: user('fr'), smtpEnabled: false });
     TestBed.tick();
 
     expect(transloco.getActiveLang()).toBe('fr');
   });
 
   it("follows a change of the user's language", () => {
-    auth.state.set({ setupRequired: false, user: user('fr') });
+    auth.state.set({ setupRequired: false, user: user('fr'), smtpEnabled: false });
     TestBed.tick();
-    auth.state.set({ setupRequired: false, user: user('en') });
+    auth.state.set({ setupRequired: false, user: user('en'), smtpEnabled: false });
     TestBed.tick();
 
     expect(transloco.getActiveLang()).toBe('en');

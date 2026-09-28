@@ -24,4 +24,9 @@ public class PasswordResetTokenRepository(NalaDbContext db) : IPasswordResetToke
         await db.Set<PasswordResetToken>()
             .Where(t => t.Id == id && t.UsedAt == null && t.ExpiresAt > now)
             .ExecuteUpdateAsync(s => s.SetProperty(t => t.UsedAt, now), cancellationToken) == 1;
+
+    public Task<DateTimeOffset?> LatestCreatedAtAsync(Guid userId, CancellationToken cancellationToken = default) =>
+        db.Set<PasswordResetToken>()
+            .Where(t => t.UserId == userId)
+            .MaxAsync(t => (DateTimeOffset?)t.CreatedAt, cancellationToken);
 }

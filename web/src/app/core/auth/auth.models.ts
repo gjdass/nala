@@ -12,6 +12,8 @@ export interface AuthState {
   /** True while the instance has no user: the first visitor creates the admin. */
   setupRequired: boolean;
   user: CurrentUser | null;
+  /** The instance can email reset links: the login screen offers "Forgot password". */
+  smtpEnabled: boolean;
 }
 
 export interface SetupRequest {
@@ -55,6 +57,13 @@ export interface ResetLink {
 
 /** `code`: `resetLinkUnknown`, `resetLinkExpired`, `resetLinkUsed`, `accountDisabled` or `unknown`. */
 export type ResetLinkLookup = { ok: true; link: ResetLink } | { ok: false; code: string };
+
+export interface ForgotPasswordRequest {
+  email: string;
+}
+
+/** Ok whether or not the email has an account: the answer never tells. */
+export type ForgotPasswordResult = { ok: true } | { ok: false; errors: FieldErrors };
 
 export interface ResetPasswordRequest {
   password: string;

@@ -36,6 +36,15 @@
       }
     </mat-form-field>
 
+    @if (!smtpEnabled()) {
+      <p class="hint" data-testid="ask-admin">{{ 'auth.login.askAdmin' | transloco }}</p>
+    }
+
+    @if (smtpEnabled()) {
+      <a authCardActions mat-button routerLink="/forgot" data-testid="forgot">
+        {{ 'auth.login.forgot' | transloco }}
+      </a>
+    }
     <button
       authCardActions
       mat-flat-button

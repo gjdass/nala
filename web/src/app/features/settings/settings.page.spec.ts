@@ -65,6 +65,7 @@ describe('SettingsPage', () => {
     auth = {
       state: signal<AuthState | null>({
         setupRequired: false,
+        smtpEnabled: false,
         user: {
           id: 'u1',
           email: 'anna@mail.com',

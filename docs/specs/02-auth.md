@@ -1,6 +1,6 @@
 # 02 — Authentication
 
-Status: in progress
+Status: done
 
 ## Goal
 
@@ -48,9 +48,9 @@ Each item becomes at least one test, written failing first.
 
 ### Password reset
 - [x] The admin can generate a one-time reset link for any user; it expires after 24 hours.
-- [ ] If SMTP is configured (env variables), the login screen offers "Forgot password", which emails a one-time reset link valid 1 hour.
-- [ ] If SMTP is not configured, "Forgot password" is hidden and the screen tells the user to ask the admin.
-- [ ] Requesting a reset by email always shows the same confirmation, whether the email exists or not.
+- [x] If SMTP is configured (env variables), the login screen offers "Forgot password", which emails a one-time reset link valid 1 hour.
+- [x] If SMTP is not configured, "Forgot password" is hidden and the screen tells the user to ask the admin.
+- [x] Requesting a reset by email always shows the same confirmation, whether the email exists or not.
 - [x] Using a reset link sets the new password, consumes the link, and ends all other sessions of that user.
 
 ### Account settings
@@ -104,6 +104,13 @@ Each item becomes at least one test, written failing first.
 - **Reset:** `POST /api/auth/password-resets/{token}` (public) with `{ password }` → 200 with the auth state and the cookie: the password is set, the link consumed, every session of the user deleted and their login failures cleared, then this device is signed in. The link is checked before the field; same 404/410/403 as the lookup; 400 validation problem (`password`: `required`/`tooShort`). The link is consumed by a conditional update, so concurrent resets with one link succeed once.
 - **Reset link in the admin list:** each row but the admin's has a ⋮ icon button (`mat-menu`) with Reset link (enabled users only) and Disable / Enable. Reset link opens the shared `nala-share-link-dialog`: the link read-only, its expiry, Copy (snackbar "Link copied") and Share (the device's share sheet, shown only when the browser has one). 03 reuses the dialog for invitation links.
 - **Reset password page:** `/reset/{token}`, signed-out visitors only (signed-in ones are sent to the app, as for invitations), in the shared auth card: the account's email, a new password field (and a hidden username field for password managers), or the link's error with a link to the login screen. On success the app opens, signed in.
+- **Email settings:** `.env` → compose → API: `NALA_PUBLIC_URL`, `SMTP_HOST`, `SMTP_PORT` (default 587), `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM`, `SMTP_SECURITY` (`auto` default, `starttls`, `ssl`, `none`); in the API `Nala__PublicUrl` and `Smtp__*`. SMTP counts as configured when `SMTP_HOST` is set; then `SMTP_FROM` (an email address) and `NALA_PUBLIC_URL` (absolute http(s) URL) are required and the API refuses to start without them, naming the variable. Emailed links are `{NALA_PUBLIC_URL}/reset/{token}`; the request's Host header is never used.
+- **Forgot password endpoint:** `POST /api/auth/password-resets` (public) with `{ email }` → 202, no body, whatever the email. 400 validation problem only for its format (`email`: `required`/`invalid`). 404 `{ code: "emailResetDisabled" }` when SMTP isn't configured. Only an existing, enabled, non-deleted account gets an email; any other email gets the same 202 and nothing is sent.
+- **Emailed link:** same token scheme as the admin link, valid 1 hour, and it replaces the user's earlier unused links (only the newest works, whether emailed or from the admin). At most one email per account every 5 minutes: while the user's newest reset link (any origin, used or not) is younger than that, a request sends nothing (same 202).
+- **Sending:** the endpoint queues the email in memory and answers at once, so its timing doesn't tell whether the account exists; a background service sends it with MailKit. A failure is logged (without the body, which holds the link) and not retried; a queued email is lost if the API stops.
+- **Reset email:** plain text in the user's language (EN/FR, else English): subject "Reset your Nala password" / "Réinitialiser votre mot de passe Nala", greeting by display name, the link, "works once, for 1 hour", and "ignore this if you didn't ask".
+- **Auth state and email:** the auth state (`GET /api/auth/state` and every sign-in response) carries `smtpEnabled`. The web keeps it after signing out.
+- **Forgot password in the web:** with `smtpEnabled`, the login card has a "Forgot password?" text button (before Log in) to `/forgot`; without it, a hint says to ask the family's admin for a reset link. `/forgot` (signed-out only, sent to `/login` when SMTP is off) is the shared auth card with an email field, Send the link and Back to login; once sent, the card only shows "If an account exists for {email}, we've sent it a link to set a new password. It works for 1 hour." and Back to login. The emailed link opens the existing reset password page.
 - **Icons:** Material Symbols Outlined, bundled with the app (`@fontsource/material-symbols-outlined`, like Roboto), is the default `mat-icon` font set.
 - **Web session handling:** a 401 from any API call (except login) forgets the user and opens the login screen. When the auth state can't be loaded (offline), the app shell opens anyway.
 
@@ -118,7 +125,7 @@ Each slice goes red → green → commit on `master`, in this order.
 - [x] **Slice 5 — Account deletion.** Delete own account after confirming the password: ends all sessions, clears email and password hash, keeps the display name, revokes their pending invitations, refused for the admin; no cascade to entries. Web: delete action with confirmation dialog. Covers: all Account deletion criteria.
 - [x] **Slice 6 — Admin: users list, disable / re-enable.** Admin-only users list (deleted excluded), disable / re-enable (not self); disabling ends sessions and blocks login. Web: Admin section in settings, admin only. Covers: all Admin criteria, and the disabled account criterion.
 - [x] **Slice 7 — Admin reset link.** `PasswordResetToken` entity + migration (hashed token), admin generates a one-time link valid 24 hours, reset sets the password, consumes the link and ends other sessions. Web: reset-link action in the admin list, reset-password page. Covers: the admin reset link criterion and the "using a reset link" criterion.
-- [ ] **Slice 8 — Forgot password by email.** SMTP and public base URL env variables (`.env.example`), `smtpEnabled` in the auth state, forgot-password endpoint with an identical confirmation whatever the email, emailed one-time link valid 1 hour. Web: "Forgot password" when SMTP is configured, "ask your admin" otherwise. Covers: the three SMTP reset criteria.
+- [x] **Slice 8 — Forgot password by email.** SMTP and public base URL env variables (`.env.example`), `smtpEnabled` in the auth state, forgot-password endpoint with an identical confirmation whatever the email, emailed one-time link valid 1 hour. Web: "Forgot password" when SMTP is configured, "ask your admin" otherwise. Covers: the three SMTP reset criteria.
 
 ## Data
 

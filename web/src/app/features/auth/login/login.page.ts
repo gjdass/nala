@@ -1,9 +1,9 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { AuthService } from '../../../core/auth/auth.service';
 import { AuthCardComponent } from '../../../shared/ui/auth-card/auth-card.component';
@@ -20,6 +20,7 @@ type Field = 'email' | 'password';
     MatFormFieldModule,
     MatInputModule,
     ReactiveFormsModule,
+    RouterLink,
     TranslocoPipe,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -37,6 +38,8 @@ export class LoginPage {
   });
   protected readonly pending = signal(false);
   protected readonly formError = signal<string | null>(null);
+  /** "Forgot password" emails a link; without email the admin hands one out. */
+  protected readonly smtpEnabled = computed(() => this.auth.state()?.smtpEnabled ?? false);
 
   protected errorOf(field: Field): string | null {
     return errorCode(this.form.controls[field]);
