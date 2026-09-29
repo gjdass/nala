@@ -4,6 +4,8 @@ import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { routes } from './app.routes';
 import { AuthState } from './core/auth/auth.models';
+import { SECTIONS } from './core/sections/section.models';
+import { fakeSection } from './testing/fake-section';
 
 describe('app routes', () => {
   let router: Router;
@@ -25,7 +27,12 @@ describe('app routes', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [provideRouter(routes), provideHttpClient(), provideHttpClientTesting()],
+      providers: [
+        provideRouter(routes),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: SECTIONS, useValue: [fakeSection('feed')] },
+      ],
     });
     router = TestBed.inject(Router);
     http = TestBed.inject(HttpTestingController);
@@ -89,5 +96,21 @@ describe('app routes', () => {
 
   it('a signed-out visitor opening the settings lands on the login screen', async () => {
     expect(await navigate('/settings', signedOut)).toBe('/login');
+  });
+
+  it('a signed-in user can open the history of a built section', async () => {
+    expect(await navigate('/history/feed', signedIn)).toBe('/history/feed');
+  });
+
+  it('the history of an unknown section leads to the app', async () => {
+    expect(await navigate('/history/nope', signedIn)).toBe('/');
+  });
+
+  it('the history of a section not built yet leads to the app', async () => {
+    expect(await navigate('/history/pump', signedIn)).toBe('/');
+  });
+
+  it('a signed-out visitor opening a history lands on the login screen', async () => {
+    expect(await navigate('/history/feed', signedOut)).toBe('/login');
   });
 });

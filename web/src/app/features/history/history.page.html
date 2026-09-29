@@ -1,0 +1,30 @@
+@if (section(); as section) {
+  <mat-toolbar>
+    <a
+      mat-icon-button
+      routerLink="/"
+      [attr.aria-label]="'history.back' | transloco"
+      data-testid="back"
+    >
+      <mat-icon>arrow_back</mat-icon>
+    </a>
+    <span class="heading">
+      <h1 class="title" data-testid="history-title">
+        {{ 'history.title' | transloco: { section: ('sections.' + section.key | transloco) } }}
+      </h1>
+      @if (store.selected(); as baby) {
+        <span class="baby" data-testid="history-baby">{{ baby.name }}</span>
+      }
+    </span>
+  </mat-toolbar>
+
+  <main>
+    @if (store.loadError()) {
+      <p class="error" role="alert" data-testid="babies-error">
+        {{ 'babies.loadError' | transloco }}
+      </p>
+    } @else if (store.selected()) {
+      <ng-container *ngComponentOutlet="section.history" />
+    }
+  </main>
+}

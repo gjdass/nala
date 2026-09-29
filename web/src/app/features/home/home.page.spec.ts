@@ -54,9 +54,9 @@ describe('HomePage', () => {
 
   // Diaper and feed are built; sleep is built too but hidden; pump is visible but not built.
   const registered: SectionDefinition[] = [
-    { key: 'feed', icon: 'restaurant', card: FakeFeedCard, kinds: [] },
-    { key: 'diaper', icon: 'baby_changing_station', card: FakeDiaperCard, kinds: [] },
-    { key: 'sleep', icon: 'bedtime', card: FakeSleepCard, kinds: [] },
+    { key: 'feed', icon: 'restaurant', card: FakeFeedCard, kinds: [], history: FakeFeedCard },
+    { key: 'diaper', icon: 'baby_changing_station', card: FakeDiaperCard, kinds: [], history: FakeDiaperCard },
+    { key: 'sleep', icon: 'bedtime', card: FakeSleepCard, kinds: [], history: FakeSleepCard },
   ];
   const saved: SectionPreference[] = [
     { key: 'pump', visible: true },

@@ -1,0 +1,39 @@
+<div
+  class="body"
+  [style.--nala-entry-bar]="'var(--nala-section-' + key() + ')'"
+  data-testid="history-body"
+>
+  @if (entries().length > 0) {
+    <mat-action-list>
+      @for (entry of entries(); track entry.id) {
+        <ng-container *ngTemplateOutlet="entryTemplate() ?? null; context: { $implicit: entry }" />
+      }
+    </mat-action-list>
+  } @else if (empty()) {
+    <nala-empty-state
+      icon="history"
+      [title]="'history.empty.title' | transloco"
+      data-testid="history-empty"
+    />
+  }
+
+  @if (loading()) {
+    <mat-progress-spinner
+      mode="indeterminate"
+      diameter="32"
+      [attr.aria-label]="'history.loading' | transloco"
+      data-testid="history-loading"
+    />
+  }
+
+  @if (failed()) {
+    <div class="error" role="alert" data-testid="history-error">
+      <p>{{ 'history.loadError' | transloco }}</p>
+      <button mat-button type="button" (click)="retry()" data-testid="history-retry">
+        {{ 'history.retry' | transloco }}
+      </button>
+    </div>
+  }
+
+  <div #sentinel class="sentinel" aria-hidden="true"></div>
+</div>

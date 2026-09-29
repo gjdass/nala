@@ -316,6 +316,16 @@
     "showLess": "Afficher moins",
     "viewHistory": "Voir tout l'historique"
   },
+  "history": {
+    "title": "Historique : {{section}}",
+    "back": "Retour",
+    "empty": {
+      "title": "Rien d'enregistré pour l'instant"
+    },
+    "loadError": "Impossible de charger l'historique.",
+    "retry": "Réessayer",
+    "loading": "Chargement…"
+  },
   "time": {
     "justNow": "à l'instant",
     "minutesAgo": "il y a {{m}} min",

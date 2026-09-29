@@ -316,6 +316,16 @@
     "showLess": "Show less",
     "viewHistory": "View all history"
   },
+  "history": {
+    "title": "{{section}} history",
+    "back": "Back",
+    "empty": {
+      "title": "Nothing logged yet"
+    },
+    "loadError": "Couldn't load the history.",
+    "retry": "Try again",
+    "loading": "Loading…"
+  },
   "time": {
     "justNow": "just now",
     "minutesAgo": "{{m}}m ago",

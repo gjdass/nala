@@ -5,6 +5,7 @@ import {
   signedOutGuard,
   setupOnlyGuard,
 } from './core/auth/auth.guards';
+import { registeredSectionGuard } from './core/sections/section.guards';
 
 export const routes: Routes = [
   {
@@ -43,6 +44,11 @@ export const routes: Routes = [
     path: 'settings',
     canActivate: [authGuard],
     loadComponent: () => import('./features/settings/settings.page').then((m) => m.SettingsPage),
+  },
+  {
+    path: 'history/:section',
+    canActivate: [authGuard, registeredSectionGuard],
+    loadComponent: () => import('./features/history/history.page').then((m) => m.HistoryPage),
   },
   {
     path: '',

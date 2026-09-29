@@ -15,6 +15,13 @@ class FakeSectionCard {}
 })
 class FakeKindSheet {}
 
+@Component({
+  selector: 'nala-fake-section-history',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: '',
+})
+class FakeSectionHistory {}
+
 /** A kind whose sheet renders nothing; labelled with an existing translation key. */
 export const fakeKind = (key: string, icon = 'circle', label = 'sections.feed'): SectionKind => ({
   key,
@@ -23,7 +30,7 @@ export const fakeKind = (key: string, icon = 'circle', label = 'sections.feed'):
   sheet: FakeKindSheet,
 });
 
-/** A registered section for tests that don't render its card. */
+/** A registered section for tests that don't render its card or history. */
 export const fakeSection = (
   key: SectionKey,
   icon = 'circle',
@@ -33,4 +40,5 @@ export const fakeSection = (
   icon,
   card: FakeSectionCard,
   kinds,
+  history: FakeSectionHistory,
 });

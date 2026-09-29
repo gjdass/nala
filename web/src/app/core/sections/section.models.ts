@@ -1,4 +1,5 @@
 import { InjectionToken, Type } from '@angular/core';
+import { Observable } from 'rxjs';
 import { FieldErrors } from '../auth/auth.models';
 
 /** Every home section, in the default order (the API owns the list; spec 04). */
@@ -34,7 +35,18 @@ export interface SectionDefinition {
   card: Type<unknown>;
   /** Its kinds of entry: + opens the kind picker with several, the sheet directly with one. */
   kinds: readonly SectionKind[];
+  /** Its history list: loads its pages for the selected baby and wraps `nala-history-list`. */
+  history: Type<unknown>;
 }
+
+/** One page of a section's history, newest first; `next` is the cursor of the following page, null after the last. */
+export interface HistoryPage<T> {
+  entries: readonly T[];
+  next: string | null;
+}
+
+/** Loads one page of a section's history: null for the first page, then the previous page's `next`; errors when it fails. */
+export type HistoryPageLoader<T> = (cursor: string | null) => Observable<HistoryPage<T>>;
 
 /** The built sections; home and settings only show these. */
 export const SECTIONS = new InjectionToken<readonly SectionDefinition[]>('SECTIONS', {
