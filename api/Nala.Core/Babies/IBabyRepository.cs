@@ -11,4 +11,6 @@ public interface IBabyRepository
     Task<Baby?> GetAsync(Guid id, CancellationToken cancellationToken = default);
 
     Task UpdateAsync(Baby baby, CancellationToken cancellationToken = default);
+
+    Task DeleteAsync(Baby baby, CancellationToken cancellationToken = default);
 }

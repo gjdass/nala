@@ -240,6 +240,14 @@
       "confirm": "Abandonner",
       "cancel": "Continuer"
     },
+    "delete": {
+      "action": "Supprimer le bébé",
+      "title": "Supprimer {{name}} ?",
+      "text": "{{name}} et tout ce qui a été noté pour ce bébé seront supprimés pour toute la famille. C'est définitif.",
+      "label": "Tapez {{name}} pour confirmer",
+      "confirm": "Supprimer",
+      "cancel": "Annuler"
+    },
     "age": {
       "day": {
         "one": "{{count}} jour",

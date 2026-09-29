@@ -2,7 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { firstValueFrom } from 'rxjs';
-import { BabiesResult, Baby, BabyFields, BabyResult } from './baby.models';
+import { BabiesResult, Baby, BabyDeleteResult, BabyFields, BabyResult } from './baby.models';
 import { BabyService } from './baby.service';
 
 describe('BabyService', () => {
@@ -101,6 +101,26 @@ describe('BabyService', () => {
         .flush({ code: 'babyNotFound' }, { status: 404, statusText: 'Not Found' });
 
       expect(await result).toEqual<BabyResult>({ ok: false, errors: { form: 'babyNotFound' } });
+    });
+  });
+
+  describe('delete()', () => {
+    it('deletes /api/babies/{id}', async () => {
+      const result = firstValueFrom(service.delete('b1'));
+      const req = http.expectOne('/api/babies/b1');
+      expect(req.request.method).toBe('DELETE');
+      req.flush(null, { status: 204, statusText: 'No Content' });
+
+      expect(await result).toEqual<BabyDeleteResult>({ ok: true });
+    });
+
+    it('maps a refusal to a form error', async () => {
+      const result = firstValueFrom(service.delete('b1'));
+      http
+        .expectOne('/api/babies/b1')
+        .flush({ code: 'adminOnly' }, { status: 403, statusText: 'Forbidden' });
+
+      expect(await result).toEqual<BabyDeleteResult>({ ok: false, errors: { form: 'adminOnly' } });
     });
   });
 });

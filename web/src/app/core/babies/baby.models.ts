@@ -19,3 +19,8 @@ export type BabyFields = Omit<Baby, 'id'>;
 export type BabiesResult = { ok: true; babies: Baby[] } | { ok: false; errors: FieldErrors };
 
 export type BabyResult = { ok: true; baby: Baby } | { ok: false; errors: FieldErrors };
+
+export type BabyDeleteResult = { ok: true } | { ok: false; errors: FieldErrors };
+
+/** What the baby sheet closes with: the added or edited baby, or the id of the deleted one. */
+export type BabySheetResult = { saved: Baby } | { deleted: string };

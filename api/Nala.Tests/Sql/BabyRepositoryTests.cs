@@ -146,4 +146,19 @@ public class BabyRepositoryTests
             Assert.That(read.CreatedAt, Is.EqualTo(Now));
         });
     }
+
+    [Test]
+    public async Task Delete_removes_only_that_baby()
+    {
+        var lea = await AddAsync("Lea", new DateOnly(2026, 9, 1));
+        await AddAsync("Tom", new DateOnly(2024, 3, 1));
+
+        await using (var db = _db())
+        {
+            var repository = new BabyRepository(db);
+            await repository.DeleteAsync((await repository.GetAsync(lea.Id))!);
+        }
+
+        Assert.That((await ListAsync()).Select(b => b.Name), Is.EqualTo(new[] { "Tom" }));
+    }
 }

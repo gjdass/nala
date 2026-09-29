@@ -11,4 +11,17 @@
     </p>
   }
   <nala-baby-form [form]="form" />
+  @if (canDelete()) {
+    <div class="delete">
+      <button
+        mat-stroked-button
+        type="button"
+        [disabled]="saving()"
+        (click)="delete()"
+        data-testid="delete-baby"
+      >
+        {{ 'babies.delete.action' | transloco }}
+      </button>
+    </div>
+  }
 </div>

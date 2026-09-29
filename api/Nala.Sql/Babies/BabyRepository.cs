@@ -26,4 +26,10 @@ public class BabyRepository(NalaDbContext db) : IBabyRepository
         db.Set<Baby>().Update(baby);
         await db.SaveChangesAsync(cancellationToken);
     }
+
+    public async Task DeleteAsync(Baby baby, CancellationToken cancellationToken = default)
+    {
+        db.Set<Baby>().Remove(baby);
+        await db.SaveChangesAsync(cancellationToken);
+    }
 }

@@ -311,4 +311,48 @@ public class BabyEndpointTests
             (await EditAsync(anonymous, id, new { name = "Lea", birthDate = "2026-09-01" })).StatusCode,
             Is.EqualTo(HttpStatusCode.Unauthorized));
     }
+
+    [Test]
+    public async Task The_admin_deletes_a_baby()
+    {
+        var id = await AddLeaAsync();
+
+        var response = await _admin.DeleteAsync($"/api/babies/{id}");
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
+        Assert.That(await ListAsync(_admin), Is.Empty);
+    }
+
+    [Test]
+    public async Task A_member_cannot_delete_a_baby()
+    {
+        var id = await AddLeaAsync();
+        var (ben, _) = await RegisterBenAsync();
+
+        var response = await ben.DeleteAsync($"/api/babies/{id}");
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Forbidden));
+        Assert.That((await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("code").GetString(), Is.EqualTo("adminOnly"));
+        Assert.That(await ListAsync(_admin), Has.Length.EqualTo(1));
+        ben.Dispose();
+    }
+
+    [Test]
+    public async Task Deleting_an_unknown_baby_is_not_found()
+    {
+        var response = await _admin.DeleteAsync($"/api/babies/{Guid.NewGuid()}");
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
+        Assert.That((await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("code").GetString(), Is.EqualTo("babyNotFound"));
+    }
+
+    [Test]
+    public async Task Deleting_needs_a_session()
+    {
+        var id = await AddLeaAsync();
+        using var anonymous = NewClient();
+
+        Assert.That((await anonymous.DeleteAsync($"/api/babies/{id}")).StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
+        Assert.That(await ListAsync(_admin), Has.Length.EqualTo(1));
+    }
 }

@@ -19,4 +19,10 @@ public class FakeBabyRepository : IBabyRepository
         Task.FromResult(Babies.SingleOrDefault(b => b.Id == id));
 
     public Task UpdateAsync(Baby baby, CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+    public Task DeleteAsync(Baby baby, CancellationToken cancellationToken = default)
+    {
+        Babies.Remove(baby);
+        return Task.CompletedTask;
+    }
 }

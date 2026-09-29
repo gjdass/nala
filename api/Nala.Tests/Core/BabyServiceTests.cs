@@ -160,4 +160,42 @@ public class BabyServiceTests
 
         Assert.That(result, Is.InstanceOf<UpdateBabyResult.NotFound>());
     }
+
+    [Test]
+    public async Task The_admin_deletes_a_baby()
+    {
+        var lea = await AddLeaAsync(NewUser());
+
+        var result = await _service.DeleteAsync(NewUser(isAdmin: true), lea.Id);
+
+        Assert.That(result, Is.InstanceOf<DeleteBabyResult.Deleted>());
+        Assert.That(_babies.Babies, Is.Empty);
+    }
+
+    [Test]
+    public async Task A_member_cannot_delete_a_baby()
+    {
+        var lea = await AddLeaAsync(NewUser());
+
+        var result = await _service.DeleteAsync(NewUser(), lea.Id);
+
+        Assert.That(result, Is.InstanceOf<DeleteBabyResult.Forbidden>());
+        Assert.That(_babies.Babies, Is.EqualTo(new[] { lea }));
+    }
+
+    [Test]
+    public async Task Deleting_an_unknown_baby_is_not_found()
+    {
+        var result = await _service.DeleteAsync(NewUser(isAdmin: true), Guid.NewGuid());
+
+        Assert.That(result, Is.InstanceOf<DeleteBabyResult.NotFound>());
+    }
+
+    [Test]
+    public async Task A_member_deleting_an_unknown_baby_is_refused_before_the_lookup()
+    {
+        var result = await _service.DeleteAsync(NewUser(), Guid.NewGuid());
+
+        Assert.That(result, Is.InstanceOf<DeleteBabyResult.Forbidden>());
+    }
 }

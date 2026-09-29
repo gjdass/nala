@@ -22,7 +22,7 @@ public sealed record BabyResponse(
     decimal? BirthLengthCm,
     decimal? BirthHeadCircumferenceCm);
 
-/// <summary>The family's babies. Every member may use them (fallback session policy); there is no per-baby access.</summary>
+/// <summary>The family's babies. Every member may use them (fallback session policy); there is no per-baby access. Deleting is admin only (checked in Core).</summary>
 public static class BabyEndpoints
 {
     public static IServiceCollection AddNalaBabies(this IServiceCollection services) =>
@@ -34,6 +34,7 @@ public static class BabyEndpoints
         babies.MapGet("", ListAsync);
         babies.MapPost("", CreateAsync);
         babies.MapPut("/{id:guid}", UpdateAsync);
+        babies.MapDelete("/{id:guid}", DeleteAsync);
         return endpoints;
     }
 
@@ -55,8 +56,20 @@ public static class BabyEndpoints
         {
             UpdateBabyResult.Updated updated => Results.Ok(ToResponse(updated.Baby)),
             UpdateBabyResult.Invalid invalid => AuthEndpoints.ValidationProblem(invalid.Errors),
-            _ => Results.Json(new ErrorResponse("babyNotFound"), statusCode: StatusCodes.Status404NotFound),
+            _ => BabyNotFound(),
         };
+
+    private static async Task<IResult> DeleteAsync(
+        Guid id, BabyService babies, HttpContext context, CancellationToken cancellationToken) =>
+        await babies.DeleteAsync(AuthEndpoints.CurrentUser(context)!, id, cancellationToken) switch
+        {
+            DeleteBabyResult.Deleted => Results.NoContent(),
+            DeleteBabyResult.NotFound => BabyNotFound(),
+            _ => Results.Json(new ErrorResponse("adminOnly"), statusCode: StatusCodes.Status403Forbidden),
+        };
+
+    private static IResult BabyNotFound() =>
+        Results.Json(new ErrorResponse("babyNotFound"), statusCode: StatusCodes.Status404NotFound);
 
     private static BabyInput ToInput(BabyRequest request) =>
         new(request.Name, request.BirthDate, request.Sex, request.BirthWeightG, request.BirthLengthCm, request.BirthHeadCircumferenceCm);

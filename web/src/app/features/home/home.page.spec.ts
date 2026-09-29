@@ -2,7 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { Subject } from 'rxjs';
 import en from '../../../../public/i18n/en.json';
-import { BabiesResult, Baby } from '../../core/babies/baby.models';
+import { BabiesResult, Baby, BabySheetResult } from '../../core/babies/baby.models';
 import { BabyService } from '../../core/babies/baby.service';
 import { HealthService, HealthStatus } from '../../core/health/health.service';
 import { SheetService } from '../../shared/ui/sheet/sheet.service';
@@ -14,7 +14,7 @@ describe('HomePage', () => {
   let fixture: ComponentFixture<HomePage>;
   let health: Subject<HealthStatus>;
   let babiesLoaded: Subject<BabiesResult>;
-  let sheetClosed: Subject<Baby | undefined>;
+  let sheetClosed: Subject<BabySheetResult | undefined>;
   let sheet: { open: ReturnType<typeof vi.fn> };
 
   const lea: Baby = {
@@ -40,7 +40,7 @@ describe('HomePage', () => {
     localStorage.clear();
     health = new Subject<HealthStatus>();
     babiesLoaded = new Subject<BabiesResult>();
-    sheetClosed = new Subject<Baby | undefined>();
+    sheetClosed = new Subject<BabySheetResult | undefined>();
     sheet = { open: vi.fn(() => sheetClosed) };
     await TestBed.configureTestingModule({
       imports: [HomePage, translocoTesting()],
@@ -84,7 +84,7 @@ describe('HomePage', () => {
 
     it('leaves the empty state once a baby is added', async () => {
       (find('add-baby') as HTMLButtonElement).click();
-      sheetClosed.next(lea);
+      sheetClosed.next({ saved: lea });
       await fixture.whenStable();
 
       expect(find('empty-state')).toBeNull();

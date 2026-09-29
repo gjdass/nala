@@ -4,7 +4,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { Observable } from 'rxjs';
-import { Baby } from '../../core/babies/baby.models';
+import { BabySheetResult } from '../../core/babies/baby.models';
 import { SelectedBabyService } from '../../core/babies/selected-baby.service';
 import { HealthService, HealthStatus } from '../../core/health/health.service';
 import { EmptyStateComponent } from '../../shared/ui/empty-state/empty-state.component';
@@ -33,9 +33,9 @@ export class HomePage {
   }
 
   protected addBaby(): void {
-    this.sheet.open<BabySheetComponent, Baby>(BabySheetComponent).subscribe((baby) => {
-      if (baby) {
-        this.store.add(baby);
+    this.sheet.open<BabySheetComponent, BabySheetResult>(BabySheetComponent).subscribe((result) => {
+      if (result && 'saved' in result) {
+        this.store.add(result.saved);
       }
     });
   }

@@ -20,7 +20,16 @@ public abstract record UpdateBabyResult
     public sealed record Invalid(IReadOnlyDictionary<string, string> Errors) : UpdateBabyResult;
 }
 
-/// <summary>The family's babies. Every member can list, add and edit them.</summary>
+public abstract record DeleteBabyResult
+{
+    public sealed record Deleted : DeleteBabyResult;
+
+    public sealed record Forbidden : DeleteBabyResult;
+
+    public sealed record NotFound : DeleteBabyResult;
+}
+
+/// <summary>The family's babies. Every member can list, add and edit them; only the admin can delete one.</summary>
 public class BabyService(IBabyRepository babies, TimeProvider time)
 {
     public async Task<CreateBabyResult> CreateAsync(User actor, BabyInput input, CancellationToken cancellationToken = default)
@@ -63,6 +72,24 @@ public class BabyService(IBabyRepository babies, TimeProvider time)
         Apply(baby, input, now);
         await babies.UpdateAsync(baby, cancellationToken);
         return new UpdateBabyResult.Updated(baby);
+    }
+
+    /// <summary>Admin only, checked before the lookup. The baby's entries go with it (database cascade).</summary>
+    public async Task<DeleteBabyResult> DeleteAsync(User actor, Guid id, CancellationToken cancellationToken = default)
+    {
+        if (!actor.IsAdmin)
+        {
+            return new DeleteBabyResult.Forbidden();
+        }
+
+        var baby = await babies.GetAsync(id, cancellationToken);
+        if (baby is null)
+        {
+            return new DeleteBabyResult.NotFound();
+        }
+
+        await babies.DeleteAsync(baby, cancellationToken);
+        return new DeleteBabyResult.Deleted();
     }
 
     /// <summary>Oldest first.</summary>

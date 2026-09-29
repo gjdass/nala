@@ -240,6 +240,14 @@
       "confirm": "Discard",
       "cancel": "Keep editing"
     },
+    "delete": {
+      "action": "Delete baby",
+      "title": "Delete {{name}}?",
+      "text": "{{name}} and everything logged for them will be deleted for the whole family. This can't be undone.",
+      "label": "Type {{name}} to confirm",
+      "confirm": "Delete",
+      "cancel": "Cancel"
+    },
     "age": {
       "day": {
         "one": "{{count}} day",

@@ -1,14 +1,27 @@
+import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideNativeDateAdapter } from '@angular/material/core';
 import { MatDialog } from '@angular/material/dialog';
 import { Subject } from 'rxjs';
 import en from '../../../../../public/i18n/en.json';
-import { Baby, BabyResult } from '../../../core/babies/baby.models';
+import { AuthState } from '../../../core/auth/auth.models';
+import { AuthService } from '../../../core/auth/auth.service';
+import { Baby, BabyDeleteResult, BabyResult } from '../../../core/babies/baby.models';
 import { BabyService } from '../../../core/babies/baby.service';
 import { ConfirmDialogComponent } from '../../../shared/ui/confirm-dialog/confirm-dialog.component';
 import { SHEET_DATA, SheetRef } from '../../../shared/ui/sheet/sheet-ref';
+import { TypeToConfirmDialogComponent } from '../../../shared/ui/type-to-confirm-dialog/type-to-confirm-dialog.component';
 import { translocoTesting } from '../../../testing/transloco-testing';
 import { BabySheetComponent } from './baby-sheet.component';
+
+/** An AuthService whose signed-in user is, or is not, the admin. */
+const authAs = (isAdmin: boolean) => ({
+  state: signal<AuthState | null>({
+    setupRequired: false,
+    smtpEnabled: false,
+    user: { id: 'u1', email: 'anna@mail.com', displayName: 'Anna', language: 'en', isAdmin },
+  }),
+});
 
 describe('BabySheetComponent', () => {
   let fixture: ComponentFixture<BabySheetComponent>;
@@ -66,6 +79,7 @@ describe('BabySheetComponent', () => {
         { provide: BabyService, useValue: babies },
         { provide: SheetRef, useValue: sheetRef },
         { provide: MatDialog, useValue: dialog },
+        { provide: AuthService, useValue: authAs(true) },
       ],
     }).compileComponents();
     fixture = TestBed.createComponent(BabySheetComponent);
@@ -77,6 +91,10 @@ describe('BabySheetComponent', () => {
       en.babies.sheet.addTitle,
     );
     expect(host().querySelector('nala-baby-form')).toBeTruthy();
+  });
+
+  it('has no Delete action when adding', () => {
+    expect(host().querySelector('[data-testid="delete-baby"]')).toBeNull();
   });
 
   it('disables Save while required fields are missing', async () => {
@@ -101,7 +119,7 @@ describe('BabySheetComponent', () => {
     expect(button('sheet-save').disabled).toBe(true);
     created.next({ ok: true, baby: lea });
     await fixture.whenStable();
-    expect(sheetRef.close).toHaveBeenCalledWith(lea);
+    expect(sheetRef.close).toHaveBeenCalledWith({ saved: lea });
   });
 
   it('shows field errors from the API and stays open', async () => {
@@ -159,7 +177,13 @@ describe('BabySheetComponent', () => {
 describe('BabySheetComponent editing a baby', () => {
   let fixture: ComponentFixture<BabySheetComponent>;
   let updated: Subject<BabyResult>;
-  let babies: { create: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn> };
+  let deleted: Subject<BabyDeleteResult>;
+  let babies: {
+    create: ReturnType<typeof vi.fn>;
+    update: ReturnType<typeof vi.fn>;
+    delete: ReturnType<typeof vi.fn>;
+  };
+  let auth: ReturnType<typeof authAs>;
   let sheetRef: { close: ReturnType<typeof vi.fn> };
   let confirmed: Subject<boolean | undefined>;
   let dialog: { open: ReturnType<typeof vi.fn> };
@@ -192,7 +216,9 @@ describe('BabySheetComponent editing a baby', () => {
 
   beforeEach(async () => {
     updated = new Subject<BabyResult>();
-    babies = { create: vi.fn(), update: vi.fn(() => updated) };
+    deleted = new Subject<BabyDeleteResult>();
+    babies = { create: vi.fn(), update: vi.fn(() => updated), delete: vi.fn(() => deleted) };
+    auth = authAs(true);
     sheetRef = { close: vi.fn() };
     confirmed = new Subject<boolean | undefined>();
     dialog = { open: vi.fn(() => ({ afterClosed: () => confirmed })) };
@@ -204,6 +230,7 @@ describe('BabySheetComponent editing a baby', () => {
         { provide: SheetRef, useValue: sheetRef },
         { provide: SHEET_DATA, useValue: lea },
         { provide: MatDialog, useValue: dialog },
+        { provide: AuthService, useValue: auth },
       ],
     }).compileComponents();
     fixture = TestBed.createComponent(BabySheetComponent);
@@ -240,7 +267,7 @@ describe('BabySheetComponent editing a baby', () => {
     const saved = { ...lea, name: 'Léa' };
     updated.next({ ok: true, baby: saved });
     await fixture.whenStable();
-    expect(sheetRef.close).toHaveBeenCalledWith(saved);
+    expect(sheetRef.close).toHaveBeenCalledWith({ saved });
   });
 
   it('shows a baby deleted meanwhile as a form error', async () => {
@@ -272,6 +299,65 @@ describe('BabySheetComponent editing a baby', () => {
         confirm: en.babies.discardEdit.confirm,
         cancel: en.babies.discardEdit.cancel,
       },
+    });
+  });
+
+  describe('Delete', () => {
+    const confirmDelete = async () => {
+      await click('delete-baby');
+      confirmed.next(true);
+      await fixture.whenStable();
+    };
+
+    it('is offered to the admin', () => {
+      expect(button('delete-baby').textContent?.trim()).toBe(en.babies.delete.action);
+    });
+
+    it('is hidden from a non-admin member', async () => {
+      auth.state.update((state) => ({ ...state!, user: { ...state!.user!, isAdmin: false } }));
+      fixture.componentRef.changeDetectorRef.markForCheck();
+      await fixture.whenStable();
+
+      expect(host().querySelector('[data-testid="delete-baby"]')).toBeNull();
+    });
+
+    it("asks to type the baby's name first, and does nothing when cancelled", async () => {
+      await click('delete-baby');
+
+      expect(dialog.open).toHaveBeenCalledWith(TypeToConfirmDialogComponent, {
+        data: {
+          title: en.babies.delete.title.replace('{{name}}', 'Lea'),
+          text: en.babies.delete.text.replace('{{name}}', 'Lea'),
+          label: en.babies.delete.label.replace('{{name}}', 'Lea'),
+          expected: 'Lea',
+          confirm: en.babies.delete.confirm,
+          cancel: en.babies.delete.cancel,
+        },
+      });
+      confirmed.next(false);
+      await fixture.whenStable();
+      expect(babies.delete).not.toHaveBeenCalled();
+      expect(sheetRef.close).not.toHaveBeenCalled();
+    });
+
+    it('deletes the baby once confirmed and closes with its id', async () => {
+      await confirmDelete();
+
+      expect(babies.delete).toHaveBeenCalledWith('b1');
+      deleted.next({ ok: true });
+      await fixture.whenStable();
+      expect(sheetRef.close).toHaveBeenCalledWith({ deleted: 'b1' });
+    });
+
+    it('shows a refusal as a form error and stays open', async () => {
+      await confirmDelete();
+      deleted.next({ ok: false, errors: { form: 'adminOnly' } });
+      await fixture.whenStable();
+
+      expect(host().querySelector('[data-testid="form-error"]')?.textContent?.trim()).toBe(
+        en.auth.errors.form.adminOnly,
+      );
+      expect(sheetRef.close).not.toHaveBeenCalled();
     });
   });
 });

@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Subject } from 'rxjs';
 import en from '../../../../../public/i18n/en.json';
-import { BabiesResult, Baby } from '../../../core/babies/baby.models';
+import { BabiesResult, Baby, BabySheetResult } from '../../../core/babies/baby.models';
 import { BabyService } from '../../../core/babies/baby.service';
 import { SheetService } from '../../../shared/ui/sheet/sheet.service';
 import { translocoTesting } from '../../../testing/transloco-testing';
@@ -11,7 +11,7 @@ import { SettingsBabiesComponent } from './settings-babies.component';
 describe('SettingsBabiesComponent', () => {
   let fixture: ComponentFixture<SettingsBabiesComponent>;
   let listed: Subject<BabiesResult>;
-  let sheetClosed: Subject<Baby | undefined>;
+  let sheetClosed: Subject<BabySheetResult | undefined>;
   let sheet: { open: ReturnType<typeof vi.fn> };
 
   const baby = (id: string, name: string, birthDate: string): Baby => ({
@@ -37,7 +37,7 @@ describe('SettingsBabiesComponent', () => {
     listed.next(result);
     await fixture.whenStable();
   };
-  const closeSheet = async (result?: Baby) => {
+  const closeSheet = async (result?: BabySheetResult) => {
     sheetClosed.next(result);
     sheetClosed.complete();
     await fixture.whenStable();
@@ -47,7 +47,7 @@ describe('SettingsBabiesComponent', () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date(2026, 8, 28, 9, 0));
     listed = new Subject<BabiesResult>();
-    sheetClosed = new Subject<Baby | undefined>();
+    sheetClosed = new Subject<BabySheetResult | undefined>();
     sheet = { open: vi.fn(() => sheetClosed) };
     await TestBed.configureTestingModule({
       imports: [SettingsBabiesComponent, translocoTesting()],
@@ -84,7 +84,7 @@ describe('SettingsBabiesComponent', () => {
 
     host().querySelector<HTMLButtonElement>('[data-testid="add-baby"]')!.click();
     expect(sheet.open).toHaveBeenCalledWith(BabySheetComponent);
-    await closeSheet(lea);
+    await closeSheet({ saved: lea });
 
     expect(rows().map(([name]) => name)).toEqual(['Tom', 'Lea']);
   });
@@ -94,7 +94,7 @@ describe('SettingsBabiesComponent', () => {
 
     items()[1].click();
     expect(sheet.open).toHaveBeenCalledWith(BabySheetComponent, lea);
-    await closeSheet({ ...lea, name: 'Léa' });
+    await closeSheet({ saved: { ...lea, name: 'Léa' } });
 
     expect(rows().map(([name]) => name)).toEqual(['Tom', 'Léa']);
   });
@@ -103,7 +103,7 @@ describe('SettingsBabiesComponent', () => {
     await list({ ok: true, babies: [tom, lea] });
 
     items()[1].click();
-    await closeSheet({ ...lea, birthDate: '2026-01-10' });
+    await closeSheet({ saved: { ...lea, birthDate: '2026-01-10' } });
 
     expect(rows().map(([name]) => name)).toEqual(['Lea', 'Tom']);
   });
@@ -115,5 +115,14 @@ describe('SettingsBabiesComponent', () => {
     await closeSheet();
 
     expect(rows()).toEqual([['Tom', '4 months 10 days']]);
+  });
+
+  it('removes a baby deleted from the baby sheet', async () => {
+    await list({ ok: true, babies: [tom, lea] });
+
+    items()[1].click();
+    await closeSheet({ deleted: lea.id });
+
+    expect(rows().map(([name]) => name)).toEqual(['Tom']);
   });
 });
