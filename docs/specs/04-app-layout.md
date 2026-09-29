@@ -24,6 +24,7 @@ Give every activity section (Feed, Diaper, Sleep, Medication, Growth, Pump…) t
 - **History paging:** a page loader is `(cursor | null) → { entries, next }`, newest first; `null` asks for the first page and `next: null` marks the last one (the cursor format is each feature's API). The next page loads when the end of the list scrolls into view (and again right away while it stays in view). While loading: a progress spinner. Without entries: an empty state ("Nothing logged yet"). A failed page shows an error with Try again, keeping the pages already loaded. A new loader (another baby) starts again from the first page. An entry edited from the history is replaced where it is, a deleted one removed; no reload.
 - **Show more state:** remembered per device and per section in `localStorage` (`nala.sectionExpanded.<key>`).
 - **Mini-bar: shell in 04, wired in 05.** 04 builds the shared mini-bar and a `RunningTimersService` that sections register their running-timer sources with, tested with a fake source. The first real timer (breastfeed) and the cross-device sync come with 05.
+- **Running timer sources:** a feature with timers provides a source through `RUNNING_TIMER_SOURCES`: a signal of its running timers, each with an id, section, kind and in-progress entry (tapping it opens `EntrySheetService.edit(section, kind, entry)`), the baby, a label translation key (+ params) and its live duration in seconds at a given time. `RunningTimersService` merges them in registration order. The duration uses the spec 04 duration format. The app shell loads the mini-bar only once a timer runs (deferred, out of the initial bundle).
 
 ## Structure
 
@@ -110,8 +111,8 @@ Each item becomes at least one test, written failing first.
 - [ ] The sheet is usable one-handed on a phone: touch targets follow M3 minimums (48 × 48 dp). *(Tests check that only default-density Material controls are used; still to be checked by hand on a phone.)*
 
 ### Mini-bar
-- [ ] The mini-bar appears on every screen as soon as a timer runs, and disappears when none runs.
-- [ ] It shows each running timer with a live duration and opens the matching entry sheet on tap.
+- [x] The mini-bar appears on every screen as soon as a timer runs, and disappears when none runs.
+- [x] It shows each running timer with a live duration and opens the matching entry sheet on tap.
 - [ ] It reflects timers started or stopped from other devices within a few seconds.
 
 ### Theming
@@ -125,7 +126,7 @@ Each slice goes red → green → commit on `master`, in this order.
 - [x] **Slice 2 — Home column, section card, entry list item.** Section registry. Home renders one shared `nala-section-card` per visible registered section, in the user's order, in a single column under the top app bar. Card: `mat-card`, header band on the section tokens, `mat-mini-fab` +, highlight slot with an empty-state slot, Show more / Show less (up to 10 entries, expanded state per device in `localStorage`), View all history. Shared `nala-entry-list-item` (kind icon, local time, summary, optional duration bar + duration, chevron). Shared ticking `NowService`, time-since and duration pipes (EN/FR). Covers: home in the user's order, the card criteria (frame, empty state, show more/less, live time-since). The frame criterion is ticked with slice 4, when View all history leads to the history page.
 - [x] **Slice 3 — + button, kind picker, entry sheet frame.** + opens the shared `nala-kind-picker` (`MatBottomSheet`) with several kinds, the entry sheet directly with one. Entry sheet through `SheetService`: `nala-sheet-header` on the section colour, shared form row, suggestion row, notes row and delete action (with confirmation); × asks before discarding changes, Save disabled while invalid with field errors, entry list item opens the sheet pre-filled with Delete; 48 × 48 dp targets. Tested with a fake section. Covers: every "+ and entry sheet" criterion.
 - [x] **Slice 4 — History page.** `/history/:section` (signed in, a baby required, unknown or unregistered key → home), back button, the section's entries for the selected baby newest first as entry list items, loaded page by page on scroll through the section's page loader. No totals or charts. Opened from View all history. Covers: the history part of the section card criterion.
-- [ ] **Slice 5 — Running timers mini-bar (shell).** `RunningTimersService` merging the registered timer sources; shared `nala-running-timers-bar` pinned at the bottom of every screen: one list item per running timer (section icon, label, live duration, the baby's name with several babies, chevron), opens the timer's sheet on tap, hidden when none runs. Tested with a fake source. Covers: mini-bar criteria 1 and 2 (criterion 3, other devices, comes with 05's live sync).
+- [x] **Slice 5 — Running timers mini-bar (shell).** `RunningTimersService` merging the registered timer sources; shared `nala-running-timers-bar` pinned at the bottom of every screen: one list item per running timer (section icon, label, live duration, the baby's name with several babies, chevron), opens the timer's sheet on tap, hidden when none runs. Tested with a fake source. Covers: mini-bar criteria 1 and 2 (criterion 3, other devices, comes with 05's live sync).
 
 ## Material 3 mapping
 

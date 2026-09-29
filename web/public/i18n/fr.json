@@ -367,5 +367,8 @@
   },
   "suggestion": {
     "yes": "Oui"
+  },
+  "timers": {
+    "bar": "Minuteurs en cours"
   }
 }

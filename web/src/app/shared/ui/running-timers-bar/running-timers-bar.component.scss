@@ -1,0 +1,21 @@
+:host {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  display: block;
+}
+
+.bar {
+  display: block;
+  background: var(--mat-sys-surface-container);
+  box-shadow: var(--mat-sys-level2);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: var(--mat-sys-label-large);
+  color: var(--mat-sys-on-surface);
+}

@@ -367,5 +367,8 @@
   },
   "suggestion": {
     "yes": "Yes"
+  },
+  "timers": {
+    "bar": "Running timers"
   }
 }

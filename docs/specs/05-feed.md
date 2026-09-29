@@ -68,7 +68,7 @@ Each item becomes at least one test, written failing first.
 - [ ] The in-progress feed, its segments and the running side are stored on the server; reloading the app or opening it on another member's device shows the same state and durations.
 - [ ] Other devices see changes (side switch, pause, save) within a few seconds without a manual refresh.
 - [ ] Durations shown are computed from stored segment start/end timestamps, not from a client-side counter, so they stay correct after the app was closed.
-- [ ] While a breastfeed is in progress, it appears in the running timers mini-bar ("Feeding · L 12:04").
+- [ ] While a breastfeed is in progress, it appears in the running timers mini-bar ("Feeding · L 12m 4s", spec 04 duration format).
 
 ### Bottle Feed sheet
 - [ ] Rows: Start time (default now), Milk type (breast milk / formula, required, segmented button), Amount in ml (required, whole number, 1–500), Notes.
