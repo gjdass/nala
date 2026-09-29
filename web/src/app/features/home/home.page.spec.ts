@@ -26,6 +26,7 @@ describe('HomePage', () => {
     birthLengthCm: null,
     birthHeadCircumferenceCm: null,
   };
+  const tom: Baby = { ...lea, id: 'b0', name: 'Tom', birthDate: '2026-05-18', sex: 'boy' };
 
   const host = () => fixture.nativeElement as HTMLElement;
   const find = (testId: string) => host().querySelector(`[data-testid="${testId}"]`);
@@ -36,6 +37,7 @@ describe('HomePage', () => {
   };
 
   beforeEach(async () => {
+    localStorage.clear();
     health = new Subject<HealthStatus>();
     babiesLoaded = new Subject<BabiesResult>();
     sheetClosed = new Subject<Baby | undefined>();
@@ -53,10 +55,9 @@ describe('HomePage', () => {
     await fixture.whenStable();
   });
 
-  it('links to the settings page, whatever the babies', () => {
-    const link = host().querySelector('a[data-testid="settings"]');
+  it('shows the top bar with the settings button, whatever the babies', () => {
+    const link = host().querySelector('nala-top-app-bar a[data-testid="settings"]');
     expect(link?.getAttribute('href')).toBe('/settings');
-    expect(link?.textContent?.trim()).toBe(en.settings.title);
   });
 
   it('shows neither the empty state nor the app content while the babies load', () => {
@@ -88,6 +89,7 @@ describe('HomePage', () => {
 
       expect(find('empty-state')).toBeNull();
       expect(find('home-content')).toBeTruthy();
+      expect(text('selected-name')).toBe('Lea');
     });
 
     it('stays on the empty state when the sheet is closed without saving', async () => {
@@ -112,6 +114,40 @@ describe('HomePage', () => {
       health.next('ok');
       await fixture.whenStable();
       expect(text('health-status')).toBe(en.health.ok);
+    });
+
+    it('shows the selected baby in the top bar, without a switcher', () => {
+      expect(text('selected-name')).toBe('Lea');
+      expect(find('baby-switcher')).toBeNull();
+    });
+  });
+
+  describe('with several babies', () => {
+    it('selects the first baby when none is stored', async () => {
+      await load({ ok: true, babies: [tom, lea] });
+
+      expect(text('selected-name')).toBe('Tom');
+      expect(find('baby-switcher')).toBeTruthy();
+    });
+
+    it('restores the selected baby from nala.baby', async () => {
+      localStorage.setItem('nala.baby', lea.id);
+      await load({ ok: true, babies: [tom, lea] });
+
+      expect(text('selected-name')).toBe('Lea');
+    });
+
+    it('switching baby from the bar updates the bar and stores the choice', async () => {
+      await load({ ok: true, babies: [tom, lea] });
+
+      (find('baby-switcher') as HTMLButtonElement).click();
+      await fixture.whenStable();
+      const items = document.querySelectorAll<HTMLButtonElement>('[data-testid="switcher-item"]');
+      items[1].click();
+      await fixture.whenStable();
+
+      expect(text('selected-name')).toBe('Lea');
+      expect(localStorage.getItem('nala.baby')).toBe(lea.id);
     });
   });
 

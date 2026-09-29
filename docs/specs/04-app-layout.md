@@ -11,7 +11,7 @@ Give every activity section (Feed, Diaper, Sleep, Medication, Growth, Pump…) t
 ## Structure
 
 ### Top app bar
-- Selected baby (name + age) with the baby switcher (03), and a settings button.
+- Selected baby (name + age) with the baby switcher (03), and a settings button. Shared `nala-top-app-bar` (built in 03).
 
 ### Home
 - A **single column of section cards**, one above the other, scrollable.
@@ -107,6 +107,7 @@ Use Angular Material's M3 components as-is. Customize only through the global th
 | Pattern element | Material 3 / Angular Material |
 |---|---|
 | Top app bar | Top app bar (`mat-toolbar`) |
+| Baby switcher | Menu (`mat-menu`) opened from the baby's name in the top app bar |
 | Section card | Card (`mat-card`, elevated or filled) |
 | + button | Small FAB (`mat-mini-fab`) |
 | Show more / View all history | Text button / list item with trailing icon |

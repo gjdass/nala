@@ -1,0 +1,28 @@
+:host {
+  display: block;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.name-age {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: start;
+}
+
+.name {
+  font: var(--mat-sys-title-medium);
+}
+
+.age {
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.menu-age {
+  margin-inline-start: 8px;
+  color: var(--mat-sys-on-surface-variant);
+}

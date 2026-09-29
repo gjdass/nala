@@ -15,7 +15,7 @@ Let a household share one Nala instance: invite caregivers, let the admin remove
 - **Age display:** from the birth date to the device's local today, by calendar day. Under 14 days: days ("0 days" on the day of birth). From 14 days until the 3-month anniversary: weeks + days. From then on: months + days, still in months after the first year ("14 months 3 days"). A monthly anniversary falling on a day the month doesn't have is its last day. A zero part is left out ("2 weeks", "4 months"). Singular/plural per language. Shared web `BabyAgePipe` (keys `babies.age.<unit>.<one|other>`).
 - **"Not in the future":** the API refuses a birth date after today in UTC+14 (the latest calendar date anywhere), so no device's local today is refused; the web form caps it at the device's local today.
 - **Baby form:** the shared `nala-baby-form` in a form sheet: a bottom sheet on phones, a dialog on wide screens (the shared `SheetService`, as 04's entry sheet), with the shared `nala-sheet-header` (×, title, Save). Save is disabled while the form is invalid; × asks before discarding changes; backdrop and Escape don't close it. The birth date is picked from the calendar (field read-only, opens it on tap), in the app's language.
-- **No baby yet:** home shows only the shared `nala-empty-state` ("Add a baby", opening the baby sheet) and the Settings link, which stays reachable. Activity routes, when added (04+), must also require a baby.
+- **No baby yet:** home shows only the shared `nala-empty-state` ("Add a baby", opening the baby sheet) under the top app bar, whose settings button stays reachable. Activity routes, when added (04+), must also require a baby.
 
 ## User stories
 
@@ -44,8 +44,8 @@ Each item becomes at least one test, written failing first.
 - [x] Babies are listed by birth date, oldest first.
 
 ### Baby switcher
-- [ ] When the family has more than one baby, a switcher is available from every main screen; with one baby it is hidden.
-- [ ] The selected baby is remembered per device (not per account) and restored when the app is reopened. If it no longer exists, the first baby is selected.
+- [x] When the family has more than one baby, a switcher is available from every main screen; with one baby it is hidden.
+- [x] The selected baby is remembered per device (not per account) and restored when the app is reopened. If it no longer exists, the first baby is selected.
 
 ### Invitations
 - [ ] Any member can create an invitation link (single-use, expires after 7 days — see 02) and copy or share it with the device's share sheet.
@@ -69,7 +69,7 @@ Each slice goes red → green → commit on `master`, in this order.
 
 - [x] **Slice 1 — Add a first baby.** `Baby` entity + migration (name, birth date, sex, optional birth weight / length / head circumference, created at/by, updated at), Core validation (name 1–50, birth date not in the future, sex girl / boy / unspecified defaulting to unspecified, measurement bounds), `POST /api/babies`, `GET /api/babies` (oldest first), session-only via the fallback policy (disabled members refused). Web: `BabyService`, shared `nala-baby-form`, home empty state that opens the form; while no baby exists home shows only the empty state. Covers: First baby, baby fields, measurement bounds, "any member can add", oldest-first listing, the baby-endpoint part of Authorization.
 - [x] **Slice 2 — Babies in settings, edit, age.** `PUT /api/babies/{id}` (any member, full replace of every field, 404 unknown). Age formatting (EN/FR): days until 2 weeks, weeks + days until 3 months, then months + days. Web: Babies settings section (name + age, tap to edit), Add and Edit through the baby sheet (`nala-baby-form`, data passed with `SHEET_DATA`). Covers: "any member can edit any field", the age display.
-- [ ] **Slice 3 — Selected baby and switcher.** Selection per device in `localStorage` (`nala.baby`), restored at start, falling back to the first baby when missing. Minimal top app bar (`mat-toolbar`) with the selected baby's name + age, a switcher when there is more than one baby, and the settings button; 04 extends this bar. Covers: both Baby switcher criteria.
+- [x] **Slice 3 — Selected baby and switcher.** Selection per device in `localStorage` (`nala.baby`), restored when the babies are loaded, falling back to the first baby when missing (shared `SelectedBabyService`). Minimal top app bar (shared `nala-top-app-bar`, `mat-toolbar`) with the selected baby's name + age, a switcher menu (`mat-menu`) when there is more than one baby, and the settings button; with no baby it shows only the settings button. 04 extends this bar. Covers: both Baby switcher criteria.
 - [ ] **Slice 4 — Delete a baby (admin only).** `DELETE /api/babies/{id}`: 204 for the admin, 403 `{ code: "adminOnly" }` otherwise (checked in Core), 404 unknown. FK cascade ready for activity tables (each activity spec adds its own cascade test). Web: Delete shown to the admin only, confirmation requiring the baby's name, selection falls back to the first baby. Covers: both delete criteria, the delete-baby part of admin-only Authorization.
 - [ ] **Slice 5 — Invitation links: create, list, revoke.** `POST /api/invitations` → `{ token, expiresAt }` (7 days), `GET /api/invitations` (pending only, with creator and expiry), `POST /api/invitations/{id}/revoke` (any member). Web: Members & invitations section, Invite → `nala-share-link-dialog`, pending list with a shared `nala-invitation-list-item` and Revoke. Covers: invitation criteria 1 and 3.
 - [ ] **Slice 6 — Invitation by email.** With SMTP configured, the invite dialog takes an email address; the API creates the invitation and queues the email (link `{NALA_PUBLIC_URL}/invite/{token}`) in the user's language through `IEmailOutbox`; refused when SMTP is off; field hidden without `smtpEnabled`. Covers: invitation criterion 2.
@@ -85,7 +85,7 @@ Each slice goes red → green → commit on `master`, in this order.
 ## UI notes
 
 - Settings area with sections: Babies, Members & invitations, Account (02), Admin (02, admin only).
-- Baby switcher: compact control in the top app bar showing the selected baby's name and age.
+- Baby switcher: compact control in the top app bar showing the selected baby's name and age; with several babies it opens a menu (`mat-menu`) listing each baby with their age, the selected one ticked.
 - Baby form, member list item and invitation list item are shared UI components.
 - All text through i18n (EN/FR); ages and dates formatted in the user's language.
 

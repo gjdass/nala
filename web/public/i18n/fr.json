@@ -253,6 +253,10 @@
         "one": "{{count}} mois",
         "other": "{{count}} mois"
       }
-    }
+    },
+    "switcher": "Changer de bébé"
+  },
+  "topBar": {
+    "settings": "Paramètres"
   }
 }

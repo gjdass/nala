@@ -1,0 +1,117 @@
+import { TestBed } from '@angular/core/testing';
+import { Subject } from 'rxjs';
+import { BabiesResult, Baby } from './baby.models';
+import { BabyService } from './baby.service';
+import { SelectedBabyService } from './selected-baby.service';
+
+const KEY = 'nala.baby';
+
+describe('SelectedBabyService', () => {
+  let listed: Subject<BabiesResult>;
+
+  const baby = (id: string, name: string, birthDate: string): Baby => ({
+    id,
+    name,
+    birthDate,
+    sex: 'unspecified',
+    birthWeightG: null,
+    birthLengthCm: null,
+    birthHeadCircumferenceCm: null,
+  });
+  const tom = baby('b1', 'Tom', '2026-05-18');
+  const lea = baby('b2', 'Lea', '2026-09-23');
+
+  const loaded = (result: BabiesResult) => {
+    const store = TestBed.inject(SelectedBabyService);
+    store.refresh();
+    listed.next(result);
+    return store;
+  };
+
+  beforeEach(() => {
+    localStorage.clear();
+    listed = new Subject<BabiesResult>();
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [{ provide: BabyService, useValue: { list: () => listed } }],
+    });
+  });
+
+  afterEach(() => vi.restoreAllMocks());
+
+  it('loads the babies and selects the first one when nothing is stored', () => {
+    const store = loaded({ ok: true, babies: [tom, lea] });
+
+    expect(store.babies()).toEqual([tom, lea]);
+    expect(store.selected()).toEqual(tom);
+  });
+
+  it('has no babies before they are loaded', () => {
+    const store = TestBed.inject(SelectedBabyService);
+
+    expect(store.babies()).toBeNull();
+    expect(store.selected()).toBeNull();
+  });
+
+  it('restores the baby stored under nala.baby', () => {
+    localStorage.setItem(KEY, lea.id);
+
+    expect(loaded({ ok: true, babies: [tom, lea] }).selected()).toEqual(lea);
+  });
+
+  it('falls back to the first baby when the stored one no longer exists', () => {
+    localStorage.setItem(KEY, 'gone');
+
+    expect(loaded({ ok: true, babies: [tom, lea] }).selected()).toEqual(tom);
+  });
+
+  it('select() changes the selected baby and stores its id under nala.baby', () => {
+    const store = loaded({ ok: true, babies: [tom, lea] });
+
+    store.select(lea.id);
+
+    expect(store.selected()).toEqual(lea);
+    expect(localStorage.getItem(KEY)).toBe(lea.id);
+  });
+
+  it('has no selected baby when the family has none', () => {
+    expect(loaded({ ok: true, babies: [] }).selected()).toBeNull();
+  });
+
+  it('add() inserts a new baby in birth order', () => {
+    const store = loaded({ ok: true, babies: [lea] });
+
+    store.add(tom);
+
+    expect(store.babies()).toEqual([tom, lea]);
+  });
+
+  it('add() of the first baby selects it', () => {
+    const store = loaded({ ok: true, babies: [] });
+
+    store.add(lea);
+
+    expect(store.selected()).toEqual(lea);
+  });
+
+  it('reports a load error', () => {
+    const store = loaded({ ok: false, errors: { form: 'unknown' } });
+
+    expect(store.loadError()).toBe(true);
+    expect(store.selected()).toBeNull();
+  });
+
+  it('still works when storage is unavailable', () => {
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new Error('blocked');
+    });
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('blocked');
+    });
+    const store = loaded({ ok: true, babies: [tom, lea] });
+
+    expect(store.selected()).toEqual(tom);
+    store.select(lea.id);
+    expect(store.selected()).toEqual(lea);
+  });
+});

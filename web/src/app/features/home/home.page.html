@@ -1,9 +1,15 @@
+<nala-top-app-bar
+  [babies]="store.babies() ?? []"
+  [selected]="store.selected()"
+  (babySelected)="store.select($event)"
+/>
+
 <main>
-  @if (loadError()) {
+  @if (store.loadError()) {
     <p class="error" role="alert" data-testid="babies-error">
       {{ 'babies.loadError' | transloco }}
     </p>
-  } @else if (babies(); as babies) {
+  } @else if (store.babies(); as babies) {
     @if (babies.length === 0) {
       <nala-empty-state
         icon="child_care"
@@ -29,6 +35,4 @@
       </mat-card>
     }
   }
-
-  <a mat-button routerLink="/settings" data-testid="settings">{{ 'settings.title' | transloco }}</a>
 </main>

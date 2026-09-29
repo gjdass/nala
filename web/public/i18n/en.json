@@ -253,6 +253,10 @@
         "one": "{{count}} month",
         "other": "{{count}} months"
       }
-    }
+    },
+    "switcher": "Switch baby"
+  },
+  "topBar": {
+    "settings": "Settings"
   }
 }

@@ -6,12 +6,9 @@ import { TranslocoPipe } from '@jsverse/transloco';
 import { BabyAgePipe } from '../../../core/babies/baby-age.pipe';
 import { Baby } from '../../../core/babies/baby.models';
 import { BabyService } from '../../../core/babies/baby.service';
+import { byBirthDate } from '../../../core/babies/selected-baby.service';
 import { SheetService } from '../../../shared/ui/sheet/sheet.service';
 import { BabySheetComponent } from '../../babies/baby-sheet/baby-sheet.component';
-
-/** Oldest first, like the API; ties keep their order (creation). */
-const byBirthDate = (babies: Baby[]) =>
-  [...babies].sort((a, b) => a.birthDate.localeCompare(b.birthDate));
 
 /** The family's babies (name + age), added and edited through the baby sheet. */
 @Component({

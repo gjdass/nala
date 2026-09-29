@@ -1,0 +1,53 @@
+<mat-toolbar>
+  @if (selected(); as baby) {
+    @if (babies().length > 1) {
+      <button
+        mat-button
+        type="button"
+        class="baby"
+        [matMenuTriggerFor]="switcher"
+        [attr.aria-label]="'babies.switcher' | transloco"
+        data-testid="baby-switcher"
+      >
+        <ng-container *ngTemplateOutlet="current; context: { $implicit: baby }" />
+        <mat-icon iconPositionEnd>arrow_drop_down</mat-icon>
+      </button>
+      <mat-menu #switcher="matMenu">
+        @for (b of babies(); track b.id) {
+          <button
+            mat-menu-item
+            type="button"
+            role="menuitemradio"
+            [attr.aria-checked]="b.id === baby.id"
+            (click)="babySelected.emit(b.id)"
+            data-testid="switcher-item"
+          >
+            <mat-icon>{{ b.id === baby.id ? 'check' : '' }}</mat-icon>
+            <span data-testid="switcher-name">{{ b.name }}</span>
+            <span class="menu-age" data-testid="switcher-age">{{ b.birthDate | babyAge }}</span>
+          </button>
+        }
+      </mat-menu>
+    } @else {
+      <div class="baby">
+        <ng-container *ngTemplateOutlet="current; context: { $implicit: baby }" />
+      </div>
+    }
+  }
+  <span class="spacer"></span>
+  <a
+    mat-icon-button
+    routerLink="/settings"
+    [attr.aria-label]="'topBar.settings' | transloco"
+    data-testid="settings"
+  >
+    <mat-icon>settings</mat-icon>
+  </a>
+</mat-toolbar>
+
+<ng-template #current let-baby>
+  <span class="name-age">
+    <span class="name" data-testid="selected-name">{{ baby.name }}</span>
+    <span class="age" data-testid="selected-age">{{ baby.birthDate | babyAge }}</span>
+  </span>
+</ng-template>
