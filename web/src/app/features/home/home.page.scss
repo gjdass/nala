@@ -8,13 +8,11 @@ main {
   padding: 16px;
 }
 
-mat-card {
-  align-self: stretch;
-}
-
-.status {
+.sections {
   display: flex;
-  gap: 4px;
+  flex-direction: column;
+  align-self: stretch;
+  gap: 16px;
 }
 
 nala-empty-state {

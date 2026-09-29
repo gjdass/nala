@@ -1,0 +1,57 @@
+<mat-card appearance="filled">
+  <div
+    class="header"
+    [style.--nala-section-colour]="'var(--nala-section-' + key() + ')'"
+    [style.--nala-on-section-colour]="'var(--nala-on-section-' + key() + ')'"
+    data-testid="section-header"
+  >
+    <h2 class="title" data-testid="section-title">{{ 'sections.' + key() | transloco }}</h2>
+    <button
+      mat-mini-fab
+      type="button"
+      [attr.aria-label]="
+        'sectionCard.add' | transloco: { section: ('sections.' + key() | transloco) }
+      "
+      (click)="add.emit()"
+      data-testid="section-add"
+    >
+      <mat-icon>add</mat-icon>
+    </button>
+  </div>
+
+  @if (entries(); as list) {
+    <div class="body" [style.--nala-entry-bar]="'var(--nala-section-' + key() + ')'">
+      @if (list.length === 0) {
+        <ng-content select="[sectionEmpty]" />
+      } @else {
+        <ng-content select="[sectionHighlight]" />
+        <button
+          mat-button
+          type="button"
+          class="toggle"
+          (click)="toggle()"
+          data-testid="section-toggle"
+        >
+          {{ (expanded() ? 'sectionCard.showLess' : 'sectionCard.showMore') | transloco }}
+          <mat-icon iconPositionEnd>{{ expanded() ? 'expand_less' : 'expand_more' }}</mat-icon>
+        </button>
+        @if (expanded()) {
+          <mat-action-list>
+            @for (entry of recent(); track $index) {
+              <ng-container
+                *ngTemplateOutlet="entryTemplate() ?? null; context: { $implicit: entry }"
+              />
+            }
+          </mat-action-list>
+        }
+      }
+    </div>
+  }
+
+  <mat-nav-list>
+    <a mat-list-item [routerLink]="['/history', key()]" data-testid="section-history">
+      <span matListItemTitle>{{ 'sectionCard.viewHistory' | transloco }}</span>
+      <mat-icon matListItemMeta aria-hidden="true">chevron_right</mat-icon>
+    </a>
+  </mat-nav-list>
+</mat-card>

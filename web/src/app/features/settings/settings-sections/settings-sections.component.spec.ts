@@ -12,6 +12,7 @@ import {
   SectionsSaveResult,
 } from '../../../core/sections/section.models';
 import { SectionPreferencesService } from '../../../core/sections/section-preferences.service';
+import { fakeSection } from '../../../testing/fake-section';
 import { translocoTesting } from '../../../testing/transloco-testing';
 import { SettingsSectionsComponent } from './settings-sections.component';
 
@@ -27,9 +28,9 @@ describe('SettingsSectionsComponent', () => {
 
   /** Three of the six sections are built; the others must keep their place when saving. */
   const registered: SectionDefinition[] = [
-    { key: 'feed', icon: 'restaurant' },
-    { key: 'diaper', icon: 'baby_changing_station' },
-    { key: 'growth', icon: 'straighten' },
+    fakeSection('feed', 'restaurant'),
+    fakeSection('diaper', 'baby_changing_station'),
+    fakeSection('growth', 'straighten'),
   ];
   const userOrder: SectionPreference[] = [
     { key: 'sleep', visible: true },

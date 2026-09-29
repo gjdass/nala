@@ -1,0 +1,33 @@
+:host {
+  display: block;
+}
+
+mat-card {
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 8px 8px 16px;
+  background: var(--nala-section-colour);
+  color: var(--nala-on-section-colour);
+}
+
+.title {
+  margin: 0;
+  font: var(--mat-sys-title-medium);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  padding-top: 8px;
+}
+
+.toggle {
+  align-self: flex-start;
+  margin-inline-start: 8px;
+}

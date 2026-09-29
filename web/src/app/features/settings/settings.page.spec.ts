@@ -16,6 +16,7 @@ import { AuthService } from '../../core/auth/auth.service';
 import { ThemeMode, ThemeService } from '../../core/theme/theme.service';
 import { SECTIONS, SectionDefinition } from '../../core/sections/section.models';
 import { SectionPreferencesService } from '../../core/sections/section-preferences.service';
+import { fakeSection } from '../../testing/fake-section';
 import { translocoTesting } from '../../testing/transloco-testing';
 import { DeleteAccountDialogComponent } from './delete-account-dialog/delete-account-dialog.component';
 import { SettingsPage } from './settings.page';
@@ -158,7 +159,7 @@ describe('SettingsPage', () => {
   });
 
   it('shows the Home sections section after Members & invitations once a section is built', async () => {
-    registered.push({ key: 'feed', icon: 'restaurant' });
+    registered.push(fakeSection('feed', 'restaurant'));
     fixture = TestBed.createComponent(SettingsPage);
     await fixture.whenStable();
 

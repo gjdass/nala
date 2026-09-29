@@ -24,7 +24,7 @@ Each item becomes at least one test or check, written failing first where testab
 - [x] A lint check fails on hard-coded colours (hex, `rgb()`, `hsl()`, named colours) in component style files.
 - [x] Runtime i18n (EN/FR) is set up with a translation library that can switch language without reloading (the language is a per-user setting, see 02); no user-facing string outside translation files.
 - [x] The unit test runner runs green.
-- [x] A placeholder home page calls `/api/health` and shows the result; in development, `/api` is proxied to the local API.
+- [x] A placeholder home page calls `/api/health` and shows the result; in development, `/api` is proxied to the local API. *(The placeholder was replaced by the section home in 04 slice 2; the health endpoint and the smoke check remain.)*
 
 ### Docker
 - [x] Multi-stage Dockerfiles for `api` (SDK build → ASP.NET runtime) and `web` (node build → nginx).

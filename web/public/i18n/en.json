@@ -2,14 +2,6 @@
   "app": {
     "title": "Nala"
   },
-  "home": {
-    "apiStatus": "API status:"
-  },
-  "health": {
-    "loading": "Checking…",
-    "ok": "OK",
-    "unavailable": "Unavailable"
-  },
   "lang": {
     "en": "English",
     "fr": "Français"
@@ -317,5 +309,29 @@
     "pump": "Pump",
     "growth": "Growth",
     "medication": "Medication"
+  },
+  "sectionCard": {
+    "add": "Add {{section}}",
+    "showMore": "Show more",
+    "showLess": "Show less",
+    "viewHistory": "View all history"
+  },
+  "time": {
+    "justNow": "just now",
+    "minutesAgo": "{{m}}m ago",
+    "hoursAgo": "{{h}}h ago",
+    "hoursMinutesAgo": "{{h}}h {{m}}m ago",
+    "daysAgo": {
+      "one": "{{count}} day ago",
+      "other": "{{count}} days ago"
+    },
+    "duration": {
+      "s": "{{s}}s",
+      "m": "{{m}}m",
+      "ms": "{{m}}m {{s}}s",
+      "h": "{{h}}h",
+      "hm": "{{h}}h {{m}}m"
+    },
+    "yesterday": "Yesterday {{time}}"
   }
 }

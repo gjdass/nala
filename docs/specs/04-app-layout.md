@@ -13,6 +13,12 @@ Give every activity section (Feed, Diaper, Sleep, Medication, Growth, Pump…) t
 - **Only built sections are shown.** The server stores each user's preferences for every section key, in the default order. The web keeps a section registry: each feature registers its key, icon, kinds, card and history. Home and the settings list only show registered sections, so each feature spec adds its own card; until the first feature (05) exists, home shows no card.
 - **Section preferences endpoints:** `GET /api/account/sections` → 200 `[{ key, visible }]` in the user's order: the default order until they save one; keys added later are appended visible, stored keys no longer known are dropped. `PUT /api/account/sections` with the whole list → 200 with it; 400 validation problem `sections`: `invalid` (not every known key exactly once, or an item without key/visible) / `noneVisible`. Any enabled member, for their own preferences only (session fallback policy).
 - **Home sections in settings:** a "Home sections" section after Members & invitations, shown once at least one section is built. One list item per built section: drag handle, title, visibility switch; the switch of the last visible one is disabled. Each drop or switch saves at once (like the language and theme), shown right away and put back with a snackbar if saving fails. The web always sends all six keys: unbuilt sections keep their slot and visibility.
+- **Section registry entry:** each feature registers its key, icon and its own card component (self-contained: it loads its entries for the selected baby and wraps the shared section card). Home renders the registered cards of the visible sections in the user's order, once there is a baby. Kinds and the history loader join the entry in the slices that need them.
+- **Time since** (card highlights): `just now` (under 1 min), `26m ago` (under 1 h), `2h 15m ago` / `2h ago` (under 24 h), `1 day ago` / `3 days ago`. French: `à l'instant`, `il y a 26 min`, `il y a 2 h 15 min`, `il y a 1 jour` / `il y a 3 jours`. Refreshed every second from a shared clock.
+- **Durations:** `45s`, `8m 30s` / `8m`, `1h 5m` / `2h` (zero parts left out, seconds left out from 1 h). French: `45 s`, `8 min 30 s`, `1 h 5 min`.
+- **Entry time** (entry list item): the local time for today's entries (`2:10 PM`), `Yesterday 2:10 PM`, then date and time (`Sep 20, 2:10 PM`, with the year when it is not the current year).
+- **Duration bar scale:** the bar's length is the duration divided by a fixed scale set by the section (default 1 h), capped at the full width, so bars don't change as more history loads.
+- **Show more state:** remembered per device and per section in `localStorage` (`nala.sectionExpanded.<key>`).
 - **Mini-bar: shell in 04, wired in 05.** 04 builds the shared mini-bar and a `RunningTimersService` that sections register their running-timer sources with, tested with a fake source. The first real timer (breastfeed) and the cross-device sync come with 05.
 
 ## Structure
@@ -79,7 +85,7 @@ Shared by the card's expanded list and the history page:
 Each item becomes at least one test, written failing first.
 
 ### Home and order
-- [ ] Home shows one card per visible section, in a single column, in the user's order.
+- [x] Home shows one card per visible section, in a single column, in the user's order.
 - [x] A new user gets the default order: Feed, Sleep, Diaper, Pump, Growth, Medication; all visible.
 - [x] In settings, a user can reorder sections (drag handles) and hide or show each one; at least one section must stay visible.
 - [x] Order and visibility are saved per user on the server and apply on all their devices; other users are not affected.
@@ -87,9 +93,9 @@ Each item becomes at least one test, written failing first.
 
 ### Section card
 - [ ] Every section card uses the shared section card component (header band, + button, highlight slot, show more / less, view all history).
-- [ ] With no entry yet, the highlight shows a section-specific empty state.
-- [ ] "Show more" expands up to the 10 most recent entries inline; "Show less" collapses them. The expanded state is remembered per device.
-- [ ] Time-since values ("26m ago", "3 days ago") update live without reloading.
+- [x] With no entry yet, the highlight shows a section-specific empty state.
+- [x] "Show more" expands up to the 10 most recent entries inline; "Show less" collapses them. The expanded state is remembered per device.
+- [x] Time-since values ("26m ago", "3 days ago") update live without reloading.
 
 ### + and entry sheet
 - [ ] + opens the kind picker when the section has several kinds, the entry sheet directly otherwise.
@@ -112,7 +118,7 @@ Each item becomes at least one test, written failing first.
 Each slice goes red → green → commit on `master`, in this order.
 
 - [x] **Slice 1 — Section preferences (server + settings).** `UserSectionPreference` entity + migration (user, key, position, visible; PK user + key; cascade on user delete). Core `SectionPreferences`: default order (feed, sleep, diaper, pump, growth, medication, all visible), stored rows merged with any new keys (appended, visible), validation (every known key exactly once, at least one visible). `GET /api/account/sections` → `[{ key, visible }]` in order; `PUT /api/account/sections` replaces the whole list → 200, 400 validation problem otherwise. Any enabled member, for themselves only. Web: `SectionPreferencesService`, a "Home sections" settings section (CDK drag list with drag handles, a visibility switch per row, the last visible one can't be turned off), limited to registered sections. Covers: default order, reorder/hide in settings, saved per user on the server, hiding keeps the data, theming (tokens from 01).
-- [ ] **Slice 2 — Home column, section card, entry list item.** Section registry. Home renders one shared `nala-section-card` per visible registered section, in the user's order, in a single column under the top app bar. Card: `mat-card`, header band on the section tokens, `mat-mini-fab` +, highlight slot with an empty-state slot, Show more / Show less (up to 10 entries, expanded state per device in `localStorage`), View all history. Shared `nala-entry-list-item` (kind icon, local time, summary, optional duration bar + duration, chevron). Shared ticking `NowService`, time-since and duration pipes (EN/FR). Covers: home in the user's order, the card criteria (frame, empty state, show more/less, live time-since).
+- [x] **Slice 2 — Home column, section card, entry list item.** Section registry. Home renders one shared `nala-section-card` per visible registered section, in the user's order, in a single column under the top app bar. Card: `mat-card`, header band on the section tokens, `mat-mini-fab` +, highlight slot with an empty-state slot, Show more / Show less (up to 10 entries, expanded state per device in `localStorage`), View all history. Shared `nala-entry-list-item` (kind icon, local time, summary, optional duration bar + duration, chevron). Shared ticking `NowService`, time-since and duration pipes (EN/FR). Covers: home in the user's order, the card criteria (frame, empty state, show more/less, live time-since). The frame criterion is ticked with slice 4, when View all history leads to the history page.
 - [ ] **Slice 3 — + button, kind picker, entry sheet frame.** + opens the shared `nala-kind-picker` (`MatBottomSheet`) with several kinds, the entry sheet directly with one. Entry sheet through `SheetService`: `nala-sheet-header` on the section colour, shared form row, suggestion row, notes row and delete action (with confirmation); × asks before discarding changes, Save disabled while invalid with field errors, entry list item opens the sheet pre-filled with Delete; 48 × 48 dp targets. Tested with a fake section. Covers: every "+ and entry sheet" criterion.
 - [ ] **Slice 4 — History page.** `/history/:section` (signed in, a baby required, unknown or unregistered key → home), back button, the section's entries for the selected baby newest first as entry list items, loaded page by page on scroll through the section's page loader. No totals or charts. Opened from View all history. Covers: the history part of the section card criterion.
 - [ ] **Slice 5 — Running timers mini-bar (shell).** `RunningTimersService` merging the registered timer sources; shared `nala-running-timers-bar` pinned at the bottom of every screen: one list item per running timer (section icon, label, live duration, the baby's name with several babies, chevron), opens the timer's sheet on tap, hidden when none runs. Tested with a fake source. Covers: mini-bar criteria 1 and 2 (criterion 3, other devices, comes with 05's live sync).

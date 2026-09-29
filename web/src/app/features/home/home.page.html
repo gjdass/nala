@@ -22,17 +22,11 @@
         </button>
       </nala-empty-state>
     } @else {
-      <mat-card appearance="outlined" data-testid="home-content">
-        <mat-card-header>
-          <mat-card-title>{{ 'app.title' | transloco }}</mat-card-title>
-        </mat-card-header>
-        <mat-card-content>
-          <p class="status">
-            <span data-testid="api-status-label">{{ 'home.apiStatus' | transloco }}</span>
-            <span data-testid="health-status">{{ 'health.' + status() | transloco }}</span>
-          </p>
-        </mat-card-content>
-      </mat-card>
+      <div class="sections" data-testid="section-column">
+        @for (section of sections(); track section.key) {
+          <ng-container *ngComponentOutlet="section.card" />
+        }
+      </div>
     }
   }
 </main>
