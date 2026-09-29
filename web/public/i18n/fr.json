@@ -160,6 +160,13 @@
     },
     "members": {
       "title": "Membres et invitations"
+    },
+    "sections": {
+      "title": "Sections de l'accueil",
+      "hint": "Faites glisser pour réordonner ; désactivez les sections que vous n'utilisez pas.",
+      "dragHandle": "Faire glisser pour réordonner",
+      "visible": "Afficher {{section}} sur l'accueil",
+      "saveFailed": "Impossible d'enregistrer les sections de l'accueil. Réessayez."
     }
   },
   "members": {
@@ -302,5 +309,13 @@
   },
   "topBar": {
     "settings": "Paramètres"
+  },
+  "sections": {
+    "feed": "Repas",
+    "sleep": "Sommeil",
+    "diaper": "Couches",
+    "pump": "Tire-lait",
+    "growth": "Croissance",
+    "medication": "Médicaments"
   }
 }

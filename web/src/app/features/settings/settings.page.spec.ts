@@ -14,6 +14,8 @@ import { MemberService } from '../../core/members/member.service';
 import { AccountResult, AuthState } from '../../core/auth/auth.models';
 import { AuthService } from '../../core/auth/auth.service';
 import { ThemeMode, ThemeService } from '../../core/theme/theme.service';
+import { SECTIONS, SectionDefinition } from '../../core/sections/section.models';
+import { SectionPreferencesService } from '../../core/sections/section-preferences.service';
 import { translocoTesting } from '../../testing/transloco-testing';
 import { DeleteAccountDialogComponent } from './delete-account-dialog/delete-account-dialog.component';
 import { SettingsPage } from './settings.page';
@@ -32,6 +34,8 @@ describe('SettingsPage', () => {
   let dialogClosed: Subject<boolean | undefined>;
   let dialog: { open: ReturnType<typeof vi.fn> };
   let router: Router;
+  /** The built sections; empty until a feature registers one. */
+  const registered: SectionDefinition[] = [];
 
   const host = () => fixture.nativeElement as HTMLElement;
   const input = (field: string) =>
@@ -62,6 +66,7 @@ describe('SettingsPage', () => {
   };
 
   beforeEach(async () => {
+    registered.length = 0;
     updated = new Subject<AccountResult>();
     passwordChanged = new Subject<AccountResult>();
     account = { update: vi.fn(() => updated), changePassword: vi.fn(() => passwordChanged) };
@@ -92,6 +97,11 @@ describe('SettingsPage', () => {
         { provide: ThemeService, useValue: theme },
         { provide: MatSnackBar, useValue: snackBar },
         { provide: MatDialog, useValue: dialog },
+        { provide: SECTIONS, useValue: registered },
+        {
+          provide: SectionPreferencesService,
+          useValue: { preferences: signal(null), load: vi.fn(), save: vi.fn() },
+        },
         { provide: AdminService, useValue: { users: vi.fn(() => of({ ok: true, users: [] })) } },
         { provide: BabyService, useValue: { list: vi.fn(() => of({ ok: true, babies: [] })) } },
         {
@@ -140,6 +150,24 @@ describe('SettingsPage', () => {
     expect(host().querySelector('nala-admin-users')).toBeNull();
     expect(host().querySelector('nala-settings-babies')).not.toBeNull();
     expect(host().querySelector('nala-settings-invitations')).not.toBeNull();
+  });
+
+  it('hides the Home sections section while no section is built', () => {
+    expect(host().querySelector('nala-settings-sections')).toBeNull();
+    expect(sectionTitles()).not.toContain(en.settings.sections.title);
+  });
+
+  it('shows the Home sections section after Members & invitations once a section is built', async () => {
+    registered.push({ key: 'feed', icon: 'restaurant' });
+    fixture = TestBed.createComponent(SettingsPage);
+    await fixture.whenStable();
+
+    expect(sectionTitles().slice(0, 3)).toEqual([
+      en.settings.babies.title,
+      en.settings.members.title,
+      en.settings.sections.title,
+    ]);
+    expect(host().querySelector('nala-settings-sections')).not.toBeNull();
   });
 
   it('shows the members before the invitations in the Members & invitations section', () => {

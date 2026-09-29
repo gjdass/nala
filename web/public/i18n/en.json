@@ -160,6 +160,13 @@
     },
     "members": {
       "title": "Members & invitations"
+    },
+    "sections": {
+      "title": "Home sections",
+      "hint": "Drag to reorder; switch off the sections you don't use.",
+      "dragHandle": "Drag to reorder",
+      "visible": "Show {{section}} on home",
+      "saveFailed": "Couldn't save the home sections. Try again."
     }
   },
   "members": {
@@ -302,5 +309,13 @@
   },
   "topBar": {
     "settings": "Settings"
+  },
+  "sections": {
+    "feed": "Feed",
+    "sleep": "Sleep",
+    "diaper": "Diaper",
+    "pump": "Pump",
+    "growth": "Growth",
+    "medication": "Medication"
   }
 }

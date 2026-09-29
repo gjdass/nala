@@ -3,10 +3,12 @@ using Microsoft.Extensions.DependencyInjection;
 using Nala.Core.Auth;
 using Nala.Core.Babies;
 using Nala.Core.Invitations;
+using Nala.Core.Sections;
 using Nala.Core.Users;
 using Nala.Sql.Auth;
 using Nala.Sql.Babies;
 using Nala.Sql.Invitations;
+using Nala.Sql.Sections;
 using Nala.Sql.Users;
 
 namespace Nala.Sql;
@@ -21,5 +23,6 @@ public static class SqlServiceCollectionExtensions
             .AddScoped<ILoginFailureRepository, LoginFailureRepository>()
             .AddScoped<IInvitationRepository, InvitationRepository>()
             .AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>()
-            .AddScoped<IBabyRepository, BabyRepository>();
+            .AddScoped<IBabyRepository, BabyRepository>()
+            .AddScoped<ISectionPreferenceRepository, SectionPreferenceRepository>();
 }

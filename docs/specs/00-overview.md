@@ -29,7 +29,7 @@ Status: `idea` → `specified` → `in progress` → `done`. A feature moves to 
 | 01 | Project skeleton (solution, Angular PWA, Docker Compose, test setups) | [01-project-skeleton.md](01-project-skeleton.md) | done | |
 | 02 | Authentication (login, register, sessions) | [02-auth.md](02-auth.md) | done | |
 | 03 | Family & baby profile | [03-family-baby.md](03-family-baby.md) | done | |
-| 04 | App layout & section pattern (home cards, entry sheet, mini-bar) | [04-app-layout.md](04-app-layout.md) | specified | Shared by every section. |
+| 04 | App layout & section pattern (home cards, entry sheet, mini-bar) | [04-app-layout.md](04-app-layout.md) | in progress | Shared by every section. |
 | 05 | Feed | [05-feed.md](05-feed.md) | specified | **Hard requirement:** breast feeding has two independent per-side timers (left/right), side by side in the Breastfeed sheet. A single timer with a "side" field is not acceptable. |
 | 06 | Sleep | — | idea | |
 | 07 | Diaper | — | idea | From the reference screenshots: time, wet / dirty / dry selector, diaper-rash toggle, notes. |

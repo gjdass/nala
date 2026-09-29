@@ -19,6 +19,7 @@ import { AccountService } from '../../core/account/account.service';
 import { FieldErrors } from '../../core/auth/auth.models';
 import { AuthService } from '../../core/auth/auth.service';
 import { LANGS, Lang } from '../../core/i18n/initial-lang';
+import { SECTIONS } from '../../core/sections/section.models';
 import { THEME_MODES, ThemeMode, ThemeService } from '../../core/theme/theme.service';
 import { SettingsSectionComponent } from '../../shared/ui/settings-section/settings-section.component';
 import { displayName, errorCode, newPassword } from '../auth/auth.validators';
@@ -27,10 +28,11 @@ import { DeleteAccountDialogComponent } from './delete-account-dialog/delete-acc
 import { SettingsBabiesComponent } from './settings-babies/settings-babies.component';
 import { SettingsInvitationsComponent } from './settings-invitations/settings-invitations.component';
 import { SettingsMembersComponent } from './settings-members/settings-members.component';
+import { SettingsSectionsComponent } from './settings-sections/settings-sections.component';
 
 const SNACK_DURATION = 3000;
 
-/** Babies, members & invitations, account (display name, language, password, deletion), admin (admin only), appearance (theme) and logout. */
+/** Babies, members & invitations, home sections (once a section is built), account (display name, language, password, deletion), admin (admin only), appearance (theme) and logout. */
 @Component({
   selector: 'nala-settings',
   imports: [
@@ -45,6 +47,7 @@ const SNACK_DURATION = 3000;
     SettingsInvitationsComponent,
     SettingsMembersComponent,
     SettingsSectionComponent,
+    SettingsSectionsComponent,
     TranslocoPipe,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -60,6 +63,8 @@ export class SettingsPage {
   private readonly router = inject(Router);
   private readonly dialog = inject(MatDialog);
 
+  /** Nothing to order until a section is built. */
+  protected readonly hasSections = inject(SECTIONS).length > 0;
   protected readonly langs = LANGS;
   protected readonly themeModes = THEME_MODES;
   protected readonly language = computed(() => this.auth.state()?.user?.language);

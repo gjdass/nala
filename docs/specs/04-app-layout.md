@@ -1,6 +1,6 @@
 # 04 — App layout & section pattern
 
-Status: specified
+Status: in progress
 
 ## Goal
 
@@ -11,6 +11,8 @@ Give every activity section (Feed, Diaper, Sleep, Medication, Growth, Pump…) t
 ## Decisions
 
 - **Only built sections are shown.** The server stores each user's preferences for every section key, in the default order. The web keeps a section registry: each feature registers its key, icon, kinds, card and history. Home and the settings list only show registered sections, so each feature spec adds its own card; until the first feature (05) exists, home shows no card.
+- **Section preferences endpoints:** `GET /api/account/sections` → 200 `[{ key, visible }]` in the user's order: the default order until they save one; keys added later are appended visible, stored keys no longer known are dropped. `PUT /api/account/sections` with the whole list → 200 with it; 400 validation problem `sections`: `invalid` (not every known key exactly once, or an item without key/visible) / `noneVisible`. Any enabled member, for their own preferences only (session fallback policy).
+- **Home sections in settings:** a "Home sections" section after Members & invitations, shown once at least one section is built. One list item per built section: drag handle, title, visibility switch; the switch of the last visible one is disabled. Each drop or switch saves at once (like the language and theme), shown right away and put back with a snackbar if saving fails. The web always sends all six keys: unbuilt sections keep their slot and visibility.
 - **Mini-bar: shell in 04, wired in 05.** 04 builds the shared mini-bar and a `RunningTimersService` that sections register their running-timer sources with, tested with a fake source. The first real timer (breastfeed) and the cross-device sync come with 05.
 
 ## Structure
@@ -78,10 +80,10 @@ Each item becomes at least one test, written failing first.
 
 ### Home and order
 - [ ] Home shows one card per visible section, in a single column, in the user's order.
-- [ ] A new user gets the default order: Feed, Sleep, Diaper, Pump, Growth, Medication; all visible.
-- [ ] In settings, a user can reorder sections (drag handles) and hide or show each one; at least one section must stay visible.
-- [ ] Order and visibility are saved per user on the server and apply on all their devices; other users are not affected.
-- [ ] Hiding a section only hides its card; its data is kept and still shown in the history of other members who display it.
+- [x] A new user gets the default order: Feed, Sleep, Diaper, Pump, Growth, Medication; all visible.
+- [x] In settings, a user can reorder sections (drag handles) and hide or show each one; at least one section must stay visible.
+- [x] Order and visibility are saved per user on the server and apply on all their devices; other users are not affected.
+- [x] Hiding a section only hides its card; its data is kept and still shown in the history of other members who display it.
 
 ### Section card
 - [ ] Every section card uses the shared section card component (header band, + button, highlight slot, show more / less, view all history).
@@ -103,13 +105,13 @@ Each item becomes at least one test, written failing first.
 - [ ] It reflects timers started or stopped from other devices within a few seconds.
 
 ### Theming
-- [ ] Each section has a colour token (and an "on colour" token for text/icons on it) defined in the global theme, with light and dark values. Components never hard-code these colours. Tokens: `--nala-section-<key>` / `--nala-on-section-<key>` (placeholders created in 01, `web/src/styles/_sections.scss`).
+- [x] Each section has a colour token (and an "on colour" token for text/icons on it) defined in the global theme, with light and dark values. Components never hard-code these colours. Tokens: `--nala-section-<key>` / `--nala-on-section-<key>` (placeholders created in 01, `web/src/styles/_sections.scss`).
 
 ## Build slices
 
 Each slice goes red → green → commit on `master`, in this order.
 
-- [ ] **Slice 1 — Section preferences (server + settings).** `UserSectionPreference` entity + migration (user, key, position, visible; PK user + key; cascade on user delete). Core `SectionPreferences`: default order (feed, sleep, diaper, pump, growth, medication, all visible), stored rows merged with any new keys (appended, visible), validation (every known key exactly once, at least one visible). `GET /api/account/sections` → `[{ key, visible }]` in order; `PUT /api/account/sections` replaces the whole list → 200, 400 validation problem otherwise. Any enabled member, for themselves only. Web: `SectionPreferencesService`, a "Home sections" settings section (CDK drag list with drag handles, a visibility switch per row, the last visible one can't be turned off), limited to registered sections. Covers: default order, reorder/hide in settings, saved per user on the server, hiding keeps the data, theming (tokens from 01).
+- [x] **Slice 1 — Section preferences (server + settings).** `UserSectionPreference` entity + migration (user, key, position, visible; PK user + key; cascade on user delete). Core `SectionPreferences`: default order (feed, sleep, diaper, pump, growth, medication, all visible), stored rows merged with any new keys (appended, visible), validation (every known key exactly once, at least one visible). `GET /api/account/sections` → `[{ key, visible }]` in order; `PUT /api/account/sections` replaces the whole list → 200, 400 validation problem otherwise. Any enabled member, for themselves only. Web: `SectionPreferencesService`, a "Home sections" settings section (CDK drag list with drag handles, a visibility switch per row, the last visible one can't be turned off), limited to registered sections. Covers: default order, reorder/hide in settings, saved per user on the server, hiding keeps the data, theming (tokens from 01).
 - [ ] **Slice 2 — Home column, section card, entry list item.** Section registry. Home renders one shared `nala-section-card` per visible registered section, in the user's order, in a single column under the top app bar. Card: `mat-card`, header band on the section tokens, `mat-mini-fab` +, highlight slot with an empty-state slot, Show more / Show less (up to 10 entries, expanded state per device in `localStorage`), View all history. Shared `nala-entry-list-item` (kind icon, local time, summary, optional duration bar + duration, chevron). Shared ticking `NowService`, time-since and duration pipes (EN/FR). Covers: home in the user's order, the card criteria (frame, empty state, show more/less, live time-since).
 - [ ] **Slice 3 — + button, kind picker, entry sheet frame.** + opens the shared `nala-kind-picker` (`MatBottomSheet`) with several kinds, the entry sheet directly with one. Entry sheet through `SheetService`: `nala-sheet-header` on the section colour, shared form row, suggestion row, notes row and delete action (with confirmation); × asks before discarding changes, Save disabled while invalid with field errors, entry list item opens the sheet pre-filled with Delete; 48 × 48 dp targets. Tested with a fake section. Covers: every "+ and entry sheet" criterion.
 - [ ] **Slice 4 — History page.** `/history/:section` (signed in, a baby required, unknown or unregistered key → home), back button, the section's entries for the selected baby newest first as entry list items, loaded page by page on scroll through the section's page loader. No totals or charts. Opened from View all history. Covers: the history part of the section card criterion.

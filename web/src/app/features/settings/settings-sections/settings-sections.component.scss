@@ -1,0 +1,13 @@
+.hint {
+  margin: 0;
+  font: var(--mat-sys-body-medium);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+[cdkDragHandle] {
+  cursor: grab;
+}
+
+.cdk-drag-placeholder {
+  opacity: 0;
+}

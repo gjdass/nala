@@ -1,0 +1,22 @@
+<p class="hint">{{ 'settings.sections.hint' | transloco }}</p>
+<mat-list cdkDropList (cdkDropListDropped)="drop($event)">
+  @for (row of rows(); track row.key) {
+    @let title = 'sections.' + row.key | transloco;
+    <mat-list-item cdkDrag [attr.data-testid]="'section-' + row.key">
+      <mat-icon
+        matListItemIcon
+        cdkDragHandle
+        [attr.aria-label]="'settings.sections.dragHandle' | transloco"
+        >drag_indicator</mat-icon
+      >
+      <span matListItemTitle>{{ title }}</span>
+      <mat-slide-toggle
+        matListItemMeta
+        [checked]="row.visible"
+        [disabled]="locked(row)"
+        [aria-label]="'settings.sections.visible' | transloco: { section: title }"
+        (change)="setVisible(row.key, $event.checked)"
+      />
+    </mat-list-item>
+  }
+</mat-list>
