@@ -167,8 +167,16 @@
   },
   "invitations": {
     "invite": "Inviter quelqu'un",
+    "inviteByEmail": "Inviter par email",
     "shareTitle": "Lien d'invitation",
     "shareText": "Envoyez ce lien à la personne que vous voulez inviter. Il ne sert qu'une fois, jusqu'au {{date}}.",
+    "emailDialog": {
+      "title": "Inviter par email",
+      "text": "Nous lui enverrons par email un lien pour créer son compte. Il ne sert qu'une fois, pendant 7 jours.",
+      "send": "Envoyer",
+      "cancel": "Annuler"
+    },
+    "emailSent": "Invitation envoyée à {{email}}",
     "pending": "Invitations en attente",
     "none": "Aucune invitation en attente.",
     "invitedBy": "Invitation de {{name}}",

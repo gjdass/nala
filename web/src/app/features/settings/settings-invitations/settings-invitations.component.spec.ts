@@ -1,8 +1,11 @@
+import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Subject, of } from 'rxjs';
 import en from '../../../../../public/i18n/en.json';
+import { AuthState } from '../../../core/auth/auth.models';
+import { AuthService } from '../../../core/auth/auth.service';
 import { formatDateTime } from '../../../core/i18n/date-time';
 import {
   CreateInvitationResult,
@@ -13,6 +16,7 @@ import {
 import { InvitationService } from '../../../core/invitations/invitation.service';
 import { ShareLinkDialogComponent } from '../../../shared/ui/share-link-dialog/share-link-dialog.component';
 import { translocoTesting } from '../../../testing/transloco-testing';
+import { InviteEmailDialogComponent } from '../invite-email-dialog/invite-email-dialog.component';
 import { SettingsInvitationsComponent } from './settings-invitations.component';
 
 describe('SettingsInvitationsComponent', () => {
@@ -26,6 +30,7 @@ describe('SettingsInvitationsComponent', () => {
   let revoked: Subject<RevokeInvitationResult>;
   let dialog: { open: ReturnType<typeof vi.fn> };
   let snackBar: { open: ReturnType<typeof vi.fn> };
+  let auth: { state: ReturnType<typeof signal<AuthState | null>> };
 
   const fromBen: PendingInvitation = {
     id: 'i2',
@@ -71,12 +76,26 @@ describe('SettingsInvitationsComponent', () => {
     };
     dialog = { open: vi.fn() };
     snackBar = { open: vi.fn() };
+    auth = {
+      state: signal<AuthState | null>({
+        setupRequired: false,
+        smtpEnabled: false,
+        user: {
+          id: 'u1',
+          email: 'anna@mail.com',
+          displayName: 'Anna',
+          language: 'en',
+          isAdmin: true,
+        },
+      }),
+    };
     await TestBed.configureTestingModule({
       imports: [SettingsInvitationsComponent, translocoTesting()],
       providers: [
         { provide: InvitationService, useValue: invitations },
         { provide: MatDialog, useValue: dialog },
         { provide: MatSnackBar, useValue: snackBar },
+        { provide: AuthService, useValue: auth },
       ],
     }).compileComponents();
   });
@@ -154,6 +173,44 @@ describe('SettingsInvitationsComponent', () => {
       expect(snackBar.open).toHaveBeenCalledWith(en.auth.errors.form.unknown, undefined, {
         duration: 3000,
       });
+    });
+  });
+
+  describe('invite by email', () => {
+    const enableSmtp = () => auth.state.update((state) => ({ ...state!, smtpEnabled: true }));
+
+    it('is not offered without SMTP', async () => {
+      await render();
+
+      expect(byTestId('invite-by-email')).toBeNull();
+    });
+
+    it('opens the email dialog when SMTP is configured', async () => {
+      enableSmtp();
+      dialog.open.mockReturnValue({ afterClosed: () => of(undefined) });
+      await render();
+
+      await click(byTestId('invite-by-email')!);
+
+      expect(dialog.open).toHaveBeenCalledWith(InviteEmailDialogComponent);
+      expect(snackBar.open).not.toHaveBeenCalled();
+      expect(invitations.pending).toHaveBeenCalledTimes(1);
+    });
+
+    it('confirms the sent email and reloads the list', async () => {
+      enableSmtp();
+      dialog.open.mockReturnValue({ afterClosed: () => of('ben@mail.com') });
+      await render({ ok: true, invitations: [fromAnna] });
+      invitations.pending.mockReturnValue(of({ ok: true, invitations: [fromBen, fromAnna] }));
+
+      await click(byTestId('invite-by-email')!);
+
+      expect(snackBar.open).toHaveBeenCalledWith(
+        en.invitations.emailSent.replace('{{email}}', 'ben@mail.com'),
+        undefined,
+        { duration: 3000 },
+      );
+      expect(rows()).toHaveLength(2);
     });
   });
 

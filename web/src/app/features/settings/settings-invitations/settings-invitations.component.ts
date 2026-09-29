@@ -1,11 +1,12 @@
 import { DOCUMENT } from '@angular/common';
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatListModule } from '@angular/material/list';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { take } from 'rxjs';
+import { AuthService } from '../../../core/auth/auth.service';
 import { formatDateTime } from '../../../core/i18n/date-time';
 import { PendingInvitation } from '../../../core/invitations/invitation.models';
 import { InvitationService } from '../../../core/invitations/invitation.service';
@@ -14,13 +15,17 @@ import {
   ShareLinkDialogComponent,
   ShareLinkDialogData,
 } from '../../../shared/ui/share-link-dialog/share-link-dialog.component';
+import { InviteEmailDialogComponent } from '../invite-email-dialog/invite-email-dialog.component';
 
 const SNACK_DURATION = 3000;
 
 /** Refusals with their own message; anything else is the generic error. */
 const REVOKE_ERRORS = ['invitationUsed', 'invitationExpired', 'invitationUnknown'];
 
-/** Invite someone (a link handed over through the share dialog), and the pending invitations, each revocable. */
+/**
+ * Invite someone (a link handed over through the share dialog, or emailed when SMTP is configured), and the pending
+ * invitations, each revocable.
+ */
 @Component({
   selector: 'nala-settings-invitations',
   imports: [InvitationListItemComponent, MatButtonModule, MatListModule, TranslocoPipe],
@@ -34,10 +39,12 @@ export class SettingsInvitationsComponent {
   private readonly snackBar = inject(MatSnackBar);
   private readonly transloco = inject(TranslocoService);
   private readonly origin = inject(DOCUMENT).location.origin;
+  private readonly auth = inject(AuthService);
 
   protected readonly pending = signal<PendingInvitation[]>([]);
   protected readonly loadError = signal(false);
   protected readonly creating = signal(false);
+  protected readonly smtpEnabled = computed(() => this.auth.state()?.smtpEnabled ?? false);
 
   constructor() {
     this.load();
@@ -69,6 +76,18 @@ export class SettingsInvitationsComponent {
     });
   }
 
+  protected inviteByEmail(): void {
+    this.dialog
+      .open<InviteEmailDialogComponent, void, string>(InviteEmailDialogComponent)
+      .afterClosed()
+      .subscribe((email) => {
+        if (email) {
+          this.notify('invitations.emailSent', { email });
+          this.load();
+        }
+      });
+  }
+
   /** Immediate: a new link is easy to make. */
   protected revoke(invitation: PendingInvitation): void {
     this.invitations.revoke(invitation.id).subscribe((result) => {
@@ -97,9 +116,9 @@ export class SettingsInvitationsComponent {
     });
   }
 
-  private notify(key: string): void {
+  private notify(key: string, params?: Record<string, string>): void {
     this.transloco
-      .selectTranslate(key)
+      .selectTranslate(key, params)
       .pipe(take(1))
       .subscribe((message) => this.snackBar.open(message, undefined, { duration: SNACK_DURATION }));
   }

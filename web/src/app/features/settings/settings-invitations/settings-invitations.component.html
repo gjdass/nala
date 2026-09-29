@@ -1,4 +1,14 @@
 <div class="actions">
+  @if (smtpEnabled()) {
+    <button
+      mat-stroked-button
+      type="button"
+      (click)="inviteByEmail()"
+      data-testid="invite-by-email"
+    >
+      {{ 'invitations.inviteByEmail' | transloco }}
+    </button>
+  }
   <button
     mat-flat-button
     type="button"

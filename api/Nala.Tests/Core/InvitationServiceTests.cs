@@ -1,4 +1,5 @@
 using Nala.Core.Auth;
+using Nala.Core.Email;
 using Nala.Core.Invitations;
 using Nala.Core.Users;
 using Nala.Tests.Support;
@@ -11,15 +12,19 @@ public class InvitationServiceTests
 
     private FakeUserRepository _users = null!;
     private FakeInvitationRepository _invitations = null!;
+    private FakeEmailOutbox _outbox = null!;
     private InvitationService _service = null!;
     private User _anna = null!;
+
+    private static readonly Uri PublicUrl = new("https://nala.example.com/");
 
     [SetUp]
     public async Task SetUp()
     {
         _users = new FakeUserRepository();
         _invitations = new FakeInvitationRepository(_users);
-        _service = new InvitationService(_invitations, _users, new FixedTimeProvider(Now));
+        _outbox = new FakeEmailOutbox();
+        _service = new InvitationService(_invitations, _users, _outbox, new FixedTimeProvider(Now));
         _anna = NewUser("Anna", isAdmin: true);
         await _users.AddAsync(_anna);
     }
@@ -168,5 +173,88 @@ public class InvitationServiceTests
 
         Assert.That(result, Is.EqualTo(new RevokeInvitationResult.Unavailable(InvitationProblem.Used)));
         Assert.That(invitation.RevokedAt, Is.Null);
+    }
+
+    private static string TokenIn(EmailMessage message)
+    {
+        const string prefix = "https://nala.example.com/invite/";
+        var start = message.Body.IndexOf(prefix, StringComparison.Ordinal);
+        Assert.That(start, Is.GreaterThanOrEqualTo(0), message.Body);
+        return new string(message.Body[(start + prefix.Length)..].TakeWhile(c => !char.IsWhiteSpace(c)).ToArray());
+    }
+
+    [Test]
+    public async Task Email_invitation_creates_a_7_day_invitation_and_queues_the_link_to_that_address()
+    {
+        var result = await _service.SendByEmailAsync(_anna, " Ben@Mail.com ", PublicUrl);
+
+        var stored = _invitations.Invitations.Single();
+        var message = _outbox.Messages.Single();
+        Assert.Multiple(() =>
+        {
+            Assert.That(result, Is.EqualTo(new SendInvitationResult.Sent(Now.AddDays(7))));
+            Assert.That(stored.CreatedByUserId, Is.EqualTo(_anna.Id));
+            Assert.That(stored.ExpiresAt, Is.EqualTo(Now.AddDays(7)));
+            Assert.That(message.To, Is.EqualTo("ben@mail.com"));
+            Assert.That(stored.TokenHash, Is.EqualTo(LinkToken.Hash(TokenIn(message))));
+        });
+    }
+
+    [TestCase("en", "You're invited to Nala", "Anna invites you")]
+    [TestCase("fr", "Invitation à rejoindre Nala", "Anna vous invite")]
+    [TestCase("de", "You're invited to Nala", "Anna invites you")]
+    public async Task Email_invitation_is_in_the_inviters_language(string language, string subject, string greeting)
+    {
+        _anna.PreferredLanguage = language;
+
+        await _service.SendByEmailAsync(_anna, "ben@mail.com", PublicUrl);
+
+        var message = _outbox.Messages.Single();
+        Assert.That(message.Subject, Is.EqualTo(subject));
+        Assert.That(message.Body, Does.Contain(greeting));
+    }
+
+    [TestCase(null, "required")]
+    [TestCase("  ", "required")]
+    [TestCase("no-at", "invalid")]
+    [TestCase("ben@mail", "invalid")]
+    public async Task Email_invitation_rejects_a_missing_or_malformed_email(string? email, string code)
+    {
+        var result = await _service.SendByEmailAsync(_anna, email, PublicUrl);
+
+        Assert.That(result, Is.InstanceOf<SendInvitationResult.Invalid>());
+        Assert.That(((SendInvitationResult.Invalid)result).Errors, Is.EqualTo(new Dictionary<string, string> { ["email"] = code }));
+        Assert.That(_invitations.Invitations, Is.Empty);
+        Assert.That(_outbox.Messages, Is.Empty);
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task Email_invitation_refuses_an_email_that_has_an_account(bool disabled)
+    {
+        var ben = NewUser("Ben");
+        ben.IsDisabled = disabled;
+        await _users.AddAsync(ben);
+
+        var result = await _service.SendByEmailAsync(_anna, " BEN@mail.com", PublicUrl);
+
+        Assert.That(result, Is.InstanceOf<SendInvitationResult.Invalid>());
+        Assert.That(((SendInvitationResult.Invalid)result).Errors, Is.EqualTo(new Dictionary<string, string> { ["email"] = "taken" }));
+        Assert.That(_invitations.Invitations, Is.Empty);
+        Assert.That(_outbox.Messages, Is.Empty);
+    }
+
+    [Test]
+    public async Task Email_invitation_accepts_the_former_email_of_a_deleted_account()
+    {
+        var ben = NewUser("Ben");
+        ben.Email = null;
+        ben.DeletedAt = Now.AddDays(-1);
+        await _users.AddAsync(ben);
+
+        var result = await _service.SendByEmailAsync(_anna, "ben@mail.com", PublicUrl);
+
+        Assert.That(result, Is.InstanceOf<SendInvitationResult.Sent>());
+        Assert.That(_outbox.Messages.Single().To, Is.EqualTo("ben@mail.com"));
     }
 }

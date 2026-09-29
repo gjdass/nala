@@ -7,6 +7,7 @@ import {
   PendingInvitation,
   PendingInvitationsResult,
   RevokeInvitationResult,
+  SendInvitationResult,
 } from './invitation.models';
 import { InvitationService } from './invitation.service';
 
@@ -95,6 +96,45 @@ describe('InvitationService', () => {
       http.expectOne('/api/invitations/i1/revoke').flush({ code }, { status, statusText: 'Error' });
 
       expect(await result).toEqual<RevokeInvitationResult>({ ok: false, errors: { form: code } });
+    });
+  });
+
+  describe('sendByEmail()', () => {
+    it('posts the email to /api/invitations/email', async () => {
+      const result = firstValueFrom(service.sendByEmail('ben@mail.com'));
+      const req = http.expectOne('/api/invitations/email');
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual({ email: 'ben@mail.com' });
+      req.flush({ expiresAt: '2026-10-04T20:00:00Z' }, { status: 202, statusText: 'Accepted' });
+
+      expect(await result).toEqual<SendInvitationResult>({
+        ok: true,
+        expiresAt: '2026-10-04T20:00:00Z',
+      });
+    });
+
+    it('maps a validation problem to field errors', async () => {
+      const result = firstValueFrom(service.sendByEmail('anna@mail.com'));
+      http
+        .expectOne('/api/invitations/email')
+        .flush({ errors: { email: ['taken'] } }, { status: 400, statusText: 'Bad Request' });
+
+      expect(await result).toEqual<SendInvitationResult>({
+        ok: false,
+        errors: { email: 'taken' },
+      });
+    });
+
+    it('maps SMTP being off to its code', async () => {
+      const result = firstValueFrom(service.sendByEmail('ben@mail.com'));
+      http
+        .expectOne('/api/invitations/email')
+        .flush({ code: 'emailInviteDisabled' }, { status: 404, statusText: 'Not Found' });
+
+      expect(await result).toEqual<SendInvitationResult>({
+        ok: false,
+        errors: { form: 'emailInviteDisabled' },
+      });
     });
   });
 });

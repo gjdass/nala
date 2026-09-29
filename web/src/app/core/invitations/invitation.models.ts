@@ -21,3 +21,6 @@ export type PendingInvitationsResult =
   { ok: true; invitations: PendingInvitation[] } | { ok: false; errors: FieldErrors };
 
 export type RevokeInvitationResult = { ok: true } | { ok: false; errors: FieldErrors };
+
+export type SendInvitationResult =
+  { ok: true; expiresAt: string } | { ok: false; errors: FieldErrors };

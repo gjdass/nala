@@ -8,6 +8,7 @@ import {
   PendingInvitation,
   PendingInvitationsResult,
   RevokeInvitationResult,
+  SendInvitationResult,
 } from './invitation.models';
 
 /** Invitation links; any member may create, list and revoke them. */
@@ -41,6 +42,16 @@ export class InvitationService {
       map((): RevokeInvitationResult => ({ ok: true })),
       catchError((error: HttpErrorResponse) =>
         of<RevokeInvitationResult>({ ok: false, errors: toFieldErrors(error) }),
+      ),
+    );
+  }
+
+  /** Emails a new invitation link (SMTP only). Refused with `email` errors or `emailInviteDisabled`. */
+  sendByEmail(email: string): Observable<SendInvitationResult> {
+    return this.http.post<{ expiresAt: string }>('/api/invitations/email', { email }).pipe(
+      map(({ expiresAt }): SendInvitationResult => ({ ok: true, expiresAt })),
+      catchError((error: HttpErrorResponse) =>
+        of<SendInvitationResult>({ ok: false, errors: toFieldErrors(error) }),
       ),
     );
   }
