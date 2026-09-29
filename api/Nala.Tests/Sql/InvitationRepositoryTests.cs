@@ -189,4 +189,81 @@ public class InvitationRepositoryTests
         Assert.That((await ReadAsync(revoked)).RevokedAt, Is.EqualTo(Now.AddDays(-2)));
         Assert.That((await ReadAsync(bens)).RevokedAt, Is.Null);
     }
+    [Test]
+    public async Task GetById_reads_the_invitation()
+    {
+        var invitation = await InviteAsync();
+
+        await using var db = _db();
+        var repository = new InvitationRepository(db);
+        Assert.That((await repository.GetByIdAsync(invitation.Id))!.TokenHash, Is.EqualTo(invitation.TokenHash));
+        Assert.That(await repository.GetByIdAsync(Guid.NewGuid()), Is.Null);
+    }
+
+    [Test]
+    public async Task ListPending_returns_only_usable_invitations()
+    {
+        var ben = NewUser("ben@mail.com");
+        await using (var db = _db())
+        {
+            await new UserRepository(db).AddAsync(ben);
+        }
+
+        var pending = await InviteAsync();
+        var bens = await InviteAsync(createdBy: ben.Id);
+        await InviteAsync(i =>
+        {
+            i.UsedAt = Now.AddDays(-1);
+            i.UsedByUserId = ben.Id;
+        });
+        await InviteAsync(i => i.RevokedAt = Now.AddDays(-1));
+        await InviteAsync(i => i.ExpiresAt = Now);
+
+        await using (var db = _db())
+        {
+            var listed = await new InvitationRepository(db).ListPendingAsync(Now);
+            Assert.That(listed.Select(i => i.Id), Is.EquivalentTo(new[] { pending.Id, bens.Id }));
+        }
+    }
+
+    [Test]
+    public async Task Revoke_marks_a_pending_invitation()
+    {
+        var invitation = await InviteAsync();
+
+        await using (var db = _db())
+        {
+            Assert.That(await new InvitationRepository(db).RevokeAsync(invitation.Id, Now.AddHours(1)), Is.True);
+        }
+
+        Assert.That((await ReadAsync(invitation)).RevokedAt, Is.EqualTo(Now.AddHours(1)));
+    }
+
+    [Test]
+    public async Task Revoke_leaves_a_used_revoked_or_expired_invitation_untouched()
+    {
+        var ben = NewUser("ben@mail.com");
+        await using (var db = _db())
+        {
+            await new UserRepository(db).AddAsync(ben);
+        }
+
+        var used = await InviteAsync(i =>
+        {
+            i.UsedAt = Now.AddDays(-1);
+            i.UsedByUserId = ben.Id;
+        });
+        var revoked = await InviteAsync(i => i.RevokedAt = Now.AddDays(-1));
+        var expired = await InviteAsync(i => i.ExpiresAt = Now);
+
+        foreach (var invitation in new[] { used, revoked, expired })
+        {
+            await using var db = _db();
+            Assert.That(await new InvitationRepository(db).RevokeAsync(invitation.Id, Now), Is.False);
+        }
+
+        Assert.That((await ReadAsync(used)).RevokedAt, Is.Null);
+        Assert.That((await ReadAsync(revoked)).RevokedAt, Is.EqualTo(Now.AddDays(-1)));
+        Assert.That((await ReadAsync(expired)).RevokedAt, Is.Null);
+    }
 }

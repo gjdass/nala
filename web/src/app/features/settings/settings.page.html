@@ -8,6 +8,10 @@
     <nala-settings-babies />
   </nala-settings-section>
 
+  <nala-settings-section [title]="'settings.members.title' | transloco">
+    <nala-settings-invitations />
+  </nala-settings-section>
+
   <nala-settings-section [title]="'settings.account.title' | transloco">
     <form [formGroup]="profileForm" (ngSubmit)="saveProfile()" novalidate>
       <mat-form-field>

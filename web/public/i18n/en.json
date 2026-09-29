@@ -157,10 +157,30 @@
     "babies": {
       "title": "Babies",
       "add": "Add a baby"
+    },
+    "members": {
+      "title": "Members & invitations"
     }
   },
   "members": {
     "admin": "Admin"
+  },
+  "invitations": {
+    "invite": "Invite someone",
+    "shareTitle": "Invitation link",
+    "shareText": "Send this link to the person you want to invite. It works once, until {{date}}.",
+    "pending": "Pending invitations",
+    "none": "No pending invitations.",
+    "invitedBy": "Invited by {{name}}",
+    "expires": "Expires {{date}}",
+    "revoke": "Revoke",
+    "revoked": "Invitation revoked",
+    "loadError": "Couldn't load the invitations. Check your connection and try again.",
+    "errors": {
+      "invitationUsed": "This invitation has already been used.",
+      "invitationExpired": "This invitation has already expired.",
+      "invitationUnknown": "This invitation no longer exists."
+    }
   },
   "shareLink": {
     "link": "Link",

@@ -16,7 +16,7 @@
             {{ 'settings.admin.disabled' | transloco }} ·
           }
           @if (user.lastActivityAt; as at) {
-            {{ 'settings.admin.lastActive' | transloco: { date: dateTime(at) } }}
+            {{ 'settings.admin.lastActive' | transloco: { date: at | nalaDateTime } }}
           } @else {
             {{ 'settings.admin.noActivity' | transloco }}
           }

@@ -16,6 +16,20 @@ public class InvitationRepository(NalaDbContext db) : IInvitationRepository
     public Task<Invitation?> GetByTokenHashAsync(string tokenHash, CancellationToken cancellationToken = default) =>
         db.Set<Invitation>().SingleOrDefaultAsync(i => i.TokenHash == tokenHash, cancellationToken);
 
+    public Task<Invitation?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
+        db.Set<Invitation>().AsNoTracking().SingleOrDefaultAsync(i => i.Id == id, cancellationToken);
+
+    public async Task<IReadOnlyList<Invitation>> ListPendingAsync(DateTimeOffset now, CancellationToken cancellationToken = default) =>
+        await db.Set<Invitation>().AsNoTracking()
+            .Where(i => i.UsedAt == null && i.RevokedAt == null && i.ExpiresAt > now)
+            .ToListAsync(cancellationToken);
+
+    // Conditional update: a registration using the link at the same time can't also succeed.
+    public async Task<bool> RevokeAsync(Guid id, DateTimeOffset now, CancellationToken cancellationToken = default) =>
+        await db.Set<Invitation>()
+            .Where(i => i.Id == id && i.UsedAt == null && i.RevokedAt == null && i.ExpiresAt > now)
+            .ExecuteUpdateAsync(s => s.SetProperty(i => i.RevokedAt, now), cancellationToken) == 1;
+
     public async Task<bool> RedeemAsync(Guid invitationId, User user, DateTimeOffset now, CancellationToken cancellationToken = default)
     {
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);

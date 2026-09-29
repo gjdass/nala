@@ -1,0 +1,23 @@
+.actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+h3 {
+  margin: 16px 0 8px;
+  font: var(--mat-sys-title-small);
+}
+
+.empty,
+.error {
+  margin: 0;
+  font: var(--mat-sys-body-medium);
+}
+
+.empty {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.error {
+  color: var(--mat-sys-error);
+}

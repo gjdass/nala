@@ -157,10 +157,30 @@
     "babies": {
       "title": "Bébés",
       "add": "Ajouter un bébé"
+    },
+    "members": {
+      "title": "Membres et invitations"
     }
   },
   "members": {
     "admin": "Admin"
+  },
+  "invitations": {
+    "invite": "Inviter quelqu'un",
+    "shareTitle": "Lien d'invitation",
+    "shareText": "Envoyez ce lien à la personne que vous voulez inviter. Il ne sert qu'une fois, jusqu'au {{date}}.",
+    "pending": "Invitations en attente",
+    "none": "Aucune invitation en attente.",
+    "invitedBy": "Invitation de {{name}}",
+    "expires": "Expire le {{date}}",
+    "revoke": "Révoquer",
+    "revoked": "Invitation révoquée",
+    "loadError": "Impossible de charger les invitations. Vérifiez votre connexion et réessayez.",
+    "errors": {
+      "invitationUsed": "Cette invitation a déjà été utilisée.",
+      "invitationExpired": "Cette invitation a déjà expiré.",
+      "invitationUnknown": "Cette invitation n'existe plus."
+    }
   },
   "shareLink": {
     "link": "Lien",

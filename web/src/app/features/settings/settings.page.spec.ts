@@ -9,6 +9,7 @@ import fr from '../../../../public/i18n/fr.json';
 import { AccountService } from '../../core/account/account.service';
 import { AdminService } from '../../core/admin/admin.service';
 import { BabyService } from '../../core/babies/baby.service';
+import { InvitationService } from '../../core/invitations/invitation.service';
 import { AccountResult, AuthState } from '../../core/auth/auth.models';
 import { AuthService } from '../../core/auth/auth.service';
 import { ThemeMode, ThemeService } from '../../core/theme/theme.service';
@@ -92,6 +93,10 @@ describe('SettingsPage', () => {
         { provide: MatDialog, useValue: dialog },
         { provide: AdminService, useValue: { users: vi.fn(() => of({ ok: true, users: [] })) } },
         { provide: BabyService, useValue: { list: vi.fn(() => of({ ok: true, babies: [] })) } },
+        {
+          provide: InvitationService,
+          useValue: { pending: vi.fn(() => of({ ok: true, invitations: [] })) },
+        },
       ],
     }).compileComponents();
     router = TestBed.inject(Router);
@@ -103,9 +108,10 @@ describe('SettingsPage', () => {
   const sectionTitles = () =>
     [...host().querySelectorAll('mat-card-title')].map((t) => t.textContent?.trim());
 
-  it('shows the Babies, Account, Admin and Appearance sections to the admin', () => {
+  it('shows the Babies, Members & invitations, Account, Admin and Appearance sections to the admin', () => {
     expect(sectionTitles()).toEqual([
       en.settings.babies.title,
+      en.settings.members.title,
       en.settings.account.title,
       en.settings.admin.title,
       en.settings.appearance.title,
@@ -119,11 +125,13 @@ describe('SettingsPage', () => {
 
     expect(sectionTitles()).toEqual([
       en.settings.babies.title,
+      en.settings.members.title,
       en.settings.account.title,
       en.settings.appearance.title,
     ]);
     expect(host().querySelector('nala-admin-users')).toBeNull();
     expect(host().querySelector('nala-settings-babies')).not.toBeNull();
+    expect(host().querySelector('nala-settings-invitations')).not.toBeNull();
   });
 
   it('has a link back to home', () => {

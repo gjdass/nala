@@ -1,0 +1,7 @@
+<mat-list-item lines="2">
+  <span matListItemTitle>{{ 'invitations.invitedBy' | transloco: { name: createdBy() } }}</span>
+  <span matListItemLine data-testid="expires">{{
+    'invitations.expires' | transloco: { date: expiresAt() | nalaDateTime }
+  }}</span>
+  <span matListItemMeta><ng-content select="[invitationAction]" /></span>
+</mat-list-item>

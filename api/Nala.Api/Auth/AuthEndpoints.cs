@@ -155,7 +155,7 @@ public static class AuthEndpoints
         var lookup = await registration.LookupAsync(token, cancellationToken);
         return lookup is InvitationLookup.Valid valid
             ? Results.Ok(new InvitationResponse(valid.InvitedBy, valid.ExpiresAt))
-            : Unavailable(((InvitationLookup.Unavailable)lookup).Problem);
+            : InvitationUnavailable(((InvitationLookup.Unavailable)lookup).Problem);
     }
 
     private static async Task<IResult> RegisterAsync(
@@ -177,12 +177,12 @@ public static class AuthEndpoints
             case RegisterResult.Invalid invalid:
                 return ValidationProblem(invalid.Errors);
             default:
-                return Unavailable(((RegisterResult.Unavailable)result).Problem);
+                return InvitationUnavailable(((RegisterResult.Unavailable)result).Problem);
         }
     }
 
     /// <summary>404 for an unknown link, 410 for one that existed but can no longer be used; the code tells why.</summary>
-    private static IResult Unavailable(InvitationProblem problem) =>
+    public static IResult InvitationUnavailable(InvitationProblem problem) =>
         Results.Json(
             new ErrorResponse($"invitation{problem}"),
             statusCode: problem == InvitationProblem.Unknown ? StatusCodes.Status404NotFound : StatusCodes.Status410Gone);

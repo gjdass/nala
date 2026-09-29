@@ -8,6 +8,14 @@ public interface IInvitationRepository
 
     Task<Invitation?> GetByTokenHashAsync(string tokenHash, CancellationToken cancellationToken = default);
 
+    Task<Invitation?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
+
+    /// <summary>The invitations still usable at <paramref name="now"/>, in no particular order.</summary>
+    Task<IReadOnlyList<Invitation>> ListPendingAsync(DateTimeOffset now, CancellationToken cancellationToken = default);
+
+    /// <summary>Revokes the invitation at <paramref name="now"/> if it is still usable then; false when it is not (nothing saved).</summary>
+    Task<bool> RevokeAsync(Guid id, DateTimeOffset now, CancellationToken cancellationToken = default);
+
     /// <summary>
     /// Atomically saves the new user and marks the invitation used by them, if it is still usable at <paramref name="now"/>.
     /// False when it is not (nothing is saved). Throws <see cref="UserConflictException"/> when the email is taken.

@@ -1,6 +1,5 @@
 import { DOCUMENT } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
@@ -11,6 +10,7 @@ import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { filter, take } from 'rxjs';
 import { AdminUser } from '../../../core/admin/admin.models';
 import { AdminService } from '../../../core/admin/admin.service';
+import { DateTimePipe, formatDateTime } from '../../../core/i18n/date-time';
 import {
   ConfirmDialogComponent,
   ConfirmDialogData,
@@ -27,6 +27,7 @@ const SNACK_DURATION = 3000;
 @Component({
   selector: 'nala-admin-users',
   imports: [
+    DateTimePipe,
     MatButtonModule,
     MatIconModule,
     MatListModule,
@@ -45,10 +46,6 @@ export class AdminUsersComponent {
   private readonly transloco = inject(TranslocoService);
   private readonly origin = inject(DOCUMENT).location.origin;
 
-  private readonly lang = toSignal(this.transloco.langChanges$, {
-    initialValue: this.transloco.getActiveLang(),
-  });
-
   protected readonly users = signal<AdminUser[]>([]);
   protected readonly loadError = signal<string | null>(null);
 
@@ -60,13 +57,6 @@ export class AdminUsersComponent {
         this.loadError.set(result.errors['form'] ?? 'unknown');
       }
     });
-  }
-
-  /** In the language the app shows, e.g. "Sep 20, 2026, 10:30 AM". */
-  protected dateTime(iso: string): string {
-    return new Intl.DateTimeFormat(this.lang(), { dateStyle: 'medium', timeStyle: 'short' }).format(
-      new Date(iso),
-    );
   }
 
   /** Re-enabling is immediate; disabling asks first, since the user is logged out everywhere. */
@@ -91,7 +81,7 @@ export class AdminUsersComponent {
           title: this.transloco.translate('settings.admin.resetLinkTitle', { name }),
           text: this.transloco.translate('settings.admin.resetLinkText', {
             name,
-            date: this.dateTime(result.link.expiresAt),
+            date: formatDateTime(result.link.expiresAt, this.transloco.getActiveLang()),
           }),
           url: `${this.origin}/reset/${result.link.token}`,
         },

@@ -25,10 +25,11 @@ import { displayName, errorCode, newPassword } from '../auth/auth.validators';
 import { AdminUsersComponent } from './admin-users/admin-users.component';
 import { DeleteAccountDialogComponent } from './delete-account-dialog/delete-account-dialog.component';
 import { SettingsBabiesComponent } from './settings-babies/settings-babies.component';
+import { SettingsInvitationsComponent } from './settings-invitations/settings-invitations.component';
 
 const SNACK_DURATION = 3000;
 
-/** Babies, account (display name, language, password, deletion), admin (admin only), appearance (theme) and logout. */
+/** Babies, members & invitations, account (display name, language, password, deletion), admin (admin only), appearance (theme) and logout. */
 @Component({
   selector: 'nala-settings',
   imports: [
@@ -40,6 +41,7 @@ const SNACK_DURATION = 3000;
     ReactiveFormsModule,
     RouterLink,
     SettingsBabiesComponent,
+    SettingsInvitationsComponent,
     SettingsSectionComponent,
     TranslocoPipe,
   ],
