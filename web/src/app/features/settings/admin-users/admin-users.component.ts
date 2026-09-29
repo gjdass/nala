@@ -1,5 +1,6 @@
 import { DOCUMENT } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
@@ -11,6 +12,7 @@ import { filter, take } from 'rxjs';
 import { AdminUser } from '../../../core/admin/admin.models';
 import { AdminService } from '../../../core/admin/admin.service';
 import { DateTimePipe, formatDateTime } from '../../../core/i18n/date-time';
+import { MemberService } from '../../../core/members/member.service';
 import {
   ConfirmDialogComponent,
   ConfirmDialogData,
@@ -45,18 +47,14 @@ export class AdminUsersComponent {
   private readonly snackBar = inject(MatSnackBar);
   private readonly transloco = inject(TranslocoService);
   private readonly origin = inject(DOCUMENT).location.origin;
+  private readonly members = inject(MemberService);
 
   protected readonly users = signal<AdminUser[]>([]);
   protected readonly loadError = signal<string | null>(null);
 
   constructor() {
-    this.admin.users().subscribe((result) => {
-      if (result.ok) {
-        this.users.set(result.users);
-      } else {
-        this.loadError.set(result.errors['form'] ?? 'unknown');
-      }
-    });
+    this.load();
+    this.members.changed$.pipe(takeUntilDestroyed()).subscribe(() => this.load());
   }
 
   /** Re-enabling is immediate; disabling asks first, since the user is logged out everywhere. */
@@ -105,10 +103,20 @@ export class AdminUsersComponent {
       .subscribe(() => this.setDisabled(user, true));
   }
 
+  private load(): void {
+    this.admin.users().subscribe((result) => {
+      this.loadError.set(result.ok ? null : (result.errors['form'] ?? 'unknown'));
+      if (result.ok) {
+        this.users.set(result.users);
+      }
+    });
+  }
+
   private setDisabled(user: AdminUser, disabled: boolean): void {
     this.admin.setDisabled(user.id, disabled).subscribe((result) => {
       if (result.ok) {
         this.users.update((users) => users.map((u) => (u.id === result.user.id ? result.user : u)));
+        this.members.notifyChanged();
         const done = disabled ? 'settings.admin.disabledDone' : 'settings.admin.enabledDone';
         this.notify(done, { name: user.displayName });
       } else {

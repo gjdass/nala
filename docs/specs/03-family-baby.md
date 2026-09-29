@@ -1,6 +1,6 @@
 # 03 — Family & baby profile
 
-Status: in progress
+Status: done
 
 ## Goal
 
@@ -19,6 +19,8 @@ Let a household share one Nala instance: invite caregivers, let the admin remove
 - **Invitation endpoints:** any enabled member (session fallback policy). `POST /api/invitations` → 200 `{ token, expiresAt }` (7 days, token scheme of 02); the web builds `/invite/{token}` from its own origin. `GET /api/invitations` → 200 `[{ id, createdBy, createdAt, expiresAt }]` (`createdBy` is the creator's display name), pending only (unused, unexpired, unrevoked), newest first. `POST /api/invitations/{id}/revoke` → 204 for a pending or already revoked invitation (idempotent); 410 `{ code }` with `invitationUsed` or `invitationExpired`; 404 `{ code: "invitationUnknown" }`. Revoking is a conditional update, so a revoke and a registration racing on one link can't both succeed.
 - **Invitation by email:** `POST /api/invitations/email` with `{ email }` → 202 `{ expiresAt }`: creates an invitation as above and queues an email with its link through `IEmailOutbox`; any enabled member. 404 `{ code: "emailInviteDisabled" }` when SMTP is off (checked first); 400 validation problem `email`: `required` / `invalid` (rule of 02) / `taken` (a non-deleted account already has it, as at registration). The address is only used for sending, never stored: the invitation is an ordinary one (pending list, revoke, registration with any email). The email is plain text in the inviter's language (EN/FR, else English): subject "You're invited to Nala" / "Invitation à rejoindre Nala", who invites them, the link `{NALA_PUBLIC_URL}/invite/{token}`, that it works once until its expiry (UTC), and to ignore it if they don't know the sender.
 - **Invitations in settings:** the Members & invitations section (after Babies) has an Invite button, which creates a link and opens the shared `nala-share-link-dialog` (link, expiry, Copy, Share); with `smtpEnabled`, an outlined "Invite by email" button next to it opens a dialog (email field, Cancel / Send; errors under the field, the dialog stays open), which closes on success with a snackbar "Invitation sent to {email}" and reloads the list. Then the pending list, one shared `nala-invitation-list-item` each ("Invited by {name}", "Expires {date and time}") with a Revoke text button. Revoke is immediate (a new link is easy to make), confirmed with a snackbar. With none pending, the list says so.
+- **Member endpoints:** `GET /api/members` → 200 `[{ id, displayName, email, isAdmin }]`: enabled, non-deleted users only, the admin first then by display name (case-insensitive); any enabled member. `POST /api/members/{id}/remove` → 204: the admin disable of 02 (same Core action, so idempotent: an already disabled member → 204); 403 `{ code: "adminOnly" }` for anyone but the admin (checked first), 404 `{ code: "userNotFound" }` for an unknown or deleted user, 403 `{ code: "adminCannotDisable" }` for the admin. Removing (= disabling) ends every session of the member and revokes the invitations they created that are still pending.
+- **Members in settings:** the Members & invitations section starts with a "Members" heading and one shared `nala-member-list-item` per member (name, email, admin badge). The admin sees a Remove text button on every row but their own; it asks for confirmation in the shared `nala-confirm-dialog`, then the member leaves the list and a snackbar confirms ("{name} was removed"). Remove, and the admin section's Disable / Enable, reload the members, admin users and pending invitations lists.
 - **No baby yet:** home shows only the shared `nala-empty-state` ("Add a baby", opening the baby sheet) under the top app bar, whose settings button stays reachable. Activity routes, when added (04+), must also require a baby.
 
 ## User stories
@@ -57,15 +59,15 @@ Each item becomes at least one test, written failing first.
 - [x] Any member can list pending (unused, unexpired, unrevoked) invitations with who created them and when they expire, and revoke any of them. A revoked link cannot be used.
 
 ### Members
-- [ ] Any member can list the family members (display name, email, admin badge). Disabled and deleted accounts are not listed.
-- [ ] Only the admin can remove a member: this disables their account (sessions end, login refused) — it is the same action as the admin disable in 02, offered from the members list. Their entries are not changed.
-- [ ] A non-admin member does not see the remove action, and the endpoint refuses them (403).
-- [ ] The admin cannot remove themselves. A member who wants to leave deletes their own account (see 02).
-- [ ] A removed member can only come back if the admin re-enables them (02) or through a new invitation after their account is deleted.
+- [x] Any member can list the family members (display name, email, admin badge). Disabled and deleted accounts are not listed.
+- [x] Only the admin can remove a member: this disables their account (sessions end, login refused) — it is the same action as the admin disable in 02, offered from the members list. Their entries are not changed.
+- [x] A non-admin member does not see the remove action, and the endpoint refuses them (403).
+- [x] The admin cannot remove themselves. A member who wants to leave deletes their own account (see 02).
+- [x] A removed member can only come back if the admin re-enables them (02) or through a new invitation after their account is deleted.
 
 ### Authorization
-- [ ] Every baby and activity endpoint only works for authenticated, enabled members; there is no per-baby access restriction.
-- [ ] Admin-only actions (delete baby, remove member, plus those in 02) are enforced by the API, not only hidden in the UI.
+- [x] Every baby and activity endpoint only works for authenticated, enabled members; there is no per-baby access restriction.
+- [x] Admin-only actions (delete baby, remove member, plus those in 02) are enforced by the API, not only hidden in the UI.
 
 ## Build slices
 
@@ -77,7 +79,7 @@ Each slice goes red → green → commit on `master`, in this order.
 - [x] **Slice 4 — Delete a baby (admin only).** `DELETE /api/babies/{id}`: 204 for the admin, 403 `{ code: "adminOnly" }` otherwise (checked in Core), 404 unknown. FK cascade ready for activity tables (each activity spec adds its own cascade test). Web: Delete shown to the admin only, confirmation requiring the baby's name, selection falls back to the first baby. Covers: both delete criteria, the delete-baby part of admin-only Authorization.
 - [x] **Slice 5 — Invitation links: create, list, revoke.** `POST /api/invitations` → `{ token, expiresAt }` (7 days), `GET /api/invitations` (pending only, with creator and expiry), `POST /api/invitations/{id}/revoke` (any member). Web: Members & invitations section, Invite → `nala-share-link-dialog`, pending list with a shared `nala-invitation-list-item` and Revoke. Covers: invitation criteria 1 and 3.
 - [x] **Slice 6 — Invitation by email.** With SMTP configured, the invite dialog takes an email address; the API creates the invitation and queues the email (link `{NALA_PUBLIC_URL}/invite/{token}`) in the user's language through `IEmailOutbox`; refused when SMTP is off; field hidden without `smtpEnabled`. Covers: invitation criterion 2.
-- [ ] **Slice 7 — Members list and remove.** `GET /api/members` (any member; enabled, non-deleted; display name, email, admin), `POST /api/members/{id}/remove` (admin only, reuses `AdminService` disable: 403 `adminOnly`, 403 `adminCannotDisable` for self). Web: members list with `nala-member-list-item`, Remove (confirmation) for the admin only. Covers: all Members criteria, the rest of Authorization.
+- [x] **Slice 7 — Members list and remove.** `GET /api/members` (any member; enabled, non-deleted; display name, email, admin), `POST /api/members/{id}/remove` (admin only, reuses `AdminService` disable: 403 `adminOnly`, 403 `adminCannotDisable` for self). Web: members list with `nala-member-list-item`, Remove (confirmation) for the admin only. Covers: all Members criteria, the rest of Authorization.
 
 ## Data
 

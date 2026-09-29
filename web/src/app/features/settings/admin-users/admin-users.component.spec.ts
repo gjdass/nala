@@ -10,6 +10,7 @@ import {
   ResetLinkResult,
 } from '../../../core/admin/admin.models';
 import { AdminService } from '../../../core/admin/admin.service';
+import { MemberService } from '../../../core/members/member.service';
 import { ConfirmDialogComponent } from '../../../shared/ui/confirm-dialog/confirm-dialog.component';
 import { ShareLinkDialogComponent } from '../../../shared/ui/share-link-dialog/share-link-dialog.component';
 import { translocoTesting } from '../../../testing/transloco-testing';
@@ -27,6 +28,7 @@ describe('AdminUsersComponent', () => {
   let dialogClosed: Subject<boolean | undefined>;
   let dialog: { open: ReturnType<typeof vi.fn> };
   let snackBar: { open: ReturnType<typeof vi.fn> };
+  let members: { changed$: Subject<void>; notifyChanged: ReturnType<typeof vi.fn> };
 
   const anna: AdminUser = {
     id: 'u1',
@@ -97,12 +99,14 @@ describe('AdminUsersComponent', () => {
     dialogClosed = new Subject<boolean | undefined>();
     dialog = { open: vi.fn(() => ({ afterClosed: () => dialogClosed })) };
     snackBar = { open: vi.fn() };
+    members = { changed$: new Subject<void>(), notifyChanged: vi.fn() };
     await TestBed.configureTestingModule({
       imports: [AdminUsersComponent, translocoTesting()],
       providers: [
         { provide: AdminService, useValue: admin },
         { provide: MatDialog, useValue: dialog },
         { provide: MatSnackBar, useValue: snackBar },
+        { provide: MemberService, useValue: members },
       ],
     }).compileComponents();
   });
@@ -161,6 +165,17 @@ describe('AdminUsersComponent', () => {
     );
   });
 
+  it('reloads when the members change elsewhere', async () => {
+    await render();
+    admin.users.mockReturnValue(of({ ok: true, users: [anna, { ...ben, isDisabled: true }] }));
+
+    members.changed$.next();
+    await fixture.whenStable();
+
+    expect(rows().length).toBe(2);
+    expect(row('Ben').textContent).toContain(en.settings.admin.disabled);
+  });
+
   describe('disable', () => {
     it('asks for confirmation first', async () => {
       await render();
@@ -197,6 +212,7 @@ describe('AdminUsersComponent', () => {
       await fixture.whenStable();
 
       expect(row('Ben').textContent).toContain(en.settings.admin.disabled);
+      expect(members.notifyChanged).toHaveBeenCalled();
       expect(snackBar.open).toHaveBeenCalledWith(
         en.settings.admin.disabledDone.replace('{{name}}', 'Ben'),
         undefined,
@@ -213,6 +229,7 @@ describe('AdminUsersComponent', () => {
       await fixture.whenStable();
 
       expect(row('Ben').textContent).not.toContain(en.settings.admin.disabled);
+      expect(members.notifyChanged).not.toHaveBeenCalled();
       expect(snackBar.open).toHaveBeenCalledWith(en.auth.errors.form.userNotFound, undefined, {
         duration: 3000,
       });
@@ -230,6 +247,7 @@ describe('AdminUsersComponent', () => {
       await fixture.whenStable();
 
       expect(row('Chloe').textContent).not.toContain(en.settings.admin.disabled);
+      expect(members.notifyChanged).toHaveBeenCalled();
       expect(snackBar.open).toHaveBeenCalledWith(
         en.settings.admin.enabledDone.replace('{{name}}', 'Chloe'),
         undefined,

@@ -45,8 +45,7 @@ public static class AdminEndpoints
         {
             SetDisabledResult.Updated updated => Results.Ok(ToResponse(updated.User)),
             SetDisabledResult.NotFound => UserNotFound(),
-            SetDisabledResult.AdminCannotDisable =>
-                Results.Json(new ErrorResponse("adminCannotDisable"), statusCode: StatusCodes.Status403Forbidden),
+            SetDisabledResult.AdminCannotDisable => AdminCannotDisable(),
             _ => AdminOnly(),
         };
     }
@@ -61,10 +60,13 @@ public static class AdminEndpoints
             _ => AdminOnly(),
         };
 
-    private static IResult UserNotFound() =>
+    internal static IResult UserNotFound() =>
         Results.Json(new ErrorResponse("userNotFound"), statusCode: StatusCodes.Status404NotFound);
 
-    private static IResult AdminOnly() =>
+    internal static IResult AdminCannotDisable() =>
+        Results.Json(new ErrorResponse("adminCannotDisable"), statusCode: StatusCodes.Status403Forbidden);
+
+    internal static IResult AdminOnly() =>
         Results.Json(new ErrorResponse("adminOnly"), statusCode: StatusCodes.Status403Forbidden);
 
     private static AdminUserResponse ToResponse(User user) =>

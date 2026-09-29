@@ -26,6 +26,7 @@ import { AdminUsersComponent } from './admin-users/admin-users.component';
 import { DeleteAccountDialogComponent } from './delete-account-dialog/delete-account-dialog.component';
 import { SettingsBabiesComponent } from './settings-babies/settings-babies.component';
 import { SettingsInvitationsComponent } from './settings-invitations/settings-invitations.component';
+import { SettingsMembersComponent } from './settings-members/settings-members.component';
 
 const SNACK_DURATION = 3000;
 
@@ -42,6 +43,7 @@ const SNACK_DURATION = 3000;
     RouterLink,
     SettingsBabiesComponent,
     SettingsInvitationsComponent,
+    SettingsMembersComponent,
     SettingsSectionComponent,
     TranslocoPipe,
   ],

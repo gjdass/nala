@@ -6,6 +6,7 @@ using Nala.Api.Babies;
 using Nala.Api.Email;
 using Nala.Api.Health;
 using Nala.Api.Invitations;
+using Nala.Api.Members;
 using Nala.Sql;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -22,6 +23,7 @@ builder.Services.AddNalaAccount();
 builder.Services.AddNalaAdmin();
 builder.Services.AddNalaBabies();
 builder.Services.AddNalaInvitations();
+builder.Services.AddNalaMembers();
 builder.Services.AddSingleton(TimeProvider.System);
 
 var app = builder.Build();
@@ -40,6 +42,7 @@ app.MapNalaAccount();
 app.MapNalaAdmin();
 app.MapNalaBabies();
 app.MapNalaInvitations();
+app.MapNalaMembers();
 
 app.Run();
 

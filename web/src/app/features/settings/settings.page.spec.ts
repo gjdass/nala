@@ -10,6 +10,7 @@ import { AccountService } from '../../core/account/account.service';
 import { AdminService } from '../../core/admin/admin.service';
 import { BabyService } from '../../core/babies/baby.service';
 import { InvitationService } from '../../core/invitations/invitation.service';
+import { MemberService } from '../../core/members/member.service';
 import { AccountResult, AuthState } from '../../core/auth/auth.models';
 import { AuthService } from '../../core/auth/auth.service';
 import { ThemeMode, ThemeService } from '../../core/theme/theme.service';
@@ -97,6 +98,13 @@ describe('SettingsPage', () => {
           provide: InvitationService,
           useValue: { pending: vi.fn(() => of({ ok: true, invitations: [] })) },
         },
+        {
+          provide: MemberService,
+          useValue: {
+            list: vi.fn(() => of({ ok: true, members: [] })),
+            changed$: new Subject<void>(),
+          },
+        },
       ],
     }).compileComponents();
     router = TestBed.inject(Router);
@@ -132,6 +140,16 @@ describe('SettingsPage', () => {
     expect(host().querySelector('nala-admin-users')).toBeNull();
     expect(host().querySelector('nala-settings-babies')).not.toBeNull();
     expect(host().querySelector('nala-settings-invitations')).not.toBeNull();
+  });
+
+  it('shows the members before the invitations in the Members & invitations section', () => {
+    const section = [...host().querySelectorAll('nala-settings-section')][1];
+    const parts = [...section.querySelectorAll('nala-settings-members, nala-settings-invitations')];
+
+    expect(parts.map((p) => p.tagName.toLowerCase())).toEqual([
+      'nala-settings-members',
+      'nala-settings-invitations',
+    ]);
   });
 
   it('has a link back to home', () => {

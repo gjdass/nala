@@ -1,4 +1,5 @@
 using Nala.Core.Auth;
+using Nala.Core.Invitations;
 using Nala.Core.Users;
 
 namespace Nala.Core.Admin;
@@ -25,7 +26,7 @@ public abstract record SetDisabledResult
 }
 
 /// <summary>Admin-only management of the instance's users. Every call is refused to anyone but the admin.</summary>
-public class AdminService(IUserRepository users, ISessionRepository sessions)
+public class AdminService(IUserRepository users, ISessionRepository sessions, IInvitationRepository invitations, TimeProvider time)
 {
     /// <summary>Non-deleted users, disabled ones included.</summary>
     public async Task<ListUsersResult> ListUsersAsync(User actor, CancellationToken cancellationToken = default)
@@ -36,13 +37,13 @@ public class AdminService(IUserRepository users, ISessionRepository sessions)
         }
 
         var list = await users.ListActiveAsync(cancellationToken);
-        return new ListUsersResult.Listed(list
-            .OrderByDescending(u => u.IsAdmin)
-            .ThenBy(u => u.DisplayName, StringComparer.InvariantCultureIgnoreCase)
-            .ToList());
+        return new ListUsersResult.Listed(UserOrder.AdminFirstThenByName(list));
     }
 
-    /// <summary>Disabling ends every session of the user and blocks their login; re-enabling restores it.</summary>
+    /// <summary>
+    /// Disabling ends every session of the user, blocks their login and revokes their pending invitations; re-enabling
+    /// restores the login. Removing a member (03) is this same action.
+    /// </summary>
     public async Task<SetDisabledResult> SetDisabledAsync(
         User actor, Guid userId, bool disabled, CancellationToken cancellationToken = default)
     {
@@ -67,6 +68,7 @@ public class AdminService(IUserRepository users, ISessionRepository sessions)
         if (disabled)
         {
             await sessions.DeleteAllAsync(user.Id, cancellationToken);
+            await invitations.RevokePendingAsync(user.Id, time.GetUtcNow(), cancellationToken);
         }
 
         return new SetDisabledResult.Updated(user);

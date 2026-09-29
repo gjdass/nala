@@ -163,7 +163,15 @@
     }
   },
   "members": {
-    "admin": "Admin"
+    "admin": "Admin",
+    "title": "Membres",
+    "remove": "Retirer",
+    "removeTitle": "Retirer {{name}} ?",
+    "removeText": "{{name}} sera déconnecté·e sur tous ses appareils et ne pourra plus se connecter, et ses invitations en attente seront annulées. Ce qui a été noté est conservé. Vous pourrez réactiver {{name}} depuis la section Admin.",
+    "confirm": "Retirer",
+    "cancel": "Annuler",
+    "removed": "{{name}} a été retiré·e",
+    "loadError": "Impossible de charger les membres. Vérifiez votre connexion et réessayez."
   },
   "invitations": {
     "invite": "Inviter quelqu'un",

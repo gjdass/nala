@@ -1,5 +1,6 @@
 import { DOCUMENT } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatListModule } from '@angular/material/list';
@@ -10,6 +11,7 @@ import { AuthService } from '../../../core/auth/auth.service';
 import { formatDateTime } from '../../../core/i18n/date-time';
 import { PendingInvitation } from '../../../core/invitations/invitation.models';
 import { InvitationService } from '../../../core/invitations/invitation.service';
+import { MemberService } from '../../../core/members/member.service';
 import { InvitationListItemComponent } from '../../../shared/ui/invitation-list-item/invitation-list-item.component';
 import {
   ShareLinkDialogComponent,
@@ -48,6 +50,10 @@ export class SettingsInvitationsComponent {
 
   constructor() {
     this.load();
+    // Removing or disabling a member revokes their pending invitations.
+    inject(MemberService)
+      .changed$.pipe(takeUntilDestroyed())
+      .subscribe(() => this.load());
   }
 
   protected invite(): void {

@@ -14,6 +14,7 @@ import {
   RevokeInvitationResult,
 } from '../../../core/invitations/invitation.models';
 import { InvitationService } from '../../../core/invitations/invitation.service';
+import { MemberService } from '../../../core/members/member.service';
 import { ShareLinkDialogComponent } from '../../../shared/ui/share-link-dialog/share-link-dialog.component';
 import { translocoTesting } from '../../../testing/transloco-testing';
 import { InviteEmailDialogComponent } from '../invite-email-dialog/invite-email-dialog.component';
@@ -30,6 +31,7 @@ describe('SettingsInvitationsComponent', () => {
   let revoked: Subject<RevokeInvitationResult>;
   let dialog: { open: ReturnType<typeof vi.fn> };
   let snackBar: { open: ReturnType<typeof vi.fn> };
+  let changed: Subject<void>;
   let auth: { state: ReturnType<typeof signal<AuthState | null>> };
 
   const fromBen: PendingInvitation = {
@@ -75,6 +77,7 @@ describe('SettingsInvitationsComponent', () => {
       revoke: vi.fn(() => revoked),
     };
     dialog = { open: vi.fn() };
+    changed = new Subject<void>();
     snackBar = { open: vi.fn() };
     auth = {
       state: signal<AuthState | null>({
@@ -96,6 +99,7 @@ describe('SettingsInvitationsComponent', () => {
         { provide: MatDialog, useValue: dialog },
         { provide: MatSnackBar, useValue: snackBar },
         { provide: AuthService, useValue: auth },
+        { provide: MemberService, useValue: { changed$: changed } },
       ],
     }).compileComponents();
   });
@@ -128,6 +132,17 @@ describe('SettingsInvitationsComponent', () => {
 
     expect(byTestId('invitations-error')?.textContent?.trim()).toBe(en.invitations.loadError);
     expect(byTestId('invite')).not.toBeNull();
+  });
+
+  it('reloads the list when the members change (removing a member revokes their invitations)', async () => {
+    await render();
+    invitations.pending.mockReturnValue(of({ ok: true, invitations: [fromAnna] }));
+
+    changed.next();
+    await fixture.whenStable();
+
+    expect(rows().length).toBe(1);
+    expect(row('Anna')).toBeDefined();
   });
 
   describe('invite', () => {

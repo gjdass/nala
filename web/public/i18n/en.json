@@ -163,7 +163,15 @@
     }
   },
   "members": {
-    "admin": "Admin"
+    "admin": "Admin",
+    "title": "Members",
+    "remove": "Remove",
+    "removeTitle": "Remove {{name}}?",
+    "removeText": "{{name}} will be logged out on every device and won't be able to log in anymore, and their pending invitations will be cancelled. What they logged stays. You can enable {{name}} again from the Admin section.",
+    "confirm": "Remove",
+    "cancel": "Cancel",
+    "removed": "{{name}} was removed",
+    "loadError": "Couldn't load the members. Check your connection and try again."
   },
   "invitations": {
     "invite": "Invite someone",
