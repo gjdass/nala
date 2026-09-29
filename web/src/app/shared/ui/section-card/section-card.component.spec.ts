@@ -1,16 +1,23 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { Subject } from 'rxjs';
 import en from '../../../../../public/i18n/en.json';
 import { SectionKey } from '../../../core/sections/section.models';
 import { translocoTesting } from '../../../testing/transloco-testing';
+import { EntrySheetResult } from '../entry-sheet/entry-sheet.models';
+import { EntrySheetService } from '../entry-sheet/entry-sheet.service';
 import { SectionCardComponent } from './section-card.component';
 import { SectionEntryDirective } from './section-entry.directive';
 
 @Component({
   imports: [SectionCardComponent, SectionEntryDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `<nala-section-card [key]="key()" [entries]="entries()" (add)="added = added + 1">
+  template: `<nala-section-card
+    [key]="key()"
+    [entries]="entries()"
+    (changed)="changes.push($event)"
+  >
     <p sectionHighlight data-testid="highlight">Last feeding</p>
     <p sectionEmpty data-testid="empty">No feed yet</p>
     <ng-template nalaSectionEntry let-entry>
@@ -21,13 +28,15 @@ import { SectionEntryDirective } from './section-entry.directive';
 class Host {
   readonly key = signal<SectionKey>('feed');
   readonly entries = signal<readonly string[] | null>(null);
-  added = 0;
+  readonly changes: EntrySheetResult[] = [];
 }
 
 const twelve = Array.from({ length: 12 }, (_, i) => `e${i + 1}`);
 
 describe('SectionCardComponent', () => {
   let fixture: ComponentFixture<Host>;
+  let sheetClosed: Subject<EntrySheetResult | undefined>;
+  let entrySheets: { add: ReturnType<typeof vi.fn> };
 
   const host = () => fixture.nativeElement as HTMLElement;
   const find = (testId: string) => host().querySelector<HTMLElement>(`[data-testid="${testId}"]`);
@@ -44,9 +53,11 @@ describe('SectionCardComponent', () => {
 
   beforeEach(async () => {
     localStorage.clear();
+    sheetClosed = new Subject();
+    entrySheets = { add: vi.fn(() => sheetClosed) };
     await TestBed.configureTestingModule({
       imports: [Host, translocoTesting()],
-      providers: [provideRouter([])],
+      providers: [provideRouter([]), { provide: EntrySheetService, useValue: entrySheets }],
     }).compileComponents();
   });
 
@@ -62,14 +73,28 @@ describe('SectionCardComponent', () => {
       expect(style).toContain('var(--nala-on-section-feed)');
     });
 
-    it('has a labelled + small FAB that emits add', () => {
+    it('has a labelled + small FAB that opens the section add flow', () => {
       const add = find('section-add') as HTMLButtonElement;
       expect(add.hasAttribute('mat-mini-fab')).toBe(true);
       expect(add.getAttribute('aria-label')).toBe('Add Feed');
 
       add.click();
 
-      expect(fixture.componentInstance.added).toBe(1);
+      expect(entrySheets.add).toHaveBeenCalledWith('feed');
+    });
+
+    it('emits changed with what the sheet saved', () => {
+      find('section-add')!.click();
+      sheetClosed.next({ saved: { id: 'f1' } });
+
+      expect(fixture.componentInstance.changes).toEqual([{ saved: { id: 'f1' } }]);
+    });
+
+    it('emits nothing when the sheet or kind picker closes without a result', () => {
+      find('section-add')!.click();
+      sheetClosed.next(undefined);
+
+      expect(fixture.componentInstance.changes).toEqual([]);
     });
 
     it('links to the section history', () => {

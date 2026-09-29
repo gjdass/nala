@@ -1,0 +1,23 @@
+<nala-sheet-header
+  [section]="data.section"
+  [title]="data.kind.label | transloco"
+  [saveDisabled]="invalid() || saving()"
+  (closed)="close()"
+  (saved)="save.emit()"
+/>
+<div class="body">
+  <ng-content />
+  @if (data.entry) {
+    <div class="delete">
+      <button
+        mat-stroked-button
+        type="button"
+        [disabled]="saving()"
+        (click)="confirmDelete()"
+        data-testid="entry-delete"
+      >
+        {{ 'entrySheet.delete.action' | transloco }}
+      </button>
+    </div>
+  }
+</div>

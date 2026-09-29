@@ -14,6 +14,17 @@ export interface SectionPreference {
 
 export type SectionsSaveResult = { ok: true } | { ok: false; errors: FieldErrors };
 
+/** One kind of entry of a section (e.g. Feed: bottle, breastfeed, solids). */
+export interface SectionKind {
+  key: string;
+  /** Material Symbols name. */
+  icon: string;
+  /** Translation key of its label, shown in the kind picker and as its sheet title. */
+  label: string;
+  /** Its add / edit sheet, wrapping `nala-entry-sheet`; opened with `EntrySheetData`. */
+  sheet: Type<unknown>;
+}
+
 /** A section the app has built; each feature registers its own through `SECTIONS`. */
 export interface SectionDefinition {
   key: SectionKey;
@@ -21,6 +32,8 @@ export interface SectionDefinition {
   icon: string;
   /** The section's home card: loads its own entries for the selected baby and wraps `nala-section-card`. */
   card: Type<unknown>;
+  /** Its kinds of entry: + opens the kind picker with several, the sheet directly with one. */
+  kinds: readonly SectionKind[];
 }
 
 /** The built sections; home and settings only show these. */

@@ -1,0 +1,20 @@
+<nala-form-row
+  [label]="'entrySheet.notes' | transloco"
+  [value]="open() ? '' : ('entrySheet.add' | transloco)"
+  (activate)="reveal()"
+>
+  @if (open()) {
+    <mat-form-field rowEditor appearance="outline">
+      <textarea
+        #textarea
+        matInput
+        cdkTextareaAutosize
+        cdkAutosizeMinRows="2"
+        [formControl]="control()"
+        [attr.aria-label]="'entrySheet.notes' | transloco"
+        data-testid="notes-input"
+      ></textarea>
+      <mat-error data-testid="notes-error">{{ 'entrySheet.notesTooLong' | transloco }}</mat-error>
+    </mat-form-field>
+  }
+</nala-form-row>

@@ -17,6 +17,9 @@ import { MatListModule } from '@angular/material/list';
 import { RouterLink } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { SectionKey } from '../../../core/sections/section.models';
+import { filter } from 'rxjs';
+import { EntrySheetResult } from '../entry-sheet/entry-sheet.models';
+import { EntrySheetService } from '../entry-sheet/entry-sheet.service';
 import { SectionEntryDirective } from './section-entry.directive';
 
 /** How many recent entries "Show more" lists inline. */
@@ -26,8 +29,9 @@ const storageKey = (key: SectionKey) => `nala.sectionExpanded.${key}`;
 
 /**
  * The frame of every home section card (spec 04): header band in the section colour with its title
- * and a + small FAB (`add`), the highlight (`[sectionHighlight]`) or, without entries, the empty
- * state (`[sectionEmpty]`), Show more / Show less over the first 10 `entries` rendered through the
+ * and a + small FAB opening the section's kind picker or entry sheet (`changed` once an entry is
+ * saved), the highlight (`[sectionHighlight]`) or, without entries, the empty state
+ * (`[sectionEmpty]`), Show more / Show less over the first 10 `entries` rendered through the
  * `nalaSectionEntry` template, and a link to the section's history. `entries` is null while loading.
  * The expanded state is remembered per device and section.
  */
@@ -48,15 +52,25 @@ const storageKey = (key: SectionKey) => `nala.sectionExpanded.${key}`;
 })
 export class SectionCardComponent<T = unknown> {
   private readonly storage = inject(DOCUMENT).defaultView?.localStorage;
+  private readonly entrySheets = inject(EntrySheetService);
 
   readonly key = input.required<SectionKey>();
   /** The section's entries, newest first; null while loading. */
   readonly entries = input<readonly T[] | null>(null);
-  readonly add = output<void>();
+  /** An entry was added through +: the section reloads its entries. */
+  readonly changed = output<EntrySheetResult>();
 
   protected readonly entryTemplate = contentChild(SectionEntryDirective, { read: TemplateRef });
   protected readonly recent = computed(() => (this.entries() ?? []).slice(0, RECENT_ENTRIES));
   protected readonly expanded = linkedSignal(() => this.readExpanded(this.key()));
+
+  /** + : the kind picker or the entry sheet, per the section's kinds. */
+  protected add(): void {
+    this.entrySheets
+      .add(this.key())
+      .pipe(filter((result) => result !== undefined))
+      .subscribe((result) => this.changed.emit(result));
+  }
 
   protected toggle(): void {
     const expanded = !this.expanded();

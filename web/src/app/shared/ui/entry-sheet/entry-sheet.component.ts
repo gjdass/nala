@@ -1,0 +1,70 @@
+import { ChangeDetectionStrategy, Component, inject, input, output } from '@angular/core';
+import { toObservable, toSignal } from '@angular/core/rxjs-interop';
+import { AbstractControl } from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
+import { MatDialog } from '@angular/material/dialog';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
+import { Observable, filter, map, startWith, switchMap } from 'rxjs';
+import {
+  ConfirmDialogComponent,
+  ConfirmDialogData,
+} from '../confirm-dialog/confirm-dialog.component';
+import { SheetHeaderComponent } from '../sheet-header/sheet-header.component';
+import { SHEET_DATA, SheetRef } from '../sheet/sheet-ref';
+import { EntrySheetData } from './entry-sheet.models';
+
+/**
+ * The frame of every add / edit sheet of a section (spec 04), wrapping the kind's rows: header in
+ * the section colour with ×, the kind title and Save (disabled while `form` is invalid or saving),
+ * and, when editing, a Delete action. × asks before discarding changes; Delete asks before emitting.
+ * The kind's sheet saves or deletes, then closes itself through `SheetRef`.
+ */
+@Component({
+  selector: 'nala-entry-sheet',
+  imports: [MatButtonModule, SheetHeaderComponent, TranslocoPipe],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  templateUrl: './entry-sheet.component.html',
+  styleUrl: './entry-sheet.component.scss',
+})
+export class EntrySheetComponent {
+  private readonly sheetRef = inject(SheetRef);
+  private readonly dialog = inject(MatDialog);
+  private readonly transloco = inject(TranslocoService);
+  protected readonly data = inject<EntrySheetData>(SHEET_DATA);
+
+  readonly form = input.required<AbstractControl>();
+  readonly saving = input(false);
+  readonly save = output();
+  readonly delete = output();
+
+  protected readonly invalid = toSignal(
+    toObservable(this.form).pipe(
+      switchMap((form) => form.statusChanges.pipe(startWith(form.status))),
+      map((status) => status !== 'VALID'),
+    ),
+    { initialValue: true },
+  );
+
+  /** Asks before discarding what was entered. */
+  protected close(): void {
+    if (!this.form().dirty) {
+      this.sheetRef.close();
+      return;
+    }
+    this.confirm('discard').subscribe(() => this.sheetRef.close());
+  }
+
+  protected confirmDelete(): void {
+    this.confirm('delete').subscribe(() => this.delete.emit());
+  }
+
+  private confirm(wording: 'discard' | 'delete'): Observable<boolean> {
+    const t = (key: string) => this.transloco.translate(`entrySheet.${wording}.${key}`);
+    return this.dialog
+      .open<ConfirmDialogComponent, ConfirmDialogData, boolean>(ConfirmDialogComponent, {
+        data: { title: t('title'), text: t('text'), confirm: t('confirm'), cancel: t('cancel') },
+      })
+      .afterClosed()
+      .pipe(filter((confirmed): confirmed is true => confirmed === true));
+  }
+}

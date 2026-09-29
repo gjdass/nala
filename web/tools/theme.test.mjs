@@ -28,4 +28,9 @@ describe('global theme', () => {
       assert.match(css, new RegExp(`--nala-on-section-${key}:\\s*light-dark\\(`), `on-${key}`);
     }
   });
+
+  it("keeps Material's default density, so controls keep their 48 dp touch targets", () => {
+    assert.doesNotMatch(css, /density/);
+    assert.doesNotMatch(css, /touch-target-(display|size)/);
+  });
 });

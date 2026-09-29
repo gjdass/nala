@@ -333,5 +333,29 @@
       "hm": "{{h}} h {{m}} min"
     },
     "yesterday": "Hier {{time}}"
+  },
+  "kindPicker": {
+    "label": "Choisir quoi ajouter"
+  },
+  "entrySheet": {
+    "notes": "Notes",
+    "add": "Ajouter",
+    "notesTooLong": "Les notes ne peuvent pas dépasser 1000 caractères.",
+    "discard": {
+      "title": "Abandonner les modifications ?",
+      "text": "Ce que vous avez saisi sera perdu.",
+      "confirm": "Abandonner",
+      "cancel": "Continuer"
+    },
+    "delete": {
+      "action": "Supprimer",
+      "title": "Supprimer cette entrée ?",
+      "text": "Elle sera retirée de l'historique pour tout le monde.",
+      "confirm": "Supprimer",
+      "cancel": "Annuler"
+    }
+  },
+  "suggestion": {
+    "yes": "Oui"
   }
 }

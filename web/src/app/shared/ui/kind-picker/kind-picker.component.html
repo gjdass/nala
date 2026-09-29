@@ -1,0 +1,13 @@
+<mat-action-list [attr.aria-label]="'kindPicker.label' | transloco">
+  @for (kind of data.kinds; track kind.key) {
+    <button
+      mat-list-item
+      type="button"
+      (click)="pick(kind)"
+      [attr.data-testid]="'kind-' + kind.key"
+    >
+      <mat-icon matListItemIcon>{{ kind.icon }}</mat-icon>
+      <span matListItemTitle>{{ kind.label | transloco }}</span>
+    </button>
+  }
+</mat-action-list>

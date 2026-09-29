@@ -12,7 +12,7 @@
       [attr.aria-label]="
         'sectionCard.add' | transloco: { section: ('sections.' + key() | transloco) }
       "
-      (click)="add.emit()"
+      (click)="add()"
       data-testid="section-add"
     >
       <mat-icon>add</mat-icon>

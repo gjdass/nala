@@ -1,4 +1,11 @@
-<mat-toolbar>
+<mat-toolbar
+  [style.--mat-toolbar-container-background-color]="
+    section() ? 'var(--nala-section-' + section() + ')' : null
+  "
+  [style.--mat-toolbar-container-text-color]="
+    section() ? 'var(--nala-on-section-' + section() + ')' : null
+  "
+>
   <button
     mat-icon-button
     type="button"

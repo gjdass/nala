@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import en from '../../../../../public/i18n/en.json';
 import { translocoTesting } from '../../../testing/transloco-testing';
+import { SectionKey } from '../../../core/sections/section.models';
 import { SheetHeaderComponent } from './sheet-header.component';
 
 @Component({
@@ -9,6 +10,7 @@ import { SheetHeaderComponent } from './sheet-header.component';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `<nala-sheet-header
     title="Add a baby"
+    [section]="section()"
     [saveDisabled]="disabled()"
     (closed)="closes = closes + 1"
     (saved)="saves = saves + 1"
@@ -16,6 +18,7 @@ import { SheetHeaderComponent } from './sheet-header.component';
 })
 class HostComponent {
   readonly disabled = signal(false);
+  readonly section = signal<SectionKey | null>(null);
   closes = 0;
   saves = 0;
 }
@@ -56,5 +59,20 @@ describe('SheetHeaderComponent', () => {
     await fixture.whenStable();
 
     expect(button('sheet-save').disabled).toBe(true);
+  });
+
+  it('keeps the default toolbar colours without a section', () => {
+    expect(host().querySelector('mat-toolbar')?.getAttribute('style') ?? '').not.toContain(
+      '--nala-section',
+    );
+  });
+
+  it("uses the section's colour tokens when given one", async () => {
+    fixture.componentInstance.section.set('diaper');
+    await fixture.whenStable();
+
+    const style = host().querySelector('mat-toolbar')?.getAttribute('style') ?? '';
+    expect(style).toContain('--mat-toolbar-container-background-color: var(--nala-section-diaper)');
+    expect(style).toContain('--mat-toolbar-container-text-color: var(--nala-on-section-diaper)');
   });
 });

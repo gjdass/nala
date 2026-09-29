@@ -333,5 +333,29 @@
       "hm": "{{h}}h {{m}}m"
     },
     "yesterday": "Yesterday {{time}}"
+  },
+  "kindPicker": {
+    "label": "Choose what to add"
+  },
+  "entrySheet": {
+    "notes": "Notes",
+    "add": "Add",
+    "notesTooLong": "Notes can't be longer than 1000 characters.",
+    "discard": {
+      "title": "Discard changes?",
+      "text": "What you entered will be lost.",
+      "confirm": "Discard",
+      "cancel": "Keep editing"
+    },
+    "delete": {
+      "action": "Delete",
+      "title": "Delete this entry?",
+      "text": "It will be removed from the history for everyone.",
+      "confirm": "Delete",
+      "cancel": "Cancel"
+    }
+  },
+  "suggestion": {
+    "yes": "Yes"
   }
 }
