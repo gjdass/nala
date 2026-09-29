@@ -4,6 +4,10 @@
     <h1>{{ 'settings.title' | transloco }}</h1>
   </header>
 
+  <nala-settings-section [title]="'settings.babies.title' | transloco">
+    <nala-settings-babies />
+  </nala-settings-section>
+
   <nala-settings-section [title]="'settings.account.title' | transloco">
     <form [formGroup]="profileForm" (ngSubmit)="saveProfile()" novalidate>
       <mat-form-field>

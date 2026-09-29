@@ -4,7 +4,7 @@ import { Observable, catchError, map, of } from 'rxjs';
 import { toFieldErrors } from '../http/field-errors';
 import { BabiesResult, Baby, BabyFields, BabyResult } from './baby.models';
 
-/** The family's babies; every member can list and add them. */
+/** The family's babies; every member can list, add and edit them. */
 @Injectable({ providedIn: 'root' })
 export class BabyService {
   private readonly http = inject(HttpClient);
@@ -21,6 +21,16 @@ export class BabyService {
 
   create(fields: BabyFields): Observable<BabyResult> {
     return this.http.post<Baby>('/api/babies', fields).pipe(
+      map((baby): BabyResult => ({ ok: true, baby })),
+      catchError((error: HttpErrorResponse) =>
+        of<BabyResult>({ ok: false, errors: toFieldErrors(error) }),
+      ),
+    );
+  }
+
+  /** Replaces every field of the baby. */
+  update(id: string, fields: BabyFields): Observable<BabyResult> {
+    return this.http.put<Baby>(`/api/babies/${id}`, fields).pipe(
       map((baby): BabyResult => ({ ok: true, baby })),
       catchError((error: HttpErrorResponse) =>
         of<BabyResult>({ ok: false, errors: toFieldErrors(error) }),

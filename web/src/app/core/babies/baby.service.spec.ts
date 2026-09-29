@@ -73,4 +73,34 @@ describe('BabyService', () => {
       });
     });
   });
+
+  describe('update()', () => {
+    it('puts every field and returns the updated baby', async () => {
+      const result = firstValueFrom(service.update('b1', fields));
+      const req = http.expectOne('/api/babies/b1');
+      expect(req.request.method).toBe('PUT');
+      expect(req.request.body).toEqual(fields);
+      req.flush(lea);
+
+      expect(await result).toEqual<BabyResult>({ ok: true, baby: lea });
+    });
+
+    it('maps a validation problem to field errors', async () => {
+      const result = firstValueFrom(service.update('b1', fields));
+      http
+        .expectOne('/api/babies/b1')
+        .flush({ errors: { name: ['required'] } }, { status: 400, statusText: 'Bad Request' });
+
+      expect(await result).toEqual<BabyResult>({ ok: false, errors: { name: 'required' } });
+    });
+
+    it('maps an unknown baby to a form error', async () => {
+      const result = firstValueFrom(service.update('b1', fields));
+      http
+        .expectOne('/api/babies/b1')
+        .flush({ code: 'babyNotFound' }, { status: 404, statusText: 'Not Found' });
+
+      expect(await result).toEqual<BabyResult>({ ok: false, errors: { form: 'babyNotFound' } });
+    });
+  });
 });

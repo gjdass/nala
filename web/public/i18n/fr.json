@@ -100,7 +100,8 @@
         "resetLinkUnknown": "Ce lien de réinitialisation n'est pas valide. Demandez-en un nouveau à l'admin.",
         "resetLinkExpired": "Ce lien de réinitialisation a expiré. Demandez-en un nouveau à l'admin.",
         "resetLinkUsed": "Ce lien de réinitialisation a déjà été utilisé. Connectez-vous, ou demandez-en un nouveau à l'admin.",
-        "emailResetDisabled": "Ce Nala ne peut pas envoyer d'emails. Demandez un lien de réinitialisation à l'administrateur de la famille."
+        "emailResetDisabled": "Ce Nala ne peut pas envoyer d'emails. Demandez un lien de réinitialisation à l'administrateur de la famille.",
+        "babyNotFound": "Ce bébé n'existe plus. Il a peut-être été supprimé."
       }
     }
   },
@@ -152,7 +153,11 @@
       "resetLinkTitle": "Lien de réinitialisation pour {{name}}",
       "resetLinkText": "Envoyez ce lien à {{name}} : il permet de choisir un nouveau mot de passe, une seule fois, jusqu'au {{date}}. Les liens précédents ne fonctionnent plus."
     },
-    "logout": "Se déconnecter"
+    "logout": "Se déconnecter",
+    "babies": {
+      "title": "Bébés",
+      "add": "Ajouter un bébé"
+    }
   },
   "members": {
     "admin": "Admin"
@@ -177,7 +182,8 @@
       "add": "Ajouter un bébé"
     },
     "sheet": {
-      "addTitle": "Ajouter un bébé"
+      "addTitle": "Ajouter un bébé",
+      "editTitle": "Modifier le bébé"
     },
     "fields": {
       "name": "Prénom",
@@ -227,6 +233,26 @@
       "text": "Ce que vous avez saisi sera perdu.",
       "confirm": "Abandonner",
       "cancel": "Continuer"
+    },
+    "discardEdit": {
+      "title": "Abandonner vos modifications ?",
+      "text": "Vos modifications de ce bébé ne seront pas enregistrées.",
+      "confirm": "Abandonner",
+      "cancel": "Continuer"
+    },
+    "age": {
+      "day": {
+        "one": "{{count}} jour",
+        "other": "{{count}} jours"
+      },
+      "week": {
+        "one": "{{count}} semaine",
+        "other": "{{count}} semaines"
+      },
+      "month": {
+        "one": "{{count}} mois",
+        "other": "{{count}} mois"
+      }
     }
   }
 }

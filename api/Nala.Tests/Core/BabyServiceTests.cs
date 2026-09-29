@@ -85,4 +85,79 @@ public class BabyServiceTests
 
         Assert.That(list.Select(b => b.Name), Is.EqualTo(new[] { "Tom", "Lea" }));
     }
+
+    private static readonly DateTimeOffset Later = Now.AddHours(3);
+
+    /// <summary>A baby added by <paramref name="creator"/> at <see cref="Now"/>, with every field set.</summary>
+    private async Task<Baby> AddLeaAsync(User creator)
+    {
+        var result = await _service.CreateAsync(
+            creator, new BabyInput("Lea", new DateOnly(2026, 9, 1), "girl", 3400, 50.5m, 34.5m));
+        _service = new BabyService(_babies, new FixedTimeProvider(Later));
+        return ((CreateBabyResult.Created)result).Baby;
+    }
+
+    [TestCase(true)]
+    [TestCase(false)]
+    public async Task Any_member_can_edit_every_field_of_any_baby(bool isAdmin)
+    {
+        var creator = NewUser();
+        var lea = await AddLeaAsync(creator);
+
+        var result = await _service.UpdateAsync(
+            NewUser(isAdmin), lea.Id, new BabyInput("  Léa ", new DateOnly(2026, 8, 31), "boy", 3500, 51m, 35m));
+
+        var baby = ((UpdateBabyResult.Updated)result).Baby;
+        var stored = _babies.Babies.Single();
+        Assert.Multiple(() =>
+        {
+            Assert.That(baby.Id, Is.EqualTo(lea.Id));
+            Assert.That(stored.Name, Is.EqualTo("Léa"));
+            Assert.That(stored.BirthDate, Is.EqualTo(new DateOnly(2026, 8, 31)));
+            Assert.That(stored.Sex, Is.EqualTo(Sex.Boy));
+            Assert.That(stored.BirthWeightG, Is.EqualTo(3500));
+            Assert.That(stored.BirthLengthCm, Is.EqualTo(51m));
+            Assert.That(stored.BirthHeadCircumferenceCm, Is.EqualTo(35m));
+            Assert.That(stored.CreatedByUserId, Is.EqualTo(creator.Id));
+            Assert.That(stored.CreatedAt, Is.EqualTo(Now));
+            Assert.That(stored.UpdatedAt, Is.EqualTo(Later));
+        });
+    }
+
+    [Test]
+    public async Task Edit_replaces_every_field_so_omitted_ones_are_cleared()
+    {
+        var lea = await AddLeaAsync(NewUser());
+
+        await _service.UpdateAsync(NewUser(), lea.Id, new BabyInput("Lea", new DateOnly(2026, 9, 1), null, null, null, null));
+
+        var stored = _babies.Babies.Single();
+        Assert.That(stored.Sex, Is.EqualTo(Sex.Unspecified));
+        Assert.That(stored.BirthWeightG, Is.Null);
+        Assert.That(stored.BirthLengthCm, Is.Null);
+        Assert.That(stored.BirthHeadCircumferenceCm, Is.Null);
+    }
+
+    [Test]
+    public async Task Invalid_edit_changes_nothing()
+    {
+        var lea = await AddLeaAsync(NewUser());
+
+        var result = await _service.UpdateAsync(
+            NewUser(), lea.Id, new BabyInput(" ", new DateOnly(2030, 1, 1), null, 100, null, null));
+
+        Assert.That(((UpdateBabyResult.Invalid)result).Errors, Does.ContainKey("name").And.ContainKey("birthDate").And.ContainKey("birthWeightG"));
+        var stored = _babies.Babies.Single();
+        Assert.That(stored.Name, Is.EqualTo("Lea"));
+        Assert.That(stored.BirthWeightG, Is.EqualTo(3400));
+        Assert.That(stored.UpdatedAt, Is.EqualTo(Now));
+    }
+
+    [Test]
+    public async Task Editing_an_unknown_baby_is_not_found()
+    {
+        var result = await _service.UpdateAsync(NewUser(), Guid.NewGuid(), new BabyInput("Lea", new DateOnly(2026, 9, 1), null, null, null, null));
+
+        Assert.That(result, Is.InstanceOf<UpdateBabyResult.NotFound>());
+    }
 }

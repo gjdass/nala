@@ -4,7 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatDialog } from '@angular/material/dialog';
 import { Subject } from 'rxjs';
-import { SheetRef } from './sheet-ref';
+import { SHEET_DATA, SheetRef } from './sheet-ref';
 import { SheetService } from './sheet.service';
 
 @Component({
@@ -92,5 +92,28 @@ describe('SheetService', () => {
     closed.next(undefined);
 
     expect(results).toEqual([undefined]);
+  });
+
+  /** The data the opened component would inject. */
+  const injectedData = (open: ReturnType<typeof vi.fn>): unknown =>
+    open.mock.calls[0][1].injector.get(SHEET_DATA);
+
+  it('hands data to the bottom sheet', () => {
+    TestBed.inject(SheetService).open(SheetBodyComponent, { id: 'b1' });
+
+    expect(injectedData(bottomSheet.open)).toEqual({ id: 'b1' });
+  });
+
+  it('hands data to the dialog', () => {
+    phone = false;
+    TestBed.inject(SheetService).open(SheetBodyComponent, { id: 'b1' });
+
+    expect(injectedData(dialog.open)).toEqual({ id: 'b1' });
+  });
+
+  it('provides null data when none is given', () => {
+    TestBed.inject(SheetService).open(SheetBodyComponent);
+
+    expect(injectedData(bottomSheet.open)).toBeNull();
   });
 });

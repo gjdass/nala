@@ -10,7 +10,17 @@ public abstract record CreateBabyResult
     public sealed record Invalid(IReadOnlyDictionary<string, string> Errors) : CreateBabyResult;
 }
 
-/// <summary>The family's babies. Every member can list and add them.</summary>
+public abstract record UpdateBabyResult
+{
+    public sealed record Updated(Baby Baby) : UpdateBabyResult;
+
+    public sealed record NotFound : UpdateBabyResult;
+
+    /// <summary>Field name → error code, see <see cref="BabyFields.Validate"/>.</summary>
+    public sealed record Invalid(IReadOnlyDictionary<string, string> Errors) : UpdateBabyResult;
+}
+
+/// <summary>The family's babies. Every member can list, add and edit them.</summary>
 public class BabyService(IBabyRepository babies, TimeProvider time)
 {
     public async Task<CreateBabyResult> CreateAsync(User actor, BabyInput input, CancellationToken cancellationToken = default)
@@ -25,21 +35,49 @@ public class BabyService(IBabyRepository babies, TimeProvider time)
         var baby = new Baby
         {
             Id = Guid.NewGuid(),
-            Name = BabyFields.NormalizeName(input.Name),
-            BirthDate = input.BirthDate!.Value,
-            Sex = BabyFields.ParseSex(input.Sex),
-            BirthWeightG = (int?)input.BirthWeightG,
-            BirthLengthCm = input.BirthLengthCm,
-            BirthHeadCircumferenceCm = input.BirthHeadCircumferenceCm,
+            Name = string.Empty,
             CreatedByUserId = actor.Id,
             CreatedAt = now,
-            UpdatedAt = now,
         };
+        Apply(baby, input, now);
         await babies.AddAsync(baby, cancellationToken);
         return new CreateBabyResult.Created(baby);
+    }
+
+    /// <summary>Replaces every field: an omitted sex or measurement is cleared. Any member may edit any baby.</summary>
+    public async Task<UpdateBabyResult> UpdateAsync(User actor, Guid id, BabyInput input, CancellationToken cancellationToken = default)
+    {
+        var baby = await babies.GetAsync(id, cancellationToken);
+        if (baby is null)
+        {
+            return new UpdateBabyResult.NotFound();
+        }
+
+        var now = time.GetUtcNow();
+        var errors = BabyFields.Validate(input, now);
+        if (errors.Count > 0)
+        {
+            return new UpdateBabyResult.Invalid(errors);
+        }
+
+        Apply(baby, input, now);
+        await babies.UpdateAsync(baby, cancellationToken);
+        return new UpdateBabyResult.Updated(baby);
     }
 
     /// <summary>Oldest first.</summary>
     public Task<IReadOnlyList<Baby>> ListAsync(CancellationToken cancellationToken = default) =>
         babies.ListAsync(cancellationToken);
+
+    /// <summary>Call only on validated input.</summary>
+    private static void Apply(Baby baby, BabyInput input, DateTimeOffset now)
+    {
+        baby.Name = BabyFields.NormalizeName(input.Name);
+        baby.BirthDate = input.BirthDate!.Value;
+        baby.Sex = BabyFields.ParseSex(input.Sex);
+        baby.BirthWeightG = (int?)input.BirthWeightG;
+        baby.BirthLengthCm = input.BirthLengthCm;
+        baby.BirthHeadCircumferenceCm = input.BirthHeadCircumferenceCm;
+        baby.UpdatedAt = now;
+    }
 }

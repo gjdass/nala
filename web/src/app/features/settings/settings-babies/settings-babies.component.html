@@ -1,0 +1,20 @@
+@if (loadError()) {
+  <p class="error" role="alert" data-testid="babies-error">
+    {{ 'babies.loadError' | transloco }}
+  </p>
+} @else {
+  <mat-action-list>
+    @for (baby of babies(); track baby.id) {
+      <button mat-list-item type="button" (click)="edit(baby)" data-testid="baby-item">
+        <span matListItemTitle data-testid="baby-name">{{ baby.name }}</span>
+        <span matListItemLine data-testid="baby-age">{{ baby.birthDate | babyAge }}</span>
+        <mat-icon matListItemMeta aria-hidden="true">edit</mat-icon>
+      </button>
+    }
+  </mat-action-list>
+  <div class="actions">
+    <button mat-stroked-button type="button" (click)="add()" data-testid="add-baby">
+      {{ 'settings.babies.add' | transloco }}
+    </button>
+  </div>
+}

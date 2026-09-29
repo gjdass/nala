@@ -208,6 +208,107 @@ public class BabyEndpointTests
         Assert.That(
             (await AddAsync(ben, new { name = "Lea", birthDate = "2026-09-01" })).StatusCode,
             Is.EqualTo(HttpStatusCode.Unauthorized));
+        Assert.That(
+            (await EditAsync(ben, Guid.NewGuid(), new { name = "Lea", birthDate = "2026-09-01" })).StatusCode,
+            Is.EqualTo(HttpStatusCode.Unauthorized));
         ben.Dispose();
+    }
+
+    private static Task<HttpResponseMessage> EditAsync(HttpClient client, Guid id, object body) =>
+        client.PutAsJsonAsync($"/api/babies/{id}", body);
+
+    private async Task<Guid> AddLeaAsync()
+    {
+        var response = await AddAsync(_admin, new
+        {
+            name = "Lea",
+            birthDate = "2026-09-01",
+            sex = "girl",
+            birthWeightG = 3400,
+            birthLengthCm = 50.5,
+            birthHeadCircumferenceCm = 34.5,
+        });
+        return (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+    }
+
+    [Test]
+    public async Task A_member_edits_a_baby_someone_else_added()
+    {
+        var id = await AddLeaAsync();
+        var (ben, _) = await RegisterBenAsync();
+
+        var response = await EditAsync(ben, id, new
+        {
+            name = " Léa ",
+            birthDate = "2026-08-31",
+            sex = "boy",
+            birthWeightG = 3500,
+            birthLengthCm = 51,
+            birthHeadCircumferenceCm = 35.5,
+        });
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        var baby = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Multiple(() =>
+        {
+            Assert.That(baby.GetProperty("id").GetGuid(), Is.EqualTo(id));
+            Assert.That(baby.GetProperty("name").GetString(), Is.EqualTo("Léa"));
+            Assert.That(baby.GetProperty("birthDate").GetString(), Is.EqualTo("2026-08-31"));
+            Assert.That(baby.GetProperty("sex").GetString(), Is.EqualTo("boy"));
+            Assert.That(baby.GetProperty("birthWeightG").GetInt32(), Is.EqualTo(3500));
+            Assert.That(baby.GetProperty("birthLengthCm").GetDecimal(), Is.EqualTo(51m));
+            Assert.That(baby.GetProperty("birthHeadCircumferenceCm").GetDecimal(), Is.EqualTo(35.5m));
+        });
+        Assert.That((await ListAsync(_admin)).Single().GetProperty("name").GetString(), Is.EqualTo("Léa"));
+        ben.Dispose();
+    }
+
+    [Test]
+    public async Task Edit_replaces_every_field_so_omitted_measurements_are_cleared()
+    {
+        var id = await AddLeaAsync();
+
+        var response = await EditAsync(_admin, id, new { name = "Lea", birthDate = "2026-09-01" });
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        var baby = (await ListAsync(_admin)).Single();
+        Assert.That(baby.GetProperty("sex").GetString(), Is.EqualTo("unspecified"));
+        Assert.That(baby.GetProperty("birthWeightG").ValueKind, Is.EqualTo(JsonValueKind.Null));
+        Assert.That(baby.GetProperty("birthLengthCm").ValueKind, Is.EqualTo(JsonValueKind.Null));
+        Assert.That(baby.GetProperty("birthHeadCircumferenceCm").ValueKind, Is.EqualTo(JsonValueKind.Null));
+    }
+
+    [Test]
+    public async Task Invalid_edit_answers_a_validation_problem_and_changes_nothing()
+    {
+        var id = await AddLeaAsync();
+
+        var response = await EditAsync(_admin, id, new { name = new string('a', 51), birthDate = "2026-09-01", birthWeightG = 100 });
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
+        var errors = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("errors");
+        Assert.That(errors.GetProperty("name")[0].GetString(), Is.EqualTo("tooLong"));
+        Assert.That(errors.GetProperty("birthWeightG")[0].GetString(), Is.EqualTo("outOfRange"));
+        Assert.That((await ListAsync(_admin)).Single().GetProperty("name").GetString(), Is.EqualTo("Lea"));
+    }
+
+    [Test]
+    public async Task Editing_an_unknown_baby_is_not_found()
+    {
+        var response = await EditAsync(_admin, Guid.NewGuid(), new { name = "Lea", birthDate = "2026-09-01" });
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
+        Assert.That((await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("code").GetString(), Is.EqualTo("babyNotFound"));
+    }
+
+    [Test]
+    public async Task Editing_needs_a_session()
+    {
+        var id = await AddLeaAsync();
+        using var anonymous = NewClient();
+
+        Assert.That(
+            (await EditAsync(anonymous, id, new { name = "Lea", birthDate = "2026-09-01" })).StatusCode,
+            Is.EqualTo(HttpStatusCode.Unauthorized));
     }
 }

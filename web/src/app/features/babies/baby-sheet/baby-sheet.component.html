@@ -1,5 +1,5 @@
 <nala-sheet-header
-  [title]="'babies.sheet.addTitle' | transloco"
+  [title]="(baby ? 'babies.sheet.editTitle' : 'babies.sheet.addTitle') | transloco"
   [saveDisabled]="invalid() || saving()"
   (closed)="close()"
   (saved)="save()"

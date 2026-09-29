@@ -12,7 +12,7 @@ import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { TranslocoPipe } from '@jsverse/transloco';
-import { BabyFields, Sex } from '../../../core/babies/baby.models';
+import { Baby, BabyFields, Sex } from '../../../core/babies/baby.models';
 
 // Same rules as the API (Nala.Core/Babies/BabyFields). Error keys are the API's codes, so both map
 // to babies.errors.<field>.<code>.
@@ -70,17 +70,31 @@ function measurement(min: number, max: number, decimals: number): ValidatorFn {
   };
 }
 
-export function createBabyForm(): BabyForm {
+/** Empty to add a baby, pre-filled with `baby` to edit it. */
+export function createBabyForm(baby?: Baby): BabyForm {
   return new FormGroup({
-    name: new FormControl('', { nonNullable: true, validators: name }),
-    birthDate: new FormControl<Date | null>(null, { validators: birthDate }),
-    sex: new FormControl<Sex>('unspecified', { nonNullable: true }),
-    birthWeightG: new FormControl<number | null>(null, { validators: measurement(300, 7000, 0) }),
-    birthLengthCm: new FormControl<number | null>(null, { validators: measurement(20, 70, 1) }),
-    birthHeadCircumferenceCm: new FormControl<number | null>(null, {
-      validators: measurement(15, 50, 1),
+    name: new FormControl(baby?.name ?? '', { nonNullable: true, validators: name }),
+    birthDate: new FormControl<Date | null>(baby ? localDate(baby.birthDate) : null, {
+      validators: birthDate,
     }),
+    sex: new FormControl<Sex>(baby?.sex ?? 'unspecified', { nonNullable: true }),
+    birthWeightG: new FormControl<number | null>(baby?.birthWeightG ?? null, {
+      validators: measurement(300, 7000, 0),
+    }),
+    birthLengthCm: new FormControl<number | null>(baby?.birthLengthCm ?? null, {
+      validators: measurement(20, 70, 1),
+    }),
+    birthHeadCircumferenceCm: new FormControl<number | null>(
+      baby?.birthHeadCircumferenceCm ?? null,
+      { validators: measurement(15, 50, 1) },
+    ),
   });
+}
+
+/** Local midnight of a `yyyy-MM-dd` date, as the datepicker holds it. */
+function localDate(iso: string): Date {
+  const [year, month, day] = iso.split('-').map(Number);
+  return new Date(year, month - 1, day);
 }
 
 /** `yyyy-MM-dd` from the date's local calendar day. */

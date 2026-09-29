@@ -33,6 +33,7 @@ public static class BabyEndpoints
         var babies = endpoints.MapGroup("/api/babies");
         babies.MapGet("", ListAsync);
         babies.MapPost("", CreateAsync);
+        babies.MapPut("/{id:guid}", UpdateAsync);
         return endpoints;
     }
 
@@ -47,6 +48,15 @@ public static class BabyEndpoints
             ? Results.Created($"/api/babies/{created.Baby.Id}", ToResponse(created.Baby))
             : AuthEndpoints.ValidationProblem(((CreateBabyResult.Invalid)result).Errors);
     }
+
+    private static async Task<IResult> UpdateAsync(
+        Guid id, BabyRequest request, BabyService babies, HttpContext context, CancellationToken cancellationToken) =>
+        await babies.UpdateAsync(AuthEndpoints.CurrentUser(context)!, id, ToInput(request), cancellationToken) switch
+        {
+            UpdateBabyResult.Updated updated => Results.Ok(ToResponse(updated.Baby)),
+            UpdateBabyResult.Invalid invalid => AuthEndpoints.ValidationProblem(invalid.Errors),
+            _ => Results.Json(new ErrorResponse("babyNotFound"), statusCode: StatusCodes.Status404NotFound),
+        };
 
     private static BabyInput ToInput(BabyRequest request) =>
         new(request.Name, request.BirthDate, request.Sex, request.BirthWeightG, request.BirthLengthCm, request.BirthHeadCircumferenceCm);

@@ -15,9 +15,12 @@ import {
   ConfirmDialogData,
 } from '../../../shared/ui/confirm-dialog/confirm-dialog.component';
 import { SheetHeaderComponent } from '../../../shared/ui/sheet-header/sheet-header.component';
-import { SheetRef } from '../../../shared/ui/sheet/sheet-ref';
+import { SHEET_DATA, SheetRef } from '../../../shared/ui/sheet/sheet-ref';
 
-/** Adds a baby; opened with `SheetService`, closes with the added baby. */
+/**
+ * Adds a baby, or edits the baby given as sheet data; opened with `SheetService`, closes with the
+ * added or updated baby.
+ */
 @Component({
   selector: 'nala-baby-sheet',
   imports: [BabyFormComponent, SheetHeaderComponent, TranslocoPipe],
@@ -30,8 +33,10 @@ export class BabySheetComponent {
   private readonly sheetRef = inject<SheetRef<Baby>>(SheetRef);
   private readonly dialog = inject(MatDialog);
   private readonly transloco = inject(TranslocoService);
+  /** Null when adding. */
+  protected readonly baby = inject<Baby | null>(SHEET_DATA, { optional: true });
 
-  readonly form = createBabyForm();
+  readonly form = createBabyForm(this.baby ?? undefined);
   protected readonly saving = signal(false);
   protected readonly formError = signal<string | null>(null);
   protected readonly invalid = toSignal(this.form.statusChanges.pipe(map((s) => s !== 'VALID')), {
@@ -44,7 +49,9 @@ export class BabySheetComponent {
     }
     this.saving.set(true);
     this.formError.set(null);
-    this.babies.create(babyFields(this.form)).subscribe((result) => {
+    const fields = babyFields(this.form);
+    const saved = this.baby ? this.babies.update(this.baby.id, fields) : this.babies.create(fields);
+    saved.subscribe((result) => {
       this.saving.set(false);
       if (result.ok) {
         this.sheetRef.close(result.baby);
@@ -68,7 +75,8 @@ export class BabySheetComponent {
       this.sheetRef.close();
       return;
     }
-    const t = (key: string) => this.transloco.translate(`babies.discard.${key}`);
+    const wording = this.baby ? 'discardEdit' : 'discard';
+    const t = (key: string) => this.transloco.translate(`babies.${wording}.${key}`);
     this.dialog
       .open<ConfirmDialogComponent, ConfirmDialogData, boolean>(ConfirmDialogComponent, {
         data: { title: t('title'), text: t('text'), confirm: t('confirm'), cancel: t('cancel') },

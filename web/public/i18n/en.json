@@ -100,7 +100,8 @@
         "resetLinkUnknown": "This reset link isn't valid. Ask the admin for a new one.",
         "resetLinkExpired": "This reset link has expired. Ask the admin for a new one.",
         "resetLinkUsed": "This reset link has already been used. Log in, or ask the admin for a new one.",
-        "emailResetDisabled": "This Nala can't send emails. Ask your family's admin for a reset link."
+        "emailResetDisabled": "This Nala can't send emails. Ask your family's admin for a reset link.",
+        "babyNotFound": "This baby no longer exists. It may have been deleted."
       }
     }
   },
@@ -152,7 +153,11 @@
       "resetLinkTitle": "Reset link for {{name}}",
       "resetLinkText": "Send this link to {{name}}: it lets them set a new password, once, until {{date}}. Any earlier link stops working."
     },
-    "logout": "Log out"
+    "logout": "Log out",
+    "babies": {
+      "title": "Babies",
+      "add": "Add a baby"
+    }
   },
   "members": {
     "admin": "Admin"
@@ -177,7 +182,8 @@
       "add": "Add a baby"
     },
     "sheet": {
-      "addTitle": "Add a baby"
+      "addTitle": "Add a baby",
+      "editTitle": "Edit baby"
     },
     "fields": {
       "name": "Name",
@@ -227,6 +233,26 @@
       "text": "What you entered will be lost.",
       "confirm": "Discard",
       "cancel": "Keep editing"
+    },
+    "discardEdit": {
+      "title": "Discard your changes?",
+      "text": "Your changes to this baby won't be saved.",
+      "confirm": "Discard",
+      "cancel": "Keep editing"
+    },
+    "age": {
+      "day": {
+        "one": "{{count}} day",
+        "other": "{{count}} days"
+      },
+      "week": {
+        "one": "{{count}} week",
+        "other": "{{count}} weeks"
+      },
+      "month": {
+        "one": "{{count}} month",
+        "other": "{{count}} months"
+      }
     }
   }
 }

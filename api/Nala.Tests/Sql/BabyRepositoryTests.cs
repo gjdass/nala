@@ -106,4 +106,44 @@ public class BabyRepositoryTests
 
         Assert.That(names, Is.EqualTo(new[] { "Twin A", "Twin B", "Lea" }));
     }
+
+    [Test]
+    public async Task Get_returns_the_baby_or_null()
+    {
+        var lea = await AddAsync("Lea", new DateOnly(2026, 9, 1));
+
+        await using var db = _db();
+        var repository = new BabyRepository(db);
+        Assert.That((await repository.GetAsync(lea.Id))?.Name, Is.EqualTo("Lea"));
+        Assert.That(await repository.GetAsync(Guid.NewGuid()), Is.Null);
+    }
+
+    [Test]
+    public async Task Update_persists_the_changes()
+    {
+        var lea = await AddAsync("Lea", new DateOnly(2026, 9, 1), change: b => b.BirthWeightG = 3400);
+
+        await using (var db = _db())
+        {
+            var repository = new BabyRepository(db);
+            var baby = (await repository.GetAsync(lea.Id))!;
+            baby.Name = "Léa";
+            baby.Sex = Sex.Boy;
+            baby.BirthWeightG = null;
+            baby.BirthLengthCm = 51.5m;
+            baby.UpdatedAt = Now.AddHours(1);
+            await repository.UpdateAsync(baby);
+        }
+
+        var read = (await ListAsync()).Single();
+        Assert.Multiple(() =>
+        {
+            Assert.That(read.Name, Is.EqualTo("Léa"));
+            Assert.That(read.Sex, Is.EqualTo(Sex.Boy));
+            Assert.That(read.BirthWeightG, Is.Null);
+            Assert.That(read.BirthLengthCm, Is.EqualTo(51.5m));
+            Assert.That(read.UpdatedAt, Is.EqualTo(Now.AddHours(1)));
+            Assert.That(read.CreatedAt, Is.EqualTo(Now));
+        });
+    }
 }

@@ -24,10 +24,11 @@ import { SettingsSectionComponent } from '../../shared/ui/settings-section/setti
 import { displayName, errorCode, newPassword } from '../auth/auth.validators';
 import { AdminUsersComponent } from './admin-users/admin-users.component';
 import { DeleteAccountDialogComponent } from './delete-account-dialog/delete-account-dialog.component';
+import { SettingsBabiesComponent } from './settings-babies/settings-babies.component';
 
 const SNACK_DURATION = 3000;
 
-/** Account (display name, language, password, deletion), admin (admin only), appearance (theme) and logout. */
+/** Babies, account (display name, language, password, deletion), admin (admin only), appearance (theme) and logout. */
 @Component({
   selector: 'nala-settings',
   imports: [
@@ -38,6 +39,7 @@ const SNACK_DURATION = 3000;
     MatInputModule,
     ReactiveFormsModule,
     RouterLink,
+    SettingsBabiesComponent,
     SettingsSectionComponent,
     TranslocoPipe,
   ],
