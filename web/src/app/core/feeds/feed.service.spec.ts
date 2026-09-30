@@ -2,8 +2,14 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { firstValueFrom } from 'rxjs';
-import { aBottle } from '../../testing/feeds';
-import { BottleDefaults, BottleFields, FeedDeleteResult, FeedResult } from './feed.models';
+import { aBottle, aSolids } from '../../testing/feeds';
+import {
+  BottleDefaults,
+  BottleFields,
+  FeedDeleteResult,
+  FeedResult,
+  SolidsFields,
+} from './feed.models';
 import { FeedService } from './feed.service';
 
 describe('FeedService', () => {
@@ -14,6 +20,13 @@ describe('FeedService', () => {
     startTime: '2026-09-30T10:00:00.000Z',
     milkType: 'formula',
     amountMl: 120,
+    notes: null,
+  };
+  const solids: SolidsFields = {
+    startTime: '2026-09-30T12:00:00.000Z',
+    mealType: 'lunch',
+    food: 'Carrot purée',
+    reaction: null,
     notes: null,
   };
 
@@ -58,9 +71,9 @@ describe('FeedService', () => {
     });
   });
 
-  describe('createBottle()', () => {
+  describe('create()', () => {
     it('posts a bottle with the given client id', async () => {
-      const result = firstValueFrom(service.createBottle('b1', fields, 'f1'));
+      const result = firstValueFrom(service.create('b1', 'bottle', fields, 'f1'));
       const req = http.expectOne('/api/feeds');
       expect(req.request.method).toBe('POST');
       expect(req.request.body).toEqual({ id: 'f1', babyId: 'b1', kind: 'bottle', ...fields });
@@ -69,15 +82,24 @@ describe('FeedService', () => {
       expect(await result).toEqual<FeedResult>({ ok: true, feed: aBottle() });
     });
 
+    it('posts solids with their kind', async () => {
+      const result = firstValueFrom(service.create('b1', 'solids', solids, 'f2'));
+      const req = http.expectOne('/api/feeds');
+      expect(req.request.body).toEqual({ id: 'f2', babyId: 'b1', kind: 'solids', ...solids });
+      req.flush(aSolids(), { status: 201, statusText: 'Created' });
+
+      expect(await result).toEqual<FeedResult>({ ok: true, feed: aSolids() });
+    });
+
     it('generates a client id when none is given', () => {
-      service.createBottle('b1', fields).subscribe();
+      service.create('b1', 'bottle', fields).subscribe();
       const req = http.expectOne('/api/feeds');
       expect(req.request.body.id).toMatch(/^[0-9a-f-]{36}$/);
       req.flush(aBottle());
     });
 
     it('maps a validation problem to field errors', async () => {
-      const result = firstValueFrom(service.createBottle('b1', fields, 'f1'));
+      const result = firstValueFrom(service.create('b1', 'bottle', fields, 'f1'));
       http
         .expectOne('/api/feeds')
         .flush(
@@ -89,19 +111,19 @@ describe('FeedService', () => {
     });
   });
 
-  describe('updateBottle()', () => {
+  describe('update()', () => {
     it('puts the fields', async () => {
-      const result = firstValueFrom(service.updateBottle('f1', fields));
+      const result = firstValueFrom(service.update('f1', solids));
       const req = http.expectOne('/api/feeds/f1');
       expect(req.request.method).toBe('PUT');
-      expect(req.request.body).toEqual(fields);
-      req.flush(aBottle());
+      expect(req.request.body).toEqual(solids);
+      req.flush(aSolids());
 
-      expect(await result).toEqual<FeedResult>({ ok: true, feed: aBottle() });
+      expect(await result).toEqual<FeedResult>({ ok: true, feed: aSolids() });
     });
 
     it('maps a missing feed to its code', async () => {
-      const result = firstValueFrom(service.updateBottle('f1', fields));
+      const result = firstValueFrom(service.update('f1', fields));
       http
         .expectOne('/api/feeds/f1')
         .flush({ code: 'feedNotFound' }, { status: 404, statusText: 'Not Found' });

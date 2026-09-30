@@ -13,7 +13,9 @@ const TIME = new Date(2026, 8, 28, 14, 10).toISOString();
     <nala-entry-list-item
       icon="baby_changing_station"
       [time]="time"
+      [label]="label()"
       [summary]="summary()"
+      [summaryLines]="summaryLines()"
       [durationSeconds]="duration()"
       [durationScaleSeconds]="scale()"
       (open)="opened = opened + 1"
@@ -22,7 +24,9 @@ const TIME = new Date(2026, 8, 28, 14, 10).toISOString();
 })
 class Host {
   readonly time = TIME;
+  readonly label = signal('');
   readonly summary = signal('L 5m · R 3m 30s');
+  readonly summaryLines = signal<1 | 2>(1);
   readonly duration = signal<number | null>(null);
   readonly scale = signal(3600);
   opened = 0;
@@ -78,6 +82,38 @@ describe('EntryListItemComponent', () => {
     fixture.componentInstance.duration.set(45 * 60);
     await fixture.whenStable();
     expect(find('entry-bar')?.style.width).toBe('100%');
+  });
+
+  it('shows no label by default, and keeps the summary on one line', () => {
+    expect(find('entry-label')).toBeNull();
+    expect(find('entry-summary')?.closest('[matListItemLine]')).toBeTruthy();
+    expect(host().querySelector('button[mat-list-item]')?.classList).not.toContain(
+      'mdc-list-item--with-three-lines',
+    );
+  });
+
+  it('shows a label after the time in the headline', async () => {
+    fixture.componentInstance.label.set('Lunch · Liked');
+    await fixture.whenStable();
+
+    expect(text('entry-label')).toBe('Lunch · Liked');
+    expect(find('entry-label')?.closest('[matListItemTitle]')).toBe(
+      find('entry-time')?.closest('[matListItemTitle]'),
+    );
+  });
+
+  it('lets the summary wrap on 2 lines as the supporting text of a three-line item', async () => {
+    fixture = TestBed.createComponent(Host);
+    fixture.componentInstance.summaryLines.set(2);
+    await fixture.whenStable();
+
+    expect(host().querySelector('button[mat-list-item]')?.classList).toContain(
+      'mdc-list-item--with-three-lines',
+    );
+    const summary = find('entry-summary')!;
+    expect(text('entry-summary')).toBe('L 5m · R 3m 30s');
+    expect(summary.closest('[matListItemLine]')).toBeNull();
+    expect(summary.closest('.mdc-list-item__secondary-text')).toBeTruthy();
   });
 
   it('emits open when tapped', () => {

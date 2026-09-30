@@ -22,6 +22,11 @@ public class FeedConfiguration : IEntityTypeConfiguration<Feed>
         feed.Property(f => f.MilkType).HasColumnName("milk_type").HasMaxLength(16)
             .HasConversion(m => FeedFields.Format(m!.Value), m => FeedFields.ParseMilkType(m));
         feed.Property(f => f.AmountMl).HasColumnName("amount_ml");
+        feed.Property(f => f.MealType).HasColumnName("meal_type").HasMaxLength(16)
+            .HasConversion(m => FeedFields.Format(m!.Value), m => FeedFields.ParseMealType(m));
+        feed.Property(f => f.Food).HasColumnName("food").HasMaxLength(FeedFields.FoodMaxLength);
+        feed.Property(f => f.Reaction).HasColumnName("reaction").HasMaxLength(24)
+            .HasConversion(r => FeedFields.Format(r!.Value), r => FeedFields.ParseReaction(r));
         feed.Property(f => f.LoggedByUserId).HasColumnName("logged_by_user_id");
         feed.Property(f => f.CreatedAt).HasColumnName("created_at");
         feed.Property(f => f.UpdatedAt).HasColumnName("updated_at");

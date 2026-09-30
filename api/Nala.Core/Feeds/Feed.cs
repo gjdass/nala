@@ -25,6 +25,15 @@ public class Feed
     /// <summary>Bottle only.</summary>
     public int? AmountMl { get; set; }
 
+    /// <summary>Solids only; optional.</summary>
+    public MealType? MealType { get; set; }
+
+    /// <summary>Solids only.</summary>
+    public string? Food { get; set; }
+
+    /// <summary>Solids only; optional.</summary>
+    public SolidsReaction? Reaction { get; set; }
+
     public Guid LoggedByUserId { get; init; }
 
     public DateTimeOffset CreatedAt { get; init; }

@@ -160,7 +160,7 @@ Use Angular Material's M3 components as-is. Customize only through the global th
 
 ## UI notes — shared components
 
-Section card, entry list item (with duration bar), kind picker sheet, entry sheet (header, form row, suggestion row, notes row, delete action, entry audit line), time picker row (`nala-time-row`: "Today 2:37 PM", datepicker + timepicker editing the date and the time separately), duration field, running timers mini-bar, empty state.
+Section card, entry list item (with duration bar; optional label after the time in the headline, and a summary wrapping on up to 2 lines as a three-line item), kind picker sheet, entry sheet (header, form row, suggestion row, notes row, chip choice row `nala-chip-choice-row` for optional single choices as filter chips, delete action, entry audit line), time picker row (`nala-time-row`: "Today 2:37 PM", datepicker + timepicker editing the date and the time separately), duration field, running timers mini-bar, empty state.
 
 ## What each feature spec must define
 

@@ -1,13 +1,34 @@
-<nala-entry-list-item
-  [icon]="icons[feed().kind]"
-  [time]="feed().startTime"
-  [summary]="
-    'feed.bottle.summary'
-      | transloco
-        : {
-            milkType: ('feed.milkType.' + feed().milkType | transloco),
-            amount: feed().amountMl,
-          }
-  "
-  (open)="open.emit()"
-/>
+@let entry = feed();
+@switch (entry.kind) {
+  @case ('solids') {
+    @let meal = entry.mealType ? ('feed.mealType.' + entry.mealType | transloco) : '';
+    @let reaction = entry.reaction ? ('feed.reaction.' + entry.reaction | transloco) : '';
+    <nala-entry-list-item
+      [icon]="icons.solids"
+      [time]="entry.startTime"
+      [label]="
+        meal && reaction
+          ? ('feed.solids.headline' | transloco: { mealType: meal, reaction: reaction })
+          : meal || reaction
+      "
+      [summary]="entry.food ?? ''"
+      [summaryLines]="2"
+      (open)="open.emit()"
+    />
+  }
+  @default {
+    <nala-entry-list-item
+      [icon]="icons[entry.kind]"
+      [time]="entry.startTime"
+      [summary]="
+        'feed.bottle.summary'
+          | transloco
+            : {
+                milkType: ('feed.milkType.' + entry.milkType | transloco),
+                amount: entry.amountMl,
+              }
+      "
+      (open)="open.emit()"
+    />
+  }
+}

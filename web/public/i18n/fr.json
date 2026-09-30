@@ -383,7 +383,8 @@
   },
   "feed": {
     "kinds": {
-      "bottle": "Biberon"
+      "bottle": "Biberon",
+      "solids": "Diversification"
     },
     "card": {
       "lastFeeding": "Dernier repas",
@@ -410,6 +411,28 @@
         "amountRequired": "Indiquez la quantité.",
         "amountRange": "Indiquez un nombre entier de 1 à 500.",
         "milkTypeRequired": "Choisissez le type de lait."
+      }
+    },
+    "mealType": {
+      "breakfast": "Petit-déjeuner",
+      "lunch": "Déjeuner",
+      "dinner": "Dîner",
+      "snack": "Collation"
+    },
+    "reaction": {
+      "liked": "Aimé",
+      "neutral": "Neutre",
+      "disliked": "Pas aimé",
+      "allergicReaction": "Réaction allergique"
+    },
+    "solids": {
+      "mealType": "Repas",
+      "food": "Aliments",
+      "reaction": "Réaction",
+      "headline": "{{mealType}} · {{reaction}}",
+      "errors": {
+        "foodRequired": "Indiquez ce que le bébé a mangé.",
+        "foodTooLong": "500 caractères maximum."
       }
     },
     "errors": {

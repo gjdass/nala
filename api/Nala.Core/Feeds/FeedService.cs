@@ -167,11 +167,17 @@ public class FeedService(IFeedRepository feeds, IBabyRepository babies, TimeProv
     private static void Apply(Feed feed, FeedInput input, User actor, DateTimeOffset now)
     {
         feed.StartTime = input.StartTime!.Value;
-        feed.Notes = FeedFields.NormalizeNotes(input.Notes);
+        feed.Notes = FeedFields.NormalizeText(input.Notes);
         if (feed.Kind == FeedKind.Bottle)
         {
             feed.MilkType = FeedFields.ParseMilkType(input.MilkType!);
             feed.AmountMl = (int)input.AmountMl!.Value;
+        }
+        else if (feed.Kind == FeedKind.Solids)
+        {
+            feed.MealType = FeedFields.ParseMealType(input.MealType);
+            feed.Food = FeedFields.NormalizeText(input.Food);
+            feed.Reaction = FeedFields.ParseReaction(input.Reaction);
         }
 
         feed.UpdatedByUserId = actor.Id;

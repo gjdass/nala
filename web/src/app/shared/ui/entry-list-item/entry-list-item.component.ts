@@ -5,8 +5,9 @@ import { DurationPipe } from '../../../core/time/duration';
 import { EntryTimePipe } from '../../../core/time/entry-time';
 
 /**
- * One entry of a section (card list and history, spec 04): kind icon, local time, summary, an optional
- * duration bar (duration / section scale, capped at full width) with the duration, and a chevron.
+ * One entry of a section (card list and history, spec 04): kind icon, local time with an optional label,
+ * summary, an optional duration bar (duration / section scale, capped at full width) with the duration,
+ * and a chevron.
  * Tapping it emits `open`. Place it in a `mat-action-list`; the bar takes `--nala-entry-bar`.
  */
 @Component({
@@ -21,7 +22,11 @@ export class EntryListItemComponent {
   readonly icon = input.required<string>();
   /** ISO date-time the entry happened. */
   readonly time = input.required<string>();
+  /** Shown after the time in the headline (e.g. "Lunch · Liked"). */
+  readonly label = input('');
   readonly summary = input('');
+  /** 2 makes a three-line item whose summary wraps on up to 2 lines (no duration bar then). */
+  readonly summaryLines = input<1 | 2>(1);
   readonly durationSeconds = input<number | null>(null);
   /** The duration that fills the whole bar, set by the section. */
   readonly durationScaleSeconds = input(3600);

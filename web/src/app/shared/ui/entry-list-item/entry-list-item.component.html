@@ -1,7 +1,14 @@
-<button mat-list-item type="button" (click)="open.emit()">
+<button mat-list-item type="button" [lines]="summaryLines() === 2 ? 3 : null" (click)="open.emit()">
   <mat-icon matListItemIcon data-testid="entry-icon">{{ icon() }}</mat-icon>
-  <span matListItemTitle data-testid="entry-time">{{ time() | nalaEntryTime }}</span>
-  @if (summary() || durationSeconds() !== null) {
+  <span matListItemTitle
+    ><span data-testid="entry-time">{{ time() | nalaEntryTime }}</span>
+    @if (label()) {
+      <span data-testid="entry-label">{{ label() }}</span>
+    }
+  </span>
+  @if (summaryLines() === 2) {
+    <span class="summary" data-testid="entry-summary">{{ summary() }}</span>
+  } @else if (summary() || durationSeconds() !== null) {
     <span matListItemLine class="detail">
       @if (durationSeconds(); as duration) {
         <span class="track"

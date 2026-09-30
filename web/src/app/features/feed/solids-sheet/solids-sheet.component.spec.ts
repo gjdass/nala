@@ -5,34 +5,23 @@ import { MatDialog } from '@angular/material/dialog';
 import { Subject } from 'rxjs';
 import en from '../../../../../public/i18n/en.json';
 import { SelectedBabyService } from '../../../core/babies/selected-baby.service';
-import {
-  BottleDefaults,
-  Feed,
-  FeedDeleteResult,
-  FeedResult,
-} from '../../../core/feeds/feed.models';
+import { Feed, FeedDeleteResult, FeedResult } from '../../../core/feeds/feed.models';
 import { FeedService } from '../../../core/feeds/feed.service';
 import { EntrySheetData } from '../../../shared/ui/entry-sheet/entry-sheet.models';
 import { SHEET_DATA, SheetRef } from '../../../shared/ui/sheet/sheet-ref';
-import { aBottle } from '../../../testing/feeds';
+import { aSolids } from '../../../testing/feeds';
 import { translocoTesting } from '../../../testing/transloco-testing';
 import { FEED_SECTION } from '../feed.section';
-import { BottleSheetComponent } from './bottle-sheet.component';
+import { SolidsSheetComponent } from './solids-sheet.component';
 
 const NOW = new Date(2026, 8, 30, 12, 0, 0);
 const shortTime = (d: Date) => new Intl.DateTimeFormat('en', { timeStyle: 'short' }).format(d);
-const defaults = (
-  milkType: BottleDefaults['milkType'],
-  breastMilk: number | null,
-  formula: number | null,
-): BottleDefaults => ({ milkType, lastAmountMl: { breastMilk, formula } });
 
-describe('BottleSheetComponent', () => {
-  let fixture: ComponentFixture<BottleSheetComponent>;
-  let bottleDefaults: Subject<BottleDefaults>;
+describe('SolidsSheetComponent', () => {
+  let fixture: ComponentFixture<SolidsSheetComponent>;
   let saved: Subject<FeedResult>;
   let deleted: Subject<FeedDeleteResult>;
-  let feeds: Record<'bottleDefaults' | 'create' | 'update' | 'delete', ReturnType<typeof vi.fn>>;
+  let feeds: Record<'create' | 'update' | 'delete', ReturnType<typeof vi.fn>>;
   let sheetRef: { close: ReturnType<typeof vi.fn> };
   let confirmed: Subject<boolean | undefined>;
 
@@ -42,38 +31,34 @@ describe('BottleSheetComponent', () => {
   const text = (testId: string) => find(testId)?.textContent?.replace(/\s+/g, ' ').trim();
   const save = () => find<HTMLButtonElement>('sheet-save')!;
   const settle = () => fixture.whenStable();
-  const toggle = (milkType: string) =>
-    find(`milk-${milkType}`)!.querySelector<HTMLButtonElement>('button')!;
-  const pressed = (milkType: string) =>
-    find(`milk-${milkType}`)!.classList.contains('mat-button-toggle-checked');
-  const typeAmount = async (value: string) => {
-    const input = find<HTMLInputElement>('amount')!;
+  const chip = (testId: string) => find(testId)!;
+  const selected = (testId: string) => chip(testId).classList.contains('mat-mdc-chip-selected');
+  const tap = async (testId: string) => {
+    chip(testId).querySelector<HTMLElement>('.mdc-evolution-chip__action--primary')!.click();
+    await settle();
+  };
+  const typeFood = async (value: string) => {
+    const input = find<HTMLTextAreaElement>('food')!;
     input.value = value;
     input.dispatchEvent(new Event('input'));
     input.dispatchEvent(new Event('blur'));
     await settle();
   };
-  const alert = () => host().querySelector('[data-testid="amount-error"]')?.textContent?.trim();
+  const foodError = () => find('food-error')?.textContent?.trim();
 
   const render = async (entry: Feed | null = null) => {
-    const data: EntrySheetData<Feed> = {
-      section: 'feed',
-      kind: FEED_SECTION.kinds[0],
-      entry,
-    };
+    const data: EntrySheetData<Feed> = { section: 'feed', kind: FEED_SECTION.kinds[1], entry };
     TestBed.overrideProvider(SHEET_DATA, { useValue: data });
-    fixture = TestBed.createComponent(BottleSheetComponent);
+    fixture = TestBed.createComponent(SolidsSheetComponent);
     await settle();
   };
 
   beforeEach(async () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(NOW);
-    bottleDefaults = new Subject();
     saved = new Subject();
     deleted = new Subject();
     feeds = {
-      bottleDefaults: vi.fn(() => bottleDefaults),
       create: vi.fn(() => saved),
       update: vi.fn(() => saved),
       delete: vi.fn(() => deleted),
@@ -81,7 +66,7 @@ describe('BottleSheetComponent', () => {
     sheetRef = { close: vi.fn() };
     confirmed = new Subject();
     await TestBed.configureTestingModule({
-      imports: [BottleSheetComponent, translocoTesting()],
+      imports: [SolidsSheetComponent, translocoTesting()],
       providers: [
         provideNativeDateAdapter(),
         { provide: FeedService, useValue: feeds },
@@ -98,112 +83,76 @@ describe('BottleSheetComponent', () => {
   describe('adding', () => {
     beforeEach(() => render());
 
-    it('is titled Bottle Feed with the start time, milk type, amount and notes rows', () => {
-      expect(text('sheet-title')).toBe('Bottle Feed');
+    it('is titled Solids with meal type chips first, then start time, food, reaction and notes', () => {
+      expect(text('sheet-title')).toBe('Solids');
       const rows = host().textContent!;
+      expect(rows).toContain(en.feed.solids.mealType);
       expect(rows).toContain(en.entrySheet.startTime);
-      expect(rows).toContain(en.feed.bottle.milkType);
-      expect(rows).toContain(en.feed.bottle.amount);
+      expect(rows).toContain(en.feed.solids.food);
+      expect(rows).toContain(en.feed.solids.reaction);
       expect(rows).toContain(en.entrySheet.notes);
-      expect(text('milk-breastMilk')).toBe(en.feed.milkType.breastMilk);
-      expect(text('milk-formula')).toBe(en.feed.milkType.formula);
-      expect(host().querySelector('mat-button-toggle-group')).toBeTruthy();
+
+      const order = [
+        chip('meal-breakfast'),
+        host().querySelector('nala-time-row')!,
+        find('food')!,
+        chip('reaction-liked'),
+        host().querySelector('nala-notes-row')!,
+      ];
+      for (let i = 1; i < order.length; i++) {
+        expect(
+          order[i - 1].compareDocumentPosition(order[i]) & Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+      }
     });
 
-    it('starts now', () => {
+    it('offers the four meal types and the four reactions as filter chips', () => {
+      expect(host().querySelectorAll('mat-chip-listbox')).toHaveLength(2);
+      for (const meal of ['breakfast', 'lunch', 'dinner', 'snack'] as const) {
+        expect(text(`meal-${meal}`)).toBe(en.feed.mealType[meal]);
+      }
+      for (const reaction of ['liked', 'neutral', 'disliked', 'allergicReaction'] as const) {
+        expect(text(`reaction-${reaction}`)).toBe(en.feed.reaction[reaction]);
+      }
+    });
+
+    it('starts now, with no meal type and no reaction', () => {
       expect(host().querySelector('nala-time-row')?.textContent).toContain(
         `Today ${shortTime(NOW)}`,
       );
-      expect(fixture.componentInstance.form.controls.startTime.value).toEqual(NOW);
+      const value = fixture.componentInstance.form.getRawValue();
+      expect(value.startTime).toEqual(NOW);
+      expect(value.mealType).toBeNull();
+      expect(value.reaction).toBeNull();
     });
 
-    it('asks the selected baby bottle defaults', () => {
-      expect(feeds.bottleDefaults).toHaveBeenCalledWith('b1');
-    });
-
-    it('defaults the milk type to the one of the previous bottle', async () => {
-      bottleDefaults.next(defaults('formula', 90, 120));
-      await settle();
-
-      expect(pressed('formula')).toBe(true);
-      expect(pressed('breastMilk')).toBe(false);
-    });
-
-    it('has no milk type without a previous bottle, and Save stays disabled', async () => {
-      bottleDefaults.next(defaults(null, null, null));
-      await typeAmount('120');
-
-      expect(pressed('formula')).toBe(false);
-      expect(pressed('breastMilk')).toBe(false);
-      expect(save().disabled).toBe(true);
-    });
-
-    it('disables Save until the milk type and amount are set', async () => {
-      bottleDefaults.next(defaults(null, null, null));
-      await settle();
+    it('disables Save until the food is filled', async () => {
       expect(save().disabled).toBe(true);
 
-      toggle('breastMilk').click();
-      await settle();
-      expect(save().disabled).toBe(true);
-
-      await typeAmount('90');
+      await typeFood('Carrot purée');
       expect(save().disabled).toBe(false);
     });
 
-    for (const amount of ['0', '501', '12.5']) {
-      it(`refuses an amount of ${amount} ml`, async () => {
-        bottleDefaults.next(defaults('formula', null, null));
-        await typeAmount(amount);
+    it('refuses blank food', async () => {
+      await typeFood('   ');
 
-        expect(alert()).toBe(en.feed.bottle.errors.amountRange);
-        expect(save().disabled).toBe(true);
-      });
-    }
-
-    it('asks for the amount once the field was left empty', async () => {
-      await typeAmount('');
-
-      expect(alert()).toBe(en.feed.bottle.errors.amountRequired);
+      expect(save().disabled).toBe(true);
+      expect(foodError()).toBe(en.feed.solids.errors.foodRequired);
     });
 
-    it('offers the last amount of the selected milk type while the amount is empty', async () => {
-      bottleDefaults.next(defaults('formula', 90, 120));
-      await settle();
-      expect(text('suggestion-text')).toBe('Use last formula amount: 120 ml?');
+    it('refuses food over 500 characters', async () => {
+      await typeFood('a'.repeat(501));
 
-      toggle('breastMilk').click();
-      await settle();
-      expect(text('suggestion-text')).toBe('Use last breast milk amount: 90 ml?');
-
-      await typeAmount('100');
-      expect(find('suggestion-text')).toBeNull();
+      expect(save().disabled).toBe(true);
+      expect(foodError()).toBe(en.feed.solids.errors.foodTooLong);
     });
 
-    it('offers nothing without a previous bottle of that milk type', async () => {
-      bottleDefaults.next(defaults('formula', null, 120));
-      await settle();
-
-      toggle('breastMilk').click();
-      await settle();
-
-      expect(find('suggestion-text')).toBeNull();
-    });
-
-    it('fills the amount when the suggestion is accepted', async () => {
-      bottleDefaults.next(defaults('formula', 90, 120));
-      await settle();
-
-      find<HTMLButtonElement>('suggestion-accept')!.click();
-      await settle();
-
-      expect(find<HTMLInputElement>('amount')!.value).toBe('120');
-      expect(save().disabled).toBe(false);
+    it('lets food span several lines', () => {
+      expect(find('food')!.tagName).toBe('TEXTAREA');
     });
 
     it('refuses a start time in the future', async () => {
-      bottleDefaults.next(defaults('formula', 90, 120));
-      await typeAmount('120');
+      await typeFood('Carrot purée');
       fixture.componentInstance.form.controls.startTime.setValue(
         new Date(NOW.getTime() + 5 * 60_000),
       );
@@ -212,29 +161,43 @@ describe('BottleSheetComponent', () => {
       expect(save().disabled).toBe(true);
     });
 
-    it('adds the bottle for the selected baby and closes with it', async () => {
-      bottleDefaults.next(defaults('formula', null, null));
-      await typeAmount('120');
+    it('adds the solids for the selected baby and closes with them', async () => {
+      await tap('meal-lunch');
+      await typeFood('  Carrot purée\nand pear ');
+      await tap('reaction-allergicReaction');
       save().click();
       await settle();
 
       expect(feeds.create).toHaveBeenCalledWith(
         'b1',
-        'bottle',
-        { startTime: NOW.toISOString(), milkType: 'formula', amountMl: 120, notes: null },
+        'solids',
+        {
+          startTime: NOW.toISOString(),
+          mealType: 'lunch',
+          food: 'Carrot purée\nand pear',
+          reaction: 'allergicReaction',
+          notes: null,
+        },
         expect.stringMatching(/^[0-9a-f-]{36}$/),
       );
       expect(save().disabled).toBe(true);
 
-      const feed = aBottle();
+      const feed = aSolids();
       saved.next({ ok: true, feed });
       await settle();
       expect(sheetRef.close).toHaveBeenCalledWith({ saved: feed });
     });
 
+    it('sends no meal type and no reaction when none is chosen', async () => {
+      await typeFood('Banana');
+      save().click();
+      await settle();
+
+      expect(feeds.create.mock.calls[0][2]).toMatchObject({ mealType: null, reaction: null });
+    });
+
     it('keeps the same client id when Save is tried again', async () => {
-      bottleDefaults.next(defaults('formula', null, null));
-      await typeAmount('120');
+      await typeFood('Banana');
       save().click();
       saved.next({ ok: false, errors: { form: 'unknown' } });
       await settle();
@@ -247,19 +210,17 @@ describe('BottleSheetComponent', () => {
     });
 
     it('shows the errors the server sends back', async () => {
-      bottleDefaults.next(defaults('formula', null, null));
-      await typeAmount('120');
+      await typeFood('Banana');
       save().click();
-      saved.next({ ok: false, errors: { amountMl: 'outOfRange' } });
+      saved.next({ ok: false, errors: { food: 'tooLong' } });
       await settle();
 
-      expect(alert()).toBe(en.feed.bottle.errors.amountRange);
+      expect(foodError()).toBe(en.feed.solids.errors.foodTooLong);
       expect(sheetRef.close).not.toHaveBeenCalled();
     });
 
     it('shows a form error when saving fails', async () => {
-      bottleDefaults.next(defaults('formula', null, null));
-      await typeAmount('120');
+      await typeFood('Banana');
       save().click();
       saved.next({ ok: false, errors: { form: 'unknown' } });
       await settle();
@@ -274,57 +235,51 @@ describe('BottleSheetComponent', () => {
   });
 
   describe('editing', () => {
-    const feed = aBottle({
+    const feed = aSolids({
       id: 'f7',
-      milkType: 'breastMilk',
-      amountMl: 90,
-      notes: 'sleepy',
+      mealType: 'dinner',
+      food: 'Pumpkin',
+      reaction: 'disliked',
+      notes: 'spat it out',
       startTime: new Date(2026, 8, 30, 9, 15).toISOString(),
     });
 
     it('is pre-filled with the feed', async () => {
       await render(feed);
-      bottleDefaults.next(defaults('formula', 90, 120));
-      await settle();
 
-      expect(pressed('breastMilk')).toBe(true);
-      expect(find<HTMLInputElement>('amount')!.value).toBe('90');
-      expect(find<HTMLTextAreaElement>('notes-input')!.value).toBe('sleepy');
+      expect(selected('meal-dinner')).toBe(true);
+      expect(find<HTMLTextAreaElement>('food')!.value).toBe('Pumpkin');
+      expect(selected('reaction-disliked')).toBe(true);
+      expect(find<HTMLTextAreaElement>('notes-input')!.value).toBe('spat it out');
       expect(fixture.componentInstance.form.controls.startTime.value).toEqual(
         new Date(2026, 8, 30, 9, 15),
       );
       expect(save().disabled).toBe(false);
     });
 
-    it('saves the changes and closes with the feed', async () => {
+    it('saves the changes, including cleared choices, and closes with the feed', async () => {
       await render(feed);
-      await typeAmount('110');
+      await tap('meal-dinner');
+      await typeFood('Pumpkin and rice');
       save().click();
       await settle();
 
       expect(feeds.update).toHaveBeenCalledWith('f7', {
         startTime: new Date(2026, 8, 30, 9, 15).toISOString(),
-        milkType: 'breastMilk',
-        amountMl: 110,
-        notes: 'sleepy',
+        mealType: null,
+        food: 'Pumpkin and rice',
+        reaction: 'disliked',
+        notes: 'spat it out',
       });
-      const updated = aBottle({ ...feed, amountMl: 110 });
+      const updated = aSolids({ ...feed, food: 'Pumpkin and rice', mealType: null });
       saved.next({ ok: true, feed: updated });
       await settle();
       expect(sheetRef.close).toHaveBeenCalledWith({ saved: updated });
     });
 
-    it('says who logged it', async () => {
-      await render(feed);
-
-      expect(
-        host().querySelector('nala-entry-audit')?.textContent?.replace(/\s+/g, ' ').trim(),
-      ).toBe('Logged by Anna');
-    });
-
-    it('adds who edited it last, and when', async () => {
+    it('says who logged it and who edited it last', async () => {
       const updatedAt = new Date(2026, 8, 30, 11, 40).toISOString();
-      await render(aBottle({ ...feed, updatedBy: { id: 'u2', displayName: 'Ben' }, updatedAt }));
+      await render(aSolids({ ...feed, updatedBy: { id: 'u2', displayName: 'Ben' }, updatedAt }));
 
       expect(
         host().querySelector('nala-entry-audit')?.textContent?.replace(/\s+/g, ' ').trim(),

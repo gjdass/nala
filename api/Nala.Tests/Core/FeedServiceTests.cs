@@ -40,6 +40,9 @@ public class FeedServiceTests
     private static FeedInput Bottle(string milkType = "formula", decimal amountMl = 120, DateTimeOffset? startTime = null, string? notes = null) =>
         new("bottle", startTime ?? Now.AddMinutes(-10), notes, milkType, amountMl);
 
+    private static FeedInput Solids(string food = "Carrot purée", string? mealType = "lunch", string? reaction = "liked", string? notes = null) =>
+        new("solids", Now.AddMinutes(-10), notes, null, null, mealType, food, reaction);
+
     private async Task<FeedEntry> CreateAsync(User actor, FeedInput input, Guid? id = null) =>
         ((CreateFeedResult.Created)await _service.CreateAsync(actor, id ?? Guid.NewGuid(), _lea.Id, input)).Entry;
 
@@ -68,6 +71,42 @@ public class FeedServiceTests
             Assert.That(feed.UpdatedAt, Is.EqualTo(Now));
             Assert.That(entry.LoggedBy, Is.EqualTo(new UserName(_anna.Id, "Anna")));
             Assert.That(entry.UpdatedBy, Is.EqualTo(new UserName(_anna.Id, "Anna")));
+        });
+    }
+
+    [Test]
+    public async Task Creating_solids_stores_the_meal_type_food_and_reaction()
+    {
+        var entry = await CreateAsync(_anna, Solids(" Carrot purée\nand pear ", "lunch", "allergicReaction", "rash"));
+
+        var feed = entry.Feed;
+        Assert.Multiple(() =>
+        {
+            Assert.That(feed.Kind, Is.EqualTo(FeedKind.Solids));
+            Assert.That(feed.MealType, Is.EqualTo(MealType.Lunch));
+            Assert.That(feed.Food, Is.EqualTo("Carrot purée\nand pear"));
+            Assert.That(feed.Reaction, Is.EqualTo(SolidsReaction.AllergicReaction));
+            Assert.That(feed.Notes, Is.EqualTo("rash"));
+            Assert.That(feed.MilkType, Is.Null);
+            Assert.That(feed.AmountMl, Is.Null);
+        });
+    }
+
+    [Test]
+    public async Task Editing_solids_replaces_its_fields_and_can_clear_the_optional_ones()
+    {
+        var created = await CreateAsync(_anna, Solids());
+
+        var result = await _service.UpdateAsync(_ben, created.Feed.Id, Solids("Banana", mealType: null, reaction: null) with { Kind = null });
+
+        var feed = ((UpdateFeedResult.Updated)result).Entry.Feed;
+        Assert.Multiple(() =>
+        {
+            Assert.That(feed.Kind, Is.EqualTo(FeedKind.Solids));
+            Assert.That(feed.Food, Is.EqualTo("Banana"));
+            Assert.That(feed.MealType, Is.Null);
+            Assert.That(feed.Reaction, Is.Null);
+            Assert.That(feed.UpdatedByUserId, Is.EqualTo(_ben.Id));
         });
     }
 

@@ -155,6 +155,78 @@ public class FeedEndpointTests
     }
 
     [Test]
+    public async Task Solids_are_created_and_listed()
+    {
+        var id = Guid.NewGuid();
+
+        var response = await _admin.PostAsJsonAsync("/api/feeds", new
+        {
+            id,
+            babyId = _leaId,
+            kind = "solids",
+            startTime = _now.AddMinutes(-10),
+            mealType = "lunch",
+            food = "Carrot purée",
+            reaction = "allergicReaction",
+        });
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Created));
+        var feed = (await PageAsync(_admin)).GetProperty("entries")[0];
+        Assert.Multiple(() =>
+        {
+            Assert.That(feed.GetProperty("id").GetGuid(), Is.EqualTo(id));
+            Assert.That(feed.GetProperty("kind").GetString(), Is.EqualTo("solids"));
+            Assert.That(feed.GetProperty("mealType").GetString(), Is.EqualTo("lunch"));
+            Assert.That(feed.GetProperty("food").GetString(), Is.EqualTo("Carrot purée"));
+            Assert.That(feed.GetProperty("reaction").GetString(), Is.EqualTo("allergicReaction"));
+            Assert.That(feed.GetProperty("milkType").ValueKind, Is.EqualTo(JsonValueKind.Null));
+            Assert.That(feed.GetProperty("amountMl").ValueKind, Is.EqualTo(JsonValueKind.Null));
+        });
+    }
+
+    [Test]
+    public async Task Invalid_solids_fields_answer_validation_codes()
+    {
+        var response = await _admin.PostAsJsonAsync("/api/feeds", new
+        {
+            id = Guid.NewGuid(),
+            babyId = _leaId,
+            kind = "solids",
+            startTime = _now,
+            mealType = "brunch",
+            food = new string('a', 501),
+            reaction = "meh",
+        });
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
+        var errors = (await JsonAsync(response)).GetProperty("errors");
+        Assert.Multiple(() =>
+        {
+            Assert.That(errors.GetProperty("mealType")[0].GetString(), Is.EqualTo("invalid"));
+            Assert.That(errors.GetProperty("food")[0].GetString(), Is.EqualTo("tooLong"));
+            Assert.That(errors.GetProperty("reaction")[0].GetString(), Is.EqualTo("invalid"));
+        });
+    }
+
+    [Test]
+    public async Task Solids_are_edited()
+    {
+        var id = Guid.NewGuid();
+        await _admin.PostAsJsonAsync("/api/feeds", new { id, babyId = _leaId, kind = "solids", startTime = _now, mealType = "lunch", food = "Carrot" });
+
+        var response = await _admin.PutAsJsonAsync($"/api/feeds/{id}", new { startTime = _now, food = "Pear", reaction = "liked" });
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        var feed = await JsonAsync(response);
+        Assert.Multiple(() =>
+        {
+            Assert.That(feed.GetProperty("food").GetString(), Is.EqualTo("Pear"));
+            Assert.That(feed.GetProperty("mealType").ValueKind, Is.EqualTo(JsonValueKind.Null));
+            Assert.That(feed.GetProperty("reaction").GetString(), Is.EqualTo("liked"));
+        });
+    }
+
+    [Test]
     public async Task A_feed_without_an_id_is_refused()
     {
         var response = await _admin.PostAsJsonAsync("/api/feeds", new { babyId = _leaId, kind = "bottle", startTime = _now, milkType = "formula", amountMl = 90 });

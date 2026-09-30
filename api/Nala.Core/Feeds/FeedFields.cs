@@ -1,17 +1,25 @@
 namespace Nala.Core.Feeds;
 
-/// <summary>A feed's fields as sent by a client; the amount is a decimal so a fractional one can be refused.</summary>
+/// <summary>
+/// A feed's fields as sent by a client; the fields of the other kinds are ignored. The amount is a decimal so a
+/// fractional one can be refused.
+/// </summary>
 public sealed record FeedInput(
     string? Kind,
     DateTimeOffset? StartTime,
     string? Notes,
     string? MilkType,
-    decimal? AmountMl);
+    decimal? AmountMl,
+    string? MealType = null,
+    string? Food = null,
+    string? Reaction = null);
 
 /// <summary>Validation of a feed's fields, for adding and editing (spec 05).</summary>
 public static class FeedFields
 {
     public const int NotesMaxLength = 1000;
+
+    public const int FoodMaxLength = 500;
 
     public const int AmountMinMl = 1;
 
@@ -23,12 +31,29 @@ public static class FeedFields
     private static readonly Dictionary<string, FeedKind> Kinds = new()
     {
         ["bottle"] = FeedKind.Bottle,
+        ["solids"] = FeedKind.Solids,
     };
 
     private static readonly Dictionary<string, MilkType> MilkTypes = new()
     {
         ["breastMilk"] = Feeds.MilkType.BreastMilk,
         ["formula"] = Feeds.MilkType.Formula,
+    };
+
+    private static readonly Dictionary<string, MealType> MealTypes = new()
+    {
+        ["breakfast"] = Feeds.MealType.Breakfast,
+        ["lunch"] = Feeds.MealType.Lunch,
+        ["dinner"] = Feeds.MealType.Dinner,
+        ["snack"] = Feeds.MealType.Snack,
+    };
+
+    private static readonly Dictionary<string, SolidsReaction> Reactions = new()
+    {
+        ["liked"] = SolidsReaction.Liked,
+        ["neutral"] = SolidsReaction.Neutral,
+        ["disliked"] = SolidsReaction.Disliked,
+        ["allergicReaction"] = SolidsReaction.AllergicReaction,
     };
 
     /// <summary>
@@ -55,7 +80,7 @@ public static class FeedFields
             errors["startTime"] = "inFuture";
         }
 
-        if (NormalizeNotes(input.Notes)?.Length > NotesMaxLength)
+        if (NormalizeText(input.Notes)?.Length > NotesMaxLength)
         {
             errors["notes"] = "tooLong";
         }
@@ -64,12 +89,16 @@ public static class FeedFields
         {
             ValidateBottle(input, errors);
         }
+        else if (input.Kind == "solids")
+        {
+            ValidateSolids(input, errors);
+        }
 
         return errors;
     }
 
-    /// <summary>Trimmed; blank notes are none.</summary>
-    public static string? NormalizeNotes(string? input) =>
+    /// <summary>Trimmed; blank text (notes, food) is none.</summary>
+    public static string? NormalizeText(string? input) =>
         string.IsNullOrWhiteSpace(input) ? null : input.Trim();
 
     /// <summary>Call only on validated input.</summary>
@@ -81,6 +110,16 @@ public static class FeedFields
     public static MilkType ParseMilkType(string input) => MilkTypes[input];
 
     public static string Format(MilkType milkType) => MilkTypes.Single(m => m.Value == milkType).Key;
+
+    /// <summary>Call only on validated input; null when none.</summary>
+    public static MealType? ParseMealType(string? input) => input is null ? null : MealTypes[input];
+
+    public static string Format(MealType mealType) => MealTypes.Single(m => m.Value == mealType).Key;
+
+    /// <summary>Call only on validated input; null when none.</summary>
+    public static SolidsReaction? ParseReaction(string? input) => input is null ? null : Reactions[input];
+
+    public static string Format(SolidsReaction reaction) => Reactions.Single(r => r.Value == reaction).Key;
 
     private static void ValidateBottle(FeedInput input, Dictionary<string, string> errors)
     {
@@ -104,6 +143,29 @@ public static class FeedFields
         else if (amount is < AmountMinMl or > AmountMaxMl)
         {
             errors["amountMl"] = "outOfRange";
+        }
+    }
+
+    private static void ValidateSolids(FeedInput input, Dictionary<string, string> errors)
+    {
+        if (input.MealType is not null && !MealTypes.ContainsKey(input.MealType))
+        {
+            errors["mealType"] = "invalid";
+        }
+
+        var food = NormalizeText(input.Food);
+        if (food is null)
+        {
+            errors["food"] = "required";
+        }
+        else if (food.Length > FoodMaxLength)
+        {
+            errors["food"] = "tooLong";
+        }
+
+        if (input.Reaction is not null && !Reactions.ContainsKey(input.Reaction))
+        {
+            errors["reaction"] = "invalid";
         }
     }
 }

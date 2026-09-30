@@ -383,7 +383,8 @@
   },
   "feed": {
     "kinds": {
-      "bottle": "Bottle Feed"
+      "bottle": "Bottle Feed",
+      "solids": "Solids"
     },
     "card": {
       "lastFeeding": "Last feeding",
@@ -410,6 +411,28 @@
         "amountRequired": "Enter the amount.",
         "amountRange": "Enter a whole number from 1 to 500.",
         "milkTypeRequired": "Choose the milk type."
+      }
+    },
+    "mealType": {
+      "breakfast": "Breakfast",
+      "lunch": "Lunch",
+      "dinner": "Dinner",
+      "snack": "Snack"
+    },
+    "reaction": {
+      "liked": "Liked",
+      "neutral": "Neutral",
+      "disliked": "Disliked",
+      "allergicReaction": "Allergic reaction"
+    },
+    "solids": {
+      "mealType": "Meal type",
+      "food": "Food",
+      "reaction": "Reaction",
+      "headline": "{{mealType}} · {{reaction}}",
+      "errors": {
+        "foodRequired": "Enter what the baby ate.",
+        "foodTooLong": "Keep it under 500 characters."
       }
     },
     "errors": {

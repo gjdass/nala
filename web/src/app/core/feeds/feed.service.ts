@@ -5,9 +5,9 @@ import { toFieldErrors } from '../http/field-errors';
 import { HistoryPage } from '../sections/section.models';
 import {
   BottleDefaults,
-  BottleFields,
   Feed,
   FeedDeleteResult,
+  FeedFieldsByKind,
   FeedResult,
   NO_BOTTLE_DEFAULTS,
 } from './feed.models';
@@ -30,21 +30,20 @@ export class FeedService {
   }
 
   /**
-   * Adds a bottle under a client-generated id: sending the same id again returns the stored feed
-   * instead of adding a second one.
+   * Adds a feed of the given kind under a client-generated id: sending the same id again returns the
+   * stored feed instead of adding a second one.
    */
-  createBottle(
+  create<K extends keyof FeedFieldsByKind>(
     babyId: string,
-    fields: BottleFields,
+    kind: K,
+    fields: FeedFieldsByKind[K],
     id: string = crypto.randomUUID(),
   ): Observable<FeedResult> {
-    return this.result(
-      this.http.post<Feed>('/api/feeds', { id, babyId, kind: 'bottle', ...fields }),
-    );
+    return this.result(this.http.post<Feed>('/api/feeds', { id, babyId, kind, ...fields }));
   }
 
-  /** Replaces every field of the bottle. */
-  updateBottle(id: string, fields: BottleFields): Observable<FeedResult> {
+  /** Replaces every field of the feed's kind. */
+  update(id: string, fields: FeedFieldsByKind[keyof FeedFieldsByKind]): Observable<FeedResult> {
     return this.result(this.http.put<Feed>(`/api/feeds/${id}`, fields));
   }
 

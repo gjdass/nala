@@ -1,0 +1,52 @@
+<nala-entry-sheet [form]="form" [saving]="saving()" (save)="save()" (delete)="delete()">
+  <nala-chip-choice-row
+    name="meal"
+    optionLabel="feed.mealType."
+    [label]="'feed.solids.mealType' | transloco"
+    [options]="mealTypes"
+    [control]="form.controls.mealType"
+  />
+
+  <nala-time-row [label]="'entrySheet.startTime' | transloco" [control]="form.controls.startTime" />
+
+  <nala-form-row [label]="'feed.solids.food' | transloco" [interactive]="false">
+    <mat-form-field rowEditor appearance="outline">
+      <textarea
+        matInput
+        cdkTextareaAutosize
+        cdkAutosizeMinRows="2"
+        [maxlength]="foodMaxLength"
+        [formControl]="form.controls.food"
+        [attr.aria-label]="'feed.solids.food' | transloco"
+        data-testid="food"
+      ></textarea>
+      <mat-error data-testid="food-error">{{
+        'feed.solids.errors.' + foodError() | transloco
+      }}</mat-error>
+    </mat-form-field>
+  </nala-form-row>
+
+  <nala-chip-choice-row
+    name="reaction"
+    optionLabel="feed.reaction."
+    [label]="'feed.solids.reaction' | transloco"
+    [options]="reactions"
+    [control]="form.controls.reaction"
+  />
+
+  <nala-notes-row [control]="form.controls.notes" />
+
+  @if (formError(); as code) {
+    <p class="form-error" role="alert" data-testid="form-error">
+      {{ 'feed.errors.' + code | transloco }}
+    </p>
+  }
+
+  @if (feed; as feed) {
+    <nala-entry-audit
+      [loggedBy]="feed.loggedBy.displayName"
+      [editedBy]="edited ? feed.updatedBy.displayName : null"
+      [editedAt]="edited ? feed.updatedAt : null"
+    />
+  }
+</nala-entry-sheet>

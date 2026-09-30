@@ -77,6 +77,27 @@ public class FeedRepositoryTests
         return feed;
     }
 
+    private async Task<Feed> AddSolidsAsync(DateTimeOffset startTime, MealType? mealType = MealType.Lunch, SolidsReaction? reaction = SolidsReaction.Liked)
+    {
+        var feed = new Feed
+        {
+            Id = Guid.NewGuid(),
+            BabyId = _lea.Id,
+            Kind = FeedKind.Solids,
+            StartTime = startTime,
+            MealType = mealType,
+            Food = "Carrot purée",
+            Reaction = reaction,
+            LoggedByUserId = _anna.Id,
+            UpdatedByUserId = _anna.Id,
+            CreatedAt = Now,
+            UpdatedAt = Now,
+        };
+        await using var db = _db();
+        await new FeedRepository(db).AddAsync(feed);
+        return feed;
+    }
+
     private async Task<IReadOnlyList<FeedEntry>> ListAsync(Baby? baby = null, FeedCursor? after = null, int limit = 50)
     {
         await using var db = _db();
@@ -115,6 +136,37 @@ public class FeedRepositoryTests
             Assert.That(entry.LoggedBy, Is.EqualTo(new UserName(_anna.Id, "Anna")));
             Assert.That(entry.UpdatedBy, Is.EqualTo(new UserName(_ben.Id, "Ben")));
         });
+    }
+
+    [Test]
+    public async Task Added_solids_are_read_back_with_every_field()
+    {
+        var added = await AddSolidsAsync(startTime: Now, mealType: MealType.Breakfast, reaction: SolidsReaction.Disliked);
+
+        await using var read = _db();
+        var feed = (await new FeedRepository(read).GetEntryAsync(added.Id))!.Feed;
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(feed.Kind, Is.EqualTo(FeedKind.Solids));
+            Assert.That(feed.MealType, Is.EqualTo(MealType.Breakfast));
+            Assert.That(feed.Food, Is.EqualTo("Carrot purée"));
+            Assert.That(feed.Reaction, Is.EqualTo(SolidsReaction.Disliked));
+            Assert.That(feed.MilkType, Is.Null);
+            Assert.That(feed.AmountMl, Is.Null);
+        });
+    }
+
+    [Test]
+    public async Task Solids_without_meal_type_or_reaction_are_read_back()
+    {
+        var added = await AddSolidsAsync(startTime: Now, mealType: null, reaction: null);
+
+        await using var read = _db();
+        var feed = (await new FeedRepository(read).GetAsync(added.Id))!;
+
+        Assert.That(feed.MealType, Is.Null);
+        Assert.That(feed.Reaction, Is.Null);
     }
 
     [Test]
@@ -223,6 +275,17 @@ public class FeedRepositoryTests
         var defaults = await new FeedRepository(db).GetBottleDefaultsAsync(_lea.Id);
 
         Assert.That(defaults, Is.EqualTo(new BottleDefaults(MilkType.BreastMilk, 100, 120)));
+    }
+
+    [Test]
+    public async Task Bottle_defaults_ignore_solids()
+    {
+        await AddAsync(startTime: Now.AddHours(-1), milkType: MilkType.Formula, amountMl: 120);
+        await AddSolidsAsync(Now);
+
+        await using var db = _db();
+
+        Assert.That(await new FeedRepository(db).GetBottleDefaultsAsync(_lea.Id), Is.EqualTo(new BottleDefaults(MilkType.Formula, null, 120)));
     }
 
     [Test]
