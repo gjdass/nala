@@ -62,7 +62,11 @@ public class FeedRepository(NalaDbContext db) : IFeedRepository
         select new FeedEntry(feed, new UserName(loggedBy.Id, loggedBy.DisplayName), new UserName(updatedBy.Id, updatedBy.DisplayName));
 
     public Task<FeedEntry?> GetInProgressBreastfeedAsync(Guid babyId, CancellationToken cancellationToken = default) =>
-        Entries(Breastfeeds(babyId).Where(f => f.EndTime == null)).FirstOrDefaultAsync(cancellationToken);
+        Entries(db.Set<Feed>()
+                .Where(f => f.BabyId == babyId && f.Kind == FeedKind.Breastfeed && f.EndTime == null)
+                .OrderBy(f => f.StartTime)
+                .ThenBy(f => f.Id))
+            .FirstOrDefaultAsync(cancellationToken);
 
     public async Task<BreastSide?> GetLastBreastSideAsync(Guid babyId, CancellationToken cancellationToken = default) =>
         await Breastfeeds(babyId)

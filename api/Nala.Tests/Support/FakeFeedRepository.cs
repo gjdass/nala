@@ -50,7 +50,7 @@ public class FakeFeedRepository : IFeedRepository
         new(feed, new UserName(feed.LoggedByUserId, Names[feed.LoggedByUserId]), new UserName(feed.UpdatedByUserId, Names[feed.UpdatedByUserId]));
 
     public Task<FeedEntry?> GetInProgressBreastfeedAsync(Guid babyId, CancellationToken cancellationToken = default) =>
-        Task.FromResult(Breastfeeds(babyId).Where(f => f.EndTime is null).Select(ToEntry).FirstOrDefault());
+        Task.FromResult(Breastfeeds(babyId).Where(f => f.EndTime is null).OrderBy(f => f.StartTime).Select(ToEntry).FirstOrDefault());
 
     public Task<BreastSide?> GetLastBreastSideAsync(Guid babyId, CancellationToken cancellationToken = default) =>
         Task.FromResult(Breastfeeds(babyId).Where(f => f.EndTime is not null).Select(Breastfeed.EndedOnSide).FirstOrDefault());

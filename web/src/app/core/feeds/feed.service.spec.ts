@@ -285,7 +285,13 @@ describe('FeedService', () => {
       const result = firstValueFrom(service.startSide('f3', 'b1', 'left', at, 's1'));
       const req = http.expectOne('/api/feeds/f3/breastfeed/start');
       expect(req.request.method).toBe('POST');
-      expect(req.request.body).toEqual({ babyId: 'b1', segmentId: 's1', side: 'left', at });
+      expect(req.request.body).toEqual({
+        babyId: 'b1',
+        segmentId: 's1',
+        side: 'left',
+        at,
+        queued: false,
+      });
       req.flush(aBreastfeed(), { status: 201, statusText: 'Created' });
       expect(await result).toEqual<FeedResult>({ ok: true, feed: aBreastfeed() });
     });
@@ -306,6 +312,28 @@ describe('FeedService', () => {
         ok: false,
         errors: { form: 'breastfeedInProgress' },
       });
+    });
+
+    it('keeps timer taps on the device when offline, the start marked queued', async () => {
+      const result = firstValueFrom(service.startSide('f3', 'b1', 'left', at, 's1'));
+      http.expectOne('/api/feeds/f3/breastfeed/start').flush(null, networkError);
+      const stop = firstValueFrom(service.stopSide('f3', '2026-09-30T10:02:00.000Z'));
+
+      expect(await result).toEqual<FeedResult>({ ok: true, queued: true });
+      expect(await stop).toEqual<FeedResult>({ ok: true, queued: true });
+      expect(queuedBodies()).toEqual([
+        { babyId: 'b1', segmentId: 's1', side: 'left', at, queued: true },
+        { at: '2026-09-30T10:02:00.000Z' },
+      ]);
+    });
+
+    it('keeps a save on the device when offline', async () => {
+      const fields = { startTime: at, notes: null };
+      const result = firstValueFrom(service.finish('f3', fields, '2026-09-30T10:09:00.000Z'));
+      http.expectOne('/api/feeds/f3/breastfeed/finish').flush(null, networkError);
+
+      expect(await result).toEqual<FeedResult>({ ok: true, queued: true });
+      expect(queuedBodies()).toEqual([{ ...fields, at: '2026-09-30T10:09:00.000Z' }]);
     });
 
     it('stops the running side', async () => {

@@ -229,6 +229,92 @@ describe('BreastfeedSheetComponent', () => {
     });
   });
 
+  describe('offline (taps kept on the device)', () => {
+    /** Makes the shared state show `feed` once the sheet applies the waiting taps. */
+    const offlineShows = (feed: (id: string) => Feed) =>
+      sync.whenApplied(() =>
+        sync.inProgress.set([feed(feeds.startSide.mock.calls.at(-1)?.[0] ?? 'f3')]),
+      );
+
+    it('shows a feed started offline running, with its start time', async () => {
+      await render();
+      await respondState({ inProgress: null, lastSide: null });
+      offlineShows((id) =>
+        running({
+          id,
+          startTime: NOW.toISOString(),
+          segments: [aSegment('left', NOW.toISOString(), null)],
+        }),
+      );
+
+      await click('split-left-toggle');
+      await respondTimer({ ok: true, queued: true });
+
+      expect(sync.applied).toEqual([undefined]);
+      expect(text('split-left-toggle')).toBe(en.splitTimer.stop);
+      expect(fixture.componentInstance.form.controls.startTime.value).toEqual(NOW);
+      await tick(90_000);
+      expect(text('split-left-duration')).toBe('1m 30s');
+      expect(find('entry-delete')).not.toBeNull();
+    });
+
+    it('opens the feed started offline when opened to add, without the server', async () => {
+      sync.inProgress.set([running({ notes: 'calm' })]);
+      await render();
+
+      expect(text('split-right-toggle')).toBe(en.splitTimer.stop);
+      expect(fixture.componentInstance.form.controls.notes.value).toBe('calm');
+    });
+
+    it('pauses offline', async () => {
+      sync.inProgress.set([running()]);
+      await render();
+      const paused = running({
+        updatedAt: NOW.toISOString(),
+        segments: [
+          aSegment('left', iso('10:00:00'), iso('10:05:00')),
+          aSegment('right', iso('10:05:00'), iso('10:10:00')),
+        ],
+      });
+      offlineShows(() => paused);
+
+      await click('split-right-toggle');
+      await respondTimer({ ok: true, queued: true });
+
+      expect(text('split-right-toggle')).toBe(en.splitTimer.startRight);
+      await tick(60_000);
+      expect(text('total-time')).toBe('10m');
+    });
+
+    it('reopens a saved feed offline from its own entry', async () => {
+      await render(aBreastfeed());
+      await respondState({ inProgress: null, lastSide: 'right' });
+      offlineShows(() =>
+        running({
+          segments: [...aBreastfeed().segments, aSegment('left', NOW.toISOString(), null)],
+        }),
+      );
+
+      await click('split-left-toggle');
+      await respondTimer({ ok: true, queued: true });
+
+      expect(sync.applied).toEqual([aBreastfeed()]);
+      expect(text('split-left-toggle')).toBe(en.splitTimer.stop);
+    });
+
+    it('closes once the save is kept on the device', async () => {
+      sync.inProgress.set([running()]);
+      await render();
+
+      await click('sheet-save');
+      saved.next({ ok: true, queued: true });
+      await settle();
+
+      expect(feeds.finish).toHaveBeenCalled();
+      expect(sheetRef.close).toHaveBeenCalledWith({ queued: true });
+    });
+  });
+
   describe('a feed in progress', () => {
     beforeEach(async () => {
       await render();

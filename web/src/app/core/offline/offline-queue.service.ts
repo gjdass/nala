@@ -15,7 +15,7 @@ import {
 import { TranslocoService } from '@jsverse/transloco';
 import { Observable, catchError, map, of } from 'rxjs';
 import { AuthService } from '../auth/auth.service';
-import { QueuedMethod, QueuedRequest, SendOutcome } from './offline-queue.models';
+import { QueuedMethod, QueuedRequest, SendOptions, SendOutcome } from './offline-queue.models';
 
 export const QUEUE_STORAGE_KEY = 'nala.offlineQueue';
 
@@ -56,9 +56,12 @@ export class OfflineQueueService {
   private retry: ReturnType<typeof setInterval> | null = null;
 
   /** How many requests of the signed-in user wait on the device. */
-  readonly pending = computed(() => {
+  readonly pending = computed(() => this.waiting().length);
+
+  /** The signed-in user's waiting requests, oldest first. */
+  readonly waiting = computed((): readonly QueuedRequest[] => {
     const userId = this.userId();
-    return userId ? this.queue().filter((r) => r.userId === userId).length : 0;
+    return userId ? this.queue().filter((r) => r.userId === userId) : [];
   });
 
   /** Bumped each time waiting requests reached the server: lists reload on it. */
@@ -81,18 +84,25 @@ export class OfflineQueueService {
     });
   }
 
-  /** Sends the request, or keeps it on the device when the server can't be reached. */
-  send<T>(method: QueuedMethod, url: string, body: unknown): Observable<SendOutcome<T>> {
+  /**
+   * Sends the request, or keeps it on the device when the server can't be reached (with
+   * `options.queuedBody` as its body when given).
+   */
+  send<T>(
+    method: QueuedMethod,
+    url: string,
+    body: unknown,
+    options: SendOptions = {},
+  ): Observable<SendOutcome<T>> {
+    const keep = () => this.enqueue(method, url, options.queuedBody ?? body, options.quiet);
     if (this.pending() > 0) {
-      return of(this.enqueue(method, url, body));
+      return of(keep());
     }
     return this.http.request<T>(method, url, { body }).pipe(
       map((sent): SendOutcome<T> => ({ sent })),
       catchError((error: HttpErrorResponse) =>
         of<SendOutcome<T>>(
-          UNREACHABLE.includes(error.status) && this.userId()
-            ? this.enqueue(method, url, body)
-            : { error },
+          UNREACHABLE.includes(error.status) && this.userId() ? keep() : { error },
         ),
       ),
     );
@@ -158,7 +168,13 @@ export class OfflineQueueService {
     }
   }
 
-  private enqueue(method: QueuedMethod, url: string, body: unknown): SendOutcome<never> {
+  private enqueue(
+    method: QueuedMethod,
+    url: string,
+    body: unknown,
+    quiet = false,
+  ): SendOutcome<never> {
+    const first = this.pending() === 0;
     const request: QueuedRequest = {
       id: crypto.randomUUID(),
       userId: this.userId()!,
@@ -169,7 +185,9 @@ export class OfflineQueueService {
     };
     this.write([...this.read(), request]);
     this.retry ??= setInterval(() => this.flush(), OFFLINE_RETRY_MS);
-    this.notify('offline.queued');
+    if (!quiet || first) {
+      this.notify('offline.queued');
+    }
     return { queued: true };
   }
 

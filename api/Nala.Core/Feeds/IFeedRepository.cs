@@ -19,7 +19,7 @@ public interface IFeedRepository
 
     Task<BottleDefaults> GetBottleDefaultsAsync(Guid babyId, CancellationToken cancellationToken = default);
 
-    /// <summary>The baby's latest breastfeed without an end, with its segments; null when none.</summary>
+    /// <summary>The baby's breastfeed without an end (the oldest when a queued one made two), with its segments; null when none.</summary>
     Task<FeedEntry?> GetInProgressBreastfeedAsync(Guid babyId, CancellationToken cancellationToken = default);
 
     /// <summary>The side of the last segment of the baby's latest saved breastfeed; null when none.</summary>

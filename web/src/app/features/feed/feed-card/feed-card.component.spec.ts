@@ -299,6 +299,17 @@ describe('FeedCardComponent', () => {
       expect(sync.puts).toEqual([paused]);
     });
 
+    it('applies a tap kept on the device (offline) to the shared state at once', async () => {
+      await respond([aBottle()]);
+      await showInProgress(inProgress(12));
+
+      find('split-right-toggle')!.click();
+      timer.next({ ok: true, queued: true });
+
+      expect(sync.applied).toEqual([inProgress(12)]);
+      expect(sync.puts).toEqual([]);
+    });
+
     it('switches side on the other side Start', async () => {
       await respond([aBottle()]);
       await showInProgress(inProgress(12));

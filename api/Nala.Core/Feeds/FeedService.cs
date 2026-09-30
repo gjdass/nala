@@ -208,10 +208,18 @@ public class FeedService(IFeedRepository feeds, IBabyRepository babies, TimeProv
     /// <summary>
     /// Starts a side of the breastfeed <paramref name="feedId"/> at <paramref name="at"/>, stopping the other one. An unknown
     /// feed is created in progress (start time = <paramref name="at"/>); a saved one is reopened. Both are refused while
-    /// another breastfeed of the baby is in progress. Re-sending the same <paramref name="segmentId"/> changes nothing.
+    /// another breastfeed of the baby is in progress, unless the start was <paramref name="queued"/> offline: it is then kept
+    /// as a separate feed, so nothing logged offline is lost. Re-sending the same <paramref name="segmentId"/> changes nothing.
     /// </summary>
     public async Task<BreastfeedResult> StartSideAsync(
-        User actor, Guid feedId, Guid babyId, Guid segmentId, string? side, DateTimeOffset? at, CancellationToken cancellationToken = default)
+        User actor,
+        Guid feedId,
+        Guid babyId,
+        Guid segmentId,
+        string? side,
+        DateTimeOffset? at,
+        bool queued = false,
+        CancellationToken cancellationToken = default)
     {
         var now = time.GetUtcNow();
         var errors = FeedFields.ValidateTimerAction(side, needsSide: true, at, now);
@@ -238,8 +246,9 @@ public class FeedService(IFeedRepository feeds, IBabyRepository babies, TimeProv
             return await UpdatedAsync(feed, cancellationToken);
         }
 
-        // Creating or reopening a feed: at most one in progress per baby.
-        if ((feed is null || feed.EndTime is not null)
+        // Creating or reopening a feed: at most one in progress per baby, except for a start queued offline.
+        if (!queued
+            && (feed is null || feed.EndTime is not null)
             && await feeds.GetInProgressBreastfeedAsync(feed?.BabyId ?? babyId, cancellationToken) is { } current
             && current.Feed.Id != feedId)
         {

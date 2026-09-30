@@ -392,8 +392,10 @@ public class FeedEndpointTests
         Assert.That((await anonymous.PostAsJsonAsync("/api/feeds", Bottle())).StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
     }
 
-    private Task<HttpResponseMessage> StartSideAsync(HttpClient client, Guid feedId, string side, DateTimeOffset at, Guid? segmentId = null) =>
-        client.PostAsJsonAsync($"/api/feeds/{feedId}/breastfeed/start", new { babyId = _leaId, segmentId = segmentId ?? Guid.NewGuid(), side, at });
+    private Task<HttpResponseMessage> StartSideAsync(
+        HttpClient client, Guid feedId, string side, DateTimeOffset at, Guid? segmentId = null, bool queued = false) =>
+        client.PostAsJsonAsync(
+            $"/api/feeds/{feedId}/breastfeed/start", new { babyId = _leaId, segmentId = segmentId ?? Guid.NewGuid(), side, at, queued });
 
     private async Task<JsonElement> BreastfeedStateAsync()
     {
@@ -466,6 +468,21 @@ public class FeedEndpointTests
         Assert.That(entries.GetArrayLength(), Is.EqualTo(1));
         Assert.That(entries[0].GetProperty("id").GetGuid(), Is.EqualTo(feedId));
         ben.Dispose();
+    }
+
+    [Test]
+    public async Task A_queued_breastfeed_reaching_the_server_while_another_is_in_progress_is_kept()
+    {
+        var current = Guid.NewGuid();
+        await StartSideAsync(_admin, current, "left", _now.AddMinutes(-10));
+        var queued = Guid.NewGuid();
+
+        var response = await StartSideAsync(_admin, queued, "right", _now.AddMinutes(-30), queued: true);
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Created));
+        var inProgress = await JsonAsync(await _admin.GetAsync("/api/feeds/in-progress"));
+        Assert.That(inProgress.EnumerateArray().Select(f => f.GetProperty("id").GetGuid()), Is.EqualTo(new[] { queued, current }));
+        Assert.That((await BreastfeedStateAsync()).GetProperty("inProgress").GetProperty("id").GetGuid(), Is.EqualTo(queued));
     }
 
     [Test]

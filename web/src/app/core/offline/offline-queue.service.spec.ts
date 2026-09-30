@@ -133,6 +133,77 @@ describe('OfflineQueueService', () => {
       expect(stored()).toEqual([]);
     });
 
+    it('keeps the queued body when one is given, and sends the plain body online', async () => {
+      start();
+      const online = firstValueFrom(
+        service.send(
+          'POST',
+          '/api/feeds/f1/breastfeed/start',
+          { at: 't' },
+          { queuedBody: { at: 't', queued: true } },
+        ),
+      );
+      const req = http.expectOne('/api/feeds/f1/breastfeed/start');
+      expect(req.request.body).toEqual({ at: 't' });
+      req.flush({ id: 'f1' });
+      await online;
+
+      const offline = firstValueFrom(
+        service.send(
+          'POST',
+          '/api/feeds/f1/breastfeed/start',
+          { at: 'u' },
+          { queuedBody: { at: 'u', queued: true } },
+        ),
+      );
+      http.expectOne('/api/feeds/f1/breastfeed/start').flush(null, networkError);
+      await offline;
+      await firstValueFrom(
+        service.send(
+          'POST',
+          '/api/feeds/f1/breastfeed/start',
+          { at: 'v' },
+          { queuedBody: { at: 'v', queued: true } },
+        ),
+      );
+
+      expect(stored().map((r) => r.body)).toEqual([
+        { at: 'u', queued: true },
+        { at: 'v', queued: true },
+      ]);
+    });
+
+    it('says a quiet request was kept only when it is the first one waiting', async () => {
+      start();
+      const first = firstValueFrom(
+        service.send('POST', '/api/feeds/f1/breastfeed/stop', {}, { quiet: true }),
+      );
+      http.expectOne('/api/feeds/f1/breastfeed/stop').flush(null, networkError);
+      await first;
+      await firstValueFrom(
+        service.send('POST', '/api/feeds/f1/breastfeed/stop', {}, { quiet: true }),
+      );
+
+      expect(await snackTexts()).toEqual([en.offline.queued]);
+      expect(stored()).toHaveLength(2);
+    });
+
+    it("exposes the signed-in user's waiting requests, oldest first", () => {
+      store([
+        queued({ userId: 'anna', url: '/api/feeds/a' }),
+        queued({ userId: 'ben', url: '/api/feeds/b' }),
+        queued({ userId: 'anna', url: '/api/feeds/c' }),
+      ]);
+      state.set(as(null));
+      start();
+
+      expect(service.waiting()).toEqual([]);
+      state.set(as('anna'));
+      expect(service.waiting().map((r) => r.url)).toEqual(['/api/feeds/a', '/api/feeds/c']);
+      TestBed.tick();
+      http.expectOne('/api/feeds/a').flush(null, networkError);
+    });
+
     it('queues behind the requests already waiting, so they reach the server in order', async () => {
       store([queued({ url: '/api/feeds', body: { id: 'f1' } })]);
       start();

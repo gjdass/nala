@@ -438,6 +438,17 @@ public class FeedRepositoryTests
     }
 
     [Test]
+    public async Task With_two_in_progress_breastfeeds_the_oldest_is_the_one_in_progress()
+    {
+        await AddBreastfeedAsync(Now.AddMinutes(-5), null, null, (BreastSide.Left, 0, null));
+        var oldest = await AddBreastfeedAsync(Now.AddMinutes(-40), null, null, (BreastSide.Right, 0, null));
+
+        await using var db = _db();
+
+        Assert.That((await new FeedRepository(db).GetInProgressBreastfeedAsync(_lea.Id))?.Feed.Id, Is.EqualTo(oldest.Id));
+    }
+
+    [Test]
     public async Task The_in_progress_breastfeeds_of_every_baby_are_listed_oldest_first()
     {
         await AddBreastfeedAsync(Now.AddHours(-2), Now.AddHours(-1.5), null, (BreastSide.Left, 0, 5));

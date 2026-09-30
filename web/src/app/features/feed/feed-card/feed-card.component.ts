@@ -38,8 +38,9 @@ import { FeedEntryComponent } from '../feed-entry/feed-entry.component';
  *
  * While the baby's breastfeed is in progress (on any device, see `BreastfeedSyncService`), the
  * highlight is replaced by "Feeding" (opens the sheet) and both sides' live durations with their
- * Start/Stop: the running side's Stop pauses, the other side's Start switches. Once that feed is
- * saved or deleted anywhere, the card reloads.
+ * Start/Stop: the running side's Stop pauses, the other side's Start switches (offline too: the tap
+ * is kept on the device and shows at once). Once that feed is saved or deleted anywhere, the card
+ * reloads.
  * Reloads after an entry is added, edited or deleted, when another baby is selected, and once
  * changes kept on the device (offline) have been sent.
  */
@@ -130,11 +131,12 @@ export class FeedCardComponent {
 
   protected start(side: BreastSide): void {
     const feed = this.inProgress()!;
-    this.send(this.feeds.startSide(feed.id, feed.babyId, side, new Date().toISOString()));
+    this.send(feed, this.feeds.startSide(feed.id, feed.babyId, side, new Date().toISOString()));
   }
 
   protected stop(): void {
-    this.send(this.feeds.stopSide(this.inProgress()!.id, new Date().toISOString()));
+    const feed = this.inProgress()!;
+    this.send(feed, this.feeds.stopSide(feed.id, new Date().toISOString()));
   }
 
   protected reload(): void {
@@ -162,14 +164,17 @@ export class FeedCardComponent {
     });
   }
 
-  private send(request: Observable<FeedResult>): void {
+  /** Sends a tap on `feed`: applies the answer, or the tap itself once kept on the device (offline). */
+  private send(feed: Feed, request: Observable<FeedResult>): void {
     if (this.busy()) {
       return;
     }
     this.busy.set(true);
     request.subscribe((result) => {
       this.busy.set(false);
-      if (result.ok && !result.queued) {
+      if (result.ok && result.queued) {
+        this.sync.applyWaiting(feed);
+      } else if (result.ok) {
         this.sync.put(result.feed);
       }
     });

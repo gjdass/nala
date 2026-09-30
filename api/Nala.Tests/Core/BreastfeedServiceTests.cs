@@ -40,8 +40,9 @@ public class BreastfeedServiceTests
 
     private static DateTimeOffset At(int minutesAgo) => Now.AddMinutes(-minutesAgo);
 
-    private Task<BreastfeedResult> StartAsync(Guid feedId, string side, DateTimeOffset at, Guid? segmentId = null, User? by = null) =>
-        _service.StartSideAsync(by ?? _anna, feedId, _lea.Id, segmentId ?? Guid.NewGuid(), side, at);
+    private Task<BreastfeedResult> StartAsync(
+        Guid feedId, string side, DateTimeOffset at, Guid? segmentId = null, User? by = null, bool queued = false) =>
+        _service.StartSideAsync(by ?? _anna, feedId, _lea.Id, segmentId ?? Guid.NewGuid(), side, at, queued);
 
     private static Feed FeedOf(BreastfeedResult result) => result switch
     {
@@ -143,6 +144,31 @@ public class BreastfeedServiceTests
 
         Assert.That(result, Is.InstanceOf<BreastfeedResult.InProgressExists>());
         Assert.That(_feeds.Feeds, Has.Count.EqualTo(1));
+    }
+
+    [Test]
+    public async Task A_queued_breastfeed_is_kept_as_a_separate_feed_while_another_is_in_progress()
+    {
+        var current = Guid.NewGuid();
+        await StartAsync(current, "left", At(10));
+        var queued = Guid.NewGuid();
+
+        var result = await StartAsync(queued, "right", At(20), queued: true);
+
+        Assert.That(result, Is.InstanceOf<BreastfeedResult.Created>());
+        Assert.That(_feeds.Feeds.Where(f => f.EndTime is null).Select(f => f.Id), Is.EquivalentTo(new[] { current, queued }));
+    }
+
+    [Test]
+    public async Task A_queued_start_reopens_a_saved_breastfeed_while_another_is_in_progress()
+    {
+        var saved = await FinishedAsync("left", 30);
+        await StartAsync(Guid.NewGuid(), "left", At(10));
+
+        var feed = FeedOf(await StartAsync(saved, "right", At(5), queued: true));
+
+        Assert.That(feed.EndTime, Is.Null);
+        Assert.That(Breastfeed.RunningSide(feed), Is.EqualTo(BreastSide.Right));
     }
 
     [Test]

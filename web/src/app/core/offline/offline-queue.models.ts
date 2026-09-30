@@ -17,3 +17,10 @@ export interface QueuedRequest {
 
 /** Sent now (with the server's answer), kept on the device for later, or refused by the server. */
 export type SendOutcome<T> = { sent: T } | { queued: true } | { error: HttpErrorResponse };
+
+export interface SendOptions {
+  /** The body kept on the device instead of `body`, when the request has to wait. */
+  queuedBody?: unknown;
+  /** Says it was kept only when nothing of the user was waiting yet (e.g. repeated timer taps). */
+  quiet?: boolean;
+}

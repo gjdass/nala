@@ -79,8 +79,10 @@ type Durations = Record<BreastSide, number>;
  * (side switch, pause) show live, unless durations are being typed; if the feed is saved or deleted
  * elsewhere, the sheet closes with a snackbar (unless durations are being typed).
  *
- * Offline, a save by hand, an edit or a delete is kept on the device and the sheet closes with
- * `queued` (timer taps are not queued yet).
+ * Offline, every change is kept on the device. A save, an edit or a delete closes the sheet with
+ * `queued`; a timer tap shows at once as the server will apply it (see `BreastfeedSyncService`), so a
+ * breastfeed started offline runs and can be switched, paused and saved offline. Opened to add, it
+ * opens the baby's breastfeed in progress right away, including one started offline.
  */
 @Component({
   selector: 'nala-breastfeed-sheet',
@@ -165,6 +167,10 @@ export class BreastfeedSheetComponent {
 
   constructor() {
     if (this.babyId) {
+      const current = this.entry ? null : this.sync.forBaby(this.babyId);
+      if (current) {
+        this.adopt(current);
+      }
       this.loadState(this.babyId);
     }
     effect(() => {
@@ -175,11 +181,12 @@ export class BreastfeedSheetComponent {
 
   protected start(side: BreastSide): void {
     const id = this.feed()?.id ?? this.newId;
-    this.send(this.feeds.startSide(id, this.babyId!, side, new Date().toISOString()));
+    this.send(id, this.feeds.startSide(id, this.babyId!, side, new Date().toISOString()));
   }
 
   protected stop(): void {
-    this.send(this.feeds.stopSide(this.feed()!.id, new Date().toISOString()));
+    const id = this.feed()!.id;
+    this.send(id, this.feeds.stopSide(id, new Date().toISOString()));
   }
 
   /** Opens the duration dialog for `side`; a typed duration freezes both sides. */
@@ -266,8 +273,11 @@ export class BreastfeedSheetComponent {
     });
   }
 
-  /** Sends a timer tap and shows the feed the server answers with. */
-  private send(request: Observable<FeedResult>): void {
+  /**
+   * Sends a timer tap on the feed `id` and shows the feed the server answers with, or, when the tap is
+   * kept on the device, the feed as it will be once applied.
+   */
+  private send(id: string, request: Observable<FeedResult>): void {
     if (this.busy()) {
       return;
     }
@@ -275,12 +285,15 @@ export class BreastfeedSheetComponent {
     this.formError.set(null);
     request.subscribe((result) => {
       this.busy.set(false);
-      if (result.ok) {
-        // Timer taps are sent at once, never queued.
-        if (!result.queued) {
-          this.sync.put(result.feed);
-          this.show(result.feed);
+      if (result.ok && result.queued) {
+        this.sync.applyWaiting(this.feed() ?? undefined);
+        const local = this.sync.inProgress().find((f) => f.id === id);
+        if (local) {
+          this.show(local);
         }
+      } else if (result.ok) {
+        this.sync.put(result.feed);
+        this.show(result.feed);
       } else if (result.errors['form'] === 'breastfeedInProgress') {
         // Started from another device meanwhile: open that one.
         this.loadState(this.babyId!);
@@ -313,7 +326,7 @@ export class BreastfeedSheetComponent {
   private loadState(babyId: string): void {
     this.feeds.breastfeedState(babyId).subscribe((state) => {
       this.lastSide.set(state.lastSide);
-      if (!this.entry && state.inProgress) {
+      if (!this.entry && !this.feed() && state.inProgress) {
         this.adopt(state.inProgress);
       }
     });
