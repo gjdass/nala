@@ -1,4 +1,4 @@
-<div class="timers">
+<div class="timers" [class.compact]="compact()">
   @for (item of sides; track item.side) {
     @let runs = running() === item.side;
     <div class="timer" [attr.data-testid]="'split-' + item.side">

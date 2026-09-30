@@ -371,6 +371,10 @@ public class FeedService(IFeedRepository feeds, IBabyRepository babies, TimeProv
             await feeds.GetLastBreastSideAsync(babyId, cancellationToken)));
     }
 
+    /// <summary>Every breastfeed in progress, of every baby (one instance is one family), oldest start first.</summary>
+    public Task<IReadOnlyList<FeedEntry>> ListInProgressBreastfeedsAsync(CancellationToken cancellationToken = default) =>
+        feeds.ListInProgressBreastfeedsAsync(cancellationToken);
+
     private async Task<Feed?> GetBreastfeedAsync(Guid id, CancellationToken cancellationToken) =>
         await feeds.GetAsync(id, cancellationToken) is { Kind: FeedKind.Breastfeed } feed ? feed : null;
 

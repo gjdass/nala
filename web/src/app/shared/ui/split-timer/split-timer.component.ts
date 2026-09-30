@@ -33,6 +33,8 @@ export class SplitTimerComponent {
   readonly stop = output<SplitSide>();
   readonly editable = input(false);
   readonly timersDisabled = input(false);
+  /** Smaller durations, e.g. in a section card. */
+  readonly compact = input(false);
   readonly edit = output<SplitSide>();
 
   protected readonly sides = [

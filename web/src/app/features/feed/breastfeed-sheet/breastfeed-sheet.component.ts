@@ -1,11 +1,21 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+} from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatDialog } from '@angular/material/dialog';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { Observable } from 'rxjs';
 import { SelectedBabyService } from '../../../core/babies/selected-baby.service';
 import { isStillFeeding, runningSide, sideSeconds } from '../../../core/feeds/breastfeed';
+import { BreastfeedSyncService } from '../../../core/feeds/breastfeed-sync.service';
 import {
   BREAST_SIDES,
   BreastSide,
@@ -64,6 +74,10 @@ type Durations = Record<BreastSide, number>;
  * until Save or ×), the ended-on side is asked when both are above 0, and Save sends the durations
  * (adding a feed logged by hand, or replacing the timed ones). An in-progress feed started more than
  * 3 hours ago shows "Still feeding?".
+ *
+ * Other devices: its own actions update the shared in-progress state at once; changes made elsewhere
+ * (side switch, pause) show live, unless durations are being typed; if the feed is saved or deleted
+ * elsewhere, the sheet closes with a snackbar (unless durations are being typed).
  */
 @Component({
   selector: 'nala-breastfeed-sheet',
@@ -89,6 +103,8 @@ export class BreastfeedSheetComponent {
   private readonly feeds = inject(FeedService);
   private readonly dialog = inject(MatDialog);
   private readonly transloco = inject(TranslocoService);
+  private readonly sync = inject(BreastfeedSyncService);
+  private readonly snackBar = inject(MatSnackBar);
   private readonly sheetRef = inject<SheetRef<EntrySheetResult<Feed>>>(SheetRef);
   private readonly now = inject(NowService).now;
   private readonly entry = inject<EntrySheetData<Feed>>(SHEET_DATA).entry;
@@ -139,10 +155,19 @@ export class BreastfeedSheetComponent {
   /** Translation key of the form-level error. */
   protected readonly formError = signal<string | null>(null);
 
+  /** The feed was listed as in progress by the shared state. */
+  private listed = false;
+  /** This sheet saved or deleted the feed itself. */
+  private settled = false;
+
   constructor() {
     if (this.babyId) {
       this.loadState(this.babyId);
     }
+    effect(() => {
+      const list = this.sync.inProgress();
+      untracked(() => this.follow(list));
+    });
   }
 
   protected start(side: BreastSide): void {
@@ -198,6 +223,8 @@ export class BreastfeedSheetComponent {
     request.subscribe((result) => {
       this.busy.set(false);
       if (result.ok) {
+        this.settled = true;
+        this.sync.put(result.feed);
         this.sheetRef.close({ saved: result.feed });
         return;
       }
@@ -219,6 +246,8 @@ export class BreastfeedSheetComponent {
     this.feeds.delete(feed.id).subscribe((result) => {
       this.busy.set(false);
       if (result.ok) {
+        this.settled = true;
+        this.sync.remove(feed.id);
         this.sheetRef.close({ deleted: feed.id });
       } else {
         this.showFormError(result.errors['form'] ?? 'unknown');
@@ -236,6 +265,7 @@ export class BreastfeedSheetComponent {
     request.subscribe((result) => {
       this.busy.set(false);
       if (result.ok) {
+        this.sync.put(result.feed);
         this.show(result.feed);
       } else if (result.errors['form'] === 'breastfeedInProgress') {
         // Started from another device meanwhile: open that one.
@@ -244,6 +274,26 @@ export class BreastfeedSheetComponent {
         this.showFormError(result.errors['form'] ?? 'unknown');
       }
     });
+  }
+
+  /** Follows what other devices did to this sheet's feed. */
+  private follow(list: readonly Feed[]): void {
+    const feed = this.feed();
+    if (!feed || this.busy() || this.typed() || this.settled) {
+      return;
+    }
+    const shared = list.find((f) => f.id === feed.id);
+    if (shared) {
+      this.listed = true;
+      if (shared.updatedAt !== feed.updatedAt) {
+        this.show(shared);
+      }
+    } else if (this.listed && feed.endTime === null) {
+      this.snackBar.open(this.transloco.translate('feed.breastfeed.endedElsewhere'), undefined, {
+        duration: 5000,
+      });
+      this.sheetRef.close();
+    }
   }
 
   private loadState(babyId: string): void {

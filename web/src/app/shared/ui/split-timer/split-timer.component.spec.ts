@@ -143,4 +143,12 @@ describe('SplitTimerComponent', () => {
 
     expect(find<HTMLButtonElement>('split-left-edit')!.disabled).toBe(true);
   });
+
+  it('uses a smaller duration when compact', async () => {
+    expect(find('split-left')!.closest('.compact')).toBeNull();
+
+    await set({ compact: true });
+
+    expect(find('split-left')!.closest('.compact')).not.toBeNull();
+  });
 });

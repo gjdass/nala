@@ -16,9 +16,11 @@ import { SectionEntryDirective } from './section-entry.directive';
   template: `<nala-section-card
     [key]="key()"
     [entries]="entries()"
+    [running]="running()"
     (changed)="changes.push($event)"
   >
     <p sectionBanner data-testid="banner">Still feeding?</p>
+    <p sectionRunning data-testid="running">Feeding</p>
     <p sectionHighlight data-testid="highlight">Last feeding</p>
     <p sectionEmpty data-testid="empty">No feed yet</p>
     <ng-template nalaSectionEntry let-entry>
@@ -29,6 +31,7 @@ import { SectionEntryDirective } from './section-entry.directive';
 class Host {
   readonly key = signal<SectionKey>('feed');
   readonly entries = signal<readonly string[] | null>(null);
+  readonly running = signal(false);
   readonly changes: EntrySheetResult[] = [];
 }
 
@@ -139,6 +142,27 @@ describe('SectionCardComponent', () => {
     expect(
       find('banner')!.compareDocumentPosition(find('empty')!) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
+  });
+
+  it('shows the running state instead of the highlight, keeping show more', async () => {
+    await create(['e1']);
+    expect(find('running')).toBeNull();
+
+    fixture.componentInstance.running.set(true);
+    await fixture.whenStable();
+
+    expect(text('running')).toBe('Feeding');
+    expect(find('highlight')).toBeNull();
+    expect(find('section-toggle')).not.toBeNull();
+  });
+
+  it('shows the running state instead of the empty state', async () => {
+    await create([]);
+    fixture.componentInstance.running.set(true);
+    await fixture.whenStable();
+
+    expect(text('running')).toBe('Feeding');
+    expect(find('empty')).toBeNull();
   });
 
   describe('show more / show less', () => {

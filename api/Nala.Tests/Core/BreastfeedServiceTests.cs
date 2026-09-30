@@ -476,6 +476,26 @@ public class BreastfeedServiceTests
     }
 
     [Test]
+    public async Task Every_breastfeed_in_progress_is_listed_with_its_segments()
+    {
+        var tom = new Baby { Id = Guid.NewGuid(), Name = "Tom", BirthDate = new DateOnly(2026, 9, 1), CreatedAt = Now };
+        _babies.Babies.Add(tom);
+        await FinishedAsync("left", 30);
+        var lea = Guid.NewGuid();
+        await StartAsync(lea, "right", At(10));
+        var toms = Guid.NewGuid();
+        await _service.StartSideAsync(_ben, toms, tom.Id, Guid.NewGuid(), "left", At(4));
+
+        var entries = await _service.ListInProgressBreastfeedsAsync();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(entries.Select(e => e.Feed.Id), Is.EquivalentTo(new[] { lea, toms }));
+            Assert.That(entries.Single(e => e.Feed.Id == toms).Feed.Segments, Has.Count.EqualTo(1));
+        });
+    }
+
+    [Test]
     public async Task The_breastfeed_state_is_empty_without_a_breastfeed()
     {
         var state = ((BreastfeedStateResult.Found)await _service.GetBreastfeedStateAsync(_lea.Id)).State;

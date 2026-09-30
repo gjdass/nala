@@ -2,9 +2,11 @@ import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideNativeDateAdapter } from '@angular/material/core';
 import { MatDialog } from '@angular/material/dialog';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { Subject, take } from 'rxjs';
 import en from '../../../../../public/i18n/en.json';
 import { SelectedBabyService } from '../../../core/babies/selected-baby.service';
+import { BreastfeedSyncService } from '../../../core/feeds/breastfeed-sync.service';
 import {
   BreastfeedState,
   Feed,
@@ -17,6 +19,7 @@ import { ConfirmDialogComponent } from '../../../shared/ui/confirm-dialog/confir
 import { DurationDialogComponent } from '../../../shared/ui/duration-dialog/duration-dialog.component';
 import { EntrySheetData } from '../../../shared/ui/entry-sheet/entry-sheet.models';
 import { SHEET_DATA, SheetRef } from '../../../shared/ui/sheet/sheet-ref';
+import { fakeBreastfeedSync } from '../../../testing/breastfeed-sync';
 import { aBreastfeed, aSegment } from '../../../testing/feeds';
 import { translocoTesting } from '../../../testing/transloco-testing';
 import { FEED_SECTION } from '../feed.section';
@@ -51,6 +54,8 @@ describe('BreastfeedSheetComponent', () => {
   let confirmed: Subject<boolean | undefined>;
   let typed: Subject<number | undefined>;
   let dialog: { open: ReturnType<typeof vi.fn> };
+  let sync: ReturnType<typeof fakeBreastfeedSync>;
+  let snackBar: { open: ReturnType<typeof vi.fn> };
 
   const host = () => fixture.nativeElement as HTMLElement;
   const find = <T extends HTMLElement = HTMLElement>(testId: string) =>
@@ -117,6 +122,8 @@ describe('BreastfeedSheetComponent', () => {
     sheetRef = { close: vi.fn() };
     confirmed = new Subject();
     typed = new Subject();
+    sync = fakeBreastfeedSync();
+    snackBar = { open: vi.fn() };
     dialog = {
       open: vi.fn((component: unknown) => ({
         // Like a real dialog, each one closes once.
@@ -134,6 +141,8 @@ describe('BreastfeedSheetComponent', () => {
         { provide: SheetRef, useValue: sheetRef },
         { provide: SHEET_DATA, useValue: null },
         { provide: MatDialog, useValue: dialog },
+        { provide: BreastfeedSyncService, useValue: sync },
+        { provide: MatSnackBar, useValue: snackBar },
       ],
     }).compileComponents();
   });
@@ -539,6 +548,100 @@ describe('BreastfeedSheetComponent', () => {
       await respondState({ inProgress: null, lastSide: null });
 
       expect(find('banner-title')).toBeNull();
+    });
+  });
+
+  describe('sync with other devices', () => {
+    const showSync = async (...feeds: Feed[]) => {
+      sync.inProgress.set(feeds);
+      await settle();
+    };
+
+    beforeEach(async () => {
+      await render();
+      await respondState({ inProgress: running({ notes: 'calm' }), lastSide: 'right' });
+      await showSync(running({ notes: 'calm' }));
+    });
+
+    it('applies its own taps, saves and deletes to the shared state at once', async () => {
+      await click('split-left-toggle');
+      const switched = running({ updatedAt: iso('10:10:00') });
+      await respondTimer({ ok: true, feed: switched });
+      expect(sync.puts).toEqual([switched]);
+
+      await click('sheet-save');
+      const done = running({ endTime: NOW.toISOString() });
+      saved.next({ ok: true, feed: done });
+      await settle();
+      expect(sync.puts).toEqual([switched, done]);
+    });
+
+    it('removes a deleted feed from the shared state', async () => {
+      await click('entry-delete');
+      confirmed.next(true);
+      await settle();
+      deleted.next({ ok: true });
+      await settle();
+
+      expect(sync.removed).toEqual(['f3']);
+    });
+
+    it('follows a side switched on another device', async () => {
+      await showSync(
+        running({
+          updatedAt: iso('10:09:00'),
+          segments: [
+            aSegment('left', iso('10:00:00'), iso('10:05:00')),
+            aSegment('right', iso('10:05:00'), iso('10:09:00')),
+            aSegment('left', iso('10:09:00'), null),
+          ],
+        }),
+      );
+
+      expect(text('split-left-toggle')).toBe(en.splitTimer.stop);
+      expect(text('split-left-duration')).toBe('6m');
+      expect(text('split-right-duration')).toBe('4m');
+    });
+
+    it('keeps typed durations when another device changes the feed', async () => {
+      await typeDuration('left', 120);
+
+      await showSync(running({ updatedAt: iso('10:09:00'), segments: [] }));
+
+      expect(text('split-left-duration')).toBe('2m');
+      expect(text('split-right-duration')).toBe('5m');
+    });
+
+    it('closes with a snackbar once the feed is saved or deleted on another device', async () => {
+      await showSync();
+
+      expect(sheetRef.close).toHaveBeenCalledWith();
+      expect(snackBar.open).toHaveBeenCalledWith(
+        en.feed.breastfeed.endedElsewhere,
+        undefined,
+        expect.anything(),
+      );
+    });
+
+    it('does not warn when it saved the feed itself', async () => {
+      await click('sheet-save');
+      const done = running({ endTime: NOW.toISOString() });
+      saved.next({ ok: true, feed: done });
+      await settle();
+      await showSync();
+
+      expect(sheetRef.close).toHaveBeenCalledTimes(1);
+      expect(sheetRef.close).toHaveBeenCalledWith({ saved: done });
+      expect(snackBar.open).not.toHaveBeenCalled();
+    });
+
+    it('stays open while durations are being typed', async () => {
+      await typeDuration('left', 120);
+
+      await showSync();
+
+      expect(sheetRef.close).not.toHaveBeenCalled();
+      expect(snackBar.open).not.toHaveBeenCalled();
     });
   });
 });

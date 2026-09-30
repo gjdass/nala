@@ -438,6 +438,25 @@ public class FeedRepositoryTests
     }
 
     [Test]
+    public async Task The_in_progress_breastfeeds_of_every_baby_are_listed_oldest_first()
+    {
+        await AddBreastfeedAsync(Now.AddHours(-2), Now.AddHours(-1.5), null, (BreastSide.Left, 0, 5));
+        await AddAsync(startTime: Now.AddMinutes(-30));
+        var tom = await AddBreastfeedAsync(Now.AddMinutes(-5), null, _tom, (BreastSide.Left, 0, null));
+        var lea = await AddBreastfeedAsync(Now.AddMinutes(-10), null, null, (BreastSide.Right, 0, 2), (BreastSide.Left, 2, null));
+
+        await using var db = _db();
+        var entries = await new FeedRepository(db).ListInProgressBreastfeedsAsync();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(entries.Select(e => e.Feed.Id), Is.EqualTo(new[] { lea.Id, tom.Id }));
+            Assert.That(entries[0].Feed.Segments.Select(s => s.Side), Is.EqualTo(new[] { BreastSide.Right, BreastSide.Left }));
+            Assert.That(entries[0].LoggedBy.DisplayName, Is.EqualTo("Anna"));
+        });
+    }
+
+    [Test]
     public async Task No_breastfeed_is_in_progress_without_one()
     {
         await AddBreastfeedAsync(Now.AddHours(-2), Now.AddHours(-1.5), null, (BreastSide.Left, 0, 5));

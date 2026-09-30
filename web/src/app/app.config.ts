@@ -18,6 +18,7 @@ import { provideUserLanguage } from './core/i18n/user-language';
 import { SECTIONS } from './core/sections/section.models';
 import { ThemeService } from './core/theme/theme.service';
 import { FEED_SECTION } from './features/feed/feed.section';
+import { provideFeedTimers } from './features/feed/feed-timers';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -29,6 +30,7 @@ export const appConfig: ApplicationConfig = {
     provideNalaDates(),
     provideNalaIcons(),
     { provide: SECTIONS, useValue: [FEED_SECTION] },
+    provideFeedTimers(),
     provideAppInitializer(() => void inject(ThemeService)),
     provideServiceWorker('ngsw-worker.js', {
       enabled: !isDevMode(),

@@ -24,4 +24,7 @@ public interface IFeedRepository
 
     /// <summary>The side of the last segment of the baby's latest saved breastfeed; null when none.</summary>
     Task<BreastSide?> GetLastBreastSideAsync(Guid babyId, CancellationToken cancellationToken = default);
+
+    /// <summary>Every breastfeed without an end, of every baby, with its segments; oldest start first.</summary>
+    Task<IReadOnlyList<FeedEntry>> ListInProgressBreastfeedsAsync(CancellationToken cancellationToken = default);
 }

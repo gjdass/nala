@@ -55,7 +55,7 @@ Every section card has the same frame (shared component), filled with section-sp
 - **Header band** in the section's colour (theme token), with the section title in an M3 title typescale.
 - **+ button**: a Material 3 small FAB (standard M3 shape, not a circle) at the right of the header band.
 - **Highlight**: the summary of the last record(s), defined by each feature spec (e.g. "Last feeding 26m ago · right last side", "Last session 3 days ago · 155 ml", latest weight/height/head size).
-- **Running state**: when the section has a running timer, the highlight is replaced by the live timer with its quick controls (defined by the feature spec).
+- **Running state**: when the section has a running timer, the highlight is replaced by the live timer with its quick controls (defined by the feature spec) The shared card takes `running` and then shows its `[sectionRunning]` content in place of the highlight or the empty state; the split timer has a `compact` variant for it.
 - **Show more / Show less**: expands or collapses the most recent entries (up to 10) inline in the card.
 - **View all history**: opens the section's history page.
 
@@ -114,7 +114,7 @@ Each item becomes at least one test, written failing first.
 ### Mini-bar
 - [x] The mini-bar appears on every screen as soon as a timer runs, and disappears when none runs.
 - [x] It shows each running timer with a live duration and opens the matching entry sheet on tap.
-- [ ] It reflects timers started or stopped from other devices within a few seconds.
+- [x] It reflects timers started or stopped from other devices within a few seconds.
 
 ### Theming
 - [x] Each section has a colour token (and an "on colour" token for text/icons on it) defined in the global theme, with light and dark values. Components never hard-code these colours. Tokens: `--nala-section-<key>` / `--nala-on-section-<key>` (placeholders created in 01, `web/src/styles/_sections.scss`).

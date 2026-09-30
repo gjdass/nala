@@ -418,7 +418,8 @@
       "side": {
         "left": "left",
         "right": "right"
-      }
+      },
+      "feeding": "Feeding"
     },
     "milkType": {
       "breastMilk": "Breast milk",
@@ -464,7 +465,8 @@
         "card": "Started {{since}}.",
         "sheet": "Started {{since}}. Correct the durations with the pencils, then save.",
         "review": "Review"
-      }
+      },
+      "endedElsewhere": "This feed was saved or deleted on another device."
     },
     "mealType": {
       "breakfast": "Breakfast",
@@ -493,6 +495,11 @@
       "feedNotFound": "This feed no longer exists.",
       "babyNotFound": "This baby no longer exists.",
       "breastfeedInProgress": "A breastfeed is already in progress."
+    },
+    "timer": {
+      "left": "Feeding · L",
+      "right": "Feeding · R",
+      "paused": "Feeding · paused"
     }
   }
 }

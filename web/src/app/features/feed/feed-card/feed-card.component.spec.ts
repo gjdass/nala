@@ -5,11 +5,13 @@ import { Observable, Subject, of } from 'rxjs';
 import en from '../../../../../public/i18n/en.json';
 import { Baby } from '../../../core/babies/baby.models';
 import { SelectedBabyService } from '../../../core/babies/selected-baby.service';
-import { BreastfeedState, Feed } from '../../../core/feeds/feed.models';
+import { BreastfeedSyncService } from '../../../core/feeds/breastfeed-sync.service';
+import { BreastfeedState, Feed, FeedResult } from '../../../core/feeds/feed.models';
 import { FeedService } from '../../../core/feeds/feed.service';
 import { HistoryPage } from '../../../core/sections/section.models';
 import { EntrySheetResult } from '../../../shared/ui/entry-sheet/entry-sheet.models';
 import { EntrySheetService } from '../../../shared/ui/entry-sheet/entry-sheet.service';
+import { fakeBreastfeedSync } from '../../../testing/breastfeed-sync';
 import { aBottle, aBreastfeed, aSegment } from '../../../testing/feeds';
 import { translocoTesting } from '../../../testing/transloco-testing';
 import { FeedCardComponent } from './feed-card.component';
@@ -29,7 +31,12 @@ const baby = (id: string): Baby => ({
 describe('FeedCardComponent', () => {
   let fixture: ComponentFixture<FeedCardComponent>;
   let pages: Subject<HistoryPage<Feed>>[];
-  let feeds: { page: ReturnType<typeof vi.fn>; breastfeedState: ReturnType<typeof vi.fn> };
+  let feeds: Record<
+    'page' | 'breastfeedState' | 'startSide' | 'stopSide',
+    ReturnType<typeof vi.fn>
+  >;
+  let timer: Subject<FeedResult>;
+  let sync: ReturnType<typeof fakeBreastfeedSync>;
   let states: Subject<BreastfeedState>[];
   let selected: ReturnType<typeof signal<Baby | null>>;
   let edited: Subject<EntrySheetResult | undefined>;
@@ -57,7 +64,11 @@ describe('FeedCardComponent', () => {
     localStorage.clear();
     pages = [];
     states = [];
+    timer = new Subject();
+    sync = fakeBreastfeedSync();
     feeds = {
+      startSide: vi.fn(() => timer),
+      stopSide: vi.fn(() => timer),
       breastfeedState: vi.fn((): Observable<BreastfeedState> => {
         const state = new Subject<BreastfeedState>();
         states.push(state);
@@ -79,6 +90,7 @@ describe('FeedCardComponent', () => {
         { provide: FeedService, useValue: feeds },
         { provide: SelectedBabyService, useValue: { selected } },
         { provide: EntrySheetService, useValue: entrySheets },
+        { provide: BreastfeedSyncService, useValue: sync },
       ],
     }).compileComponents();
     fixture = TestBed.createComponent(FeedCardComponent);
@@ -210,17 +222,103 @@ describe('FeedCardComponent', () => {
     expect(feeds.breastfeedState).toHaveBeenLastCalledWith('b2');
   });
 
-  describe('Still feeding?', () => {
-    const inProgress = (startedMinutesAgo: number) =>
-      aBreastfeed({
-        startTime: minutesAgo(startedMinutesAgo),
-        endTime: null,
-        segments: [aSegment('left', minutesAgo(startedMinutesAgo), null)],
-      });
+  /** In progress for baby b1 since `startedMinutesAgo`, right side running after 5 min on the left. */
+  const inProgress = (startedMinutesAgo: number, overrides: Partial<Feed> = {}) =>
+    aBreastfeed({
+      startTime: minutesAgo(startedMinutesAgo),
+      endTime: null,
+      segments: [
+        aSegment('left', minutesAgo(startedMinutesAgo), minutesAgo(startedMinutesAgo - 5)),
+        aSegment('right', minutesAgo(startedMinutesAgo - 5), null),
+      ],
+      ...overrides,
+    });
+  const showInProgress = async (feed: Feed | null) => {
+    sync.inProgress.set(feed ? [feed] : []);
+    await fixture.whenStable();
+  };
 
+  describe('running state', () => {
+    it('replaces the highlight with Feeding and both sides live, the running side marked', async () => {
+      await respond([aBottle()]);
+      await showInProgress(inProgress(12));
+
+      expect(find('feed-highlight')).toBeNull();
+      expect(text('feed-running-open')).toBe(en.feed.card.feeding);
+      expect(text('split-left-duration')).toBe('5m');
+      expect(text('split-right-duration')).toBe('7m');
+      expect(text('split-right-toggle')).toBe(en.splitTimer.stop);
+      expect(host().querySelector('nala-split-timer .compact')).not.toBeNull();
+
+      await vi.advanceTimersByTimeAsync(3_000);
+      await fixture.whenStable();
+      expect(text('split-right-duration')).toBe('7m 3s');
+    });
+
+    it('shows even without any saved feed', async () => {
+      await respond([]);
+      await showInProgress(inProgress(12));
+
+      expect(find('feed-running-open')).not.toBeNull();
+      expect(find('empty-title')).toBeNull();
+    });
+
+    it("is not shown for another baby's feed", async () => {
+      await respond([aBottle()]);
+      await showInProgress(inProgress(12, { babyId: 'b2' }));
+
+      expect(find('feed-running-open')).toBeNull();
+      expect(find('feed-highlight')).not.toBeNull();
+    });
+
+    it('pauses on the running side Stop, applying the result at once', async () => {
+      await respond([aBottle()]);
+      await showInProgress(inProgress(12));
+
+      find('split-right-toggle')!.click();
+      expect(feeds.stopSide).toHaveBeenCalledWith('f3', NOW.toISOString());
+
+      const paused = inProgress(12, { updatedAt: NOW.toISOString() });
+      timer.next({ ok: true, feed: paused });
+      expect(sync.puts).toEqual([paused]);
+    });
+
+    it('switches side on the other side Start', async () => {
+      await respond([aBottle()]);
+      await showInProgress(inProgress(12));
+
+      find('split-left-toggle')!.click();
+
+      expect(feeds.startSide).toHaveBeenCalledWith('f3', 'b1', 'left', NOW.toISOString());
+    });
+
+    it('opens the Breastfeed sheet on Feeding', async () => {
+      const feed = inProgress(12);
+      await respond([aBottle()]);
+      await showInProgress(feed);
+
+      find('feed-running-open')!.click();
+
+      expect(entrySheets.edit).toHaveBeenCalledWith('feed', 'breastfeed', feed);
+    });
+
+    it('reloads the feeds and last side once the feed is saved or deleted anywhere', async () => {
+      await respond([aBottle()]);
+      await showInProgress(inProgress(12));
+      expect(feeds.page).toHaveBeenCalledTimes(1);
+
+      await showInProgress(null);
+
+      expect(feeds.page).toHaveBeenCalledTimes(2);
+      expect(feeds.breastfeedState).toHaveBeenCalledTimes(2);
+      expect(find('feed-running-open')).toBeNull();
+    });
+  });
+
+  describe('Still feeding?', () => {
     it('warns about a breastfeed in progress that started more than 3 hours ago', async () => {
       await respond([aBottle()]);
-      await respondState({ inProgress: inProgress(192), lastSide: null });
+      await showInProgress(inProgress(192));
 
       expect(text('banner-title')).toBe(en.feed.breastfeed.stillFeeding.title);
       expect(text('banner-text')).toContain('3h 12m ago');
@@ -229,14 +327,14 @@ describe('FeedCardComponent', () => {
 
     it('warns even without any saved feed', async () => {
       await respond([]);
-      await respondState({ inProgress: inProgress(200), lastSide: null });
+      await showInProgress(inProgress(200));
 
       expect(find('banner-title')).not.toBeNull();
     });
 
     it('appears live once the 3 hours have passed', async () => {
       await respond([aBottle()]);
-      await respondState({ inProgress: inProgress(179), lastSide: null });
+      await showInProgress(inProgress(179));
       expect(find('banner-title')).toBeNull();
 
       await vi.advanceTimersByTimeAsync(2 * 60_000);
@@ -245,18 +343,14 @@ describe('FeedCardComponent', () => {
       expect(find('banner-title')).not.toBeNull();
     });
 
-    it('opens the feed in the Breastfeed sheet on Review, then reloads', async () => {
+    it('opens the feed in the Breastfeed sheet on Review', async () => {
       const feed = inProgress(200);
       await respond([aBottle()]);
-      await respondState({ inProgress: feed, lastSide: null });
+      await showInProgress(feed);
 
       find('banner-action')!.click();
-      expect(entrySheets.edit).toHaveBeenCalledWith('feed', 'breastfeed', feed);
 
-      edited.next({ saved: aBreastfeed() });
-      edited.complete();
-      await fixture.whenStable();
-      expect(feeds.page).toHaveBeenCalledTimes(2);
+      expect(entrySheets.edit).toHaveBeenCalledWith('feed', 'breastfeed', feed);
     });
   });
 });

@@ -70,6 +70,13 @@ public class FeedRepository(NalaDbContext db) : IFeedRepository
             .Select(f => f.Segments.OrderByDescending(s => s.StartedAt).Select(s => (BreastSide?)s.Side).FirstOrDefault())
             .FirstOrDefaultAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<FeedEntry>> ListInProgressBreastfeedsAsync(CancellationToken cancellationToken = default) =>
+        await Entries(db.Set<Feed>()
+                .Where(f => f.Kind == FeedKind.Breastfeed && f.EndTime == null)
+                .OrderBy(f => f.StartTime)
+                .ThenBy(f => f.Id))
+            .ToListAsync(cancellationToken);
+
     /// <summary>The baby's breastfeeds, newest first.</summary>
     private IQueryable<Feed> Breastfeeds(Guid babyId) =>
         db.Set<Feed>()

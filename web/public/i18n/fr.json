@@ -418,7 +418,8 @@
       "side": {
         "left": "gauche",
         "right": "droite"
-      }
+      },
+      "feeding": "Tétée en cours"
     },
     "milkType": {
       "breastMilk": "Lait maternel",
@@ -464,7 +465,8 @@
         "card": "Commencée {{since}}.",
         "sheet": "Commencée {{since}}. Corrigez les durées avec les crayons, puis enregistrez.",
         "review": "Vérifier"
-      }
+      },
+      "endedElsewhere": "Cette tétée a été enregistrée ou supprimée sur un autre appareil."
     },
     "mealType": {
       "breakfast": "Petit-déjeuner",
@@ -493,6 +495,11 @@
       "feedNotFound": "Ce repas n'existe plus.",
       "babyNotFound": "Ce bébé n'existe plus.",
       "breastfeedInProgress": "Un allaitement est déjà en cours."
+    },
+    "timer": {
+      "left": "Tétée · G",
+      "right": "Tétée · D",
+      "paused": "Tétée · en pause"
     }
   }
 }

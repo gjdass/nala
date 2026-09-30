@@ -1,4 +1,4 @@
-<nala-section-card key="feed" [entries]="entries()" (changed)="reload()">
+<nala-section-card key="feed" [entries]="entries()" [running]="!!inProgress()" (changed)="reload()">
   @if (stillFeeding(); as feed) {
     <nala-banner
       sectionBanner
@@ -10,6 +10,28 @@
       [actionLabel]="'feed.breastfeed.stillFeeding.review' | transloco"
       (action)="edit(feed)"
     />
+  }
+  @if (inProgress(); as feed) {
+    <div sectionRunning class="running" data-testid="feed-running">
+      <button
+        mat-button
+        type="button"
+        class="feeding"
+        (click)="edit(feed)"
+        data-testid="feed-running-open"
+      >
+        {{ 'feed.card.feeding' | transloco }}
+      </button>
+      <nala-split-timer
+        [compact]="true"
+        [leftSeconds]="left()"
+        [rightSeconds]="right()"
+        [running]="running()"
+        [disabled]="busy()"
+        (start)="start($event)"
+        (stop)="stop()"
+      />
+    </div>
   }
   @if (entries()?.[0]; as last) {
     <div sectionHighlight class="highlight" data-testid="feed-highlight">
