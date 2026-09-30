@@ -314,7 +314,7 @@
     "add": "Add {{section}}",
     "showMore": "Show more",
     "showLess": "Show less",
-    "viewHistory": "View all history"
+    "allActivities": "All activities"
   },
   "history": {
     "title": "{{section}} history",

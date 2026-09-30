@@ -111,8 +111,45 @@ describe('FeedCardComponent', () => {
     expect(text('section-title')).toBe(en.sections.feed);
   });
 
-  it('loads the 10 most recent feeds of the selected baby', () => {
-    expect(feeds.page).toHaveBeenCalledWith('b1', null, 10);
+  it('loads the feeds of the selected baby page by page', () => {
+    expect(feeds.page).toHaveBeenCalledWith('b1', null);
+  });
+
+  describe('recent feeds', () => {
+    const summaries = () =>
+      [...host().querySelectorAll('[data-testid="entry-summary"]')].map((e) =>
+        e.textContent?.trim(),
+      );
+    const bottles = (hours: readonly number[], from = 0) =>
+      hours.map((h, i) =>
+        aBottle({ id: `f${from + i}`, amountMl: from + i + 1, startTime: minutesAgo(h * 60) }),
+      );
+
+    it('lists the 3 most recent feeds folded and every feed of the last 24 hours expanded', async () => {
+      await respond(bottles([1, 2, 3, 4, 5, 25]));
+
+      expect(summaries()).toHaveLength(3);
+      await expand();
+      expect(summaries()).toEqual([1, 2, 3, 4, 5].map((n) => `Formula · ${n} ml`));
+    });
+
+    it('loads the next page while the first one is all within the last 24 hours', async () => {
+      pages.at(-1)!.next({ entries: bottles([1, 2, 3, 4]), next: 'c2' });
+      await fixture.whenStable();
+
+      expect(feeds.page).toHaveBeenLastCalledWith('b1', 'c2');
+      await respond(bottles([5, 30], 4));
+      await expand();
+
+      expect(summaries()).toHaveLength(5);
+    });
+
+    it('hides show more when the last 24 hours hold no more than 3 feeds', async () => {
+      await respond(bottles([1, 30, 40, 50]));
+
+      expect(summaries()).toHaveLength(3);
+      expect(find('section-toggle')).toBeNull();
+    });
   });
 
   it('shows the empty state without any feed', async () => {
@@ -136,12 +173,11 @@ describe('FeedCardComponent', () => {
     expect(text('feed-last-since')).toBe('27m ago');
   });
 
-  it('lists the recent feeds as entry items when expanded', async () => {
+  it('lists the recent feeds as entry items', async () => {
     await respond([
       aBottle({ id: 'f2', milkType: 'breastMilk', amountMl: 90 }),
       aBottle({ id: 'f1', milkType: 'formula', amountMl: 120 }),
     ]);
-    await expand();
 
     const summaries = [...host().querySelectorAll('[data-testid="entry-summary"]')].map((e) =>
       e.textContent?.trim(),
@@ -152,7 +188,6 @@ describe('FeedCardComponent', () => {
   it('opens a tapped feed in its kind sheet, then reloads', async () => {
     const feed = aBottle();
     await respond([feed]);
-    await expand();
 
     host().querySelector<HTMLButtonElement>('nala-feed-entry button')!.click();
     expect(entrySheets.edit).toHaveBeenCalledWith('feed', 'bottle', feed);
@@ -166,7 +201,6 @@ describe('FeedCardComponent', () => {
 
   it('does not reload when the sheet closes without saving', async () => {
     await respond([aBottle()]);
-    await expand();
 
     host().querySelector<HTMLButtonElement>('nala-feed-entry button')!.click();
     edited.next(undefined);
@@ -202,7 +236,7 @@ describe('FeedCardComponent', () => {
     selected.set(baby('b2'));
     await fixture.whenStable();
 
-    expect(feeds.page).toHaveBeenLastCalledWith('b2', null, 10);
+    expect(feeds.page).toHaveBeenLastCalledWith('b2', null);
   });
 
   it('shows the side the latest saved breastfeed ended on, labelled last side', async () => {

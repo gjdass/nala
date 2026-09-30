@@ -68,7 +68,7 @@ describe('SectionCardComponent', () => {
   afterEach(() => vi.restoreAllMocks());
 
   describe('frame', () => {
-    beforeEach(() => create(['e1']));
+    beforeEach(() => create(twelve));
 
     it('shows the section title in a header band using the section colour tokens', () => {
       expect(text('section-title')).toBe(en.sections.feed);
@@ -118,9 +118,9 @@ describe('SectionCardComponent', () => {
       expect(fixture.componentInstance.changes).toEqual([]);
     });
 
-    it('links to the section history', () => {
+    it('links to the section history with "All activities"', () => {
       expect(find('section-history')?.getAttribute('href')).toBe('/history/feed');
-      expect(text('section-history')).toContain(en.sectionCard.viewHistory);
+      expect(text('section-history')).toContain(en.sectionCard.allActivities);
     });
   });
 
@@ -162,7 +162,7 @@ describe('SectionCardComponent', () => {
   });
 
   it('shows the running state instead of the highlight, keeping show more', async () => {
-    await create(['e1']);
+    await create(twelve);
     expect(find('running')).toBeNull();
 
     fixture.componentInstance.running.set(true);
@@ -182,20 +182,56 @@ describe('SectionCardComponent', () => {
     expect(find('empty')).toBeNull();
   });
 
-  describe('show more / show less', () => {
-    it('starts collapsed, expands to the 10 most recent entries and collapses again', async () => {
+  describe('recent entries', () => {
+    const follows = (a: Element, b: Element) =>
+      !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+
+    it('lists the 3 most recent entries folded, under the highlight, above show more and the history link', async () => {
       await create(twelve);
-      expect(entries()).toEqual([]);
+
+      expect(entries()).toEqual(['e1', 'e2', 'e3']);
+      const first = find('entry')!;
+      expect(follows(find('highlight')!, first)).toBe(true);
+      expect(follows(first, find('section-toggle')!)).toBe(true);
+      expect(follows(find('section-toggle')!, find('section-history')!)).toBe(true);
+    });
+
+    it('lists the 3 most recent entries under the running state too', async () => {
+      await create(twelve);
+      fixture.componentInstance.running.set(true);
+      await fixture.whenStable();
+
+      expect(entries()).toEqual(['e1', 'e2', 'e3']);
+    });
+
+    it('lists fewer when there are fewer, without show more', async () => {
+      await create(['e1', 'e2']);
+
+      expect(entries()).toEqual(['e1', 'e2']);
+      expect(find('section-toggle')).toBeNull();
+    });
+
+    it('has no show more when there are exactly 3 entries', async () => {
+      await create(['e1', 'e2', 'e3']);
+
+      expect(entries()).toEqual(['e1', 'e2', 'e3']);
+      expect(find('section-toggle')).toBeNull();
+    });
+  });
+
+  describe('show more / show less', () => {
+    it('expands to every entry given and folds back to 3', async () => {
+      await create(twelve);
       expect(text('section-toggle')).toContain(en.sectionCard.showMore);
 
       find('section-toggle')!.click();
       await fixture.whenStable();
-      expect(entries()).toEqual(twelve.slice(0, 10));
+      expect(entries()).toEqual(twelve);
       expect(text('section-toggle')).toContain(en.sectionCard.showLess);
 
       find('section-toggle')!.click();
       await fixture.whenStable();
-      expect(entries()).toEqual([]);
+      expect(entries()).toEqual(['e1', 'e2', 'e3']);
     });
 
     it('remembers the expanded state on this device, per section', async () => {
@@ -204,10 +240,10 @@ describe('SectionCardComponent', () => {
       await fixture.whenStable();
 
       await create(twelve, 'feed');
-      expect(entries()).toHaveLength(10);
+      expect(entries()).toHaveLength(12);
 
       await create(twelve, 'diaper');
-      expect(entries()).toEqual([]);
+      expect(entries()).toHaveLength(3);
     });
 
     it('still expands when storage is unavailable', async () => {
@@ -222,7 +258,7 @@ describe('SectionCardComponent', () => {
       find('section-toggle')!.click();
       await fixture.whenStable();
 
-      expect(entries()).toHaveLength(10);
+      expect(entries()).toHaveLength(12);
     });
   });
 });

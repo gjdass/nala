@@ -16,14 +16,12 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
 import { RouterLink } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
+import { FOLDED_ENTRIES } from '../../../core/sections/recent-entries';
 import { SectionKey } from '../../../core/sections/section.models';
 import { filter } from 'rxjs';
 import { EntrySheetResult } from '../entry-sheet/entry-sheet.models';
 import { EntrySheetService } from '../entry-sheet/entry-sheet.service';
 import { SectionEntryDirective } from './section-entry.directive';
-
-/** How many recent entries "Show more" lists inline. */
-export const RECENT_ENTRIES = 10;
 
 const storageKey = (key: SectionKey) => `nala.sectionExpanded.${key}`;
 
@@ -32,9 +30,10 @@ const storageKey = (key: SectionKey) => `nala.sectionExpanded.${key}`;
  * and a + small FAB opening the section's kind picker or entry sheet (`changed` once an entry is
  * saved), an optional banner (`[sectionBanner]`, shown whatever the entries), the highlight
  * (`[sectionHighlight]`) or, without entries, the empty state (`[sectionEmpty]`), both replaced by
- * the running state (`[sectionRunning]`) while `running`, Show more / Show less over the first 10 `entries` rendered through the
- * `nalaSectionEntry` template, and a link to the section's history. `entries` is null while loading.
- * The expanded state is remembered per device and section.
+ * the running state (`[sectionRunning]`) while `running`, then the 3 most recent `entries` rendered
+ * through the `nalaSectionEntry` template, Show more / Show less listing all of them (hidden when
+ * there are no more than 3), and "All activities", the section's history. `entries` is null while
+ * loading. The expanded state is remembered per device and section.
  */
 @Component({
   selector: 'nala-section-card',
@@ -56,7 +55,7 @@ export class SectionCardComponent<T = unknown> {
   private readonly entrySheets = inject(EntrySheetService);
 
   readonly key = input.required<SectionKey>();
-  /** The section's entries, newest first; null while loading. */
+  /** The section's entries of the last 24 hours, at least the 3 most recent (`loadRecentEntries`), newest first; null while loading. */
   readonly entries = input<readonly T[] | null>(null);
   /** A timer of the section runs: `[sectionRunning]` replaces the highlight or the empty state. */
   readonly running = input(false);
@@ -64,8 +63,12 @@ export class SectionCardComponent<T = unknown> {
   readonly changed = output<EntrySheetResult>();
 
   protected readonly entryTemplate = contentChild(SectionEntryDirective, { read: TemplateRef });
-  protected readonly recent = computed(() => (this.entries() ?? []).slice(0, RECENT_ENTRIES));
   protected readonly expanded = linkedSignal(() => this.readExpanded(this.key()));
+  protected readonly canExpand = computed(() => (this.entries() ?? []).length > FOLDED_ENTRIES);
+  protected readonly shown = computed(() => {
+    const entries = this.entries() ?? [];
+    return this.expanded() ? entries : entries.slice(0, FOLDED_ENTRIES);
+  });
 
   /** + : the kind picker or the entry sheet, per the section's kinds. */
   protected add(): void {

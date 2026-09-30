@@ -17,21 +17,20 @@ import { BreastfeedSyncService } from '../../../core/feeds/breastfeed-sync.servi
 import { BreastSide, Feed, FeedResult } from '../../../core/feeds/feed.models';
 import { FeedService } from '../../../core/feeds/feed.service';
 import { OfflineQueueService } from '../../../core/offline/offline-queue.service';
+import { loadRecentEntries } from '../../../core/sections/recent-entries';
 import { NowService } from '../../../core/time/now.service';
 import { TimeSincePipe } from '../../../core/time/time-since';
 import { BannerComponent } from '../../../shared/ui/banner/banner.component';
 import { EmptyStateComponent } from '../../../shared/ui/empty-state/empty-state.component';
 import { EntrySheetService } from '../../../shared/ui/entry-sheet/entry-sheet.service';
 import { SplitTimerComponent } from '../../../shared/ui/split-timer/split-timer.component';
-import {
-  RECENT_ENTRIES,
-  SectionCardComponent,
-} from '../../../shared/ui/section-card/section-card.component';
+import { SectionCardComponent } from '../../../shared/ui/section-card/section-card.component';
 import { SectionEntryDirective } from '../../../shared/ui/section-card/section-entry.directive';
 import { FeedEntryComponent } from '../feed-entry/feed-entry.component';
 
 /**
- * The Feed card on home (spec 05): the selected baby's recent feeds in the shared section card, with
+ * The Feed card on home (spec 05): the selected baby's feeds of the last 24 hours (at least the 3
+ * most recent) in the shared section card, with
  * "Last feeding" and the time since the latest feed started, on the right the side the latest saved
  * breastfeed ended on ("last side", hidden without one), or an empty state without any feed. A
  * breastfeed in progress for more than 3 hours shows "Still feeding?", whose Review opens it.
@@ -155,9 +154,11 @@ export class FeedCardComponent {
 
   private load(babyId: string): void {
     this.request?.unsubscribe();
-    this.request = this.feeds
-      .page(babyId, null, RECENT_ENTRIES)
-      .subscribe({ next: (page) => this.entries.set(page.entries) });
+    this.request = loadRecentEntries(
+      (cursor) => this.feeds.page(babyId, cursor),
+      (feed) => feed.startTime,
+      new Date(),
+    ).subscribe({ next: (entries) => this.entries.set(entries) });
     this.stateRequest?.unsubscribe();
     this.stateRequest = this.feeds.breastfeedState(babyId).subscribe((state) => {
       this.lastSide.set(state.lastSide);

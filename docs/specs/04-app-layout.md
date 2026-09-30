@@ -120,9 +120,9 @@ Each item becomes at least one test, written failing first.
 
 ### Section card
 - [x] Every section card uses the shared section card component (header band, + button, highlight slot, show more / less, view all history).
-- [ ] Folded, the card lists the 3 most recent entries under the highlight.
-- [ ] "Show more" lists every entry of the last 24 hours (at least the 3 shown folded), loading more pages when needed; it is hidden when that adds nothing. "Show less" folds back to 3. The expanded state is remembered per device.
-- [ ] The history link reads "All activities" and opens the section's history page.
+- [x] Folded, the card lists the 3 most recent entries under the highlight.
+- [x] "Show more" lists every entry of the last 24 hours (at least the 3 shown folded), loading more pages when needed; it is hidden when that adds nothing. "Show less" folds back to 3. The expanded state is remembered per device.
+- [x] The history link reads "All activities" and opens the section's history page.
 - [x] The + button and the Show more / Show less button use the section's colour tokens, not the app's primary colour.
 - [x] With no entry yet, the highlight shows a section-specific empty state.
 - [x] Time-since values ("26m ago", "3 days ago") update live without reloading.
@@ -179,7 +179,7 @@ Changes after the first review of the Feed section (built in this order, with 05
 
 - [x] **Slice 6 — Same-height entry list items.** `nala-entry-list-item`: always a two-line item, headline "time · label", one-line supporting text aligned with the headline (ellipsis), `summaryLines`, `durationSeconds`, `durationScaleSeconds` and the bar removed. Feed entries: solids "4:23 PM · Snack · Liked" / food on one line; breastfeed "Total 8m 30s · L 5m · R 3m 30s". Feed card "last side" capitalised ("Right" / "Left"). Covers: the Entry list item criteria, 05's Entry list items criteria and the capitalised last side.
 - [x] **Slice 7 — Section colours on the card buttons.** `--nala-section-<key>-container` / `--nala-on-section-<key>-container` tokens; the + small FAB and the Show more / Show less text button take the section colours through the theme. Covers: the container-token theming criterion and the card buttons colour criterion.
-- [ ] **Slice 8 — 3 recent entries, last 24 hours, All activities.** Shared helper loading a section's entries of the last 24 h (at least 3) through its page loader; section card shows 3 folded, the 24 h list expanded, Show more hidden when it adds nothing; "All activities" link; `RECENT_ENTRIES` removed. Feed card uses the helper. Covers: the three new Section card criteria about recent entries and All activities.
+- [x] **Slice 8 — 3 recent entries, last 24 hours, All activities.** Shared helper loading a section's entries of the last 24 h (at least 3) through its page loader; section card shows 3 folded, the 24 h list expanded, Show more hidden when it adds nothing; "All activities" link; `RECENT_ENTRIES` removed. Feed card uses the helper (`loadRecentEntries` in `core/sections/`; a failed page leaves the card as a failed load does). Covers: the three new Section card criteria about recent entries and All activities.
 - [ ] **Slice 9 — Live timer button.** The section card takes the section's live entry for the selected baby from `RunningTimersService` and replaces + with the timer button opening it. Tested with a fake timer source. Covers: the last Timers criterion (the other Timers criteria are covered by 05's slice 8, the first section with timers).
 - [ ] **Slice 10 — Bottom navigation bar.** Shared `nala-bottom-nav` (floating, rounded, translucent with backdrop blur, safe area) on every signed-in screen; `/history` and `/trends` placeholder pages (empty state "Coming soon"); settings button removed from the top app bar and back link from the settings page; the mini-bar stacked above the bar; bottom padding on pages. Covers: every Bottom navigation bar criterion.
 
@@ -193,7 +193,7 @@ Use Angular Material's M3 components as-is. Customize only through the global th
 | Baby switcher | Menu (`mat-menu`) opened from the baby's name in the top app bar |
 | Section card | Card (`mat-card`, elevated or filled) |
 | + button | Small FAB (`mat-mini-fab`) |
-| Show more / View all history | Text button / list item with trailing icon |
+| Show more / All activities | Text button / list item with trailing icon |
 | Entry list item | List item (`mat-list-item`) with leading icon, headline, supporting text, trailing icon |
 | Kind picker | Bottom sheet (`MatBottomSheet`) with a list of items |
 | Entry sheet | Bottom sheet on phones, dialog (`MatDialog`) on wide screens |
