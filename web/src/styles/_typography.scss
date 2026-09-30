@@ -20,3 +20,12 @@
   font-feature-settings: 'liga';
   -webkit-font-smoothing: antialiased;
 }
+
+// A list item's trailing meta slot gets the label-small font, which would override the icon
+// font on a `mat-icon matListItemMeta` (the ligature then renders as text). Material's list styles
+// load after this file, hence the extra class.
+.mdc-list-item .mdc-list-item__end.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
+  font-size: 24px;
+  line-height: 1;
+}
