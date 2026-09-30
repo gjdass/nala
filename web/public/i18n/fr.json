@@ -342,7 +342,8 @@
       "h": "{{h}} h",
       "hm": "{{h}} h {{m}} min"
     },
-    "yesterday": "Hier {{time}}"
+    "yesterday": "Hier {{time}}",
+    "today": "Aujourd'hui {{time}}"
   },
   "kindPicker": {
     "label": "Choisir quoi ajouter"
@@ -363,6 +364,15 @@
       "text": "Elle sera retirée de l'historique pour tout le monde.",
       "confirm": "Supprimer",
       "cancel": "Annuler"
+    },
+    "startTime": "Heure de début",
+    "date": "Date",
+    "time": "Heure",
+    "required": "Obligatoire.",
+    "inFuture": "Ne peut pas être dans le futur.",
+    "audit": {
+      "logged": "Enregistré par {{name}}",
+      "edited": "Modifié par {{name}}, {{time}}"
     }
   },
   "suggestion": {
@@ -370,5 +380,42 @@
   },
   "timers": {
     "bar": "Minuteurs en cours"
+  },
+  "feed": {
+    "kinds": {
+      "bottle": "Biberon"
+    },
+    "card": {
+      "lastFeeding": "Dernier repas",
+      "empty": {
+        "title": "Aucun repas enregistré",
+        "text": "Touchez + pour enregistrer le premier."
+      }
+    },
+    "milkType": {
+      "breastMilk": "Lait maternel",
+      "formula": "Lait infantile"
+    },
+    "bottle": {
+      "milkType": "Type de lait",
+      "amount": "Quantité",
+      "amountUnit": "ml",
+      "amountValue": "{{amount}} ml",
+      "summary": "{{milkType}} · {{amount}} ml",
+      "suggestion": {
+        "breastMilk": "Reprendre la dernière quantité de lait maternel : {{amount}} ml ?",
+        "formula": "Reprendre la dernière quantité de lait infantile : {{amount}} ml ?"
+      },
+      "errors": {
+        "amountRequired": "Indiquez la quantité.",
+        "amountRange": "Indiquez un nombre entier de 1 à 500.",
+        "milkTypeRequired": "Choisissez le type de lait."
+      }
+    },
+    "errors": {
+      "unknown": "Une erreur s'est produite. Vérifiez votre connexion et réessayez.",
+      "feedNotFound": "Ce repas n'existe plus.",
+      "babyNotFound": "Ce bébé n'existe plus."
+    }
   }
 }

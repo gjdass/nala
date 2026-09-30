@@ -1,4 +1,4 @@
-import { NgComponentOutlet } from '@angular/common';
+import { AsyncPipe, NgComponentOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { TranslocoPipe } from '@jsverse/transloco';
@@ -10,6 +10,7 @@ import { EmptyStateComponent } from '../../shared/ui/empty-state/empty-state.com
 import { SheetService } from '../../shared/ui/sheet/sheet.service';
 import { TopAppBarComponent } from '../../shared/ui/top-app-bar/top-app-bar.component';
 import { BabySheetComponent } from '../babies/baby-sheet/baby-sheet.component';
+import { LoadComponentPipe } from '../../core/sections/load-component.pipe';
 
 /**
  * The top bar with the selected baby, then one card per visible built section in the user's order;
@@ -18,6 +19,8 @@ import { BabySheetComponent } from '../babies/baby-sheet/baby-sheet.component';
 @Component({
   selector: 'nala-home',
   imports: [
+    AsyncPipe,
+    LoadComponentPipe,
     EmptyStateComponent,
     MatButtonModule,
     NgComponentOutlet,

@@ -15,6 +15,12 @@ export interface SectionPreference {
 
 export type SectionsSaveResult = { ok: true } | { ok: false; errors: FieldErrors };
 
+/**
+ * Loads a component on demand, so a section's card, history and sheets stay out of the initial bundle:
+ * `() => import('./x.component').then((m) => m.XComponent)`.
+ */
+export type ComponentLoader = () => Promise<Type<unknown>>;
+
 /** One kind of entry of a section (e.g. Feed: bottle, breastfeed, solids). */
 export interface SectionKind {
   key: string;
@@ -22,21 +28,24 @@ export interface SectionKind {
   icon: string;
   /** Translation key of its label, shown in the kind picker and as its sheet title. */
   label: string;
-  /** Its add / edit sheet, wrapping `nala-entry-sheet`; opened with `EntrySheetData`. */
-  sheet: Type<unknown>;
+  /** Loads its add / edit sheet, wrapping `nala-entry-sheet`; opened with `EntrySheetData`. */
+  loadSheet: ComponentLoader;
 }
 
-/** A section the app has built; each feature registers its own through `SECTIONS`. */
+/**
+ * A section the app has built; each feature registers its own through `SECTIONS`. The entry is part of
+ * the initial bundle, so it only holds loaders for its components, never the components themselves.
+ */
 export interface SectionDefinition {
   key: SectionKey;
   /** Material Symbols name. */
   icon: string;
-  /** The section's home card: loads its own entries for the selected baby and wraps `nala-section-card`. */
-  card: Type<unknown>;
+  /** Loads the section's home card, which loads its own entries for the selected baby and wraps `nala-section-card`. */
+  loadCard: ComponentLoader;
   /** Its kinds of entry: + opens the kind picker with several, the sheet directly with one. */
   kinds: readonly SectionKind[];
-  /** Its history list: loads its pages for the selected baby and wraps `nala-history-list`. */
-  history: Type<unknown>;
+  /** Loads its history list, which loads its pages for the selected baby and wraps `nala-history-list`. */
+  loadHistory: ComponentLoader;
 }
 
 /** One page of a section's history, newest first; `next` is the cursor of the following page, null after the last. */

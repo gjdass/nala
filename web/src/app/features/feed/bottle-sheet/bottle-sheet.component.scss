@@ -1,0 +1,15 @@
+:host {
+  display: block;
+}
+
+.milk-types {
+  align-self: flex-start;
+  margin-bottom: 8px;
+}
+
+.form-error {
+  margin: 0;
+  padding: 8px 16px;
+  color: var(--mat-sys-error);
+  font: var(--mat-sys-body-medium);
+}

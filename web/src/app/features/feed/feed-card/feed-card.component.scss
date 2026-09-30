@@ -1,0 +1,29 @@
+:host {
+  display: block;
+}
+
+.highlight {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+}
+
+.icon {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.last {
+  display: flex;
+  flex-direction: column;
+}
+
+.label {
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-label-large);
+}
+
+.since {
+  color: var(--mat-sys-on-surface);
+  font: var(--mat-sys-title-large);
+}

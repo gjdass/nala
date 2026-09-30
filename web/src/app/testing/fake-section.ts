@@ -6,28 +6,28 @@ import { SectionDefinition, SectionKey, SectionKind } from '../core/sections/sec
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: '',
 })
-class FakeSectionCard {}
+export class FakeSectionCard {}
 
 @Component({
   selector: 'nala-fake-kind-sheet',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: '',
 })
-class FakeKindSheet {}
+export class FakeKindSheet {}
 
 @Component({
   selector: 'nala-fake-section-history',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: '',
 })
-class FakeSectionHistory {}
+export class FakeSectionHistory {}
 
 /** A kind whose sheet renders nothing; labelled with an existing translation key. */
 export const fakeKind = (key: string, icon = 'circle', label = 'sections.feed'): SectionKind => ({
   key,
   icon,
   label,
-  sheet: FakeKindSheet,
+  loadSheet: () => Promise.resolve(FakeKindSheet),
 });
 
 /** A registered section for tests that don't render its card or history. */
@@ -38,7 +38,7 @@ export const fakeSection = (
 ): SectionDefinition => ({
   key,
   icon,
-  card: FakeSectionCard,
+  loadCard: () => Promise.resolve(FakeSectionCard),
   kinds,
-  history: FakeSectionHistory,
+  loadHistory: () => Promise.resolve(FakeSectionHistory),
 });

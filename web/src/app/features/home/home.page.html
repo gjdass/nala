@@ -24,7 +24,9 @@
     } @else {
       <div class="sections" data-testid="section-column">
         @for (section of sections(); track section.key) {
-          <ng-container *ngComponentOutlet="section.card" />
+          <ng-container
+            *ngComponentOutlet="(section.loadCard | nalaLoadComponent | async) ?? null"
+          />
         }
       </div>
     }

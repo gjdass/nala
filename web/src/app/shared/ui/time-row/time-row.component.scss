@@ -1,0 +1,13 @@
+:host {
+  display: block;
+}
+
+.pickers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 16px;
+
+  mat-form-field {
+    flex: 1 1 160px;
+  }
+}

@@ -1,4 +1,4 @@
-import { NgComponentOutlet } from '@angular/common';
+import { AsyncPipe, NgComponentOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, effect, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
@@ -9,6 +9,7 @@ import { TranslocoPipe } from '@jsverse/transloco';
 import { map } from 'rxjs';
 import { SelectedBabyService } from '../../core/babies/selected-baby.service';
 import { SECTIONS } from '../../core/sections/section.models';
+import { LoadComponentPipe } from '../../core/sections/load-component.pipe';
 
 /**
  * `/history/:section` (spec 04): a top app bar with back, the section's title and the selected baby,
@@ -18,6 +19,8 @@ import { SECTIONS } from '../../core/sections/section.models';
 @Component({
   selector: 'nala-history',
   imports: [
+    AsyncPipe,
+    LoadComponentPipe,
     MatButtonModule,
     MatIconModule,
     MatToolbarModule,

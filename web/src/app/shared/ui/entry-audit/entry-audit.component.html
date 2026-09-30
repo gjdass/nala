@@ -1,0 +1,10 @@
+<p class="audit">
+  {{ 'entrySheet.audit.logged' | transloco: { name: loggedBy() } }}
+  @if (editedBy() && editedAt()) {
+    ·
+    {{
+      'entrySheet.audit.edited'
+        | transloco: { name: editedBy(), time: (editedAt()! | nalaEntryTime) }
+    }}
+  }
+</p>

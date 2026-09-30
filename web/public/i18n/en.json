@@ -342,7 +342,8 @@
       "h": "{{h}}h",
       "hm": "{{h}}h {{m}}m"
     },
-    "yesterday": "Yesterday {{time}}"
+    "yesterday": "Yesterday {{time}}",
+    "today": "Today {{time}}"
   },
   "kindPicker": {
     "label": "Choose what to add"
@@ -363,6 +364,15 @@
       "text": "It will be removed from the history for everyone.",
       "confirm": "Delete",
       "cancel": "Cancel"
+    },
+    "startTime": "Start time",
+    "date": "Date",
+    "time": "Time",
+    "required": "Required.",
+    "inFuture": "Can't be in the future.",
+    "audit": {
+      "logged": "Logged by {{name}}",
+      "edited": "Edited by {{name}}, {{time}}"
     }
   },
   "suggestion": {
@@ -370,5 +380,42 @@
   },
   "timers": {
     "bar": "Running timers"
+  },
+  "feed": {
+    "kinds": {
+      "bottle": "Bottle Feed"
+    },
+    "card": {
+      "lastFeeding": "Last feeding",
+      "empty": {
+        "title": "No feeding logged yet",
+        "text": "Tap + to log the first one."
+      }
+    },
+    "milkType": {
+      "breastMilk": "Breast milk",
+      "formula": "Formula"
+    },
+    "bottle": {
+      "milkType": "Milk type",
+      "amount": "Amount",
+      "amountUnit": "ml",
+      "amountValue": "{{amount}} ml",
+      "summary": "{{milkType}} · {{amount}} ml",
+      "suggestion": {
+        "breastMilk": "Use last breast milk amount: {{amount}} ml?",
+        "formula": "Use last formula amount: {{amount}} ml?"
+      },
+      "errors": {
+        "amountRequired": "Enter the amount.",
+        "amountRange": "Enter a whole number from 1 to 500.",
+        "milkTypeRequired": "Choose the milk type."
+      }
+    },
+    "errors": {
+      "unknown": "Something went wrong. Check your connection and try again.",
+      "feedNotFound": "This feed no longer exists.",
+      "babyNotFound": "This baby no longer exists."
+    }
   }
 }

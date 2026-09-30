@@ -28,6 +28,11 @@ describe('EntryTimePipe', () => {
     expect(pipe.transform(iso)).toBe(time('en', iso));
   });
 
+  it('says today before the time when asked (entry sheet rows)', () => {
+    const iso = at(2026, 8, 28, 0, 5);
+    expect(pipe.transform(iso, true)).toBe(`Today ${time('en', iso)}`);
+  });
+
   it('says yesterday for the day before', () => {
     const iso = at(2026, 8, 27, 23, 50);
     expect(pipe.transform(iso)).toBe(`Yesterday ${time('en', iso)}`);

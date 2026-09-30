@@ -24,7 +24,9 @@
         {{ 'babies.loadError' | transloco }}
       </p>
     } @else if (store.selected()) {
-      <ng-container *ngComponentOutlet="section.history" />
+      <ng-container
+        *ngComponentOutlet="(section.loadHistory | nalaLoadComponent | async) ?? null"
+      />
     }
   </main>
 }

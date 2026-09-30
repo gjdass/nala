@@ -1,0 +1,13 @@
+<nala-entry-list-item
+  [icon]="icons[feed().kind]"
+  [time]="feed().startTime"
+  [summary]="
+    'feed.bottle.summary'
+      | transloco
+        : {
+            milkType: ('feed.milkType.' + feed().milkType | transloco),
+            amount: feed().amountMl,
+          }
+  "
+  (open)="open.emit()"
+/>

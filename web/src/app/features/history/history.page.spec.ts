@@ -58,7 +58,12 @@ describe('HistoryPage', () => {
         ]),
         {
           provide: SECTIONS,
-          useValue: [{ ...fakeSection('feed', 'restaurant'), history: FakeFeedHistory }],
+          useValue: [
+            {
+              ...fakeSection('feed', 'restaurant'),
+              loadHistory: () => Promise.resolve(FakeFeedHistory),
+            },
+          ],
         },
         { provide: BabyService, useValue: { list } },
       ],

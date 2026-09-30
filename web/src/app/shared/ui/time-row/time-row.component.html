@@ -1,0 +1,33 @@
+<nala-form-row
+  [label]="label()"
+  [value]="iso() ? (iso()! | nalaEntryTime: true) : ''"
+  [error]="errorKey() ? (errorKey()! | transloco) : null"
+  (activate)="open.set(!open())"
+>
+  @if (open()) {
+    <div rowEditor class="pickers">
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'entrySheet.date' | transloco }}</mat-label>
+        <input
+          matInput
+          [matDatepicker]="datePicker"
+          [formControl]="date"
+          data-testid="time-row-date"
+        />
+        <mat-datepicker-toggle matIconSuffix [for]="datePicker" />
+        <mat-datepicker #datePicker />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'entrySheet.time' | transloco }}</mat-label>
+        <input
+          matInput
+          [matTimepicker]="timePicker"
+          [formControl]="time"
+          data-testid="time-row-time"
+        />
+        <mat-timepicker-toggle matIconSuffix [for]="timePicker" />
+        <mat-timepicker #timePicker />
+      </mat-form-field>
+    </div>
+  }
+</nala-form-row>

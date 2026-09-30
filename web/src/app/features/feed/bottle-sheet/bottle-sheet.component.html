@@ -1,0 +1,60 @@
+<nala-entry-sheet [form]="form" [saving]="saving()" (save)="save()" (delete)="delete()">
+  <nala-time-row [label]="'entrySheet.startTime' | transloco" [control]="form.controls.startTime" />
+
+  <nala-form-row [label]="'feed.bottle.milkType' | transloco" [interactive]="false">
+    <mat-button-toggle-group
+      rowEditor
+      class="milk-types"
+      [formControl]="form.controls.milkType"
+      [attr.aria-label]="'feed.bottle.milkType' | transloco"
+    >
+      @for (milkType of milkTypes; track milkType) {
+        <mat-button-toggle [value]="milkType" [attr.data-testid]="'milk-' + milkType">
+          {{ 'feed.milkType.' + milkType | transloco }}
+        </mat-button-toggle>
+      }
+    </mat-button-toggle-group>
+  </nala-form-row>
+
+  <nala-form-row [label]="'feed.bottle.amount' | transloco" [interactive]="false">
+    <mat-form-field rowEditor appearance="outline">
+      <input
+        matInput
+        type="number"
+        inputmode="numeric"
+        min="1"
+        max="500"
+        step="1"
+        [formControl]="form.controls.amountMl"
+        [attr.aria-label]="'feed.bottle.amount' | transloco"
+        data-testid="amount"
+      />
+      <span matTextSuffix>{{ 'feed.bottle.amountUnit' | transloco }}</span>
+      <mat-error data-testid="amount-error">{{
+        'feed.bottle.errors.' + amountError() | transloco
+      }}</mat-error>
+    </mat-form-field>
+  </nala-form-row>
+  @if (suggestion(); as last) {
+    <nala-suggestion-row
+      [text]="'feed.bottle.suggestion.' + last.milkType | transloco: { amount: last.amount }"
+      (accept)="useLast(last.amount)"
+    />
+  }
+
+  <nala-notes-row [control]="form.controls.notes" />
+
+  @if (formError(); as code) {
+    <p class="form-error" role="alert" data-testid="form-error">
+      {{ 'feed.errors.' + code | transloco }}
+    </p>
+  }
+
+  @if (feed; as feed) {
+    <nala-entry-audit
+      [loggedBy]="feed.loggedBy.displayName"
+      [editedBy]="edited ? feed.updatedBy.displayName : null"
+      [editedAt]="edited ? feed.updatedAt : null"
+    />
+  }
+</nala-entry-sheet>

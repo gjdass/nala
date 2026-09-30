@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { Subject } from 'rxjs';
 import { SECTIONS, SectionKind } from '../../../core/sections/section.models';
-import { fakeKind, fakeSection } from '../../../testing/fake-section';
+import { FakeKindSheet, fakeKind, fakeSection } from '../../../testing/fake-section';
 import { KindPickerComponent } from '../kind-picker/kind-picker.component';
 import { SheetService } from '../sheet/sheet.service';
 import { EntrySheetResult } from './entry-sheet.models';
@@ -41,7 +41,7 @@ describe('EntrySheetService', () => {
   });
 
   describe('add', () => {
-    it('opens the kind picker when the section has several kinds, then the picked kind sheet', () => {
+    it('opens the kind picker when the section has several kinds, then the picked kind sheet', async () => {
       service().add('feed').subscribe();
 
       expect(bottomSheet.open).toHaveBeenCalledWith(KindPickerComponent, {
@@ -51,7 +51,8 @@ describe('EntrySheetService', () => {
 
       picked.next(solids);
 
-      expect(sheets.open).toHaveBeenCalledWith(solids.sheet, {
+      await vi.waitFor(() => expect(sheets.open).toHaveBeenCalled());
+      expect(sheets.open).toHaveBeenCalledWith(FakeKindSheet, {
         section: 'feed',
         kind: solids,
         entry: null,
@@ -70,22 +71,26 @@ describe('EntrySheetService', () => {
       expect(results).toEqual([undefined]);
     });
 
-    it('opens the entry sheet directly when the section has one kind', () => {
+    it('opens the entry sheet directly when the section has one kind, once it is loaded', async () => {
+      const loadSheet = vi.spyOn(wet, 'loadSheet');
       service().add('diaper').subscribe();
 
       expect(bottomSheet.open).not.toHaveBeenCalled();
-      expect(sheets.open).toHaveBeenCalledWith(wet.sheet, {
+      expect(loadSheet).toHaveBeenCalledTimes(1);
+      await vi.waitFor(() => expect(sheets.open).toHaveBeenCalled());
+      expect(sheets.open).toHaveBeenCalledWith(FakeKindSheet, {
         section: 'diaper',
         kind: wet,
         entry: null,
       });
     });
 
-    it('emits what the sheet closed with', () => {
+    it('emits what the sheet closed with', async () => {
       const results: unknown[] = [];
       service()
         .add('diaper')
         .subscribe((r) => results.push(r));
+      await vi.waitFor(() => expect(sheets.open).toHaveBeenCalled());
 
       closed.next({ saved: { id: 'd1' } });
 
@@ -105,7 +110,7 @@ describe('EntrySheetService', () => {
   });
 
   describe('edit', () => {
-    it("opens the entry's kind sheet pre-filled with the entry, and emits its result", () => {
+    it("opens the entry's kind sheet pre-filled with the entry, and emits its result", async () => {
       const results: unknown[] = [];
       const entry = { id: 'f1' };
       service()
@@ -113,7 +118,8 @@ describe('EntrySheetService', () => {
         .subscribe((r) => results.push(r));
 
       expect(bottomSheet.open).not.toHaveBeenCalled();
-      expect(sheets.open).toHaveBeenCalledWith(solids.sheet, {
+      await vi.waitFor(() => expect(sheets.open).toHaveBeenCalled());
+      expect(sheets.open).toHaveBeenCalledWith(FakeKindSheet, {
         section: 'feed',
         kind: solids,
         entry,

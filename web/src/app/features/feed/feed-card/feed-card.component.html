@@ -1,0 +1,24 @@
+<nala-section-card key="feed" [entries]="entries()" (changed)="reload()">
+  @if (entries()?.[0]; as last) {
+    <div sectionHighlight class="highlight" data-testid="feed-highlight">
+      <mat-icon class="icon" aria-hidden="true">schedule</mat-icon>
+      <div class="last">
+        <span class="label" data-testid="feed-last-label">{{
+          'feed.card.lastFeeding' | transloco
+        }}</span>
+        <span class="since" data-testid="feed-last-since">{{
+          last.startTime | nalaTimeSince
+        }}</span>
+      </div>
+    </div>
+  }
+  <nala-empty-state
+    sectionEmpty
+    icon="restaurant"
+    [title]="'feed.card.empty.title' | transloco"
+    [text]="'feed.card.empty.text' | transloco"
+  />
+  <ng-template nalaSectionEntry let-feed>
+    <nala-feed-entry [feed]="feed" (open)="edit(feed)" />
+  </ng-template>
+</nala-section-card>
