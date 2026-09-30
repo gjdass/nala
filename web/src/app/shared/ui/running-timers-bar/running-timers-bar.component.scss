@@ -1,6 +1,8 @@
 :host {
   position: sticky;
   bottom: 0;
+  // The app shell is at least a screen tall: on a short page this keeps the bar at its bottom.
+  margin-top: auto;
   z-index: 1;
   display: block;
 }

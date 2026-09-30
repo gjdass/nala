@@ -14,6 +14,14 @@ import { RunningTimersBarComponent } from './shared/ui/running-timers-bar/runnin
       <nala-running-timers-bar />
     }
   `,
+  // A column at least a screen tall, so the mini-bar sits at the bottom of a short page.
+  styles: `
+    :host {
+      display: flex;
+      flex-direction: column;
+      min-height: 100dvh;
+    }
+  `,
 })
 export class App {
   private readonly timers = inject(RunningTimersService).timers;
