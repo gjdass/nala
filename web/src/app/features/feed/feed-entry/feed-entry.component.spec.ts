@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatListModule } from '@angular/material/list';
 import en from '../../../../../public/i18n/en.json';
-import { aBottle, aSolids } from '../../../testing/feeds';
+import { aBottle, aBreastfeed, aSegment, aSolids } from '../../../testing/feeds';
 import { translocoTesting } from '../../../testing/transloco-testing';
 import { FeedEntryComponent } from './feed-entry.component';
 
@@ -87,5 +87,29 @@ describe('FeedEntryComponent', () => {
     (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>('button')!.click();
 
     expect(opened).toHaveBeenCalled();
+  });
+
+  it('shows a breastfeed with its icon, duration bar, total and per-side split', async () => {
+    fixture.componentRef.setInput('feed', aBreastfeed());
+    await fixture.whenStable();
+
+    expect(find('entry-icon')?.textContent?.trim()).toBe('breastfeeding');
+    expect(find('entry-time')?.textContent?.trim()).toBeTruthy();
+    expect(find('entry-bar')).not.toBeNull();
+    expect(find('entry-bar')!.style.width).toBe(`${(510 / 3600) * 100}%`);
+    expect(find('entry-duration')?.textContent?.trim()).toBe('8m 30s');
+    expect(find('entry-summary')?.textContent?.trim()).toBe('L 5m · R 3m 30s');
+  });
+
+  it('leaves out a side that was not used', async () => {
+    fixture.componentRef.setInput(
+      'feed',
+      aBreastfeed({
+        segments: [aSegment('right', '2026-09-30T10:00:00Z', '2026-09-30T10:04:00Z')],
+      }),
+    );
+    await fixture.whenStable();
+
+    expect(find('entry-summary')?.textContent?.trim()).toBe('R 4m');
   });
 });

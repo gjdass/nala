@@ -1,13 +1,13 @@
 <nala-sheet-header
   [section]="data.section"
   [title]="data.kind.label | transloco"
-  [saveDisabled]="invalid() || saving()"
+  [saveDisabled]="invalid() || saving() || saveDisabled()"
   (closed)="close()"
   (saved)="save.emit()"
 />
 <div class="body">
   <ng-content />
-  @if (data.entry) {
+  @if (canDelete()) {
     <div class="delete">
       <button
         mat-stroked-button

@@ -5,11 +5,15 @@ import { toFieldErrors } from '../http/field-errors';
 import { HistoryPage } from '../sections/section.models';
 import {
   BottleDefaults,
+  BreastSide,
+  BreastfeedFields,
+  BreastfeedState,
   Feed,
   FeedDeleteResult,
   FeedFieldsByKind,
   FeedResult,
   NO_BOTTLE_DEFAULTS,
+  NO_BREASTFEED_STATE,
 } from './feed.models';
 
 /** A baby's feeds (spec 05); any member can add, edit and delete any feed. */
@@ -61,6 +65,47 @@ export class FeedService {
     return this.http
       .get<BottleDefaults>(`/api/babies/${babyId}/feeds/bottle-defaults`)
       .pipe(catchError(() => of(NO_BOTTLE_DEFAULTS)));
+  }
+
+  /** The baby's breastfeed in progress and last side; none when they can't be loaded. */
+  breastfeedState(babyId: string): Observable<BreastfeedState> {
+    return this.http
+      .get<BreastfeedState>(`/api/babies/${babyId}/feeds/breastfeed`)
+      .pipe(catchError(() => of(NO_BREASTFEED_STATE)));
+  }
+
+  /**
+   * Starts `side` of the breastfeed `feedId` at `at`, stopping the other side. The server creates the
+   * feed in progress when it doesn't exist, and reopens it when saved; another breastfeed in progress
+   * for the baby answers `breastfeedInProgress`. Client ids and times make a re-sent tap harmless.
+   */
+  startSide(
+    feedId: string,
+    babyId: string,
+    side: BreastSide,
+    at: string,
+    segmentId: string = crypto.randomUUID(),
+  ): Observable<FeedResult> {
+    return this.result(
+      this.http.post<Feed>(`/api/feeds/${feedId}/breastfeed/start`, {
+        babyId,
+        segmentId,
+        side,
+        at,
+      }),
+    );
+  }
+
+  /** Stops the running side at `at`; the feed stays in progress. */
+  stopSide(feedId: string, at: string): Observable<FeedResult> {
+    return this.result(this.http.post<Feed>(`/api/feeds/${feedId}/breastfeed/stop`, { at }));
+  }
+
+  /** Saves the breastfeed: stops the running side and ends it at `at`. */
+  finish(feedId: string, fields: BreastfeedFields, at: string): Observable<FeedResult> {
+    return this.result(
+      this.http.post<Feed>(`/api/feeds/${feedId}/breastfeed/finish`, { ...fields, at }),
+    );
   }
 
   private result(request: Observable<Feed>): Observable<FeedResult> {

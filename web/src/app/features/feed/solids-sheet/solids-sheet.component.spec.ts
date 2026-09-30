@@ -47,7 +47,11 @@ describe('SolidsSheetComponent', () => {
   const foodError = () => find('food-error')?.textContent?.trim();
 
   const render = async (entry: Feed | null = null) => {
-    const data: EntrySheetData<Feed> = { section: 'feed', kind: FEED_SECTION.kinds[1], entry };
+    const data: EntrySheetData<Feed> = {
+      section: 'feed',
+      kind: FEED_SECTION.kinds.find((k) => k.key === 'solids')!,
+      entry,
+    };
     TestBed.overrideProvider(SHEET_DATA, { useValue: data });
     fixture = TestBed.createComponent(SolidsSheetComponent);
     await settle();

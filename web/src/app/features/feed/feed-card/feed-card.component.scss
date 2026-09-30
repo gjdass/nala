@@ -27,3 +27,15 @@
   color: var(--mat-sys-on-surface);
   font: var(--mat-sys-title-large);
 }
+
+.side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  margin-inline-start: auto;
+}
+
+.side-value {
+  color: var(--mat-sys-on-surface);
+  font: var(--mat-sys-headline-medium);
+}

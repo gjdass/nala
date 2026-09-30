@@ -34,6 +34,9 @@ public class Feed
     /// <summary>Solids only; optional.</summary>
     public SolidsReaction? Reaction { get; set; }
 
+    /// <summary>Breastfeed only: its timed stretches per side, oldest first.</summary>
+    public List<BreastFeedSegment> Segments { get; init; } = [];
+
     public Guid LoggedByUserId { get; init; }
 
     public DateTimeOffset CreatedAt { get; init; }

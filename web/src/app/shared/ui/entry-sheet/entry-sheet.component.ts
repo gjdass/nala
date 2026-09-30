@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { AbstractControl } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -15,9 +15,10 @@ import { EntrySheetData } from './entry-sheet.models';
 
 /**
  * The frame of every add / edit sheet of a section (spec 04), wrapping the kind's rows: header in
- * the section colour with ×, the kind title and Save (disabled while `form` is invalid or saving),
- * and, when editing, a Delete action. × asks before discarding changes; Delete asks before emitting.
- * The kind's sheet saves or deletes, then closes itself through `SheetRef`.
+ * the section colour with ×, the kind title and Save (disabled while `form` is invalid, saving or
+ * `saveDisabled`), and, when editing (or `deletable`), a Delete action. × asks before discarding
+ * changes; Delete asks before emitting. The kind's sheet saves or deletes, then closes itself
+ * through `SheetRef`.
  */
 @Component({
   selector: 'nala-entry-sheet',
@@ -34,8 +35,14 @@ export class EntrySheetComponent {
 
   readonly form = input.required<AbstractControl>();
   readonly saving = input(false);
+  /** Keeps Save off even with a valid form (e.g. a breastfeed with both sides at 0 s). */
+  readonly saveDisabled = input(false);
+  /** Whether Delete is offered; by default when editing an entry. */
+  readonly deletable = input<boolean | null>(null);
   readonly save = output();
   readonly delete = output();
+
+  protected readonly canDelete = computed(() => this.deletable() ?? !!this.data.entry);
 
   protected readonly invalid = toSignal(
     toObservable(this.form).pipe(

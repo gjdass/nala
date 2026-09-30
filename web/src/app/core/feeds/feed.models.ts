@@ -1,6 +1,6 @@
 import { FieldErrors } from '../auth/auth.models';
 
-export type FeedKind = 'bottle' | 'solids';
+export type FeedKind = 'bottle' | 'breastfeed' | 'solids';
 
 export type MilkType = 'breastMilk' | 'formula';
 
@@ -18,6 +18,19 @@ export const SOLIDS_REACTIONS: readonly SolidsReaction[] = [
   'disliked',
   'allergicReaction',
 ];
+
+export type BreastSide = 'left' | 'right';
+
+export const BREAST_SIDES: readonly BreastSide[] = ['left', 'right'];
+
+/** One timed stretch of a breastfeed on one side; `endedAt` is null while that side runs. */
+export interface BreastFeedSegment {
+  id: string;
+  side: BreastSide;
+  /** ISO date-time (UTC). */
+  startedAt: string;
+  endedAt: string | null;
+}
 
 /** A user as shown on an entry; a deleted account keeps its display name. */
 export interface UserName {
@@ -39,6 +52,8 @@ export interface Feed {
   mealType: MealType | null;
   food: string | null;
   reaction: SolidsReaction | null;
+  /** Breastfeed only (empty otherwise), oldest first. */
+  segments: readonly BreastFeedSegment[];
   loggedBy: UserName;
   updatedBy: UserName;
   createdAt: string;
@@ -62,11 +77,26 @@ export interface SolidsFields {
   notes: string | null;
 }
 
+/** What the Breastfeed sheet sends when saving or editing; the timings come from its timers. */
+export interface BreastfeedFields {
+  startTime: string;
+  notes: string | null;
+}
+
 /** The fields each kind sends. */
 export interface FeedFieldsByKind {
   bottle: BottleFields;
+  breastfeed: BreastfeedFields;
   solids: SolidsFields;
 }
+
+/** The baby's breastfeed in progress (null when none) and the side the latest saved one ended on. */
+export interface BreastfeedState {
+  inProgress: Feed | null;
+  lastSide: BreastSide | null;
+}
+
+export const NO_BREASTFEED_STATE: BreastfeedState = { inProgress: null, lastSide: null };
 
 /** The milk type of the baby's latest bottle, and the last amount of each milk type. */
 export interface BottleDefaults {

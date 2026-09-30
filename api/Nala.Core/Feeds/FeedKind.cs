@@ -4,4 +4,5 @@ public enum FeedKind
 {
     Bottle,
     Solids,
+    Breastfeed,
 }

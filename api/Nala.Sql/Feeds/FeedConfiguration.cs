@@ -36,6 +36,8 @@ public class FeedConfiguration : IEntityTypeConfiguration<Feed>
         feed.HasOne<Baby>().WithMany().HasForeignKey(f => f.BabyId).OnDelete(DeleteBehavior.Cascade);
         feed.HasOne<User>().WithMany().HasForeignKey(f => f.LoggedByUserId).OnDelete(DeleteBehavior.Restrict);
         feed.HasOne<User>().WithMany().HasForeignKey(f => f.UpdatedByUserId).OnDelete(DeleteBehavior.Restrict);
+        // A feed's segments go with it.
+        feed.HasMany(f => f.Segments).WithOne().HasForeignKey(s => s.FeedId).OnDelete(DeleteBehavior.Cascade);
         feed.HasIndex(f => new { f.BabyId, f.StartTime, f.Id })
             .IsDescending(false, true, true)
             .HasDatabaseName("ix_feeds_baby_id_start_time_id");

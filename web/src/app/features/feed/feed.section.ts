@@ -3,7 +3,7 @@ import { FEED_KIND_ICONS } from './feed-kinds';
 
 /**
  * The Feed section (spec 05). Its components are loaded on demand, keeping them out of the initial
- * bundle. Breastfeed comes with its slice.
+ * bundle.
  */
 export const FEED_SECTION: SectionDefinition = {
   key: 'feed',
@@ -16,6 +16,15 @@ export const FEED_SECTION: SectionDefinition = {
       label: 'feed.kinds.bottle',
       loadSheet: () =>
         import('./bottle-sheet/bottle-sheet.component').then((m) => m.BottleSheetComponent),
+    },
+    {
+      key: 'breastfeed',
+      icon: FEED_KIND_ICONS.breastfeed,
+      label: 'feed.kinds.breastfeed',
+      loadSheet: () =>
+        import('./breastfeed-sheet/breastfeed-sheet.component').then(
+          (m) => m.BreastfeedSheetComponent,
+        ),
     },
     {
       key: 'solids',

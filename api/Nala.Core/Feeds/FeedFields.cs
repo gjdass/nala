@@ -14,6 +14,9 @@ public sealed record FeedInput(
     string? Food = null,
     string? Reaction = null);
 
+/// <summary>What finishing a breastfeed sends: its start time and notes as edited in the sheet, and when it ended.</summary>
+public sealed record BreastfeedFinishInput(DateTimeOffset? StartTime, string? Notes, DateTimeOffset? At);
+
 /// <summary>Validation of a feed's fields, for adding and editing (spec 05).</summary>
 public static class FeedFields
 {
@@ -32,6 +35,13 @@ public static class FeedFields
     {
         ["bottle"] = FeedKind.Bottle,
         ["solids"] = FeedKind.Solids,
+        ["breastfeed"] = FeedKind.Breastfeed,
+    };
+
+    private static readonly Dictionary<string, BreastSide> Sides = new()
+    {
+        ["left"] = BreastSide.Left,
+        ["right"] = BreastSide.Right,
     };
 
     private static readonly Dictionary<string, MilkType> MilkTypes = new()
@@ -110,6 +120,36 @@ public static class FeedFields
     public static MilkType ParseMilkType(string input) => MilkTypes[input];
 
     public static string Format(MilkType milkType) => MilkTypes.Single(m => m.Value == milkType).Key;
+
+    /// <summary>Validation of a breastfeed timer action: the side (when given) and when it happened.</summary>
+    public static Dictionary<string, string> ValidateTimerAction(string? side, bool needsSide, DateTimeOffset? at, DateTimeOffset now)
+    {
+        var errors = new Dictionary<string, string>();
+        if (needsSide && string.IsNullOrEmpty(side))
+        {
+            errors["side"] = "required";
+        }
+        else if (needsSide && !Sides.ContainsKey(side!))
+        {
+            errors["side"] = "invalid";
+        }
+
+        if (at is not { } time)
+        {
+            errors["at"] = "required";
+        }
+        else if (time > now + FutureTolerance)
+        {
+            errors["at"] = "inFuture";
+        }
+
+        return errors;
+    }
+
+    /// <summary>Call only on validated input.</summary>
+    public static BreastSide ParseSide(string input) => Sides[input];
+
+    public static string Format(BreastSide side) => Sides.Single(s => s.Value == side).Key;
 
     /// <summary>Call only on validated input; null when none.</summary>
     public static MealType? ParseMealType(string? input) => input is null ? null : MealTypes[input];

@@ -23,6 +23,7 @@ import { FormRowComponent } from '../form-row/form-row.component';
 const ERRORS: Record<string, string> = {
   required: 'entrySheet.required',
   inFuture: 'entrySheet.inFuture',
+  afterEnd: 'entrySheet.afterEnd',
 };
 
 /**

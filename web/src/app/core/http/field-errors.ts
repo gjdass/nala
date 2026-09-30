@@ -9,9 +9,9 @@ const FORM_ERRORS: Partial<Record<number, string>> = {
 
 /**
  * Statuses whose body carries the form code: an unusable invitation or reset link (404 unknown, 410 expired/used/revoked),
- * a refused action (403, e.g. `adminCannotDelete`).
+ * a refused action (403, e.g. `adminCannotDelete`), a conflict (409, e.g. `breastfeedInProgress`).
  */
-const CODE_IN_BODY = [403, 404, 410];
+const CODE_IN_BODY = [403, 404, 409, 410];
 
 /**
  * A 400 validation problem (`{ errors: { field: [code] } }`) to one code per field; a known status

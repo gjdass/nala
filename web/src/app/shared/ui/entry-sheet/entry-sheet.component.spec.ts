@@ -27,6 +27,8 @@ import { EntrySheetData } from './entry-sheet.models';
   template: `<nala-entry-sheet
     [form]="form"
     [saving]="saving()"
+    [saveDisabled]="saveDisabled()"
+    [deletable]="deletable()"
     (save)="saves = saves + 1"
     (delete)="deletes = deletes + 1"
   >
@@ -45,6 +47,8 @@ class FakeKindSheet {
     notes: notesControl(),
   });
   readonly saving = signal(false);
+  readonly saveDisabled = signal(false);
+  readonly deletable = signal<boolean | null>(null);
   saves = 0;
   deletes = 0;
 }
@@ -141,6 +145,15 @@ describe('EntrySheetComponent', () => {
       expect(button('sheet-save').disabled).toBe(true);
     });
 
+    it('is disabled while the kind sheet says so, even with a valid form', async () => {
+      await typeAmount('90');
+
+      fixture.componentInstance.saveDisabled.set(true);
+      await fixture.whenStable();
+
+      expect(button('sheet-save').disabled).toBe(true);
+    });
+
     it('is disabled while notes are too long', async () => {
       await typeAmount('90');
       fixture.componentInstance.form.controls.notes.setValue('x'.repeat(1001));
@@ -220,6 +233,24 @@ describe('EntrySheetComponent', () => {
       await click('entry-delete');
       confirmed.next(true);
       expect(fixture.componentInstance.deletes).toBe(1);
+    });
+
+    it('is offered without an entry when the kind sheet says so', async () => {
+      await render();
+
+      fixture.componentInstance.deletable.set(true);
+      await fixture.whenStable();
+
+      expect(find('entry-delete')).not.toBeNull();
+    });
+
+    it('is not offered for an entry when the kind sheet says so', async () => {
+      await render({ id: 'e1' });
+
+      fixture.componentInstance.deletable.set(false);
+      await fixture.whenStable();
+
+      expect(find('entry-delete')).toBeNull();
     });
 
     it('is disabled while saving', async () => {

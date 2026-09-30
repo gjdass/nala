@@ -112,4 +112,12 @@ describe('TimeRowComponent', () => {
 
     expect(find('[role="alert"]')?.textContent?.trim()).toBe(en.entrySheet.inFuture);
   });
+
+  it('shows a start after the end sent back by the server', async () => {
+    fixture.componentInstance.control.setErrors({ server: 'afterEnd' });
+    fixture.componentInstance.control.markAsTouched();
+    await fixture.whenStable();
+
+    expect(find('[role="alert"]')?.textContent?.trim()).toBe(en.entrySheet.afterEnd);
+  });
 });

@@ -1,0 +1,39 @@
+<nala-entry-sheet
+  [form]="form"
+  [saving]="busy()"
+  [saveDisabled]="!feed() || total() === 0"
+  [deletable]="!!feed()"
+  (save)="save()"
+  (delete)="delete()"
+>
+  <nala-split-timer
+    [leftSeconds]="left()"
+    [rightSeconds]="right()"
+    [running]="running()"
+    [markedSide]="markedSide()"
+    [markLabel]="'feed.breastfeed.lastSide' | transloco"
+    [disabled]="busy()"
+    (start)="start($event)"
+    (stop)="stop()"
+  />
+
+  <nala-time-row [label]="'entrySheet.startTime' | transloco" [control]="form.controls.startTime" />
+
+  <nala-form-row [label]="'feed.breastfeed.totalTime' | transloco" [interactive]="false">
+    <span rowTrailing data-testid="total-time">{{ total() | nalaDuration }}</span>
+  </nala-form-row>
+
+  <nala-notes-row [control]="form.controls.notes" />
+
+  @if (formError(); as key) {
+    <p class="form-error" role="alert" data-testid="form-error">{{ key | transloco }}</p>
+  }
+
+  @if (feed(); as feed) {
+    <nala-entry-audit
+      [loggedBy]="feed.loggedBy.displayName"
+      [editedBy]="edited() ? feed.updatedBy.displayName : null"
+      [editedAt]="edited() ? feed.updatedAt : null"
+    />
+  }
+</nala-entry-sheet>

@@ -370,6 +370,7 @@
     "time": "Time",
     "required": "Required.",
     "inFuture": "Can't be in the future.",
+    "afterEnd": "Can't be after the end.",
     "audit": {
       "logged": "Logged by {{name}}",
       "edited": "Edited by {{name}}, {{time}}"
@@ -381,9 +382,17 @@
   "timers": {
     "bar": "Running timers"
   },
+  "splitTimer": {
+    "left": "Left",
+    "right": "Right",
+    "startLeft": "Start Left",
+    "startRight": "Start Right",
+    "stop": "Stop"
+  },
   "feed": {
     "kinds": {
       "bottle": "Bottle Feed",
+      "breastfeed": "Breastfeed",
       "solids": "Solids"
     },
     "card": {
@@ -391,6 +400,11 @@
       "empty": {
         "title": "No feeding logged yet",
         "text": "Tap + to log the first one."
+      },
+      "lastSide": "last side",
+      "side": {
+        "left": "left",
+        "right": "right"
       }
     },
     "milkType": {
@@ -411,6 +425,18 @@
         "amountRequired": "Enter the amount.",
         "amountRange": "Enter a whole number from 1 to 500.",
         "milkTypeRequired": "Choose the milk type."
+      }
+    },
+    "breastfeed": {
+      "totalTime": "Total time",
+      "lastSide": "last side",
+      "summary": {
+        "both": "L {{left}} · R {{right}}",
+        "left": "L {{left}}",
+        "right": "R {{right}}"
+      },
+      "errors": {
+        "durationsZero": "Time at least one side before saving."
       }
     },
     "mealType": {
@@ -438,7 +464,8 @@
     "errors": {
       "unknown": "Something went wrong. Check your connection and try again.",
       "feedNotFound": "This feed no longer exists.",
-      "babyNotFound": "This baby no longer exists."
+      "babyNotFound": "This baby no longer exists.",
+      "breastfeedInProgress": "A breastfeed is already in progress."
     }
   }
 }

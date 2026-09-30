@@ -10,6 +10,16 @@
           last.startTime | nalaTimeSince
         }}</span>
       </div>
+      @if (lastSide(); as side) {
+        <div class="side">
+          <span class="side-value" data-testid="feed-last-side">{{
+            'feed.card.side.' + side | transloco
+          }}</span>
+          <span class="label" data-testid="feed-last-side-label">{{
+            'feed.card.lastSide' | transloco
+          }}</span>
+        </div>
+      }
     </div>
   }
   <nala-empty-state

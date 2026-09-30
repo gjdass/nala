@@ -370,6 +370,7 @@
     "time": "Heure",
     "required": "Obligatoire.",
     "inFuture": "Ne peut pas être dans le futur.",
+    "afterEnd": "Ne peut pas être après la fin.",
     "audit": {
       "logged": "Enregistré par {{name}}",
       "edited": "Modifié par {{name}}, {{time}}"
@@ -381,9 +382,17 @@
   "timers": {
     "bar": "Minuteurs en cours"
   },
+  "splitTimer": {
+    "left": "Gauche",
+    "right": "Droite",
+    "startLeft": "Démarrer gauche",
+    "startRight": "Démarrer droite",
+    "stop": "Arrêter"
+  },
   "feed": {
     "kinds": {
       "bottle": "Biberon",
+      "breastfeed": "Allaitement",
       "solids": "Diversification"
     },
     "card": {
@@ -391,6 +400,11 @@
       "empty": {
         "title": "Aucun repas enregistré",
         "text": "Touchez + pour enregistrer le premier."
+      },
+      "lastSide": "dernier côté",
+      "side": {
+        "left": "gauche",
+        "right": "droite"
       }
     },
     "milkType": {
@@ -411,6 +425,18 @@
         "amountRequired": "Indiquez la quantité.",
         "amountRange": "Indiquez un nombre entier de 1 à 500.",
         "milkTypeRequired": "Choisissez le type de lait."
+      }
+    },
+    "breastfeed": {
+      "totalTime": "Durée totale",
+      "lastSide": "dernier côté",
+      "summary": {
+        "both": "G {{left}} · D {{right}}",
+        "left": "G {{left}}",
+        "right": "D {{right}}"
+      },
+      "errors": {
+        "durationsZero": "Chronométrez au moins un côté avant d'enregistrer."
       }
     },
     "mealType": {
@@ -438,7 +464,8 @@
     "errors": {
       "unknown": "Une erreur s'est produite. Vérifiez votre connexion et réessayez.",
       "feedNotFound": "Ce repas n'existe plus.",
-      "babyNotFound": "Ce bébé n'existe plus."
+      "babyNotFound": "Ce bébé n'existe plus.",
+      "breastfeedInProgress": "Un allaitement est déjà en cours."
     }
   }
 }

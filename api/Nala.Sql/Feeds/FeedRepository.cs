@@ -13,16 +13,14 @@ public class FeedRepository(NalaDbContext db) : IFeedRepository
     }
 
     public Task<Feed?> GetAsync(Guid id, CancellationToken cancellationToken = default) =>
-        db.Set<Feed>().SingleOrDefaultAsync(f => f.Id == id, cancellationToken);
+        db.Set<Feed>().Include(f => f.Segments.OrderBy(s => s.StartedAt)).SingleOrDefaultAsync(f => f.Id == id, cancellationToken);
 
     public Task<FeedEntry?> GetEntryAsync(Guid id, CancellationToken cancellationToken = default) =>
         Entries(db.Set<Feed>().Where(f => f.Id == id)).SingleOrDefaultAsync(cancellationToken);
 
-    public async Task UpdateAsync(Feed feed, CancellationToken cancellationToken = default)
-    {
-        db.Set<Feed>().Update(feed);
+    /// <summary>Saves a feed loaded by <see cref="GetAsync"/>, with the segments added to it or changed.</summary>
+    public async Task UpdateAsync(Feed feed, CancellationToken cancellationToken = default) =>
         await db.SaveChangesAsync(cancellationToken);
-    }
 
     public async Task DeleteAsync(Feed feed, CancellationToken cancellationToken = default)
     {
@@ -32,7 +30,8 @@ public class FeedRepository(NalaDbContext db) : IFeedRepository
 
     public async Task<IReadOnlyList<FeedEntry>> ListAsync(Guid babyId, FeedCursor? after, int limit, CancellationToken cancellationToken = default)
     {
-        var feeds = db.Set<Feed>().Where(f => f.BabyId == babyId);
+        // A breastfeed shows in the history once saved.
+        var feeds = db.Set<Feed>().Where(f => f.BabyId == babyId && !(f.Kind == FeedKind.Breastfeed && f.EndTime == null));
         if (after is not null)
         {
             // Row comparison, so feeds sharing a start time are paged by id without gaps or repeats.
@@ -57,8 +56,24 @@ public class FeedRepository(NalaDbContext db) : IFeedRepository
     }
 
     private IQueryable<FeedEntry> Entries(IQueryable<Feed> feeds) =>
-        from feed in feeds.AsNoTracking()
+        from feed in feeds.AsNoTracking().Include(f => f.Segments.OrderBy(s => s.StartedAt))
         join loggedBy in db.Set<User>() on feed.LoggedByUserId equals loggedBy.Id
         join updatedBy in db.Set<User>() on feed.UpdatedByUserId equals updatedBy.Id
         select new FeedEntry(feed, new UserName(loggedBy.Id, loggedBy.DisplayName), new UserName(updatedBy.Id, updatedBy.DisplayName));
+
+    public Task<FeedEntry?> GetInProgressBreastfeedAsync(Guid babyId, CancellationToken cancellationToken = default) =>
+        Entries(Breastfeeds(babyId).Where(f => f.EndTime == null)).FirstOrDefaultAsync(cancellationToken);
+
+    public async Task<BreastSide?> GetLastBreastSideAsync(Guid babyId, CancellationToken cancellationToken = default) =>
+        await Breastfeeds(babyId)
+            .Where(f => f.EndTime != null)
+            .Select(f => f.Segments.OrderByDescending(s => s.StartedAt).Select(s => (BreastSide?)s.Side).FirstOrDefault())
+            .FirstOrDefaultAsync(cancellationToken);
+
+    /// <summary>The baby's breastfeeds, newest first.</summary>
+    private IQueryable<Feed> Breastfeeds(Guid babyId) =>
+        db.Set<Feed>()
+            .Where(f => f.BabyId == babyId && f.Kind == FeedKind.Breastfeed)
+            .OrderByDescending(f => f.StartTime)
+            .ThenByDescending(f => f.Id);
 }

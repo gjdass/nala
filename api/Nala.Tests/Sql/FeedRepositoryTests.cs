@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using Nala.Core.Babies;
 using Nala.Core.Feeds;
 using Nala.Core.Users;
@@ -294,5 +295,166 @@ public class FeedRepositoryTests
         await using var db = _db();
 
         Assert.That(await new FeedRepository(db).GetBottleDefaultsAsync(_lea.Id), Is.EqualTo(new BottleDefaults(null, null, null)));
+    }
+
+    private async Task<Feed> AddBreastfeedAsync(
+        DateTimeOffset startTime, DateTimeOffset? endTime, Baby? baby = null, params (BreastSide Side, int StartMinute, int? EndMinute)[] segments)
+    {
+        var id = Guid.NewGuid();
+        var feed = new Feed
+        {
+            Id = id,
+            BabyId = (baby ?? _lea).Id,
+            Kind = FeedKind.Breastfeed,
+            StartTime = startTime,
+            EndTime = endTime,
+            LoggedByUserId = _anna.Id,
+            UpdatedByUserId = _anna.Id,
+            CreatedAt = Now,
+            UpdatedAt = Now,
+            Segments = segments
+                .Select(s => new BreastFeedSegment
+                {
+                    Id = Guid.NewGuid(),
+                    FeedId = id,
+                    Side = s.Side,
+                    StartedAt = startTime.AddMinutes(s.StartMinute),
+                    EndedAt = s.EndMinute is { } end ? startTime.AddMinutes(end) : null,
+                })
+                .ToList(),
+        };
+        await using var db = _db();
+        await new FeedRepository(db).AddAsync(feed);
+        return feed;
+    }
+
+    [Test]
+    public async Task A_breastfeed_is_read_back_with_its_segments_in_order()
+    {
+        var added = await AddBreastfeedAsync(Now.AddMinutes(-20), null, null, (BreastSide.Left, 0, 5), (BreastSide.Right, 5, null));
+
+        await using var read = _db();
+        var repository = new FeedRepository(read);
+        var entry = (await repository.GetEntryAsync(added.Id))!;
+        var tracked = (await repository.GetAsync(added.Id))!;
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(entry.Feed.Kind, Is.EqualTo(FeedKind.Breastfeed));
+            Assert.That(entry.Feed.EndTime, Is.Null);
+            Assert.That(
+                entry.Feed.Segments.Select(s => (s.Id, s.Side, s.StartedAt, s.EndedAt)),
+                Is.EqualTo(added.Segments.Select(s => (s.Id, s.Side, s.StartedAt, s.EndedAt))));
+            Assert.That(tracked.Segments.Select(s => s.Id), Is.EqualTo(added.Segments.Select(s => s.Id)));
+        });
+    }
+
+    [Test]
+    public async Task Segments_added_and_closed_on_a_loaded_feed_are_saved()
+    {
+        var added = await AddBreastfeedAsync(Now.AddMinutes(-20), null, null, (BreastSide.Left, 0, null));
+        var newSegment = Guid.NewGuid();
+        await using (var db = _db())
+        {
+            var repository = new FeedRepository(db);
+            var feed = (await repository.GetAsync(added.Id))!;
+            feed.Segments[0].EndedAt = Now.AddMinutes(-10);
+            feed.Segments.Add(new BreastFeedSegment
+            {
+                Id = newSegment,
+                FeedId = feed.Id,
+                Side = BreastSide.Right,
+                StartedAt = Now.AddMinutes(-10),
+            });
+            feed.EndTime = Now;
+            await repository.UpdateAsync(feed);
+        }
+
+        await using var read = _db();
+        var saved = (await new FeedRepository(read).GetEntryAsync(added.Id))!.Feed;
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(saved.EndTime, Is.EqualTo(Now));
+            Assert.That(saved.Segments.Select(s => (s.Id, s.EndedAt)), Is.EqualTo(new (Guid, DateTimeOffset?)[]
+            {
+                (added.Segments[0].Id, Now.AddMinutes(-10)),
+                (newSegment, null),
+            }));
+        });
+    }
+
+    [Test]
+    public void A_feed_cannot_have_two_open_segments()
+    {
+        Assert.That(
+            async () => await AddBreastfeedAsync(Now.AddMinutes(-20), null, null, (BreastSide.Left, 0, null), (BreastSide.Right, 5, null)),
+            Throws.InstanceOf<Microsoft.EntityFrameworkCore.DbUpdateException>());
+    }
+
+    [Test]
+    public async Task The_in_progress_breastfeed_is_the_one_of_that_baby_without_an_end()
+    {
+        await AddBreastfeedAsync(Now.AddHours(-2), Now.AddHours(-1.5), null, (BreastSide.Left, 0, 5));
+        await AddBreastfeedAsync(Now.AddMinutes(-5), null, _tom, (BreastSide.Left, 0, null));
+        var current = await AddBreastfeedAsync(Now.AddMinutes(-10), null, null, (BreastSide.Right, 0, null));
+
+        await using var db = _db();
+        var repository = new FeedRepository(db);
+
+        Assert.That((await repository.GetInProgressBreastfeedAsync(_lea.Id))?.Feed.Id, Is.EqualTo(current.Id));
+        Assert.That((await repository.GetInProgressBreastfeedAsync(_tom.Id))?.Feed.Segments, Has.Count.EqualTo(1));
+    }
+
+    [Test]
+    public async Task No_breastfeed_is_in_progress_without_one()
+    {
+        await AddBreastfeedAsync(Now.AddHours(-2), Now.AddHours(-1.5), null, (BreastSide.Left, 0, 5));
+
+        await using var db = _db();
+
+        Assert.That(await new FeedRepository(db).GetInProgressBreastfeedAsync(_lea.Id), Is.Null);
+    }
+
+    [Test]
+    public async Task The_last_side_is_the_ended_on_side_of_the_latest_saved_breastfeed()
+    {
+        await AddBreastfeedAsync(Now.AddHours(-3), Now.AddHours(-2.5), null, (BreastSide.Left, 0, 5));
+        await AddBreastfeedAsync(Now.AddHours(-2), Now.AddHours(-1.5), null, (BreastSide.Left, 0, 5), (BreastSide.Right, 5, 10));
+        await AddBreastfeedAsync(Now.AddMinutes(-10), null, null, (BreastSide.Left, 0, null));
+        await AddBreastfeedAsync(Now.AddMinutes(-5), Now, _tom, (BreastSide.Left, 0, 5));
+
+        await using var db = _db();
+        var repository = new FeedRepository(db);
+
+        Assert.That(await repository.GetLastBreastSideAsync(_lea.Id), Is.EqualTo(BreastSide.Right));
+        Assert.That(await repository.GetLastBreastSideAsync(Guid.NewGuid()), Is.Null);
+    }
+
+    [Test]
+    public async Task The_list_leaves_out_the_breastfeed_in_progress()
+    {
+        var saved = await AddBreastfeedAsync(Now.AddHours(-2), Now.AddHours(-1.5), null, (BreastSide.Left, 0, 5));
+        await AddBreastfeedAsync(Now.AddMinutes(-10), null, null, (BreastSide.Left, 0, null));
+        var bottle = await AddAsync(startTime: Now.AddMinutes(-20));
+
+        var list = await ListAsync();
+
+        Assert.That(list.Select(e => e.Feed.Id), Is.EqualTo(new[] { bottle.Id, saved.Id }));
+        Assert.That(list[1].Feed.Segments, Has.Count.EqualTo(1));
+    }
+
+    [Test]
+    public async Task Deleting_a_breastfeed_deletes_its_segments()
+    {
+        var added = await AddBreastfeedAsync(Now.AddMinutes(-10), null, null, (BreastSide.Left, 0, null));
+        await using (var db = _db())
+        {
+            var babies = new BabyRepository(db);
+            await babies.DeleteAsync((await babies.GetAsync(_lea.Id))!);
+        }
+
+        await using var read = _db();
+        Assert.That(await read.Set<BreastFeedSegment>().CountAsync(s => s.FeedId == added.Id), Is.Zero);
     }
 }

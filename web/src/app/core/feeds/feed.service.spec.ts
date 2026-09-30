@@ -2,10 +2,11 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { firstValueFrom } from 'rxjs';
-import { aBottle, aSolids } from '../../testing/feeds';
+import { aBottle, aBreastfeed, aSolids } from '../../testing/feeds';
 import {
   BottleDefaults,
   BottleFields,
+  BreastfeedState,
   FeedDeleteResult,
   FeedResult,
   SolidsFields,
@@ -172,6 +173,75 @@ describe('FeedService', () => {
         milkType: null,
         lastAmountMl: { breastMilk: null, formula: null },
       });
+    });
+  });
+
+  describe('breastfeedState()', () => {
+    it('gets the baby breastfeed in progress and last side', async () => {
+      const state: BreastfeedState = {
+        inProgress: aBreastfeed({ endTime: null }),
+        lastSide: 'right',
+      };
+      const result = firstValueFrom(service.breastfeedState('b1'));
+      http.expectOne('/api/babies/b1/feeds/breastfeed').flush(state);
+      expect(await result).toEqual(state);
+    });
+
+    it('has none when it cannot be loaded', async () => {
+      const result = firstValueFrom(service.breastfeedState('b1'));
+      http
+        .expectOne('/api/babies/b1/feeds/breastfeed')
+        .flush(null, { status: 503, statusText: 'Unavailable' });
+      expect(await result).toEqual<BreastfeedState>({ inProgress: null, lastSide: null });
+    });
+  });
+
+  describe('breastfeed timers', () => {
+    const at = '2026-09-30T10:00:00.000Z';
+
+    it('starts a side with the client ids and time', async () => {
+      const result = firstValueFrom(service.startSide('f3', 'b1', 'left', at, 's1'));
+      const req = http.expectOne('/api/feeds/f3/breastfeed/start');
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual({ babyId: 'b1', segmentId: 's1', side: 'left', at });
+      req.flush(aBreastfeed(), { status: 201, statusText: 'Created' });
+      expect(await result).toEqual<FeedResult>({ ok: true, feed: aBreastfeed() });
+    });
+
+    it('generates the segment id when none is given', () => {
+      service.startSide('f3', 'b1', 'right', at).subscribe();
+      const req = http.expectOne('/api/feeds/f3/breastfeed/start');
+      expect(req.request.body.segmentId).toMatch(/^[0-9a-f-]{36}$/);
+      req.flush(aBreastfeed());
+    });
+
+    it('maps another breastfeed in progress to its code', async () => {
+      const result = firstValueFrom(service.startSide('f3', 'b1', 'left', at));
+      http
+        .expectOne('/api/feeds/f3/breastfeed/start')
+        .flush({ code: 'breastfeedInProgress' }, { status: 409, statusText: 'Conflict' });
+      expect(await result).toEqual<FeedResult>({
+        ok: false,
+        errors: { form: 'breastfeedInProgress' },
+      });
+    });
+
+    it('stops the running side', async () => {
+      const result = firstValueFrom(service.stopSide('f3', at));
+      const req = http.expectOne('/api/feeds/f3/breastfeed/stop');
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual({ at });
+      req.flush(aBreastfeed());
+      expect(await result).toEqual<FeedResult>({ ok: true, feed: aBreastfeed() });
+    });
+
+    it('finishes the feed with the sheet fields', async () => {
+      const fields = { startTime: at, notes: 'calm' };
+      const result = firstValueFrom(service.finish('f3', fields, '2026-09-30T10:09:00.000Z'));
+      const req = http.expectOne('/api/feeds/f3/breastfeed/finish');
+      expect(req.request.body).toEqual({ ...fields, at: '2026-09-30T10:09:00.000Z' });
+      req.flush(null, { status: 400, statusText: 'Bad Request' });
+      expect(await result).toEqual<FeedResult>({ ok: false, errors: { form: 'unknown' } });
     });
   });
 });

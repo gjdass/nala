@@ -391,4 +391,150 @@ public class FeedEndpointTests
         Assert.That((await anonymous.GetAsync($"/api/babies/{_leaId}/feeds")).StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
         Assert.That((await anonymous.PostAsJsonAsync("/api/feeds", Bottle())).StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
     }
+
+    private Task<HttpResponseMessage> StartSideAsync(HttpClient client, Guid feedId, string side, DateTimeOffset at, Guid? segmentId = null) =>
+        client.PostAsJsonAsync($"/api/feeds/{feedId}/breastfeed/start", new { babyId = _leaId, segmentId = segmentId ?? Guid.NewGuid(), side, at });
+
+    private async Task<JsonElement> BreastfeedStateAsync()
+    {
+        var response = await _admin.GetAsync($"/api/babies/{_leaId}/feeds/breastfeed");
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        return await JsonAsync(response);
+    }
+
+    [Test]
+    public async Task Starting_a_side_creates_an_in_progress_breastfeed_with_its_segment()
+    {
+        var feedId = Guid.NewGuid();
+        var segmentId = Guid.NewGuid();
+
+        var response = await StartSideAsync(_admin, feedId, "left", _now.AddMinutes(-10), segmentId);
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Created));
+        var feed = await JsonAsync(response);
+        var segment = feed.GetProperty("segments")[0];
+        Assert.Multiple(() =>
+        {
+            Assert.That(feed.GetProperty("id").GetGuid(), Is.EqualTo(feedId));
+            Assert.That(feed.GetProperty("kind").GetString(), Is.EqualTo("breastfeed"));
+            Assert.That(feed.GetProperty("startTime").GetDateTimeOffset(), Is.EqualTo(_now.AddMinutes(-10)).Within(TimeSpan.FromMilliseconds(1)));
+            Assert.That(feed.GetProperty("endTime").ValueKind, Is.EqualTo(JsonValueKind.Null));
+            Assert.That(feed.GetProperty("segments").GetArrayLength(), Is.EqualTo(1));
+            Assert.That(segment.GetProperty("id").GetGuid(), Is.EqualTo(segmentId));
+            Assert.That(segment.GetProperty("side").GetString(), Is.EqualTo("left"));
+            Assert.That(segment.GetProperty("startedAt").GetDateTimeOffset(), Is.EqualTo(_now.AddMinutes(-10)).Within(TimeSpan.FromMilliseconds(1)));
+            Assert.That(segment.GetProperty("endedAt").ValueKind, Is.EqualTo(JsonValueKind.Null));
+        });
+
+        var again = await StartSideAsync(_admin, feedId, "left", _now.AddMinutes(-10), segmentId);
+        Assert.That(again.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        Assert.That((await JsonAsync(again)).GetProperty("segments").GetArrayLength(), Is.EqualTo(1));
+    }
+
+    [Test]
+    public async Task Other_kinds_answer_an_empty_segment_list()
+    {
+        var feed = await JsonAsync(await _admin.PostAsJsonAsync("/api/feeds", Bottle()));
+
+        Assert.That(feed.GetProperty("segments").GetArrayLength(), Is.Zero);
+    }
+
+    [Test]
+    public async Task Any_member_switches_sides_pauses_and_saves_the_breastfeed()
+    {
+        var feedId = Guid.NewGuid();
+        await StartSideAsync(_admin, feedId, "left", _now.AddMinutes(-10));
+        var (ben, benId) = await RegisterBenAsync();
+
+        var switched = await StartSideAsync(ben, feedId, "right", _now.AddMinutes(-6));
+        var paused = await ben.PostAsJsonAsync($"/api/feeds/{feedId}/breastfeed/stop", new { at = _now.AddMinutes(-2) });
+        var finished = await _admin.PostAsJsonAsync(
+            $"/api/feeds/{feedId}/breastfeed/finish", new { startTime = _now.AddMinutes(-10), notes = "calm", at = _now.AddMinutes(-1) });
+
+        Assert.That(switched.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        Assert.That(paused.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        Assert.That((await JsonAsync(paused)).GetProperty("updatedBy").GetProperty("id").GetGuid(), Is.EqualTo(benId));
+        Assert.That(finished.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        var feed = await JsonAsync(finished);
+        Assert.Multiple(() =>
+        {
+            Assert.That(feed.GetProperty("endTime").GetDateTimeOffset(), Is.EqualTo(_now.AddMinutes(-1)).Within(TimeSpan.FromMilliseconds(1)));
+            Assert.That(feed.GetProperty("notes").GetString(), Is.EqualTo("calm"));
+            Assert.That(feed.GetProperty("segments").EnumerateArray().Select(s => s.GetProperty("side").GetString()), Is.EqualTo(new[] { "left", "right" }));
+        });
+        var entries = (await PageAsync(_admin)).GetProperty("entries");
+        Assert.That(entries.GetArrayLength(), Is.EqualTo(1));
+        Assert.That(entries[0].GetProperty("id").GetGuid(), Is.EqualTo(feedId));
+        ben.Dispose();
+    }
+
+    [Test]
+    public async Task A_second_breastfeed_cannot_start_while_one_is_in_progress()
+    {
+        await StartSideAsync(_admin, Guid.NewGuid(), "left", _now.AddMinutes(-10));
+
+        var response = await StartSideAsync(_admin, Guid.NewGuid(), "right", _now);
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Conflict));
+        Assert.That((await JsonAsync(response)).GetProperty("code").GetString(), Is.EqualTo("breastfeedInProgress"));
+    }
+
+    [Test]
+    public async Task Invalid_timer_actions_answer_validation_codes()
+    {
+        var feedId = Guid.NewGuid();
+        await StartSideAsync(_admin, feedId, "left", _now.AddMinutes(-10));
+        await _admin.PostAsJsonAsync($"/api/feeds/{feedId}/breastfeed/stop", new { at = _now.AddMinutes(-10) });
+
+        var side = await StartSideAsync(_admin, feedId, "middle", _now);
+        var zero = await _admin.PostAsJsonAsync(
+            $"/api/feeds/{feedId}/breastfeed/finish", new { startTime = _now.AddMinutes(-10), at = _now });
+
+        Assert.That(side.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
+        Assert.That((await JsonAsync(side)).GetProperty("errors").GetProperty("side")[0].GetString(), Is.EqualTo("invalid"));
+        Assert.That(zero.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
+        Assert.That((await JsonAsync(zero)).GetProperty("errors").GetProperty("durations")[0].GetString(), Is.EqualTo("zero"));
+    }
+
+    [Test]
+    public async Task Timer_actions_on_an_unknown_feed_or_baby_are_not_found()
+    {
+        var stop = await _admin.PostAsJsonAsync($"/api/feeds/{Guid.NewGuid()}/breastfeed/stop", new { at = _now });
+        var start = await _admin.PostAsJsonAsync(
+            $"/api/feeds/{Guid.NewGuid()}/breastfeed/start", new { babyId = Guid.NewGuid(), segmentId = Guid.NewGuid(), side = "left", at = _now });
+
+        Assert.That(stop.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
+        Assert.That((await JsonAsync(stop)).GetProperty("code").GetString(), Is.EqualTo("feedNotFound"));
+        Assert.That(start.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
+        Assert.That((await JsonAsync(start)).GetProperty("code").GetString(), Is.EqualTo("babyNotFound"));
+    }
+
+    [Test]
+    public async Task The_breastfeed_state_gives_the_one_in_progress_and_the_last_side()
+    {
+        Assert.That((await BreastfeedStateAsync()).GetRawText(), Is.EqualTo("""{"inProgress":null,"lastSide":null}"""));
+
+        var saved = Guid.NewGuid();
+        await StartSideAsync(_admin, saved, "left", _now.AddMinutes(-30));
+        await StartSideAsync(_admin, saved, "right", _now.AddMinutes(-25));
+        await _admin.PostAsJsonAsync($"/api/feeds/{saved}/breastfeed/finish", new { startTime = _now.AddMinutes(-30), at = _now.AddMinutes(-20) });
+        var current = Guid.NewGuid();
+        await StartSideAsync(_admin, current, "left", _now.AddMinutes(-5));
+
+        var state = await BreastfeedStateAsync();
+
+        Assert.That(state.GetProperty("inProgress").GetProperty("id").GetGuid(), Is.EqualTo(current));
+        Assert.That(state.GetProperty("lastSide").GetString(), Is.EqualTo("right"));
+        Assert.That((await _admin.GetAsync($"/api/babies/{Guid.NewGuid()}/feeds/breastfeed")).StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
+    }
+
+    [Test]
+    public async Task An_in_progress_breastfeed_is_deleted()
+    {
+        var feedId = Guid.NewGuid();
+        await StartSideAsync(_admin, feedId, "left", _now.AddMinutes(-10));
+
+        Assert.That((await _admin.DeleteAsync($"/api/feeds/{feedId}")).StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
+        Assert.That((await BreastfeedStateAsync()).GetProperty("inProgress").ValueKind, Is.EqualTo(JsonValueKind.Null));
+    }
 }

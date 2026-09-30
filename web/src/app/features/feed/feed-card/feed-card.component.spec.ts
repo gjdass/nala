@@ -5,7 +5,7 @@ import { Observable, Subject, of } from 'rxjs';
 import en from '../../../../../public/i18n/en.json';
 import { Baby } from '../../../core/babies/baby.models';
 import { SelectedBabyService } from '../../../core/babies/selected-baby.service';
-import { Feed } from '../../../core/feeds/feed.models';
+import { BreastfeedState, Feed } from '../../../core/feeds/feed.models';
 import { FeedService } from '../../../core/feeds/feed.service';
 import { HistoryPage } from '../../../core/sections/section.models';
 import { EntrySheetResult } from '../../../shared/ui/entry-sheet/entry-sheet.models';
@@ -29,7 +29,8 @@ const baby = (id: string): Baby => ({
 describe('FeedCardComponent', () => {
   let fixture: ComponentFixture<FeedCardComponent>;
   let pages: Subject<HistoryPage<Feed>>[];
-  let feeds: { page: ReturnType<typeof vi.fn> };
+  let feeds: { page: ReturnType<typeof vi.fn>; breastfeedState: ReturnType<typeof vi.fn> };
+  let states: Subject<BreastfeedState>[];
   let selected: ReturnType<typeof signal<Baby | null>>;
   let edited: Subject<EntrySheetResult | undefined>;
   let entrySheets: { add: ReturnType<typeof vi.fn>; edit: ReturnType<typeof vi.fn> };
@@ -39,6 +40,10 @@ describe('FeedCardComponent', () => {
   const text = (testId: string) => find(testId)?.textContent?.replace(/\s+/g, ' ').trim();
   const respond = async (entries: Feed[]) => {
     pages.at(-1)!.next({ entries, next: null });
+    await fixture.whenStable();
+  };
+  const respondState = async (state: BreastfeedState) => {
+    states.at(-1)!.next(state);
     await fixture.whenStable();
   };
   const expand = async () => {
@@ -51,7 +56,13 @@ describe('FeedCardComponent', () => {
     vi.setSystemTime(NOW);
     localStorage.clear();
     pages = [];
+    states = [];
     feeds = {
+      breastfeedState: vi.fn((): Observable<BreastfeedState> => {
+        const state = new Subject<BreastfeedState>();
+        states.push(state);
+        return state;
+      }),
       page: vi.fn((): Observable<HistoryPage<Feed>> => {
         const page = new Subject<HistoryPage<Feed>>();
         pages.push(page);
@@ -164,5 +175,38 @@ describe('FeedCardComponent', () => {
     await fixture.whenStable();
 
     expect(feeds.page).toHaveBeenLastCalledWith('b2', null, 10);
+  });
+
+  it('shows the side the latest saved breastfeed ended on, labelled last side', async () => {
+    await respond([aBottle({ startTime: minutesAgo(26) })]);
+    await respondState({ inProgress: null, lastSide: 'right' });
+
+    expect(feeds.breastfeedState).toHaveBeenCalledWith('b1');
+    expect(text('feed-last-side')).toBe(en.feed.card.side.right);
+    expect(text('feed-last-side-label')).toBe(en.feed.card.lastSide);
+    const since = find('feed-last-since')!;
+    expect(
+      since.compareDocumentPosition(find('feed-last-side')!) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it('hides the last side without any saved breastfeed', async () => {
+    await respond([aBottle()]);
+    await respondState({ inProgress: null, lastSide: null });
+
+    expect(find('feed-last-side')).toBeNull();
+    expect(find('feed-last-side-label')).toBeNull();
+  });
+
+  it('reloads the last side with the feeds', async () => {
+    await respond([aBottle()]);
+
+    find('section-add')!.click();
+    await fixture.whenStable();
+    selected.set(baby('b2'));
+    await fixture.whenStable();
+
+    expect(feeds.breastfeedState).toHaveBeenCalledTimes(3);
+    expect(feeds.breastfeedState).toHaveBeenLastCalledWith('b2');
   });
 });

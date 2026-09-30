@@ -10,7 +10,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { Subscription, filter } from 'rxjs';
 import { SelectedBabyService } from '../../../core/babies/selected-baby.service';
-import { Feed } from '../../../core/feeds/feed.models';
+import { BreastSide, Feed } from '../../../core/feeds/feed.models';
 import { FeedService } from '../../../core/feeds/feed.service';
 import { TimeSincePipe } from '../../../core/time/time-since';
 import { EmptyStateComponent } from '../../../shared/ui/empty-state/empty-state.component';
@@ -24,7 +24,8 @@ import { FeedEntryComponent } from '../feed-entry/feed-entry.component';
 
 /**
  * The Feed card on home (spec 05): the selected baby's recent feeds in the shared section card, with
- * "Last feeding" and the time since the latest feed started, or an empty state without any feed.
+ * "Last feeding" and the time since the latest feed started, on the right the side the latest saved
+ * breastfeed ended on ("last side", hidden without one), or an empty state without any feed.
  * Reloads after an entry is added, edited or deleted, and when another baby is selected.
  */
 @Component({
@@ -49,13 +50,16 @@ export class FeedCardComponent {
 
   /** Newest first; null while loading. */
   protected readonly entries = signal<readonly Feed[] | null>(null);
+  protected readonly lastSide = signal<BreastSide | null>(null);
   private request?: Subscription;
+  private stateRequest?: Subscription;
 
   constructor() {
     effect(() => {
       const baby = this.store.selected();
       untracked(() => {
         this.entries.set(null);
+        this.lastSide.set(null);
         if (baby) {
           this.load(baby.id);
         }
@@ -82,5 +86,9 @@ export class FeedCardComponent {
     this.request = this.feeds
       .page(babyId, null, RECENT_ENTRIES)
       .subscribe({ next: (page) => this.entries.set(page.entries) });
+    this.stateRequest?.unsubscribe();
+    this.stateRequest = this.feeds
+      .breastfeedState(babyId)
+      .subscribe((state) => this.lastSide.set(state.lastSide));
   }
 }

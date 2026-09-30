@@ -1,0 +1,28 @@
+<div class="timers">
+  @for (item of sides; track item.side) {
+    @let runs = running() === item.side;
+    <div class="timer" [attr.data-testid]="'split-' + item.side">
+      <span class="mark">
+        @if (markedSide() === item.side) {
+          <span [attr.data-testid]="'split-' + item.side + '-mark'">{{ markLabel() }}</span>
+        }
+      </span>
+      <span class="label" [attr.data-testid]="'split-' + item.side + '-label'">{{
+        item.label | transloco
+      }}</span>
+      <span class="duration" [attr.data-testid]="'split-' + item.side + '-duration'">{{
+        seconds(item.side) | nalaDuration
+      }}</span>
+      <button
+        type="button"
+        [matButton]="runs ? 'filled' : 'tonal'"
+        [disabled]="disabled()"
+        [attr.aria-pressed]="runs"
+        (click)="toggle(item.side)"
+        [attr.data-testid]="'split-' + item.side + '-toggle'"
+      >
+        {{ (runs ? 'splitTimer.stop' : item.startLabel) | transloco }}
+      </button>
+    </div>
+  }
+</div>

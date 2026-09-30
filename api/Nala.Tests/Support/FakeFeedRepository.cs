@@ -31,7 +31,7 @@ public class FakeFeedRepository : IFeedRepository
 
     public Task<IReadOnlyList<FeedEntry>> ListAsync(Guid babyId, FeedCursor? after, int limit, CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<FeedEntry>>(Feeds
-            .Where(f => f.BabyId == babyId)
+            .Where(f => f.BabyId == babyId && !(f.Kind == FeedKind.Breastfeed && f.EndTime == null))
             .Where(f => after is null || f.StartTime < after.StartTime || (f.StartTime == after.StartTime && f.Id.CompareTo(after.Id) < 0))
             .OrderByDescending(f => f.StartTime)
             .ThenByDescending(f => f.Id)
@@ -48,4 +48,13 @@ public class FakeFeedRepository : IFeedRepository
 
     private FeedEntry ToEntry(Feed feed) =>
         new(feed, new UserName(feed.LoggedByUserId, Names[feed.LoggedByUserId]), new UserName(feed.UpdatedByUserId, Names[feed.UpdatedByUserId]));
+
+    public Task<FeedEntry?> GetInProgressBreastfeedAsync(Guid babyId, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Breastfeeds(babyId).Where(f => f.EndTime is null).Select(ToEntry).FirstOrDefault());
+
+    public Task<BreastSide?> GetLastBreastSideAsync(Guid babyId, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Breastfeeds(babyId).Where(f => f.EndTime is not null).Select(Breastfeed.EndedOnSide).FirstOrDefault());
+
+    private IEnumerable<Feed> Breastfeeds(Guid babyId) =>
+        Feeds.Where(f => f.BabyId == babyId && f.Kind == FeedKind.Breastfeed).OrderByDescending(f => f.StartTime);
 }

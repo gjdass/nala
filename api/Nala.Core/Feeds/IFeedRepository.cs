@@ -18,4 +18,10 @@ public interface IFeedRepository
     Task<IReadOnlyList<FeedEntry>> ListAsync(Guid babyId, FeedCursor? after, int limit, CancellationToken cancellationToken = default);
 
     Task<BottleDefaults> GetBottleDefaultsAsync(Guid babyId, CancellationToken cancellationToken = default);
+
+    /// <summary>The baby's latest breastfeed without an end, with its segments; null when none.</summary>
+    Task<FeedEntry?> GetInProgressBreastfeedAsync(Guid babyId, CancellationToken cancellationToken = default);
+
+    /// <summary>The side of the last segment of the baby's latest saved breastfeed; null when none.</summary>
+    Task<BreastSide?> GetLastBreastSideAsync(Guid babyId, CancellationToken cancellationToken = default);
 }

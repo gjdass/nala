@@ -16,6 +16,21 @@
       (open)="open.emit()"
     />
   }
+  @case ('breastfeed') {
+    @let left = sides().left;
+    @let right = sides().right;
+    @let split = left && right ? 'both' : left ? 'left' : 'right';
+    <nala-entry-list-item
+      [icon]="icons.breastfeed"
+      [time]="entry.startTime"
+      [durationSeconds]="left + right"
+      [summary]="
+        'feed.breastfeed.summary.' + split
+          | transloco: { left: left | nalaDuration, right: right | nalaDuration }
+      "
+      (open)="open.emit()"
+    />
+  }
   @default {
     <nala-entry-list-item
       [icon]="icons[entry.kind]"
