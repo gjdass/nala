@@ -1,8 +1,4 @@
-<div
-  class="body"
-  [style.--nala-entry-bar]="'var(--nala-section-' + key() + ')'"
-  data-testid="history-body"
->
+<div class="body" data-testid="history-body">
   @if (entries().length > 0) {
     <mat-action-list>
       @for (entry of entries(); track entry.id) {

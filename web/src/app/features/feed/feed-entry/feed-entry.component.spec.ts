@@ -43,7 +43,7 @@ describe('FeedEntryComponent', () => {
     expect(find('entry-label')).toBeNull();
   });
 
-  it('shows solids with their icon, time, meal type and reaction, then the food on up to 2 lines', async () => {
+  it('shows solids with their icon, "time · meal type · reaction", then the food on one line', async () => {
     fixture.componentRef.setInput(
       'feed',
       aSolids({ mealType: 'lunch', food: 'Carrot purée', reaction: 'allergicReaction' }),
@@ -55,11 +55,16 @@ describe('FeedEntryComponent', () => {
     expect(find('entry-label')?.textContent?.trim()).toBe(
       `${en.feed.mealType.lunch} · ${en.feed.reaction.allergicReaction}`,
     );
-    expect(find('entry-summary')?.textContent?.trim()).toBe('Carrot purée');
-    expect(find('entry-summary')?.closest('.mdc-list-item__secondary-text')).toBeTruthy();
-    expect((fixture.nativeElement as HTMLElement).querySelector('button')?.classList).toContain(
-      'mdc-list-item--with-three-lines',
+    expect(
+      find('entry-time')?.closest('[matListItemTitle]')?.textContent?.replace(/\s+/g, ' ').trim(),
+    ).toBe(
+      `${find('entry-time')?.textContent?.trim()} · ${en.feed.mealType.lunch} · ${en.feed.reaction.allergicReaction}`,
     );
+    expect(find('entry-summary')?.textContent?.trim()).toBe('Carrot purée');
+    expect(find('entry-summary')?.closest('[matListItemLine]')).toBeTruthy();
+    const classes = (fixture.nativeElement as HTMLElement).querySelector('button')?.classList;
+    expect(classes).toContain('mdc-list-item--with-two-lines');
+    expect(classes).not.toContain('mdc-list-item--with-three-lines');
     expect(find('entry-bar')).toBeNull();
   });
 
@@ -89,16 +94,15 @@ describe('FeedEntryComponent', () => {
     expect(opened).toHaveBeenCalled();
   });
 
-  it('shows a breastfeed with its icon, duration bar, total and per-side split', async () => {
+  it('shows a breastfeed with its icon, the total and the per-side split, without a bar', async () => {
     fixture.componentRef.setInput('feed', aBreastfeed());
     await fixture.whenStable();
 
     expect(find('entry-icon')?.textContent?.trim()).toBe('breastfeeding');
     expect(find('entry-time')?.textContent?.trim()).toBeTruthy();
-    expect(find('entry-bar')).not.toBeNull();
-    expect(find('entry-bar')!.style.width).toBe(`${(510 / 3600) * 100}%`);
-    expect(find('entry-duration')?.textContent?.trim()).toBe('8m 30s');
-    expect(find('entry-summary')?.textContent?.trim()).toBe('L 5m · R 3m 30s');
+    expect(find('entry-bar')).toBeNull();
+    expect(find('entry-duration')).toBeNull();
+    expect(find('entry-summary')?.textContent?.trim()).toBe('Total 8m 30s · L 5m · R 3m 30s');
   });
 
   it('leaves out a side that was not used', async () => {
@@ -110,6 +114,6 @@ describe('FeedEntryComponent', () => {
     );
     await fixture.whenStable();
 
-    expect(find('entry-summary')?.textContent?.trim()).toBe('R 4m');
+    expect(find('entry-summary')?.textContent?.trim()).toBe('Total 4m · R 4m');
   });
 });

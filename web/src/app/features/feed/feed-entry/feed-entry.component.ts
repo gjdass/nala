@@ -8,9 +8,9 @@ import { FEED_KIND_ICONS } from '../feed-kinds';
 
 /**
  * A feed as an entry list item (spec 05), in the feed card and history: its kind icon, start time and
- * summary: "Formula · 120 ml" for a bottle; for a breastfeed, the duration bar, the total and the
- * per-side split ("L 5m · R 3m 30s", an unused side left out); for solids, the meal type and reaction after the time
- * ("12:00 PM Lunch · Liked") and the food on up to 2 lines. Tapping it emits `open`.
+ * summary: "Formula · 120 ml" for a bottle; for a breastfeed, the total and the per-side split
+ * ("Total 8m 30s · L 5m · R 3m 30s", an unused side left out); for solids, the meal type and reaction after
+ * the time ("12:00 PM · Lunch · Liked") and the food on one line. Tapping it emits `open`.
  */
 @Component({
   selector: 'nala-feed-entry',

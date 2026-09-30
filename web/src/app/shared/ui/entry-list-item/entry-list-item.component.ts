@@ -1,18 +1,16 @@
-import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
-import { DurationPipe } from '../../../core/time/duration';
 import { EntryTimePipe } from '../../../core/time/entry-time';
 
 /**
- * One entry of a section (card list and history, spec 04): kind icon, local time with an optional label,
- * summary, an optional duration bar (duration / section scale, capped at full width) with the duration,
- * and a chevron.
- * Tapping it emits `open`. Place it in a `mat-action-list`; the bar takes `--nala-entry-bar`.
+ * One entry of a section (card list and history, spec 04), always a two-line item so every row has the same
+ * height: kind icon, headline "time · label" (label optional), the summary on one line (ellipsis), a chevron.
+ * Tapping it emits `open`. Place it in a `mat-action-list`.
  */
 @Component({
   selector: 'nala-entry-list-item',
-  imports: [DurationPipe, EntryTimePipe, MatIconModule, MatListModule],
+  imports: [EntryTimePipe, MatIconModule, MatListModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './entry-list-item.component.html',
   styleUrl: './entry-list-item.component.scss',
@@ -25,15 +23,5 @@ export class EntryListItemComponent {
   /** Shown after the time in the headline (e.g. "Lunch · Liked"). */
   readonly label = input('');
   readonly summary = input('');
-  /** 2 makes a three-line item whose summary wraps on up to 2 lines (no duration bar then). */
-  readonly summaryLines = input<1 | 2>(1);
-  readonly durationSeconds = input<number | null>(null);
-  /** The duration that fills the whole bar, set by the section. */
-  readonly durationScaleSeconds = input(3600);
   readonly open = output<void>();
-
-  protected readonly barWidth = computed(() => {
-    const duration = this.durationSeconds() ?? 0;
-    return `${Math.min(100, (duration / this.durationScaleSeconds()) * 100)}%`;
-  });
 }

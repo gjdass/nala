@@ -98,9 +98,9 @@ Each item becomes at least one test, written failing first.
 - [x] Rows: Start time (default now), Food (required free text, 1–500 characters, multi-line), Reaction (optional, single-select filter chips: liked / neutral / disliked / allergic reaction), Notes.
 
 ### Entry list items
-- [ ] Breastfeed: `breastfeeding` icon, time, then "Total 8m 30s · L 5m · R 3m 30s" (an unused side left out). No duration bar.
+- [x] Breastfeed: `breastfeeding` icon, time, then "Total 8m 30s · L 5m · R 3m 30s" (an unused side left out). No duration bar.
 - [x] Bottle: bottle icon, time, "<milk type> · <n> ml".
-- [ ] Solids: `nutrition` icon, then a headline with the time, the meal type and the reaction when there are any ("12:00 PM · Lunch · Liked"), then the food text on one line (ellipsis when too long), so the row has the same height as the others.
+- [x] Solids: `nutrition` icon, then a headline with the time, the meal type and the reaction when there are any ("12:00 PM · Lunch · Liked"), then the food text on one line (ellipsis when too long), so the row has the same height as the others.
 - [x] Entries logged by a deleted account still show that person's display name.
 
 ### Editing and validation

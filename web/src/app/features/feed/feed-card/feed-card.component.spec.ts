@@ -210,7 +210,7 @@ describe('FeedCardComponent', () => {
     await respondState({ inProgress: null, lastSide: 'right' });
 
     expect(feeds.breastfeedState).toHaveBeenCalledWith('b1');
-    expect(text('feed-last-side')).toBe(en.feed.card.side.right);
+    expect(text('feed-last-side')).toBe('Right');
     expect(text('feed-last-side-label')).toBe(en.feed.card.lastSide);
     const since = find('feed-last-since')!;
     expect(

@@ -416,8 +416,8 @@
       },
       "lastSide": "dernier côté",
       "side": {
-        "left": "gauche",
-        "right": "droite"
+        "left": "Gauche",
+        "right": "Droite"
       },
       "feeding": "Tétée en cours"
     },
@@ -445,9 +445,9 @@
       "totalTime": "Durée totale",
       "lastSide": "dernier côté",
       "summary": {
-        "both": "G {{left}} · D {{right}}",
-        "left": "G {{left}}",
-        "right": "D {{right}}"
+        "both": "Total {{total}} · G {{left}} · D {{right}}",
+        "left": "Total {{total}} · G {{left}}",
+        "right": "Total {{total}} · D {{right}}"
       },
       "errors": {
         "durationsZero": "Chronométrez au moins un côté avant d'enregistrer.",

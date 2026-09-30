@@ -12,7 +12,6 @@
           : meal || reaction
       "
       [summary]="entry.food ?? ''"
-      [summaryLines]="2"
       (open)="open.emit()"
     />
   }
@@ -23,10 +22,14 @@
     <nala-entry-list-item
       [icon]="icons.breastfeed"
       [time]="entry.startTime"
-      [durationSeconds]="left + right"
       [summary]="
         'feed.breastfeed.summary.' + split
-          | transloco: { left: left | nalaDuration, right: right | nalaDuration }
+          | transloco
+            : {
+                total: left + right | nalaDuration,
+                left: left | nalaDuration,
+                right: right | nalaDuration,
+              }
       "
       (open)="open.emit()"
     />

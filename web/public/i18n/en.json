@@ -416,8 +416,8 @@
       },
       "lastSide": "last side",
       "side": {
-        "left": "left",
-        "right": "right"
+        "left": "Left",
+        "right": "Right"
       },
       "feeding": "Feeding"
     },
@@ -445,9 +445,9 @@
       "totalTime": "Total time",
       "lastSide": "last side",
       "summary": {
-        "both": "L {{left}} · R {{right}}",
-        "left": "L {{left}}",
-        "right": "R {{right}}"
+        "both": "Total {{total}} · L {{left}} · R {{right}}",
+        "left": "Total {{total}} · L {{left}}",
+        "right": "Total {{total}} · R {{right}}"
       },
       "errors": {
         "durationsZero": "Time at least one side before saving.",

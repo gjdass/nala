@@ -15,9 +15,6 @@ const TIME = new Date(2026, 8, 28, 14, 10).toISOString();
       [time]="time"
       [label]="label()"
       [summary]="summary()"
-      [summaryLines]="summaryLines()"
-      [durationSeconds]="duration()"
-      [durationScaleSeconds]="scale()"
       (open)="opened = opened + 1"
     />
   </mat-action-list>`,
@@ -26,9 +23,6 @@ class Host {
   readonly time = TIME;
   readonly label = signal('');
   readonly summary = signal('L 5m · R 3m 30s');
-  readonly summaryLines = signal<1 | 2>(1);
-  readonly duration = signal<number | null>(null);
-  readonly scale = signal(3600);
   opened = 0;
 }
 
@@ -60,60 +54,37 @@ describe('EntryListItemComponent', () => {
     expect(text('entry-chevron')).toBe('chevron_right');
   });
 
-  it('shows no bar and no duration without a duration', () => {
+  const item = () => host().querySelector('button[mat-list-item]')!;
+  const headline = () => item().querySelector('[matListItemTitle]')!.textContent!.replace(/\s+/g, ' ').trim();
+
+  it('shows no duration bar', () => {
     expect(find('entry-bar')).toBeNull();
     expect(find('entry-duration')).toBeNull();
   });
 
-  it('shows a bar proportional to the duration on the scale, and the duration', async () => {
-    fixture.componentInstance.duration.set(30 * 60);
-    await fixture.whenStable();
-
-    expect(find('entry-bar')?.style.width).toBe('50%');
-    expect(text('entry-duration')).toBe('30m');
-  });
-
-  it('uses the section scale and caps the bar at full width', async () => {
-    fixture.componentInstance.scale.set(20 * 60);
-    fixture.componentInstance.duration.set(5 * 60);
-    await fixture.whenStable();
-    expect(find('entry-bar')?.style.width).toBe('25%');
-
-    fixture.componentInstance.duration.set(45 * 60);
-    await fixture.whenStable();
-    expect(find('entry-bar')?.style.width).toBe('100%');
-  });
-
-  it('shows no label by default, and keeps the summary on one line', () => {
+  it('shows only the time in the headline without a label', () => {
     expect(find('entry-label')).toBeNull();
-    expect(find('entry-summary')?.closest('[matListItemLine]')).toBeTruthy();
-    expect(host().querySelector('button[mat-list-item]')?.classList).not.toContain(
-      'mdc-list-item--with-three-lines',
-    );
+    expect(headline()).toBe(text('entry-time'));
   });
 
-  it('shows a label after the time in the headline', async () => {
+  it('shows the time, then the label after " · " in the headline', async () => {
     fixture.componentInstance.label.set('Lunch · Liked');
     await fixture.whenStable();
 
     expect(text('entry-label')).toBe('Lunch · Liked');
-    expect(find('entry-label')?.closest('[matListItemTitle]')).toBe(
-      find('entry-time')?.closest('[matListItemTitle]'),
-    );
+    expect(headline()).toBe(`${text('entry-time')} · Lunch · Liked`);
   });
 
-  it('lets the summary wrap on 2 lines as the supporting text of a three-line item', async () => {
-    fixture = TestBed.createComponent(Host);
-    fixture.componentInstance.summaryLines.set(2);
-    await fixture.whenStable();
+  it('is always a two-line item, with the summary on one line aligned with the headline', async () => {
+    for (const label of ['', 'Lunch · Liked']) {
+      fixture.componentInstance.label.set(label);
+      fixture.componentInstance.summary.set('A very long food description '.repeat(10));
+      await fixture.whenStable();
 
-    expect(host().querySelector('button[mat-list-item]')?.classList).toContain(
-      'mdc-list-item--with-three-lines',
-    );
-    const summary = find('entry-summary')!;
-    expect(text('entry-summary')).toBe('L 5m · R 3m 30s');
-    expect(summary.closest('[matListItemLine]')).toBeNull();
-    expect(summary.closest('.mdc-list-item__secondary-text')).toBeTruthy();
+      expect(item().classList).toContain('mdc-list-item--with-two-lines');
+      expect(item().classList).not.toContain('mdc-list-item--with-three-lines');
+      expect(find('entry-summary')?.closest('[matListItemLine]')).toBeTruthy();
+    }
   });
 
   it('emits open when tapped', () => {

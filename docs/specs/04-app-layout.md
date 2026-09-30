@@ -135,10 +135,10 @@ Each item becomes at least one test, written failing first.
 - [x] Tapping an entry list item opens the same sheet pre-filled, with a Delete action.
 
 ### Entry list item
-- [ ] Every entry list item has the same height: two lines, whatever the section or kind.
-- [ ] The headline shows the time, then the label after " · " when there is one.
-- [ ] The supporting text is one line, aligned with the headline, with an ellipsis when too long.
-- [ ] No duration bar is shown.
+- [x] Every entry list item has the same height: two lines, whatever the section or kind.
+- [x] The headline shows the time, then the label after " · " when there is one.
+- [x] The supporting text is one line, aligned with the headline, with an ellipsis when too long.
+- [x] No duration bar is shown.
 
 ### Timers
 - [ ] Save on a live entry saves the form and leaves its timers running.
@@ -177,7 +177,7 @@ Each slice goes red → green → commit on `master`, in this order.
 
 Changes after the first review of the Feed section (built in this order, with 05's slice 8 between slices 8 and 9):
 
-- [ ] **Slice 6 — Same-height entry list items.** `nala-entry-list-item`: always a two-line item, headline "time · label", one-line supporting text aligned with the headline (ellipsis), `summaryLines`, `durationSeconds`, `durationScaleSeconds` and the bar removed. Feed entries: solids "4:23 PM · Snack · Liked" / food on one line; breastfeed "Total 8m 30s · L 5m · R 3m 30s". Feed card "last side" capitalised ("Right" / "Left"). Covers: the Entry list item criteria, 05's Entry list items criteria and the capitalised last side.
+- [x] **Slice 6 — Same-height entry list items.** `nala-entry-list-item`: always a two-line item, headline "time · label", one-line supporting text aligned with the headline (ellipsis), `summaryLines`, `durationSeconds`, `durationScaleSeconds` and the bar removed. Feed entries: solids "4:23 PM · Snack · Liked" / food on one line; breastfeed "Total 8m 30s · L 5m · R 3m 30s". Feed card "last side" capitalised ("Right" / "Left"). Covers: the Entry list item criteria, 05's Entry list items criteria and the capitalised last side.
 - [ ] **Slice 7 — Section colours on the card buttons.** `--nala-section-<key>-container` / `--nala-on-section-<key>-container` tokens; the + small FAB and the Show more / Show less text button take the section colours through the theme. Covers: the container-token theming criterion and the card buttons colour criterion.
 - [ ] **Slice 8 — 3 recent entries, last 24 hours, All activities.** Shared helper loading a section's entries of the last 24 h (at least 3) through its page loader; section card shows 3 folded, the 24 h list expanded, Show more hidden when it adds nothing; "All activities" link; `RECENT_ENTRIES` removed. Feed card uses the helper. Covers: the three new Section card criteria about recent entries and All activities.
 - [ ] **Slice 9 — Live timer button.** The section card takes the section's live entry for the selected baby from `RunningTimersService` and replaces + with the timer button opening it. Tested with a fake timer source. Covers: the last Timers criterion (the other Timers criteria are covered by 05's slice 8, the first section with timers).

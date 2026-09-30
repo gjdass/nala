@@ -257,13 +257,4 @@ describe('HistoryListComponent', () => {
       'entry',
     ]);
   });
-
-  it('draws the duration bars in the section colour', async () => {
-    fixture.componentInstance.key.set('sleep');
-    await answer([entry('1')], null);
-
-    expect(find('history-body')?.getAttribute('style')).toContain(
-      '--nala-entry-bar: var(--nala-section-sleep)',
-    );
-  });
 });
