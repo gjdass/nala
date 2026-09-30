@@ -98,10 +98,10 @@ public class FeedService(IFeedRepository feeds, IBabyRepository babies, TimeProv
 
         var now = time.GetUtcNow();
         var errors = FeedFields.Validate(input, now);
-        if (input.Kind == "breastfeed")
+        if (input.Kind == "breastfeed" && input.Durations is null)
         {
-            // A breastfeed starts from its timers.
-            errors["kind"] = "invalid";
+            // Otherwise a breastfeed starts from its timers.
+            errors["durations"] = "required";
         }
 
         if (errors.Count > 0)
@@ -127,7 +127,10 @@ public class FeedService(IFeedRepository feeds, IBabyRepository babies, TimeProv
         return new CreateFeedResult.Created((await feeds.GetEntryAsync(id, cancellationToken))!);
     }
 
-    /// <summary>Replaces every field of the feed's kind; the baby and the kind never change.</summary>
+    /// <summary>
+    /// Replaces every field of the feed's kind; the baby and the kind never change. On a breastfeed, typed durations
+    /// replace its segments and save it (also one in progress).
+    /// </summary>
     public async Task<UpdateFeedResult> UpdateAsync(User actor, Guid id, FeedInput input, CancellationToken cancellationToken = default)
     {
         var feed = await feeds.GetAsync(id, cancellationToken);
@@ -139,7 +142,7 @@ public class FeedService(IFeedRepository feeds, IBabyRepository babies, TimeProv
         var now = time.GetUtcNow();
         input = input with { Kind = FeedFields.Format(feed.Kind) };
         var errors = FeedFields.Validate(input, now);
-        if (!errors.ContainsKey("startTime") && feed.EndTime is { } end && input.StartTime > end)
+        if (!errors.ContainsKey("startTime") && input.Durations is null && feed.EndTime is { } end && input.StartTime > end)
         {
             errors["startTime"] = "afterEnd";
         }
@@ -385,7 +388,15 @@ public class FeedService(IFeedRepository feeds, IBabyRepository babies, TimeProv
     {
         feed.StartTime = input.StartTime!.Value;
         feed.Notes = FeedFields.NormalizeText(input.Notes);
-        if (feed.Kind == FeedKind.Bottle)
+        if (feed.Kind == FeedKind.Breastfeed && input.Durations is { } durations)
+        {
+            var left = TimeSpan.FromSeconds(durations.LeftSeconds!.Value);
+            var right = TimeSpan.FromSeconds(durations.RightSeconds!.Value);
+            feed.Segments.Clear();
+            feed.Segments.AddRange(Breastfeed.SyntheticSegments(feed.Id, feed.StartTime, left, right, FeedFields.EndedOn(durations)));
+            feed.EndTime = feed.StartTime + left + right;
+        }
+        else if (feed.Kind == FeedKind.Bottle)
         {
             feed.MilkType = FeedFields.ParseMilkType(input.MilkType!);
             feed.AmountMl = (int)input.AmountMl!.Value;

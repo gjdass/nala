@@ -1,6 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
   effect,
   inject,
   signal,
@@ -10,9 +11,12 @@ import { MatIconModule } from '@angular/material/icon';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { Subscription, filter } from 'rxjs';
 import { SelectedBabyService } from '../../../core/babies/selected-baby.service';
+import { isStillFeeding } from '../../../core/feeds/breastfeed';
 import { BreastSide, Feed } from '../../../core/feeds/feed.models';
 import { FeedService } from '../../../core/feeds/feed.service';
+import { NowService } from '../../../core/time/now.service';
 import { TimeSincePipe } from '../../../core/time/time-since';
+import { BannerComponent } from '../../../shared/ui/banner/banner.component';
 import { EmptyStateComponent } from '../../../shared/ui/empty-state/empty-state.component';
 import { EntrySheetService } from '../../../shared/ui/entry-sheet/entry-sheet.service';
 import {
@@ -25,12 +29,14 @@ import { FeedEntryComponent } from '../feed-entry/feed-entry.component';
 /**
  * The Feed card on home (spec 05): the selected baby's recent feeds in the shared section card, with
  * "Last feeding" and the time since the latest feed started, on the right the side the latest saved
- * breastfeed ended on ("last side", hidden without one), or an empty state without any feed.
+ * breastfeed ended on ("last side", hidden without one), or an empty state without any feed. A
+ * breastfeed in progress for more than 3 hours shows "Still feeding?", whose Review opens it.
  * Reloads after an entry is added, edited or deleted, and when another baby is selected.
  */
 @Component({
   selector: 'nala-feed-card',
   imports: [
+    BannerComponent,
     EmptyStateComponent,
     FeedEntryComponent,
     MatIconModule,
@@ -47,10 +53,16 @@ export class FeedCardComponent {
   private readonly feeds = inject(FeedService);
   private readonly entrySheets = inject(EntrySheetService);
   private readonly store = inject(SelectedBabyService);
+  private readonly now = inject(NowService).now;
 
   /** Newest first; null while loading. */
   protected readonly entries = signal<readonly Feed[] | null>(null);
   protected readonly lastSide = signal<BreastSide | null>(null);
+  protected readonly inProgress = signal<Feed | null>(null);
+  protected readonly stillFeeding = computed(() => {
+    const feed = this.inProgress();
+    return feed && isStillFeeding(feed, this.now()) ? feed : null;
+  });
   private request?: Subscription;
   private stateRequest?: Subscription;
 
@@ -60,6 +72,7 @@ export class FeedCardComponent {
       untracked(() => {
         this.entries.set(null);
         this.lastSide.set(null);
+        this.inProgress.set(null);
         if (baby) {
           this.load(baby.id);
         }
@@ -87,8 +100,9 @@ export class FeedCardComponent {
       .page(babyId, null, RECENT_ENTRIES)
       .subscribe({ next: (page) => this.entries.set(page.entries) });
     this.stateRequest?.unsubscribe();
-    this.stateRequest = this.feeds
-      .breastfeedState(babyId)
-      .subscribe((state) => this.lastSide.set(state.lastSide));
+    this.stateRequest = this.feeds.breastfeedState(babyId).subscribe((state) => {
+      this.lastSide.set(state.lastSide);
+      this.inProgress.set(state.inProgress);
+    });
   }
 }

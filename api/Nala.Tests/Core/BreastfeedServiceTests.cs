@@ -328,12 +328,126 @@ public class BreastfeedServiceTests
         Assert.That(((UpdateFeedResult.Invalid)result).Errors, Is.EqualTo(new Dictionary<string, string> { ["startTime"] = "afterEnd" }));
     }
 
+    private static FeedInput Typed(int left, int right, string? endedOn, int startedMinutesAgo = 60, string? notes = null) =>
+        new("breastfeed", At(startedMinutesAgo), notes, null, null, Durations: new BreastfeedDurations(left, right, endedOn));
+
+    private static (BreastSide, DateTimeOffset, DateTimeOffset?)[] Spans(Feed feed) =>
+        feed.Segments.Select(s => (s.Side, s.StartedAt, s.EndedAt)).ToArray();
+
     [Test]
-    public async Task A_breastfeed_cannot_be_created_through_the_generic_create()
+    public async Task A_breastfeed_typed_by_hand_is_created_saved_with_its_segments()
+    {
+        var feedId = Guid.NewGuid();
+
+        var result = await _service.CreateAsync(_anna, feedId, _lea.Id, Typed(300, 180, "left", notes: "calm"));
+
+        var feed = ((CreateFeedResult.Created)result).Entry.Feed;
+        Assert.Multiple(() =>
+        {
+            Assert.That(feed.Id, Is.EqualTo(feedId));
+            Assert.That(feed.Kind, Is.EqualTo(FeedKind.Breastfeed));
+            Assert.That(feed.StartTime, Is.EqualTo(At(60)));
+            Assert.That(feed.EndTime, Is.EqualTo(At(60).AddSeconds(480)));
+            Assert.That(feed.Notes, Is.EqualTo("calm"));
+            Assert.That(feed.LoggedByUserId, Is.EqualTo(_anna.Id));
+            Assert.That(Spans(feed), Is.EqualTo(new (BreastSide, DateTimeOffset, DateTimeOffset?)[]
+            {
+                (BreastSide.Right, At(60), At(60).AddSeconds(180)),
+                (BreastSide.Left, At(60).AddSeconds(180), At(60).AddSeconds(480)),
+            }));
+        });
+    }
+
+    [Test]
+    public async Task A_breastfeed_typed_by_hand_sent_again_is_returned_unchanged()
+    {
+        var feedId = Guid.NewGuid();
+        await _service.CreateAsync(_anna, feedId, _lea.Id, Typed(300, 180, "left"));
+
+        var result = await _service.CreateAsync(_anna, feedId, _lea.Id, Typed(60, 0, null));
+
+        Assert.That(Breastfeed.SideDuration(((CreateFeedResult.AlreadyExists)result).Entry.Feed, BreastSide.Left, Now), Is.EqualTo(TimeSpan.FromSeconds(300)));
+        Assert.That(_feeds.Feeds, Has.Count.EqualTo(1));
+    }
+
+    [Test]
+    public async Task A_breastfeed_created_without_durations_is_refused()
     {
         var result = await _service.CreateAsync(_anna, Guid.NewGuid(), _lea.Id, new FeedInput("breastfeed", At(10), null, null, null));
 
-        Assert.That(((CreateFeedResult.Invalid)result).Errors, Is.EqualTo(new Dictionary<string, string> { ["kind"] = "invalid" }));
+        Assert.That(((CreateFeedResult.Invalid)result).Errors, Is.EqualTo(new Dictionary<string, string> { ["durations"] = "required" }));
+    }
+
+    [Test]
+    public async Task A_breastfeed_typed_by_hand_while_another_is_in_progress_is_still_created()
+    {
+        await StartAsync(Guid.NewGuid(), "left", At(5));
+
+        var result = await _service.CreateAsync(_anna, Guid.NewGuid(), _lea.Id, Typed(300, 0, null));
+
+        Assert.That(result, Is.InstanceOf<CreateFeedResult.Created>());
+    }
+
+    [Test]
+    public async Task Typed_durations_replace_the_segments_of_a_saved_breastfeed()
+    {
+        var feedId = await FinishedAsync("left", 30);
+
+        var result = await _service.UpdateAsync(_ben, feedId, Typed(120, 240, "right", startedMinutesAgo: 40) with { Kind = null });
+
+        var feed = ((UpdateFeedResult.Updated)result).Entry.Feed;
+        Assert.Multiple(() =>
+        {
+            Assert.That(feed.StartTime, Is.EqualTo(At(40)));
+            Assert.That(feed.EndTime, Is.EqualTo(At(40).AddSeconds(360)));
+            Assert.That(feed.UpdatedByUserId, Is.EqualTo(_ben.Id));
+            Assert.That(Spans(feed), Is.EqualTo(new (BreastSide, DateTimeOffset, DateTimeOffset?)[]
+            {
+                (BreastSide.Left, At(40), At(40).AddSeconds(120)),
+                (BreastSide.Right, At(40).AddSeconds(120), At(40).AddSeconds(360)),
+            }));
+        });
+    }
+
+    [Test]
+    public async Task Typed_durations_save_a_breastfeed_in_progress()
+    {
+        var feedId = Guid.NewGuid();
+        await StartAsync(feedId, "left", At(200));
+
+        var result = await _service.UpdateAsync(_anna, feedId, Typed(900, 0, null, startedMinutesAgo: 200));
+
+        var feed = ((UpdateFeedResult.Updated)result).Entry.Feed;
+        Assert.Multiple(() =>
+        {
+            Assert.That(feed.EndTime, Is.EqualTo(At(185)));
+            Assert.That(Breastfeed.RunningSide(feed), Is.Null);
+            Assert.That(Spans(feed), Is.EqualTo(new (BreastSide, DateTimeOffset, DateTimeOffset?)[] { (BreastSide.Left, At(200), At(185)) }));
+        });
+    }
+
+    [Test]
+    public async Task Invalid_typed_durations_leave_the_breastfeed_unchanged()
+    {
+        var feedId = await FinishedAsync("left", 30);
+
+        var result = await _service.UpdateAsync(_anna, feedId, Typed(0, 0, null, startedMinutesAgo: 35));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(((UpdateFeedResult.Invalid)result).Errors, Is.EqualTo(new Dictionary<string, string> { ["durations"] = "zero" }));
+            Assert.That(Breastfeed.SideDuration(_feeds.Feeds.Single(), BreastSide.Left, Now), Is.EqualTo(TimeSpan.FromMinutes(5)));
+        });
+    }
+
+    [Test]
+    public async Task A_breastfeed_typed_by_hand_gives_the_last_side()
+    {
+        await _service.CreateAsync(_anna, Guid.NewGuid(), _lea.Id, Typed(300, 180, "left"));
+
+        var state = ((BreastfeedStateResult.Found)await _service.GetBreastfeedStateAsync(_lea.Id)).State;
+
+        Assert.That(state.LastSide, Is.EqualTo(BreastSide.Left));
     }
 
     [Test]

@@ -1,0 +1,18 @@
+<h2 mat-dialog-title data-testid="duration-dialog-title">{{ data.title }}</h2>
+<mat-dialog-content>
+  <nala-duration-field [group]="group" />
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button mat-button type="button" (click)="cancel()" data-testid="duration-dialog-cancel">
+    {{ 'durationDialog.cancel' | transloco }}
+  </button>
+  <button
+    mat-button
+    type="button"
+    [disabled]="invalid()"
+    (click)="ok()"
+    data-testid="duration-dialog-ok"
+  >
+    {{ 'durationDialog.ok' | transloco }}
+  </button>
+</mat-dialog-actions>

@@ -18,6 +18,7 @@ import { SectionEntryDirective } from './section-entry.directive';
     [entries]="entries()"
     (changed)="changes.push($event)"
   >
+    <p sectionBanner data-testid="banner">Still feeding?</p>
     <p sectionHighlight data-testid="highlight">Last feeding</p>
     <p sectionEmpty data-testid="empty">No feed yet</p>
     <ng-template nalaSectionEntry let-entry>
@@ -124,6 +125,20 @@ describe('SectionCardComponent', () => {
 
     expect(text('highlight')).toBe('Last feeding');
     expect(find('empty')).toBeNull();
+  });
+
+  it('shows the banner above the highlight or the empty state, whatever the entries', async () => {
+    await create(['e1']);
+    expect(
+      find('banner')!.compareDocumentPosition(find('highlight')!) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+
+    fixture.componentInstance.entries.set([]);
+    await fixture.whenStable();
+    expect(
+      find('banner')!.compareDocumentPosition(find('empty')!) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   describe('show more / show less', () => {

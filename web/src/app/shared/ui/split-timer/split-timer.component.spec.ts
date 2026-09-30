@@ -7,6 +7,7 @@ describe('SplitTimerComponent', () => {
   let fixture: ComponentFixture<SplitTimerComponent>;
   let started: SplitSide[];
   let stopped: SplitSide[];
+  let edited: SplitSide[];
 
   const host = () => fixture.nativeElement as HTMLElement;
   const find = <T extends HTMLElement = HTMLElement>(testId: string) =>
@@ -27,6 +28,8 @@ describe('SplitTimerComponent', () => {
     fixture = TestBed.createComponent(SplitTimerComponent);
     started = [];
     stopped = [];
+    edited = [];
+    fixture.componentInstance.edit.subscribe((side) => edited.push(side));
     fixture.componentInstance.start.subscribe((side) => started.push(side));
     fixture.componentInstance.stop.subscribe((side) => stopped.push(side));
     await set({ leftSeconds: 305, rightSeconds: 0 });
@@ -100,5 +103,44 @@ describe('SplitTimerComponent', () => {
 
     expect(toggle('left').disabled).toBe(true);
     expect(toggle('right').disabled).toBe(true);
+  });
+
+  it('has no pencils unless editable', () => {
+    expect(find('split-left-edit')).toBeNull();
+    expect(find('split-right-edit')).toBeNull();
+  });
+
+  it('offers a pencil under each duration that emits its side', async () => {
+    await set({ editable: true });
+
+    const left = find<HTMLButtonElement>('split-left-edit')!;
+    const right = find<HTMLButtonElement>('split-right-edit')!;
+    expect(left.getAttribute('aria-label')).toBe(en.splitTimer.editLeft);
+    expect(right.getAttribute('aria-label')).toBe(en.splitTimer.editRight);
+    expect(left.textContent?.trim()).toBe('edit');
+    expect(
+      find('split-left-duration')!.compareDocumentPosition(left) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+
+    right.click();
+    left.click();
+
+    expect(edited).toEqual(['right', 'left']);
+    expect(started).toEqual([]);
+  });
+
+  it('disables only Start and Stop while the timers are disabled', async () => {
+    await set({ editable: true, timersDisabled: true });
+
+    expect(toggle('left').disabled).toBe(true);
+    expect(toggle('right').disabled).toBe(true);
+    expect(find<HTMLButtonElement>('split-left-edit')!.disabled).toBe(false);
+    expect(find<HTMLButtonElement>('split-right-edit')!.disabled).toBe(false);
+  });
+
+  it('disables the pencils too while disabled', async () => {
+    await set({ editable: true, disabled: true });
+
+    expect(find<HTMLButtonElement>('split-left-edit')!.disabled).toBe(true);
   });
 });

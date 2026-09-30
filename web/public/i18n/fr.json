@@ -387,7 +387,20 @@
     "right": "Droite",
     "startLeft": "Démarrer gauche",
     "startRight": "Démarrer droite",
-    "stop": "Arrêter"
+    "stop": "Arrêter",
+    "editLeft": "Modifier la durée gauche",
+    "editRight": "Modifier la durée droite"
+  },
+  "durationField": {
+    "minutes": "Minutes",
+    "seconds": "Secondes",
+    "minutesRange": "De 0 à 240 minutes.",
+    "secondsRange": "De 0 à 59 secondes.",
+    "tooLong": "4 heures maximum."
+  },
+  "durationDialog": {
+    "ok": "OK",
+    "cancel": "Annuler"
   },
   "feed": {
     "kinds": {
@@ -436,7 +449,21 @@
         "right": "D {{right}}"
       },
       "errors": {
-        "durationsZero": "Chronométrez au moins un côté avant d'enregistrer."
+        "durationsZero": "Chronométrez au moins un côté avant d'enregistrer.",
+        "durationsInFuture": "La tétée ne peut pas finir dans le futur : vérifiez l'heure de début et les durées.",
+        "durationsOutOfRange": "Chaque côté dure 4 heures maximum.",
+        "endedOnRequired": "Choisissez le côté de fin."
+      },
+      "endedOn": "Côté de fin",
+      "editDuration": {
+        "left": "Durée à gauche",
+        "right": "Durée à droite"
+      },
+      "stillFeeding": {
+        "title": "Toujours en train de téter ?",
+        "card": "Commencée {{since}}.",
+        "sheet": "Commencée {{since}}. Corrigez les durées avec les crayons, puis enregistrez.",
+        "review": "Vérifier"
       }
     },
     "mealType": {

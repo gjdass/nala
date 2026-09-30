@@ -19,6 +19,8 @@
     </button>
   </div>
 
+  <ng-content select="[sectionBanner]" />
+
   @if (entries(); as list) {
     <div class="body" [style.--nala-entry-bar]="'var(--nala-section-' + key() + ')'">
       @if (list.length === 0) {

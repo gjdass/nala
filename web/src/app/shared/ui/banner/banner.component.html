@@ -1,0 +1,12 @@
+<mat-icon class="icon" aria-hidden="true" data-testid="banner-icon">{{ icon() }}</mat-icon>
+<div class="content">
+  <span class="title" data-testid="banner-title">{{ title() }}</span>
+  @if (text()) {
+    <span class="text" data-testid="banner-text">{{ text() }}</span>
+  }
+</div>
+@if (actionLabel()) {
+  <button mat-button type="button" (click)="action.emit()" data-testid="banner-action">
+    {{ actionLabel() }}
+  </button>
+}

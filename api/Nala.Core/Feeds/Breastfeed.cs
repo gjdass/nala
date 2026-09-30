@@ -23,4 +23,22 @@ public static class Breastfeed
     /// <summary>The latest time of its segments (the running one's start, else the last end): timer actions can't go before it.</summary>
     public static DateTimeOffset? LatestSegmentTime(Feed feed) =>
         feed.Segments.Count == 0 ? null : feed.Segments.Max(s => s.EndedAt ?? s.StartedAt);
+
+    /// <summary>Durations typed by hand as segments: back to back from <paramref name="start"/>, zero sides left out, <paramref name="endedOn"/> last.</summary>
+    public static List<BreastFeedSegment> SyntheticSegments(
+        Guid feedId, DateTimeOffset start, TimeSpan left, TimeSpan right, BreastSide endedOn)
+    {
+        var sides = endedOn == BreastSide.Left
+            ? new[] { (BreastSide.Right, right), (BreastSide.Left, left) }
+            : new[] { (BreastSide.Left, left), (BreastSide.Right, right) };
+        var segments = new List<BreastFeedSegment>();
+        var at = start;
+        foreach (var (side, duration) in sides.Where(s => s.Item2 > TimeSpan.Zero))
+        {
+            segments.Add(new BreastFeedSegment { Id = Guid.NewGuid(), FeedId = feedId, Side = side, StartedAt = at, EndedAt = at + duration });
+            at += duration;
+        }
+
+        return segments;
+    }
 }

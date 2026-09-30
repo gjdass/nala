@@ -1,0 +1,34 @@
+<div class="parts" [formGroup]="group()">
+  <mat-form-field appearance="outline">
+    <mat-label>{{ 'durationField.minutes' | transloco }}</mat-label>
+    <input
+      matInput
+      type="number"
+      inputmode="numeric"
+      min="0"
+      step="1"
+      formControlName="minutes"
+      data-testid="duration-minutes"
+    />
+    <mat-error>{{ 'durationField.minutesRange' | transloco }}</mat-error>
+  </mat-form-field>
+  <mat-form-field appearance="outline">
+    <mat-label>{{ 'durationField.seconds' | transloco }}</mat-label>
+    <input
+      matInput
+      type="number"
+      inputmode="numeric"
+      min="0"
+      max="59"
+      step="1"
+      formControlName="seconds"
+      data-testid="duration-seconds"
+    />
+    <mat-error>{{ 'durationField.secondsRange' | transloco }}</mat-error>
+  </mat-form-field>
+</div>
+@if (tooLong()) {
+  <p class="error" role="alert" data-testid="duration-too-long">
+    {{ 'durationField.tooLong' | transloco }}
+  </p>
+}

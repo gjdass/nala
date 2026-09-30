@@ -30,8 +30,8 @@ const storageKey = (key: SectionKey) => `nala.sectionExpanded.${key}`;
 /**
  * The frame of every home section card (spec 04): header band in the section colour with its title
  * and a + small FAB opening the section's kind picker or entry sheet (`changed` once an entry is
- * saved), the highlight (`[sectionHighlight]`) or, without entries, the empty state
- * (`[sectionEmpty]`), Show more / Show less over the first 10 `entries` rendered through the
+ * saved), an optional banner (`[sectionBanner]`, shown whatever the entries), the highlight
+ * (`[sectionHighlight]`) or, without entries, the empty state (`[sectionEmpty]`), Show more / Show less over the first 10 `entries` rendered through the
  * `nalaSectionEntry` template, and a link to the section's history. `entries` is null while loading.
  * The expanded state is remembered per device and section.
  */

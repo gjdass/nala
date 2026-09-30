@@ -92,6 +92,20 @@ describe('FeedService', () => {
       expect(await result).toEqual<FeedResult>({ ok: true, feed: aSolids() });
     });
 
+    it('posts a breastfeed typed by hand with its durations', async () => {
+      const typed = {
+        startTime: '2026-09-30T09:00:00.000Z',
+        notes: null,
+        durations: { leftSeconds: 300, rightSeconds: 180, endedOn: 'left' as const },
+      };
+      const result = firstValueFrom(service.create('b1', 'breastfeed', typed, 'f3'));
+      const req = http.expectOne('/api/feeds');
+      expect(req.request.body).toEqual({ id: 'f3', babyId: 'b1', kind: 'breastfeed', ...typed });
+      req.flush(aBreastfeed(), { status: 201, statusText: 'Created' });
+
+      expect(await result).toEqual<FeedResult>({ ok: true, feed: aBreastfeed() });
+    });
+
     it('generates a client id when none is given', () => {
       service.create('b1', 'bottle', fields).subscribe();
       const req = http.expectOne('/api/feeds');
@@ -121,6 +135,18 @@ describe('FeedService', () => {
       req.flush(aSolids());
 
       expect(await result).toEqual<FeedResult>({ ok: true, feed: aSolids() });
+    });
+
+    it('puts a breastfeed with its typed durations', () => {
+      const typed = {
+        startTime: '2026-09-30T09:00:00.000Z',
+        notes: 'calm',
+        durations: { leftSeconds: 0, rightSeconds: 600, endedOn: 'right' as const },
+      };
+      service.update('f3', typed).subscribe();
+      const req = http.expectOne('/api/feeds/f3');
+      expect(req.request.body).toEqual(typed);
+      req.flush(aBreastfeed());
     });
 
     it('maps a missing feed to its code', async () => {

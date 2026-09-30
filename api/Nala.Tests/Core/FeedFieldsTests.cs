@@ -120,4 +120,56 @@ public class FeedFieldsTests
     [Test]
     public void A_bottle_ignores_the_solids_fields() =>
         Assert.That(Validate(Bottle() with { MealType = "brunch", Food = null, Reaction = "meh" }), Is.Empty);
+
+    private static FeedInput Breastfeed(int? left = 300, int? right = 180, string? endedOn = "right", DateTimeOffset? startTime = null) =>
+        new("breastfeed", startTime ?? Now.AddMinutes(-30), null, null, null, Durations: new BreastfeedDurations(left, right, endedOn));
+
+    [Test]
+    public void Typed_breastfeed_durations_are_valid()
+    {
+        Assert.That(Validate(Breastfeed()), Is.Empty);
+        Assert.That(Validate(Breastfeed(left: 0, right: FeedFields.DurationMaxSeconds, startTime: Now.AddHours(-5))), Is.Empty);
+    }
+
+    [Test]
+    public void A_breastfeed_without_typed_durations_is_valid_here() =>
+        Assert.That(Validate(Breastfeed() with { Durations = null }), Is.Empty);
+
+    [TestCase(-1, 60)]
+    [TestCase(60, 14401)]
+    [TestCase(null, 60)]
+    public void Each_typed_side_is_from_0_to_4_hours(int? left, int? right) =>
+        Assert.That(
+            Validate(Breastfeed(left, right, startTime: Now.AddHours(-9))),
+            Is.EqualTo(new Dictionary<string, string> { ["durations"] = "outOfRange" }));
+
+    [Test]
+    public void Both_typed_sides_at_zero_are_refused() =>
+        Assert.That(Validate(Breastfeed(0, 0)), Is.EqualTo(new Dictionary<string, string> { ["durations"] = "zero" }));
+
+    [Test]
+    public void Typed_durations_cannot_end_more_than_one_minute_ahead()
+    {
+        Assert.That(Validate(Breastfeed(600, 660, startTime: Now.AddMinutes(-20))), Is.Empty);
+        Assert.That(
+            Validate(Breastfeed(600, 661, startTime: Now.AddMinutes(-20))),
+            Is.EqualTo(new Dictionary<string, string> { ["durations"] = "inFuture" }));
+    }
+
+    [TestCase(null, "required")]
+    [TestCase("", "required")]
+    [TestCase("middle", "invalid")]
+    public void The_ended_on_side_is_needed_when_both_sides_are_typed(string? endedOn, string code) =>
+        Assert.That(Validate(Breastfeed(endedOn: endedOn)), Is.EqualTo(new Dictionary<string, string> { ["endedOn"] = code }));
+
+    [Test]
+    public void The_ended_on_side_is_ignored_with_one_side_typed()
+    {
+        Assert.That(Validate(Breastfeed(left: 0, endedOn: null)), Is.Empty);
+        Assert.That(Validate(Breastfeed(right: 0, endedOn: "right")), Is.Empty);
+    }
+
+    [Test]
+    public void Other_kinds_ignore_typed_durations() =>
+        Assert.That(Validate(Bottle() with { Durations = new BreastfeedDurations(-1, null, "middle") }), Is.Empty);
 }

@@ -12,7 +12,11 @@ public sealed record FeedInput(
     decimal? AmountMl,
     string? MealType = null,
     string? Food = null,
-    string? Reaction = null);
+    string? Reaction = null,
+    BreastfeedDurations? Durations = null);
+
+/// <summary>A breastfeed's durations typed by hand, in whole seconds, and the side it ended on.</summary>
+public sealed record BreastfeedDurations(int? LeftSeconds, int? RightSeconds, string? EndedOn);
 
 /// <summary>What finishing a breastfeed sends: its start time and notes as edited in the sheet, and when it ended.</summary>
 public sealed record BreastfeedFinishInput(DateTimeOffset? StartTime, string? Notes, DateTimeOffset? At);
@@ -27,6 +31,9 @@ public static class FeedFields
     public const int AmountMinMl = 1;
 
     public const int AmountMaxMl = 500;
+
+    /// <summary>The longest duration typed by hand for one side: 4 h.</summary>
+    public const int DurationMaxSeconds = 4 * 60 * 60;
 
     /// <summary>How far ahead of the server clock a time may be, for devices whose clock runs a little fast.</summary>
     public static readonly TimeSpan FutureTolerance = TimeSpan.FromMinutes(1);
@@ -102,6 +109,10 @@ public static class FeedFields
         else if (input.Kind == "solids")
         {
             ValidateSolids(input, errors);
+        }
+        else if (input.Kind == "breastfeed" && input.Durations is { } durations)
+        {
+            ValidateDurations(durations, input.StartTime, now, errors);
         }
 
         return errors;
@@ -183,6 +194,45 @@ public static class FeedFields
         else if (amount is < AmountMinMl or > AmountMaxMl)
         {
             errors["amountMl"] = "outOfRange";
+        }
+    }
+
+    /// <summary>
+    /// Call only on validated durations: the ended-on side, which is the only side above 0 when the other one is at 0.
+    /// </summary>
+    public static BreastSide EndedOn(BreastfeedDurations durations) =>
+        durations.LeftSeconds == 0 ? BreastSide.Right
+        : durations.RightSeconds == 0 ? BreastSide.Left
+        : ParseSide(durations.EndedOn!);
+
+    private static void ValidateDurations(BreastfeedDurations durations, DateTimeOffset? startTime, DateTimeOffset now, Dictionary<string, string> errors)
+    {
+        if (durations.LeftSeconds is not (>= 0 and <= DurationMaxSeconds) || durations.RightSeconds is not (>= 0 and <= DurationMaxSeconds))
+        {
+            errors["durations"] = "outOfRange";
+            return;
+        }
+
+        var total = durations.LeftSeconds.Value + durations.RightSeconds.Value;
+        if (total == 0)
+        {
+            errors["durations"] = "zero";
+        }
+        else if (startTime?.AddSeconds(total) > now + FutureTolerance)
+        {
+            errors["durations"] = "inFuture";
+        }
+
+        if (durations.LeftSeconds > 0 && durations.RightSeconds > 0)
+        {
+            if (string.IsNullOrEmpty(durations.EndedOn))
+            {
+                errors["endedOn"] = "required";
+            }
+            else if (!Sides.ContainsKey(durations.EndedOn))
+            {
+                errors["endedOn"] = "invalid";
+            }
         }
     }
 

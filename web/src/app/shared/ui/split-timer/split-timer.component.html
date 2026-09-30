@@ -13,10 +13,22 @@
       <span class="duration" [attr.data-testid]="'split-' + item.side + '-duration'">{{
         seconds(item.side) | nalaDuration
       }}</span>
+      @if (editable()) {
+        <button
+          mat-icon-button
+          type="button"
+          [disabled]="disabled()"
+          [attr.aria-label]="item.editLabel | transloco"
+          (click)="edit.emit(item.side)"
+          [attr.data-testid]="'split-' + item.side + '-edit'"
+        >
+          <mat-icon>edit</mat-icon>
+        </button>
+      }
       <button
         type="button"
         [matButton]="runs ? 'filled' : 'tonal'"
-        [disabled]="disabled()"
+        [disabled]="disabled() || timersDisabled()"
         [attr.aria-pressed]="runs"
         (click)="toggle(item.side)"
         [attr.data-testid]="'split-' + item.side + '-toggle'"

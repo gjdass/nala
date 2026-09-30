@@ -1,11 +1,22 @@
 <nala-entry-sheet
   [form]="form"
   [saving]="busy()"
-  [saveDisabled]="!feed() || total() === 0"
+  [saveDisabled]="(!feed() && !typed()) || total() === 0"
   [deletable]="!!feed()"
   (save)="save()"
   (delete)="delete()"
 >
+  @if (stillFeeding()) {
+    <nala-banner
+      icon="schedule"
+      [title]="'feed.breastfeed.stillFeeding.title' | transloco"
+      [text]="
+        'feed.breastfeed.stillFeeding.sheet'
+          | transloco: { since: feed()!.startTime | nalaTimeSince }
+      "
+    />
+  }
+
   <nala-split-timer
     [leftSeconds]="left()"
     [rightSeconds]="right()"
@@ -13,9 +24,33 @@
     [markedSide]="markedSide()"
     [markLabel]="'feed.breastfeed.lastSide' | transloco"
     [disabled]="busy()"
+    [editable]="true"
+    [timersDisabled]="!!typed()"
     (start)="start($event)"
     (stop)="stop()"
+    (edit)="editDuration($event)"
   />
+
+  @if (askEndedOn()) {
+    <nala-form-row
+      [label]="'feed.breastfeed.endedOn' | transloco"
+      [interactive]="false"
+      data-testid="ended-on"
+    >
+      <mat-button-toggle-group
+        rowEditor
+        class="ended-on"
+        [formControl]="form.controls.endedOn"
+        [attr.aria-label]="'feed.breastfeed.endedOn' | transloco"
+      >
+        @for (side of sides; track side) {
+          <mat-button-toggle [value]="side" [attr.data-testid]="'ended-on-' + side">
+            {{ 'splitTimer.' + side | transloco }}
+          </mat-button-toggle>
+        }
+      </mat-button-toggle-group>
+    </nala-form-row>
+  }
 
   <nala-time-row [label]="'entrySheet.startTime' | transloco" [control]="form.controls.startTime" />
 

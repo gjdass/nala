@@ -1,4 +1,16 @@
 <nala-section-card key="feed" [entries]="entries()" (changed)="reload()">
+  @if (stillFeeding(); as feed) {
+    <nala-banner
+      sectionBanner
+      icon="schedule"
+      [title]="'feed.breastfeed.stillFeeding.title' | transloco"
+      [text]="
+        'feed.breastfeed.stillFeeding.card' | transloco: { since: feed.startTime | nalaTimeSince }
+      "
+      [actionLabel]="'feed.breastfeed.stillFeeding.review' | transloco"
+      (action)="edit(feed)"
+    />
+  }
   @if (entries()?.[0]; as last) {
     <div sectionHighlight class="highlight" data-testid="feed-highlight">
       <mat-icon class="icon" aria-hidden="true">schedule</mat-icon>

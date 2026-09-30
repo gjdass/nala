@@ -537,4 +537,68 @@ public class FeedEndpointTests
         Assert.That((await _admin.DeleteAsync($"/api/feeds/{feedId}")).StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
         Assert.That((await BreastfeedStateAsync()).GetProperty("inProgress").ValueKind, Is.EqualTo(JsonValueKind.Null));
     }
+
+    [Test]
+    public async Task A_breastfeed_is_logged_by_hand_and_corrected()
+    {
+        var feedId = Guid.NewGuid();
+        var start = _now.AddMinutes(-60);
+
+        var created = await _admin.PostAsJsonAsync("/api/feeds", new
+        {
+            id = feedId,
+            babyId = _leaId,
+            kind = "breastfeed",
+            startTime = start,
+            durations = new { leftSeconds = 300, rightSeconds = 180, endedOn = "left" },
+        });
+        var edited = await _admin.PutAsJsonAsync($"/api/feeds/{feedId}", new
+        {
+            startTime = start,
+            notes = "calm",
+            durations = new { leftSeconds = 0, rightSeconds = 600, endedOn = (string?)null },
+        });
+
+        Assert.That(created.StatusCode, Is.EqualTo(HttpStatusCode.Created));
+        var feed = await JsonAsync(created);
+        Assert.That(feed.GetProperty("endTime").GetDateTimeOffset(), Is.EqualTo(start.AddSeconds(480)).Within(TimeSpan.FromMilliseconds(1)));
+        Assert.That(
+            feed.GetProperty("segments").EnumerateArray().Select(s => s.GetProperty("side").GetString()),
+            Is.EqualTo(new[] { "right", "left" }));
+        Assert.That(edited.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        var corrected = await JsonAsync(edited);
+        Assert.That(corrected.GetProperty("notes").GetString(), Is.EqualTo("calm"));
+        Assert.That(
+            corrected.GetProperty("segments").EnumerateArray().Select(s => s.GetProperty("side").GetString()),
+            Is.EqualTo(new[] { "right" }));
+        Assert.That(corrected.GetProperty("endTime").GetDateTimeOffset(), Is.EqualTo(start.AddSeconds(600)).Within(TimeSpan.FromMilliseconds(1)));
+        Assert.That((await BreastfeedStateAsync()).GetProperty("lastSide").GetString(), Is.EqualTo("right"));
+    }
+
+    [Test]
+    public async Task Invalid_typed_durations_answer_validation_codes()
+    {
+        var missing = await _admin.PostAsJsonAsync("/api/feeds", new
+        {
+            id = Guid.NewGuid(),
+            babyId = _leaId,
+            kind = "breastfeed",
+            startTime = _now.AddMinutes(-10),
+        });
+        var future = await _admin.PostAsJsonAsync("/api/feeds", new
+        {
+            id = Guid.NewGuid(),
+            babyId = _leaId,
+            kind = "breastfeed",
+            startTime = _now.AddMinutes(-10),
+            durations = new { leftSeconds = 600, rightSeconds = 600, endedOn = "middle" },
+        });
+
+        Assert.That(missing.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
+        Assert.That((await JsonAsync(missing)).GetProperty("errors").GetProperty("durations")[0].GetString(), Is.EqualTo("required"));
+        Assert.That(future.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
+        var errors = (await JsonAsync(future)).GetProperty("errors");
+        Assert.That(errors.GetProperty("durations")[0].GetString(), Is.EqualTo("inFuture"));
+        Assert.That(errors.GetProperty("endedOn")[0].GetString(), Is.EqualTo("invalid"));
+    }
 }

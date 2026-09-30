@@ -1,15 +1,29 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { FormControl, FormGroup, Validators } from '@angular/forms';
-import { TranslocoPipe } from '@jsverse/transloco';
+import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { MatDialog } from '@angular/material/dialog';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { Observable } from 'rxjs';
 import { SelectedBabyService } from '../../../core/babies/selected-baby.service';
-import { runningSide, sideSeconds } from '../../../core/feeds/breastfeed';
-import { BreastSide, BreastfeedFields, Feed, FeedResult } from '../../../core/feeds/feed.models';
+import { isStillFeeding, runningSide, sideSeconds } from '../../../core/feeds/breastfeed';
+import {
+  BREAST_SIDES,
+  BreastSide,
+  BreastfeedFields,
+  Feed,
+  FeedResult,
+} from '../../../core/feeds/feed.models';
 import { FeedService } from '../../../core/feeds/feed.service';
 import { applyServerErrors } from '../../../core/http/apply-server-errors';
 import { DurationPipe } from '../../../core/time/duration';
 import { NowService } from '../../../core/time/now.service';
 import { notInFuture } from '../../../core/time/not-in-future';
+import { TimeSincePipe } from '../../../core/time/time-since';
+import { BannerComponent } from '../../../shared/ui/banner/banner.component';
+import {
+  DurationDialogComponent,
+  DurationDialogData,
+} from '../../../shared/ui/duration-dialog/duration-dialog.component';
 import { EntryAuditComponent } from '../../../shared/ui/entry-audit/entry-audit.component';
 import { EntrySheetComponent } from '../../../shared/ui/entry-sheet/entry-sheet.component';
 import {
@@ -26,8 +40,17 @@ import { TimeRowComponent } from '../../../shared/ui/time-row/time-row.component
 const FORM_ERRORS: Record<string, string> = {
   feedNotFound: 'feed.errors.feedNotFound',
   babyNotFound: 'feed.errors.babyNotFound',
-  durations: 'feed.breastfeed.errors.durationsZero',
 };
+
+/** Translation keys of the `durations` codes, and of any `endedOn` code. */
+const DURATION_ERRORS: Record<string, string> = {
+  zero: 'feed.breastfeed.errors.durationsZero',
+  inFuture: 'feed.breastfeed.errors.durationsInFuture',
+  outOfRange: 'feed.breastfeed.errors.durationsOutOfRange',
+  endedOn: 'feed.breastfeed.errors.endedOnRequired',
+};
+
+type Durations = Record<BreastSide, number>;
 
 /**
  * The Breastfeed sheet (spec 05): two per-side timers side by side (the hard requirement), the start
@@ -36,11 +59,20 @@ const FORM_ERRORS: Record<string, string> = {
  * durations come from the stored segments, live. Opened to add while a breastfeed is in progress for
  * the baby, it opens that one. × leaves the feed running; Save finishes it (or saves the edits of a
  * saved one), refused while both sides are at 0 s. Closes with the saved feed or the deleted id.
+ *
+ * Each side's pencil lets its duration be typed: both durations are then frozen (the timers are off
+ * until Save or ×), the ended-on side is asked when both are above 0, and Save sends the durations
+ * (adding a feed logged by hand, or replacing the timed ones). An in-progress feed started more than
+ * 3 hours ago shows "Still feeding?".
  */
 @Component({
   selector: 'nala-breastfeed-sheet',
   imports: [
+    BannerComponent,
     DurationPipe,
+    MatButtonToggleModule,
+    ReactiveFormsModule,
+    TimeSincePipe,
     EntryAuditComponent,
     EntrySheetComponent,
     FormRowComponent,
@@ -55,6 +87,8 @@ const FORM_ERRORS: Record<string, string> = {
 })
 export class BreastfeedSheetComponent {
   private readonly feeds = inject(FeedService);
+  private readonly dialog = inject(MatDialog);
+  private readonly transloco = inject(TranslocoService);
   private readonly sheetRef = inject<SheetRef<EntrySheetResult<Feed>>>(SheetRef);
   private readonly now = inject(NowService).now;
   private readonly entry = inject<EntrySheetData<Feed>>(SHEET_DATA).entry;
@@ -73,10 +107,22 @@ export class BreastfeedSheetComponent {
       [Validators.required, notInFuture()],
     ),
     notes: notesControl(this.entry?.notes ?? ''),
+    /** Asked only when both typed durations are above 0. */
+    endedOn: new FormControl<BreastSide | null>(null),
   });
 
-  protected readonly left = computed(() => this.seconds('left'));
-  protected readonly right = computed(() => this.seconds('right'));
+  protected readonly sides = BREAST_SIDES;
+  /** The durations typed with the pencils, in seconds; null while the timers give them. */
+  protected readonly typed = signal<Durations | null>(null);
+  protected readonly left = computed(() => this.typed()?.left ?? this.seconds('left'));
+  protected readonly right = computed(() => this.typed()?.right ?? this.seconds('right'));
+  protected readonly askEndedOn = computed(
+    () => this.left() > 0 && this.right() > 0 && !!this.typed(),
+  );
+  protected readonly stillFeeding = computed(() => {
+    const feed = this.feed();
+    return !!feed && isStillFeeding(feed, this.now());
+  });
   protected readonly total = computed(() => this.left() + this.right());
   protected readonly running = computed(() => {
     const feed = this.feed();
@@ -108,27 +154,57 @@ export class BreastfeedSheetComponent {
     this.send(this.feeds.stopSide(this.feed()!.id, new Date().toISOString()));
   }
 
+  /** Opens the duration dialog for `side`; a typed duration freezes both sides. */
+  protected editDuration(side: BreastSide): void {
+    this.dialog
+      .open<DurationDialogComponent, DurationDialogData, number | undefined>(
+        DurationDialogComponent,
+        {
+          data: {
+            title: this.transloco.translate(`feed.breastfeed.editDuration.${side}`),
+            seconds: side === 'left' ? this.left() : this.right(),
+          },
+        },
+      )
+      .afterClosed()
+      .subscribe((seconds) => {
+        if (seconds === undefined) {
+          return;
+        }
+        const current = this.typed() ?? { left: this.left(), right: this.right() };
+        this.typed.set({ ...current, [side]: seconds });
+        this.form.controls.endedOn.setValue(side);
+        this.form.markAsDirty();
+      });
+  }
+
   protected save(): void {
     const feed = this.feed();
-    if (!feed || this.form.invalid || this.busy()) {
+    const typed = this.typed();
+    if ((!feed && !typed) || this.form.invalid || this.busy()) {
       return;
     }
     this.busy.set(true);
     this.formError.set(null);
     const fields = this.fields();
-    const request =
-      feed.endTime === null
-        ? this.feeds.finish(feed.id, fields, new Date().toISOString())
-        : this.feeds.update(feed.id, fields);
+    let request: Observable<FeedResult>;
+    if (!feed) {
+      request = this.feeds.create(this.babyId!, 'breastfeed', fields, this.newId);
+    } else if (typed || feed.endTime !== null) {
+      request = this.feeds.update(feed.id, fields);
+    } else {
+      request = this.feeds.finish(feed.id, fields, new Date().toISOString());
+    }
     request.subscribe((result) => {
       this.busy.set(false);
       if (result.ok) {
         this.sheetRef.close({ saved: result.feed });
         return;
       }
-      const { durations, ...errors } = result.errors;
-      if (durations) {
-        this.formError.set(FORM_ERRORS['durations']);
+      const { durations, endedOn, ...errors } = result.errors;
+      const durationError = durations ?? (endedOn ? 'endedOn' : null);
+      if (durationError) {
+        this.formError.set(DURATION_ERRORS[durationError] ?? 'feed.errors.unknown');
         applyServerErrors(this.form, errors);
         return;
       }
@@ -203,9 +279,19 @@ export class BreastfeedSheetComponent {
     this.formError.set(code === null ? null : (FORM_ERRORS[code] ?? 'feed.errors.unknown'));
   }
 
-  /** Call only on a valid form. */
+  /** Call only on a valid form. With typed durations, they come along with the ended-on side. */
   private fields(): BreastfeedFields {
     const value = this.form.getRawValue();
-    return { startTime: value.startTime!.toISOString(), notes: value.notes.trim() || null };
+    const fields: BreastfeedFields = {
+      startTime: value.startTime!.toISOString(),
+      notes: value.notes.trim() || null,
+    };
+    const typed = this.typed();
+    if (typed) {
+      const endedOn =
+        typed.left === 0 ? 'right' : typed.right === 0 ? 'left' : (value.endedOn ?? 'right');
+      fields.durations = { leftSeconds: typed.left, rightSeconds: typed.right, endedOn };
+    }
+    return fields;
   }
 }

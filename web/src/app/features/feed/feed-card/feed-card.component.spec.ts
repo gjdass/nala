@@ -10,7 +10,7 @@ import { FeedService } from '../../../core/feeds/feed.service';
 import { HistoryPage } from '../../../core/sections/section.models';
 import { EntrySheetResult } from '../../../shared/ui/entry-sheet/entry-sheet.models';
 import { EntrySheetService } from '../../../shared/ui/entry-sheet/entry-sheet.service';
-import { aBottle } from '../../../testing/feeds';
+import { aBottle, aBreastfeed, aSegment } from '../../../testing/feeds';
 import { translocoTesting } from '../../../testing/transloco-testing';
 import { FeedCardComponent } from './feed-card.component';
 
@@ -208,5 +208,55 @@ describe('FeedCardComponent', () => {
 
     expect(feeds.breastfeedState).toHaveBeenCalledTimes(3);
     expect(feeds.breastfeedState).toHaveBeenLastCalledWith('b2');
+  });
+
+  describe('Still feeding?', () => {
+    const inProgress = (startedMinutesAgo: number) =>
+      aBreastfeed({
+        startTime: minutesAgo(startedMinutesAgo),
+        endTime: null,
+        segments: [aSegment('left', minutesAgo(startedMinutesAgo), null)],
+      });
+
+    it('warns about a breastfeed in progress that started more than 3 hours ago', async () => {
+      await respond([aBottle()]);
+      await respondState({ inProgress: inProgress(192), lastSide: null });
+
+      expect(text('banner-title')).toBe(en.feed.breastfeed.stillFeeding.title);
+      expect(text('banner-text')).toContain('3h 12m ago');
+      expect(text('banner-action')).toBe(en.feed.breastfeed.stillFeeding.review);
+    });
+
+    it('warns even without any saved feed', async () => {
+      await respond([]);
+      await respondState({ inProgress: inProgress(200), lastSide: null });
+
+      expect(find('banner-title')).not.toBeNull();
+    });
+
+    it('appears live once the 3 hours have passed', async () => {
+      await respond([aBottle()]);
+      await respondState({ inProgress: inProgress(179), lastSide: null });
+      expect(find('banner-title')).toBeNull();
+
+      await vi.advanceTimersByTimeAsync(2 * 60_000);
+      await fixture.whenStable();
+
+      expect(find('banner-title')).not.toBeNull();
+    });
+
+    it('opens the feed in the Breastfeed sheet on Review, then reloads', async () => {
+      const feed = inProgress(200);
+      await respond([aBottle()]);
+      await respondState({ inProgress: feed, lastSide: null });
+
+      find('banner-action')!.click();
+      expect(entrySheets.edit).toHaveBeenCalledWith('feed', 'breastfeed', feed);
+
+      edited.next({ saved: aBreastfeed() });
+      edited.complete();
+      await fixture.whenStable();
+      expect(feeds.page).toHaveBeenCalledTimes(2);
+    });
   });
 });

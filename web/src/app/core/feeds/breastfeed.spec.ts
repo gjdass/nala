@@ -1,5 +1,5 @@
 import { aBreastfeed, aSegment } from '../../testing/feeds';
-import { endedOnSide, runningSide, sideSeconds, totalSeconds } from './breastfeed';
+import { endedOnSide, isStillFeeding, runningSide, sideSeconds, totalSeconds } from './breastfeed';
 
 const at = (time: string) => new Date(`2026-09-30T${time}Z`).getTime();
 
@@ -42,5 +42,22 @@ describe('breastfeed durations', () => {
 
     expect(totalSeconds(empty, at('11:00:00'))).toBe(0);
     expect(runningSide(empty)).toBeNull();
+  });
+});
+
+describe('isStillFeeding', () => {
+  const started = aBreastfeed({ startTime: '2026-09-30T10:00:00Z', endTime: null });
+
+  it('is true once a feed in progress started more than 3 hours ago', () => {
+    expect(isStillFeeding(started, at('13:00:01'))).toBe(true);
+  });
+
+  it('is false up to 3 hours', () => {
+    expect(isStillFeeding(started, at('13:00:00'))).toBe(false);
+    expect(isStillFeeding(started, at('10:30:00'))).toBe(false);
+  });
+
+  it('is false for a saved feed', () => {
+    expect(isStillFeeding(aBreastfeed(), at('20:00:00'))).toBe(false);
   });
 });

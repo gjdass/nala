@@ -28,3 +28,11 @@ export function runningSide(feed: Feed): BreastSide | null {
 export function endedOnSide(feed: Feed): BreastSide | null {
   return feed.segments.at(-1)?.side ?? null;
 }
+
+/** How long a breastfeed may stay in progress before "Still feeding?" (spec 05). */
+export const STILL_FEEDING_AFTER_MS = 3 * 60 * 60 * 1000;
+
+/** Whether `feed` is in progress and started more than 3 hours before `now` (epoch ms). */
+export function isStillFeeding(feed: Feed, now: number): boolean {
+  return feed.endTime === null && now - Date.parse(feed.startTime) > STILL_FEEDING_AFTER_MS;
+}

@@ -387,7 +387,20 @@
     "right": "Right",
     "startLeft": "Start Left",
     "startRight": "Start Right",
-    "stop": "Stop"
+    "stop": "Stop",
+    "editLeft": "Edit left duration",
+    "editRight": "Edit right duration"
+  },
+  "durationField": {
+    "minutes": "Minutes",
+    "seconds": "Seconds",
+    "minutesRange": "0 to 240 minutes.",
+    "secondsRange": "0 to 59 seconds.",
+    "tooLong": "At most 4 hours."
+  },
+  "durationDialog": {
+    "ok": "OK",
+    "cancel": "Cancel"
   },
   "feed": {
     "kinds": {
@@ -436,7 +449,21 @@
         "right": "R {{right}}"
       },
       "errors": {
-        "durationsZero": "Time at least one side before saving."
+        "durationsZero": "Time at least one side before saving.",
+        "durationsInFuture": "The feed can't end in the future: check the start time and durations.",
+        "durationsOutOfRange": "Each side is at most 4 hours.",
+        "endedOnRequired": "Choose the side the feed ended on."
+      },
+      "endedOn": "Ended on",
+      "editDuration": {
+        "left": "Left duration",
+        "right": "Right duration"
+      },
+      "stillFeeding": {
+        "title": "Still feeding?",
+        "card": "Started {{since}}.",
+        "sheet": "Started {{since}}. Correct the durations with the pencils, then save.",
+        "review": "Review"
       }
     },
     "mealType": {

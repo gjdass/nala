@@ -71,4 +71,37 @@ public class BreastfeedTests
             Assert.That(Breastfeed.RunningSide(feed), Is.Null);
         });
     }
+
+    [Test]
+    public void Typed_durations_run_back_to_back_from_the_start_with_the_ended_on_side_last()
+    {
+        var feedId = Guid.NewGuid();
+        var start = Now.AddMinutes(-60);
+
+        var segments = Breastfeed.SyntheticSegments(feedId, start, TimeSpan.FromMinutes(5), TimeSpan.FromSeconds(210), BreastSide.Left);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(segments.Select(s => (s.Side, s.StartedAt, s.EndedAt)), Is.EqualTo(new (BreastSide, DateTimeOffset, DateTimeOffset?)[]
+            {
+                (BreastSide.Right, start, start.AddSeconds(210)),
+                (BreastSide.Left, start.AddSeconds(210), start.AddSeconds(510)),
+            }));
+            Assert.That(segments.Select(s => s.FeedId), Is.All.EqualTo(feedId));
+            Assert.That(segments.Select(s => s.Id).Distinct().Count(), Is.EqualTo(2));
+        });
+    }
+
+    [Test]
+    public void A_side_typed_at_zero_gets_no_segment()
+    {
+        var start = Now.AddMinutes(-60);
+
+        var segments = Breastfeed.SyntheticSegments(Guid.NewGuid(), start, TimeSpan.Zero, TimeSpan.FromMinutes(8), BreastSide.Left);
+
+        Assert.That(segments.Select(s => (s.Side, s.StartedAt, s.EndedAt)), Is.EqualTo(new (BreastSide, DateTimeOffset, DateTimeOffset?)[]
+        {
+            (BreastSide.Right, start, start.AddMinutes(8)),
+        }));
+    }
 }

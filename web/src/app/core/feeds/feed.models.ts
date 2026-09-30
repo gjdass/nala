@@ -77,10 +77,21 @@ export interface SolidsFields {
   notes: string | null;
 }
 
-/** What the Breastfeed sheet sends when saving or editing; the timings come from its timers. */
+/** A breastfeed's durations typed by hand, in whole seconds, and the side it ended on. */
+export interface BreastfeedDurations {
+  leftSeconds: number;
+  rightSeconds: number;
+  endedOn: BreastSide;
+}
+
+/**
+ * What the Breastfeed sheet sends when saving or editing: the timings come from its timers, or from
+ * `durations` when typed by hand (required to add one).
+ */
 export interface BreastfeedFields {
   startTime: string;
   notes: string | null;
+  durations?: BreastfeedDurations;
 }
 
 /** The fields each kind sends. */

@@ -2,7 +2,7 @@ import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideNativeDateAdapter } from '@angular/material/core';
 import { MatDialog } from '@angular/material/dialog';
-import { Subject } from 'rxjs';
+import { Subject, take } from 'rxjs';
 import en from '../../../../../public/i18n/en.json';
 import { SelectedBabyService } from '../../../core/babies/selected-baby.service';
 import {
@@ -13,6 +13,8 @@ import {
 } from '../../../core/feeds/feed.models';
 import { FeedService } from '../../../core/feeds/feed.service';
 import { NowService } from '../../../core/time/now.service';
+import { ConfirmDialogComponent } from '../../../shared/ui/confirm-dialog/confirm-dialog.component';
+import { DurationDialogComponent } from '../../../shared/ui/duration-dialog/duration-dialog.component';
 import { EntrySheetData } from '../../../shared/ui/entry-sheet/entry-sheet.models';
 import { SHEET_DATA, SheetRef } from '../../../shared/ui/sheet/sheet-ref';
 import { aBreastfeed, aSegment } from '../../../testing/feeds';
@@ -42,11 +44,13 @@ describe('BreastfeedSheetComponent', () => {
   let saved: Subject<FeedResult>;
   let deleted: Subject<FeedDeleteResult>;
   let feeds: Record<
-    'breastfeedState' | 'startSide' | 'stopSide' | 'finish' | 'update' | 'delete',
+    'breastfeedState' | 'startSide' | 'stopSide' | 'finish' | 'create' | 'update' | 'delete',
     ReturnType<typeof vi.fn>
   >;
   let sheetRef: { close: ReturnType<typeof vi.fn> };
   let confirmed: Subject<boolean | undefined>;
+  let typed: Subject<number | undefined>;
+  let dialog: { open: ReturnType<typeof vi.fn> };
 
   const host = () => fixture.nativeElement as HTMLElement;
   const find = <T extends HTMLElement = HTMLElement>(testId: string) =>
@@ -66,6 +70,13 @@ describe('BreastfeedSheetComponent', () => {
     timer.next(result);
     await settle();
   };
+  /** Taps the pencil of `side` and answers the duration dialog with `seconds` (undefined: Cancel). */
+  const typeDuration = async (side: 'left' | 'right', seconds: number | undefined) => {
+    await click(`split-${side}-edit`);
+    typed.next(seconds);
+    await settle();
+  };
+  const toggle = (side: 'left' | 'right') => find<HTMLButtonElement>(`split-${side}-toggle`)!;
   const tick = async (ms: number) => {
     now.set(now() + ms);
     await settle();
@@ -99,11 +110,20 @@ describe('BreastfeedSheetComponent', () => {
       startSide: vi.fn(() => timer),
       stopSide: vi.fn(() => timer),
       finish: vi.fn(() => saved),
+      create: vi.fn(() => saved),
       update: vi.fn(() => saved),
       delete: vi.fn(() => deleted),
     };
     sheetRef = { close: vi.fn() };
     confirmed = new Subject();
+    typed = new Subject();
+    dialog = {
+      open: vi.fn((component: unknown) => ({
+        // Like a real dialog, each one closes once.
+        afterClosed: () =>
+          component === DurationDialogComponent ? typed.pipe(take(1)) : confirmed.pipe(take(1)),
+      })),
+    };
     await TestBed.configureTestingModule({
       imports: [BreastfeedSheetComponent, translocoTesting()],
       providers: [
@@ -113,7 +133,7 @@ describe('BreastfeedSheetComponent', () => {
         { provide: SelectedBabyService, useValue: { selected: signal({ id: 'b1' }) } },
         { provide: SheetRef, useValue: sheetRef },
         { provide: SHEET_DATA, useValue: null },
-        { provide: MatDialog, useValue: { open: vi.fn(() => ({ afterClosed: () => confirmed })) } },
+        { provide: MatDialog, useValue: dialog },
       ],
     }).compileComponents();
   });
@@ -342,6 +362,183 @@ describe('BreastfeedSheetComponent', () => {
     it('says who logged it and offers Delete', () => {
       expect(host().querySelector('nala-entry-audit')?.textContent).toContain('Anna');
       expect(find('entry-delete')).not.toBeNull();
+    });
+  });
+
+  describe('typing durations on a new feed', () => {
+    beforeEach(async () => {
+      await render();
+      await respondState({ inProgress: null, lastSide: 'left' });
+    });
+
+    it('opens the duration dialog from a side pencil, with its current duration', async () => {
+      await click('split-left-edit');
+
+      expect(dialog.open).toHaveBeenCalledWith(DurationDialogComponent, {
+        data: { title: en.feed.breastfeed.editDuration.left, seconds: 0 },
+      });
+    });
+
+    it('shows the typed duration and total, disables the timers and enables Save', async () => {
+      await typeDuration('left', 300);
+
+      expect(text('split-left-duration')).toBe('5m');
+      expect(text('split-right-duration')).toBe('0s');
+      expect(text('total-time')).toBe('5m');
+      expect(toggle('left').disabled).toBe(true);
+      expect(toggle('right').disabled).toBe(true);
+      expect(save().disabled).toBe(false);
+      expect(feeds.startSide).not.toHaveBeenCalled();
+    });
+
+    it('changes nothing when the dialog is cancelled', async () => {
+      await typeDuration('left', undefined);
+
+      expect(text('split-left-duration')).toBe('0s');
+      expect(toggle('left').disabled).toBe(false);
+      expect(save().disabled).toBe(true);
+    });
+
+    it('asks for the ended-on side only when both sides have a duration', async () => {
+      await typeDuration('left', 300);
+      expect(find('ended-on')).toBeNull();
+
+      await typeDuration('right', 180);
+
+      expect(find('ended-on')?.textContent).toContain(en.feed.breastfeed.endedOn);
+      expect(fixture.componentInstance.form.controls.endedOn.value).toBe('right');
+    });
+
+    it('logs a past feed by hand: start time, durations, ended-on side', async () => {
+      const start = new Date(iso('08:00:00'));
+      fixture.componentInstance.form.controls.startTime.setValue(start);
+      await typeDuration('left', 300);
+      await typeDuration('right', 180);
+      host().querySelector<HTMLButtonElement>('[data-testid="ended-on-left"] button')!.click();
+      await settle();
+
+      await click('sheet-save');
+
+      expect(feeds.create).toHaveBeenCalledWith(
+        'b1',
+        'breastfeed',
+        {
+          startTime: start.toISOString(),
+          notes: null,
+          durations: { leftSeconds: 300, rightSeconds: 180, endedOn: 'left' },
+        },
+        expect.any(String),
+      );
+      const done = aBreastfeed();
+      saved.next({ ok: true, feed: done });
+      await settle();
+      expect(sheetRef.close).toHaveBeenCalledWith({ saved: done });
+    });
+
+    it('sends the only typed side as the ended-on side', async () => {
+      await typeDuration('right', 240);
+
+      await click('sheet-save');
+
+      expect(feeds.create.mock.calls[0][2].durations).toEqual({
+        leftSeconds: 0,
+        rightSeconds: 240,
+        endedOn: 'right',
+      });
+    });
+
+    it('asks before discarding typed durations on ×', async () => {
+      await typeDuration('left', 300);
+
+      await click('sheet-close');
+
+      expect(dialog.open).toHaveBeenCalledWith(ConfirmDialogComponent, expect.anything());
+      expect(sheetRef.close).not.toHaveBeenCalled();
+    });
+
+    it('shows a duration ending in the future as an error', async () => {
+      await typeDuration('left', 300);
+      await click('sheet-save');
+      saved.next({ ok: false, errors: { durations: 'inFuture' } });
+      await settle();
+
+      expect(text('form-error')).toBe(en.feed.breastfeed.errors.durationsInFuture);
+    });
+  });
+
+  describe('correcting a feed in progress', () => {
+    beforeEach(async () => {
+      await render();
+      await respondState({ inProgress: running({ notes: 'calm' }), lastSide: 'right' });
+    });
+
+    it('opens the dialog with the side live duration', async () => {
+      await click('split-right-edit');
+
+      expect(dialog.open).toHaveBeenCalledWith(DurationDialogComponent, {
+        data: { title: en.feed.breastfeed.editDuration.right, seconds: 300 },
+      });
+    });
+
+    it('freezes the other side at its current duration', async () => {
+      await typeDuration('left', 120);
+      await tick(60_000);
+
+      expect(text('split-left-duration')).toBe('2m');
+      expect(text('split-right-duration')).toBe('5m');
+      expect(text('total-time')).toBe('7m');
+      expect(toggle('right').disabled).toBe(true);
+    });
+
+    it('saves the typed durations through update instead of finishing', async () => {
+      await typeDuration('left', 120);
+      await click('sheet-save');
+
+      expect(feeds.update).toHaveBeenCalledWith('f3', {
+        startTime: iso('10:00:00.000'),
+        notes: 'calm',
+        durations: { leftSeconds: 120, rightSeconds: 300, endedOn: 'left' },
+      });
+      expect(feeds.finish).not.toHaveBeenCalled();
+    });
+  });
+
+  it('saves typed durations of a saved feed through update', async () => {
+    await render(aBreastfeed());
+    await respondState({ inProgress: null, lastSide: 'right' });
+
+    await typeDuration('right', 60);
+    await click('sheet-save');
+
+    expect(feeds.update).toHaveBeenCalledWith('f3', {
+      startTime: iso('10:00:00.000'),
+      notes: null,
+      durations: { leftSeconds: 300, rightSeconds: 60, endedOn: 'right' },
+    });
+  });
+
+  describe('Still feeding?', () => {
+    it('warns about a feed in progress that started more than 3 hours ago', async () => {
+      await render();
+      await respondState({ inProgress: running({ startTime: iso('07:09:00') }), lastSide: null });
+
+      expect(text('banner-title')).toBe(en.feed.breastfeed.stillFeeding.title);
+      expect(text('banner-text')).toContain('3h 1m ago');
+      expect(find('banner-action')).toBeNull();
+    });
+
+    it('does not warn before 3 hours', async () => {
+      await render();
+      await respondState({ inProgress: running({ startTime: iso('07:10:00') }), lastSide: null });
+
+      expect(find('banner-title')).toBeNull();
+    });
+
+    it('does not warn for a saved feed', async () => {
+      await render(aBreastfeed({ startTime: iso('01:00:00') }));
+      await respondState({ inProgress: null, lastSide: null });
+
+      expect(find('banner-title')).toBeNull();
     });
   });
 });
