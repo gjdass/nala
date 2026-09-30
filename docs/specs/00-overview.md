@@ -29,13 +29,15 @@ Status: `idea` → `specified` → `in progress` → `done`. A feature moves to 
 | 01 | Project skeleton (solution, Angular PWA, Docker Compose, test setups) | [01-project-skeleton.md](01-project-skeleton.md) | done | |
 | 02 | Authentication (login, register, sessions) | [02-auth.md](02-auth.md) | done | |
 | 03 | Family & baby profile | [03-family-baby.md](03-family-baby.md) | done | |
-| 04 | App layout & section pattern (home cards, entry sheet, mini-bar) | [04-app-layout.md](04-app-layout.md) | in progress | Shared by every section. |
-| 05 | Feed | [05-feed.md](05-feed.md) | done | **Hard requirement:** breast feeding has two independent per-side timers (left/right), side by side in the Breastfeed sheet. A single timer with a "side" field is not acceptable. |
+| 04 | App layout & section pattern (home cards, entry sheet, mini-bar, bottom navigation, timers) | [04-app-layout.md](04-app-layout.md) | in progress | Shared by every section, including the timer rules (live or not, Save never stops a timer) for every section with timers. |
+| 05 | Feed | [05-feed.md](05-feed.md) | in progress | **Hard requirement:** breast feeding has two independent per-side timers (left/right), side by side in the Breastfeed sheet. A single timer with a "side" field is not acceptable. |
 | 06 | Sleep | — | idea | |
 | 07 | Diaper | — | idea | From the reference screenshots: time, wet / dirty / dry selector, diaper-rash toggle, notes. |
 | 08 | Medication | — | idea | |
 | 09 | Growth | — | idea | Birth weight/length/head circumference are stored on the baby profile (03) and must appear as the starting point of the growth history. **Hard requirement:** simple measurement entries over time — weight, height, head circumference, milestones. Raw logging only, no percentile/trend charts. |
-| 10 | Pump | — | idea | **Hard requirement:** pumping sessions with volume and history. |
+| 10 | Pump | — | idea | **Hard requirement:** pumping sessions with volume and history. Timers follow spec 04's Timers rules. |
+| 11 | History (all sections) | — | idea | The bottom bar's History destination (placeholder built in 04). Every section's entries together, with filters. |
+| 12 | Trends | — | idea | The bottom bar's Trends destination (placeholder built in 04). Content to decide in its spec: today totals, statistics and charts are out of scope everywhere else. |
 
 ## Build plan
 
@@ -44,6 +46,6 @@ Specs are numbered in build order: build 01, then 02, and so on. If the order of
 Notes per step:
 - **01 Project skeleton:** the whole chain, incl. `docker compose up`, before any feature.
 - **02 Authentication:** first-run setup → login/session → invitation registration → account settings → account deletion → admin → admin reset link → email reset.
-- **04 App layout:** shared components, home column, per-user order.
+- **04 App layout:** shared components, home column, per-user order. After the first review of Feed: 04 slices 6–8, then 05 slice 8, then 04 slices 9–10.
 - **05 Feed:** slices bottle → solids → breastfeed timers → live sync + mini-bar → offline queue.
 - **06+:** spec each remaining section before building it.
