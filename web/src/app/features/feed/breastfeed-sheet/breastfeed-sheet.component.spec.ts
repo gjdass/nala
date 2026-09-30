@@ -362,6 +362,25 @@ describe('BreastfeedSheetComponent', () => {
       expect(feeds.finish).not.toHaveBeenCalled();
     });
 
+    it('closes once the edit is kept on the device (offline)', async () => {
+      await click('sheet-save');
+      saved.next({ ok: true, queued: true });
+      await settle();
+
+      expect(sheetRef.close).toHaveBeenCalledWith({ queued: true });
+      expect(sync.puts).toEqual([]);
+    });
+
+    it('closes once the delete is kept on the device (offline)', async () => {
+      await click('entry-delete');
+      confirmed.next(true);
+      deleted.next({ ok: true, queued: true });
+      await settle();
+
+      expect(sheetRef.close).toHaveBeenCalledWith({ queued: true });
+      expect(sync.removed).toEqual([]);
+    });
+
     it('reopens it when a side starts', async () => {
       await click('split-left-toggle');
 
@@ -442,6 +461,16 @@ describe('BreastfeedSheetComponent', () => {
       saved.next({ ok: true, feed: done });
       await settle();
       expect(sheetRef.close).toHaveBeenCalledWith({ saved: done });
+    });
+
+    it('closes once a feed logged by hand is kept on the device (offline)', async () => {
+      await typeDuration('left', 300);
+      await click('sheet-save');
+      saved.next({ ok: true, queued: true });
+      await settle();
+
+      expect(sheetRef.close).toHaveBeenCalledWith({ queued: true });
+      expect(sync.puts).toEqual([]);
     });
 
     it('sends the only typed side as the ended-on side', async () => {

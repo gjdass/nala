@@ -120,6 +120,10 @@ export const NO_BOTTLE_DEFAULTS: BottleDefaults = {
   lastAmountMl: { breastMilk: null, formula: null },
 };
 
-export type FeedResult = { ok: true; feed: Feed } | { ok: false; errors: FieldErrors };
+/** Saved (with the feed), kept on the device to be sent once back online (`queued`), or refused. */
+export type FeedResult =
+  | { ok: true; queued?: false; feed: Feed }
+  | { ok: true; queued: true }
+  | { ok: false; errors: FieldErrors };
 
-export type FeedDeleteResult = { ok: true } | { ok: false; errors: FieldErrors };
+export type FeedDeleteResult = { ok: true; queued?: true } | { ok: false; errors: FieldErrors };

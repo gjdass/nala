@@ -78,6 +78,9 @@ type Durations = Record<BreastSide, number>;
  * Other devices: its own actions update the shared in-progress state at once; changes made elsewhere
  * (side switch, pause) show live, unless durations are being typed; if the feed is saved or deleted
  * elsewhere, the sheet closes with a snackbar (unless durations are being typed).
+ *
+ * Offline, a save by hand, an edit or a delete is kept on the device and the sheet closes with
+ * `queued` (timer taps are not queued yet).
  */
 @Component({
   selector: 'nala-breastfeed-sheet',
@@ -224,6 +227,10 @@ export class BreastfeedSheetComponent {
       this.busy.set(false);
       if (result.ok) {
         this.settled = true;
+        if (result.queued) {
+          this.sheetRef.close({ queued: true });
+          return;
+        }
         this.sync.put(result.feed);
         this.sheetRef.close({ saved: result.feed });
         return;
@@ -247,6 +254,10 @@ export class BreastfeedSheetComponent {
       this.busy.set(false);
       if (result.ok) {
         this.settled = true;
+        if (result.queued) {
+          this.sheetRef.close({ queued: true });
+          return;
+        }
         this.sync.remove(feed.id);
         this.sheetRef.close({ deleted: feed.id });
       } else {
@@ -265,8 +276,11 @@ export class BreastfeedSheetComponent {
     request.subscribe((result) => {
       this.busy.set(false);
       if (result.ok) {
-        this.sync.put(result.feed);
-        this.show(result.feed);
+        // Timer taps are sent at once, never queued.
+        if (!result.queued) {
+          this.sync.put(result.feed);
+          this.show(result.feed);
+        }
       } else if (result.errors['form'] === 'breastfeedInProgress') {
         // Started from another device meanwhile: open that one.
         this.loadState(this.babyId!);

@@ -49,7 +49,7 @@ const FORM_ERRORS = ['feedNotFound', 'babyNotFound'];
  * The Bottle Feed sheet (spec 05), adding a bottle for the selected baby or editing the one it was
  * opened with: start time (now by default), milk type (the previous bottle's by default), amount with
  * the "Use last … amount" suggestion while it is empty, and notes. Closes with the saved feed, or the
- * id of the deleted one.
+ * id of the deleted one; offline, with `queued` once the change is kept on the device.
  */
 @Component({
   selector: 'nala-bottle-sheet',
@@ -156,7 +156,7 @@ export class BottleSheetComponent {
     request.subscribe((result) => {
       this.saving.set(false);
       if (result.ok) {
-        this.sheetRef.close({ saved: result.feed });
+        this.sheetRef.close(result.queued ? { queued: true } : { saved: result.feed });
         return;
       }
       this.showFormError(applyServerErrors(this.form, result.errors));
@@ -170,7 +170,7 @@ export class BottleSheetComponent {
     this.feeds.delete(feed.id).subscribe((result) => {
       this.saving.set(false);
       if (result.ok) {
-        this.sheetRef.close({ deleted: feed.id });
+        this.sheetRef.close(result.queued ? { queued: true } : { deleted: feed.id });
       } else {
         this.showFormError(result.errors['form'] ?? 'unknown');
       }

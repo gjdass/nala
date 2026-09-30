@@ -267,6 +267,16 @@ describe('BottleSheetComponent', () => {
       expect(text('form-error')).toBe(en.feed.errors.unknown);
     });
 
+    it('closes once the bottle is kept on the device (offline)', async () => {
+      bottleDefaults.next(defaults('formula', null, null));
+      await typeAmount('120');
+      save().click();
+      saved.next({ ok: true, queued: true });
+      await settle();
+
+      expect(sheetRef.close).toHaveBeenCalledWith({ queued: true });
+    });
+
     it('shows neither Delete nor who logged it', () => {
       expect(find('entry-delete')).toBeNull();
       expect(host().querySelector('nala-entry-audit')).toBeNull();
@@ -342,6 +352,27 @@ describe('BottleSheetComponent', () => {
       deleted.next({ ok: true });
       await settle();
       expect(sheetRef.close).toHaveBeenCalledWith({ deleted: 'f7' });
+    });
+
+    it('closes once the change is kept on the device (offline)', async () => {
+      await render(feed);
+      await typeAmount('110');
+      save().click();
+      saved.next({ ok: true, queued: true });
+      await settle();
+
+      expect(sheetRef.close).toHaveBeenCalledWith({ queued: true });
+    });
+
+    it('closes once the delete is kept on the device (offline)', async () => {
+      await render(feed);
+
+      find<HTMLButtonElement>('entry-delete')!.click();
+      confirmed.next(true);
+      deleted.next({ ok: true, queued: true });
+      await settle();
+
+      expect(sheetRef.close).toHaveBeenCalledWith({ queued: true });
     });
 
     it('keeps the sheet open when deleting fails', async () => {

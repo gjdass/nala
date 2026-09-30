@@ -232,6 +232,15 @@ describe('SolidsSheetComponent', () => {
       expect(text('form-error')).toBe(en.feed.errors.unknown);
     });
 
+    it('closes once the solids are kept on the device (offline)', async () => {
+      await typeFood('Banana');
+      save().click();
+      saved.next({ ok: true, queued: true });
+      await settle();
+
+      expect(sheetRef.close).toHaveBeenCalledWith({ queued: true });
+    });
+
     it('shows neither Delete nor who logged it', () => {
       expect(find('entry-delete')).toBeNull();
       expect(host().querySelector('nala-entry-audit')).toBeNull();
@@ -301,6 +310,27 @@ describe('SolidsSheetComponent', () => {
       deleted.next({ ok: true });
       await settle();
       expect(sheetRef.close).toHaveBeenCalledWith({ deleted: 'f7' });
+    });
+
+    it('closes once the change is kept on the device (offline)', async () => {
+      await render(feed);
+      await typeFood('Pumpkin and rice');
+      save().click();
+      saved.next({ ok: true, queued: true });
+      await settle();
+
+      expect(sheetRef.close).toHaveBeenCalledWith({ queued: true });
+    });
+
+    it('closes once the delete is kept on the device (offline)', async () => {
+      await render(feed);
+
+      find<HTMLButtonElement>('entry-delete')!.click();
+      confirmed.next(true);
+      deleted.next({ ok: true, queued: true });
+      await settle();
+
+      expect(sheetRef.close).toHaveBeenCalledWith({ queued: true });
     });
 
     it('keeps the sheet open when deleting fails', async () => {

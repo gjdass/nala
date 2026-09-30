@@ -2,6 +2,8 @@ import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http'
 import { Injectable, inject } from '@angular/core';
 import { Observable, catchError, map, of } from 'rxjs';
 import { toFieldErrors } from '../http/field-errors';
+import { SendOutcome } from '../offline/offline-queue.models';
+import { OfflineQueueService } from '../offline/offline-queue.service';
 import { HistoryPage } from '../sections/section.models';
 import {
   BottleDefaults,
@@ -16,10 +18,14 @@ import {
   NO_BREASTFEED_STATE,
 } from './feed.models';
 
-/** A baby's feeds (spec 05); any member can add, edit and delete any feed. */
+/**
+ * A baby's feeds (spec 05); any member can add, edit and delete any feed. Adding, editing and deleting
+ * go through the offline queue: without a network they are kept on the device and sent later.
+ */
 @Injectable({ providedIn: 'root' })
 export class FeedService {
   private readonly http = inject(HttpClient);
+  private readonly queue = inject(OfflineQueueService);
 
   /** One page of the baby's feeds, newest first; errors when it can't be loaded (the history offers Try again). */
   page(babyId: string, cursor: string | null, limit?: number): Observable<HistoryPage<Feed>> {
@@ -43,20 +49,24 @@ export class FeedService {
     fields: FeedFieldsByKind[K],
     id: string = crypto.randomUUID(),
   ): Observable<FeedResult> {
-    return this.result(this.http.post<Feed>('/api/feeds', { id, babyId, kind, ...fields }));
+    return this.queue
+      .send<Feed>('POST', '/api/feeds', { id, babyId, kind, ...fields })
+      .pipe(map(toFeedResult));
   }
 
   /** Replaces every field of the feed's kind. */
   update(id: string, fields: FeedFieldsByKind[keyof FeedFieldsByKind]): Observable<FeedResult> {
-    return this.result(this.http.put<Feed>(`/api/feeds/${id}`, fields));
+    return this.queue.send<Feed>('PUT', `/api/feeds/${id}`, fields).pipe(map(toFeedResult));
   }
 
   delete(id: string): Observable<FeedDeleteResult> {
-    return this.http.delete<void>(`/api/feeds/${id}`).pipe(
-      map((): FeedDeleteResult => ({ ok: true })),
-      catchError((error: HttpErrorResponse) =>
-        of<FeedDeleteResult>({ ok: false, errors: toFieldErrors(error) }),
-      ),
+    return this.queue.send<void>('DELETE', `/api/feeds/${id}`, null).pipe(
+      map((outcome): FeedDeleteResult => {
+        if ('error' in outcome) {
+          return { ok: false, errors: toFieldErrors(outcome.error) };
+        }
+        return 'queued' in outcome ? { ok: true, queued: true } : { ok: true };
+      }),
     );
   }
 
@@ -121,4 +131,11 @@ export class FeedService {
       ),
     );
   }
+}
+
+function toFeedResult(outcome: SendOutcome<Feed>): FeedResult {
+  if ('error' in outcome) {
+    return { ok: false, errors: toFieldErrors(outcome.error) };
+  }
+  return 'queued' in outcome ? { ok: true, queued: true } : { ok: true, feed: outcome.sent };
 }

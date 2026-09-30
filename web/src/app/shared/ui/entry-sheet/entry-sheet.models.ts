@@ -7,5 +7,8 @@ export interface EntrySheetData<T = unknown> {
   entry: T | null;
 }
 
-/** What a kind's sheet closes with: the saved entry, or the id of the deleted one. */
-export type EntrySheetResult<T = unknown> = { saved: T } | { deleted: string };
+/**
+ * What a kind's sheet closes with: the saved entry, the id of the deleted one, or `queued` when the
+ * change is kept on the device until back online (lists stay as they are until it is sent).
+ */
+export type EntrySheetResult<T = unknown> = { saved: T } | { deleted: string } | { queued: true };

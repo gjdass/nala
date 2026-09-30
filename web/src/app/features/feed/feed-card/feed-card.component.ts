@@ -16,6 +16,7 @@ import { isStillFeeding, runningSide, sideSeconds } from '../../../core/feeds/br
 import { BreastfeedSyncService } from '../../../core/feeds/breastfeed-sync.service';
 import { BreastSide, Feed, FeedResult } from '../../../core/feeds/feed.models';
 import { FeedService } from '../../../core/feeds/feed.service';
+import { OfflineQueueService } from '../../../core/offline/offline-queue.service';
 import { NowService } from '../../../core/time/now.service';
 import { TimeSincePipe } from '../../../core/time/time-since';
 import { BannerComponent } from '../../../shared/ui/banner/banner.component';
@@ -39,7 +40,8 @@ import { FeedEntryComponent } from '../feed-entry/feed-entry.component';
  * highlight is replaced by "Feeding" (opens the sheet) and both sides' live durations with their
  * Start/Stop: the running side's Stop pauses, the other side's Start switches. Once that feed is
  * saved or deleted anywhere, the card reloads.
- * Reloads after an entry is added, edited or deleted, and when another baby is selected.
+ * Reloads after an entry is added, edited or deleted, when another baby is selected, and once
+ * changes kept on the device (offline) have been sent.
  */
 @Component({
   selector: 'nala-feed-card',
@@ -65,6 +67,7 @@ export class FeedCardComponent {
   private readonly store = inject(SelectedBabyService);
   private readonly now = inject(NowService).now;
   private readonly sync = inject(BreastfeedSyncService);
+  private readonly queue = inject(OfflineQueueService);
 
   /** Newest first; null while loading. */
   protected readonly entries = signal<readonly Feed[] | null>(null);
@@ -97,6 +100,17 @@ export class FeedCardComponent {
         this.lastSide.set(null);
         if (baby) {
           this.load(baby.id);
+        }
+      });
+    });
+    // Changes kept on the device (offline) have reached the server.
+    let sent = this.queue.sent();
+    effect(() => {
+      const now = this.queue.sent();
+      untracked(() => {
+        if (now !== sent) {
+          sent = now;
+          this.reload();
         }
       });
     });
@@ -155,7 +169,7 @@ export class FeedCardComponent {
     this.busy.set(true);
     request.subscribe((result) => {
       this.busy.set(false);
-      if (result.ok) {
+      if (result.ok && !result.queued) {
         this.sync.put(result.feed);
       }
     });

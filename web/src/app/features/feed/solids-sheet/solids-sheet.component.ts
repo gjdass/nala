@@ -53,7 +53,8 @@ const FORM_ERRORS = ['feedNotFound', 'babyNotFound'];
 /**
  * The Solids sheet (spec 05), adding solids for the selected baby or editing the ones it was opened
  * with: meal type chips at the top (optional), start time (now by default), food (multi-line, required),
- * reaction chips (optional) and notes. Closes with the saved feed, or the id of the deleted one.
+ * reaction chips (optional) and notes. Closes with the saved feed, or the id of the deleted one;
+ * offline, with `queued` once the change is kept on the device.
  */
 @Component({
   selector: 'nala-solids-sheet',
@@ -130,7 +131,7 @@ export class SolidsSheetComponent {
     request.subscribe((result) => {
       this.saving.set(false);
       if (result.ok) {
-        this.sheetRef.close({ saved: result.feed });
+        this.sheetRef.close(result.queued ? { queued: true } : { saved: result.feed });
         return;
       }
       this.showFormError(applyServerErrors(this.form, result.errors));
@@ -144,7 +145,7 @@ export class SolidsSheetComponent {
     this.feeds.delete(feed.id).subscribe((result) => {
       this.saving.set(false);
       if (result.ok) {
-        this.sheetRef.close({ deleted: feed.id });
+        this.sheetRef.close(result.queued ? { queued: true } : { deleted: feed.id });
       } else {
         this.showFormError(result.errors['form'] ?? 'unknown');
       }

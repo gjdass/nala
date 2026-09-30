@@ -230,6 +230,15 @@ describe('HistoryListComponent', () => {
     expect(entries()).toEqual(['3:a', '1:a']);
   });
 
+  it('leaves the list as it is for a change kept on the device (offline)', async () => {
+    await answer([entry('2'), entry('1')], null);
+
+    fixture.componentInstance.list().apply({ queued: true });
+    await fixture.whenStable();
+
+    expect(entries()).toEqual(['2:a', '1:a']);
+  });
+
   it('shows the empty state once the last entry is deleted', async () => {
     await answer([entry('1')], null);
 

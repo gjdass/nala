@@ -79,8 +79,14 @@ export class HistoryListComponent<T extends { id: string } = { id: string }> {
     inject(DestroyRef).onDestroy(() => this.request?.unsubscribe());
   }
 
-  /** Puts an entry edited from the list back where it is, or removes a deleted one. */
+  /**
+   * Puts an entry edited from the list back where it is, or removes a deleted one; a change kept on
+   * the device (offline) leaves the list as it is.
+   */
   apply(result: EntrySheetResult<T>): void {
+    if ('queued' in result) {
+      return;
+    }
     if ('deleted' in result) {
       this.entries.update((list) => list.filter((e) => e.id !== result.deleted));
     } else {

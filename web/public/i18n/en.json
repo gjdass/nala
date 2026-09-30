@@ -501,5 +501,9 @@
       "right": "Feeding · R",
       "paused": "Feeding · paused"
     }
+  },
+  "offline": {
+    "queued": "Saved on this device. It will be sent when you're back online.",
+    "refused": "A change made offline couldn't be applied."
   }
 }

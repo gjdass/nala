@@ -11,7 +11,9 @@ import { FeedService } from '../../../core/feeds/feed.service';
 import { HistoryPage } from '../../../core/sections/section.models';
 import { EntrySheetResult } from '../../../shared/ui/entry-sheet/entry-sheet.models';
 import { EntrySheetService } from '../../../shared/ui/entry-sheet/entry-sheet.service';
+import { OfflineQueueService } from '../../../core/offline/offline-queue.service';
 import { fakeBreastfeedSync } from '../../../testing/breastfeed-sync';
+import { fakeOfflineQueue } from '../../../testing/offline-queue';
 import { aBottle, aBreastfeed, aSegment } from '../../../testing/feeds';
 import { translocoTesting } from '../../../testing/transloco-testing';
 import { FeedCardComponent } from './feed-card.component';
@@ -37,6 +39,7 @@ describe('FeedCardComponent', () => {
   >;
   let timer: Subject<FeedResult>;
   let sync: ReturnType<typeof fakeBreastfeedSync>;
+  let queue: ReturnType<typeof fakeOfflineQueue>;
   let states: Subject<BreastfeedState>[];
   let selected: ReturnType<typeof signal<Baby | null>>;
   let edited: Subject<EntrySheetResult | undefined>;
@@ -66,6 +69,7 @@ describe('FeedCardComponent', () => {
     states = [];
     timer = new Subject();
     sync = fakeBreastfeedSync();
+    queue = fakeOfflineQueue();
     feeds = {
       startSide: vi.fn(() => timer),
       stopSide: vi.fn(() => timer),
@@ -91,6 +95,7 @@ describe('FeedCardComponent', () => {
         { provide: SelectedBabyService, useValue: { selected } },
         { provide: EntrySheetService, useValue: entrySheets },
         { provide: BreastfeedSyncService, useValue: sync },
+        { provide: OfflineQueueService, useValue: queue },
       ],
     }).compileComponents();
     fixture = TestBed.createComponent(FeedCardComponent);
@@ -178,6 +183,17 @@ describe('FeedCardComponent', () => {
     await fixture.whenStable();
 
     expect(feeds.page).toHaveBeenCalledTimes(2);
+  });
+
+  it('reloads once changes kept on the device have been sent', async () => {
+    await respond([]);
+    await respondState({ inProgress: null, lastSide: null });
+
+    queue.sent.set(1);
+    await fixture.whenStable();
+
+    expect(feeds.page).toHaveBeenCalledTimes(2);
+    expect(feeds.breastfeedState).toHaveBeenCalledTimes(2);
   });
 
   it('reloads for the baby switched to', async () => {

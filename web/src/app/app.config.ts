@@ -15,6 +15,7 @@ import { provideNalaI18n } from './core/i18n/i18n.providers';
 import { provideNalaIcons } from './core/icons/icons.providers';
 import { pickInitialLang } from './core/i18n/initial-lang';
 import { provideUserLanguage } from './core/i18n/user-language';
+import { provideOfflineQueue } from './core/offline/offline-queue.service';
 import { SECTIONS } from './core/sections/section.models';
 import { ThemeService } from './core/theme/theme.service';
 import { FEED_SECTION } from './features/feed/feed.section';
@@ -31,6 +32,7 @@ export const appConfig: ApplicationConfig = {
     provideNalaIcons(),
     { provide: SECTIONS, useValue: [FEED_SECTION] },
     provideFeedTimers(),
+    provideOfflineQueue(),
     provideAppInitializer(() => void inject(ThemeService)),
     provideServiceWorker('ngsw-worker.js', {
       enabled: !isDevMode(),

@@ -501,5 +501,9 @@
       "right": "Tétée · D",
       "paused": "Tétée · en pause"
     }
+  },
+  "offline": {
+    "queued": "Enregistré sur cet appareil. Ce sera envoyé dès le retour du réseau.",
+    "refused": "Une modification faite hors ligne n'a pas pu être appliquée."
   }
 }

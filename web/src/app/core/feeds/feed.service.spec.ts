@@ -1,8 +1,13 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { firstValueFrom } from 'rxjs';
 import { aBottle, aBreastfeed, aSolids } from '../../testing/feeds';
+import { translocoTesting } from '../../testing/transloco-testing';
+import { AuthService } from '../auth/auth.service';
+import { QUEUE_STORAGE_KEY } from '../offline/offline-queue.service';
 import {
   BottleDefaults,
   BottleFields,
@@ -32,14 +37,31 @@ describe('FeedService', () => {
   };
 
   beforeEach(() => {
+    localStorage.clear();
+    const user = { id: 'u1', email: 'anna@mail.com', displayName: 'Anna', language: 'en' };
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      imports: [translocoTesting()],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: AuthService, useValue: { state: signal({ user }) } },
+        { provide: MatSnackBar, useValue: { open: vi.fn() } },
+      ],
     });
     service = TestBed.inject(FeedService);
     http = TestBed.inject(HttpTestingController);
   });
 
-  afterEach(() => http.verify());
+  afterEach(() => {
+    http.verify();
+    localStorage.clear();
+  });
+
+  const networkError = { status: 0, statusText: 'Unknown Error' };
+  const queuedBodies = () =>
+    (JSON.parse(localStorage.getItem(QUEUE_STORAGE_KEY) ?? '[]') as { body: unknown }[]).map(
+      (r) => r.body,
+    );
 
   describe('page()', () => {
     it('gets the first page of the baby', async () => {
@@ -124,6 +146,14 @@ describe('FeedService', () => {
 
       expect(await result).toEqual<FeedResult>({ ok: false, errors: { amountMl: 'outOfRange' } });
     });
+
+    it('keeps the feed on the device with its client id when offline', async () => {
+      const result = firstValueFrom(service.create('b1', 'bottle', fields, 'f1'));
+      http.expectOne('/api/feeds').flush(null, networkError);
+
+      expect(await result).toEqual<FeedResult>({ ok: true, queued: true });
+      expect(queuedBodies()).toEqual([{ id: 'f1', babyId: 'b1', kind: 'bottle', ...fields }]);
+    });
   });
 
   describe('update()', () => {
@@ -157,6 +187,14 @@ describe('FeedService', () => {
 
       expect(await result).toEqual<FeedResult>({ ok: false, errors: { form: 'feedNotFound' } });
     });
+
+    it('keeps the edit on the device when offline', async () => {
+      const result = firstValueFrom(service.update('f1', solids));
+      http.expectOne('/api/feeds/f1').flush(null, networkError);
+
+      expect(await result).toEqual<FeedResult>({ ok: true, queued: true });
+      expect(queuedBodies()).toEqual([solids]);
+    });
   });
 
   describe('delete()', () => {
@@ -171,9 +209,17 @@ describe('FeedService', () => {
 
     it('maps a failure to a form error', async () => {
       const result = firstValueFrom(service.delete('f1'));
-      http.expectOne('/api/feeds/f1').flush(null, { status: 503, statusText: 'Unavailable' });
+      http.expectOne('/api/feeds/f1').flush(null, { status: 500, statusText: 'Server Error' });
 
       expect(await result).toEqual<FeedDeleteResult>({ ok: false, errors: { form: 'unknown' } });
+    });
+
+    it('keeps the delete on the device when offline', async () => {
+      const result = firstValueFrom(service.delete('f1'));
+      http.expectOne('/api/feeds/f1').flush(null, networkError);
+
+      expect(await result).toEqual<FeedDeleteResult>({ ok: true, queued: true });
+      expect(queuedBodies()).toEqual([null]);
     });
   });
 
