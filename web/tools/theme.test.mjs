@@ -29,6 +29,26 @@ describe('global theme', () => {
     }
   });
 
+  it('defines a container and an on-container token for every section, light and dark', () => {
+    for (const key of SECTIONS) {
+      assert.match(css, new RegExp(`--nala-section-${key}-container:\\s*light-dark\\(`), key);
+      assert.match(
+        css,
+        new RegExp(`--nala-on-section-${key}-container:\\s*light-dark\\(`),
+        `on-${key}`,
+      );
+    }
+  });
+
+  it('colours the section card small FAB and text button from the section tokens', () => {
+    const block = (selector) => css.match(new RegExp(`\\${selector}\\s*\\{([^}]*)\\}`))?.[1] ?? '';
+    const fab = block('.nala-section-fab');
+    assert.match(fab, /--mat-fab-small-container-color:\s*var\(--nala-section-container\)/);
+    assert.match(fab, /--mat-fab-small-foreground-color:\s*var\(--nala-on-section-container\)/);
+    const text = block('.nala-section-text-button');
+    assert.match(text, /--mat-button-text-label-text-color:\s*var\(--nala-section-accent\)/);
+  });
+
   it("keeps Material's default density, so controls keep their 48 dp touch targets", () => {
     assert.doesNotMatch(css, /density/);
     assert.doesNotMatch(css, /touch-target-(display|size)/);

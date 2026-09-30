@@ -72,9 +72,26 @@ describe('SectionCardComponent', () => {
 
     it('shows the section title in a header band using the section colour tokens', () => {
       expect(text('section-title')).toBe(en.sections.feed);
-      const style = find('section-header')?.getAttribute('style') ?? '';
-      expect(style).toContain('var(--nala-section-feed)');
-      expect(style).toContain('var(--nala-on-section-feed)');
+      const style = find('section-card')?.getAttribute('style') ?? '';
+      expect(style).toContain('--nala-section-colour: var(--nala-section-feed)');
+      expect(style).toContain('--nala-on-section-colour: var(--nala-on-section-feed)');
+    });
+
+    it('gives the + small FAB and the show more button the section colour tokens', async () => {
+      expect(find('section-add')?.classList).toContain('nala-section-fab');
+      expect(find('section-toggle')?.classList).toContain('nala-section-text-button');
+      const style = () => find('section-card')?.getAttribute('style') ?? '';
+      expect(style()).toContain('--nala-section-container: var(--nala-section-feed-container)');
+      expect(style()).toContain(
+        '--nala-on-section-container: var(--nala-on-section-feed-container)',
+      );
+      expect(style()).toContain('--nala-section-accent: var(--nala-section-feed)');
+
+      fixture.componentInstance.key.set('sleep');
+      await fixture.whenStable();
+
+      expect(style()).toContain('--nala-section-container: var(--nala-section-sleep-container)');
+      expect(style()).toContain('--nala-section-accent: var(--nala-section-sleep)');
     });
 
     it('has a labelled + small FAB that opens the section add flow', () => {

@@ -1,14 +1,18 @@
-<mat-card appearance="filled">
-  <div
-    class="header"
-    [style.--nala-section-colour]="'var(--nala-section-' + key() + ')'"
-    [style.--nala-on-section-colour]="'var(--nala-on-section-' + key() + ')'"
-    data-testid="section-header"
-  >
+<mat-card
+  appearance="filled"
+  [style.--nala-section-colour]="'var(--nala-section-' + key() + ')'"
+  [style.--nala-on-section-colour]="'var(--nala-on-section-' + key() + ')'"
+  [style.--nala-section-container]="'var(--nala-section-' + key() + '-container)'"
+  [style.--nala-on-section-container]="'var(--nala-on-section-' + key() + '-container)'"
+  [style.--nala-section-accent]="'var(--nala-section-' + key() + ')'"
+  data-testid="section-card"
+>
+  <div class="header" data-testid="section-header">
     <h2 class="title" data-testid="section-title">{{ 'sections.' + key() | transloco }}</h2>
     <button
       mat-mini-fab
       type="button"
+      class="nala-section-fab"
       [attr.aria-label]="
         'sectionCard.add' | transloco: { section: ('sections.' + key() | transloco) }
       "
@@ -34,7 +38,7 @@
         <button
           mat-button
           type="button"
-          class="toggle"
+          class="toggle nala-section-text-button"
           (click)="toggle()"
           data-testid="section-toggle"
         >

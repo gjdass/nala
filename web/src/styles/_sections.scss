@@ -2,7 +2,9 @@
 @use '@angular/material' as mat;
 
 // Section colour tokens (spec 04): --nala-section-<key> for surfaces such as
-// card header bands, --nala-on-section-<key> for text and icons on them.
+// card header bands, --nala-on-section-<key> for text and icons on them, and
+// --nala-section-<key>-container / --nala-on-section-<key>-container for the
+// card's small FAB (lighter tone in light mode, darker in dark mode).
 // Placeholder colours taken from Material's M3 palettes until the palette is decided.
 $sections: (
   feed: mat.$orange-palette,
@@ -17,5 +19,35 @@ html {
   @each $key, $palette in $sections {
     --nala-section-#{$key}: light-dark(#{map.get($palette, 40)}, #{map.get($palette, 80)});
     --nala-on-section-#{$key}: light-dark(#{map.get($palette, 100)}, #{map.get($palette, 20)});
+    --nala-section-#{$key}-container: light-dark(#{map.get($palette, 90)}, #{map.get($palette, 30)});
+    --nala-on-section-#{$key}-container: light-dark(
+      #{map.get($palette, 10)},
+      #{map.get($palette, 90)}
+    );
   }
+}
+
+// Section card buttons in the section colours. The card sets --nala-section-container,
+// --nala-on-section-container and --nala-section-accent to its section's tokens.
+// + small FAB (and the live timer button).
+.nala-section-fab {
+  @include mat.fab-overrides(
+    (
+      small-container-color: var(--nala-section-container),
+      small-foreground-color: var(--nala-on-section-container),
+      small-state-layer-color: var(--nala-on-section-container),
+      small-ripple-color: color-mix(in srgb, var(--nala-on-section-container) 12%, transparent),
+    )
+  );
+}
+
+// Show more / Show less text button.
+.nala-section-text-button {
+  @include mat.button-overrides(
+    (
+      text-label-text-color: var(--nala-section-accent),
+      text-state-layer-color: var(--nala-section-accent),
+      text-ripple-color: color-mix(in srgb, var(--nala-section-accent) 12%, transparent),
+    )
+  );
 }

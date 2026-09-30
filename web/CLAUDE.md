@@ -16,7 +16,7 @@ Run from `web/` (Node 24, npm).
 - i18n: Transloco, runtime switching. Translations live in `public/i18n/{en,fr}.json`; both files must have the same keys (enforced by `translations.spec.ts`). Signed-out screens use the browser's language (first of EN/FR it prefers), falling back to English; once signed in, `provideUserLanguage()` (`core/i18n/user-language.ts`) switches to the user's preferred language.
 - The service worker is only enabled in production builds.
 - Docker: `web/Dockerfile` (node build → unprivileged nginx on 8080). `nginx.conf` serves `dist/nala/browser` with SPA fallback, proxies `/api/` to `api:8080` and keeps `index.html`/`ngsw.json`/the worker uncached.
-- Theme: `src/styles/` (`_theme.scss` Material 3 theme, `_sections.scss` section tokens `--nala-section-<key>` / `--nala-on-section-<key>`, `_typography.scss` bundled Roboto and Material Symbols Outlined, the `mat-icon` font set via `provideNalaIcons()`). Colours are `light-dark()` values; `ThemeService` (`core/theme/`) sets `color-scheme` on `<html>` to force light/dark, and persists the choice in `localStorage` (`nala.theme`).
+- Theme: `src/styles/` (`_theme.scss` Material 3 theme, `_sections.scss` section tokens `--nala-section-<key>` / `--nala-on-section-<key>` and `-container` variants, plus the `.nala-section-fab` / `.nala-section-text-button` Material overrides the section card uses, `_typography.scss` bundled Roboto and Material Symbols Outlined, the `mat-icon` font set via `provideNalaIcons()`). Colours are `light-dark()` values; `ThemeService` (`core/theme/`) sets `color-scheme` on `<html>` to force light/dark, and persists the choice in `localStorage` (`nala.theme`).
 
 ## Architecture
 
