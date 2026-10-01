@@ -55,7 +55,7 @@ The Feed section has several kinds, so + opens the kind picker (Bottle Feed, Bre
 Each item becomes at least one test, written failing first.
 
 ### Feed card
-- [ ] Highlight: "Last feeding" with the time since the **start** of the most recent feed of any kind (e.g. "26m ago"), and on the right, in an M3 display/headline typescale, the side the most recent breastfeed that isn't live ended on, capitalised ("Right" / "Left"), labelled "last side".
+- [x] Highlight: "Last feeding" with the time since the **start** of the most recent feed of any kind (e.g. "26m ago"), and on the right, in an M3 display/headline typescale, the side the most recent breastfeed that isn't live ended on, capitalised ("Right" / "Left"), labelled "last side".
 - [x] If there has been no breastfeed yet, the "last side" part is hidden; with no feed at all, an empty state is shown.
 - [x] Running state: while a breastfeed is live, the highlight shows "Feeding" with both sides' live durations, the running side marked, and quick controls to switch side and stop. Tapping it opens the Breastfeed sheet. Once stopped, the card shows its normal highlight again.
 

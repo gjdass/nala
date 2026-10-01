@@ -30,7 +30,7 @@ Status: `idea` → `specified` → `in progress` → `done`. A feature moves to 
 | 02 | Authentication (login, register, sessions) | [02-auth.md](02-auth.md) | done | |
 | 03 | Family & baby profile | [03-family-baby.md](03-family-baby.md) | done | |
 | 04 | App layout & section pattern (home cards, entry sheet, mini-bar, bottom navigation, timers) | [04-app-layout.md](04-app-layout.md) | done | Shared by every section, including the timer rules (live or not, Save never stops a timer) for every section with timers. |
-| 05 | Feed | [05-feed.md](05-feed.md) | in progress | **Hard requirement:** breast feeding has two independent per-side timers (left/right), side by side in the Breastfeed sheet. A single timer with a "side" field is not acceptable. |
+| 05 | Feed | [05-feed.md](05-feed.md) | done | **Hard requirement:** breast feeding has two independent per-side timers (left/right), side by side in the Breastfeed sheet. A single timer with a "side" field is not acceptable. |
 | 06 | Sleep | — | idea | |
 | 07 | Diaper | — | idea | From the reference screenshots: time, wet / dirty / dry selector, diaper-rash toggle, notes. |
 | 08 | Medication | — | idea | |
