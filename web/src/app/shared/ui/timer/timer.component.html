@@ -1,4 +1,4 @@
-<div class="timer">
+<div class="timer" [class.compact]="compact()">
   <span class="duration" data-testid="timer-duration">{{ seconds() | nalaDuration }}</span>
   <button
     type="button"

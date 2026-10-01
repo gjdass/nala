@@ -2,15 +2,18 @@ import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideNativeDateAdapter } from '@angular/material/core';
 import { MatDialog } from '@angular/material/dialog';
-import { Subject } from 'rxjs';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { Subject, of } from 'rxjs';
 import en from '../../../../../public/i18n/en.json';
 import { SelectedBabyService } from '../../../core/babies/selected-baby.service';
 import { EntryDeleteResult, EntryResult } from '../../../core/entries/entry-result';
 import { Sleep } from '../../../core/sleeps/sleep.models';
 import { SleepService } from '../../../core/sleeps/sleep.service';
+import { SleepSyncService } from '../../../core/sleeps/sleep-sync.service';
 import { NowService } from '../../../core/time/now.service';
 import { EntrySheetData } from '../../../shared/ui/entry-sheet/entry-sheet.models';
 import { SHEET_DATA, SheetRef } from '../../../shared/ui/sheet/sheet-ref';
+import { fakeSleepSync } from '../../../testing/sleep-sync';
 import { aSleep } from '../../../testing/sleeps';
 import { translocoTesting } from '../../../testing/transloco-testing';
 import { SLEEP_SECTION } from '../sleep.section';
@@ -28,11 +31,13 @@ describe('SleepSheetComponent', () => {
   let live: Subject<Sleep[]>;
   let now: ReturnType<typeof signal<number>>;
   let sleeps: Record<
-    'create' | 'update' | 'delete' | 'start' | 'stop' | 'inProgress',
+    'create' | 'update' | 'delete' | 'start' | 'stop' | 'inProgress' | 'get',
     ReturnType<typeof vi.fn>
   >;
   let sheetRef: { close: ReturnType<typeof vi.fn> };
   let confirmed: Subject<boolean | undefined>;
+  let sync: ReturnType<typeof fakeSleepSync>;
+  let snackBar: { open: ReturnType<typeof vi.fn> };
 
   const host = () => fixture.nativeElement as HTMLElement;
   const find = <T extends HTMLElement = HTMLElement>(testId: string) =>
@@ -91,7 +96,10 @@ describe('SleepSheetComponent', () => {
       start: vi.fn(() => tapped),
       stop: vi.fn(() => tapped),
       inProgress: vi.fn(() => live),
+      get: vi.fn(() => of(null)),
     };
+    sync = fakeSleepSync();
+    snackBar = { open: vi.fn() };
     sheetRef = { close: vi.fn() };
     confirmed = new Subject();
     await TestBed.configureTestingModule({
@@ -103,6 +111,8 @@ describe('SleepSheetComponent', () => {
         { provide: SheetRef, useValue: sheetRef },
         { provide: SHEET_DATA, useValue: null },
         { provide: NowService, useValue: { now } },
+        { provide: SleepSyncService, useValue: sync },
+        { provide: MatSnackBar, useValue: snackBar },
         { provide: MatDialog, useValue: { open: vi.fn(() => ({ afterClosed: () => confirmed })) } },
       ],
     }).compileComponents();
@@ -545,6 +555,124 @@ describe('SleepSheetComponent', () => {
 
         expect(toggle().disabled).toBe(true);
       });
+    });
+  });
+
+  describe('shared live state', () => {
+    it('opens the live sleep the shared state already has, at once', async () => {
+      sync.inProgress.set([liveSleep(25, { id: 's9' })]);
+      await render();
+
+      expect(toggle().textContent?.trim()).toBe(en.timer.stop);
+      expect(text('timer-duration')).toBe('25m');
+    });
+
+    it('applies Start and Stop to the shared state at once', async () => {
+      await render();
+      await click('timer-toggle');
+      const id = sleeps.start.mock.calls[0][0];
+      const started = liveSleep(0, { id });
+      await respondTimer({ ok: true, entry: started });
+      expect(sync.puts).toEqual([started]);
+
+      tapped = new Subject();
+      await click('timer-toggle');
+      const ended = { ...started, endTime: NOW.toISOString() };
+      await respondTimer({ ok: true, entry: ended });
+      expect(sync.puts).toEqual([started, ended]);
+    });
+
+    it('applies a saved sleep to the shared state', async () => {
+      const sleep = liveSleep(60, { id: 's7' });
+      await render(sleep);
+      form().markAsDirty();
+      await settle();
+
+      await click('sheet-save');
+      saved.next({ ok: true, entry: sleep });
+      await settle();
+
+      expect(sync.puts).toEqual([sleep]);
+    });
+
+    it('removes a deleted sleep from the shared state', async () => {
+      await render(liveSleep(60, { id: 's7' }));
+
+      await click('entry-delete');
+      confirmed.next(true);
+      await settle();
+      deleted.next({ ok: true });
+      await settle();
+
+      expect(sync.removed).toEqual(['s7']);
+    });
+
+    describe('changed on another device', () => {
+      const sleep = liveSleep(60, { id: 's7', updatedAt: NOW.toISOString() });
+      const later = new Date(NOW.getTime() + 1000).toISOString();
+
+      beforeEach(async () => {
+        sync.inProgress.set([sleep]);
+        await render(sleep);
+      });
+
+      it('follows its start time and notes', async () => {
+        sync.inProgress.set([
+          { ...sleep, startTime: at(10).toISOString(), notes: 'cot', updatedAt: later },
+        ]);
+        await settle();
+
+        expect(form().controls.startTime.value).toEqual(at(10));
+        expect(find<HTMLTextAreaElement>('notes-input')!.value).toBe('cot');
+        expect(text('timer-duration')).toBe('2h');
+      });
+
+      it('keeps a start time edited in the sheet', async () => {
+        form().controls.startTime.setValue(at(10, 30));
+        form().controls.startTime.markAsDirty();
+        sync.inProgress.set([{ ...sleep, startTime: at(10).toISOString(), updatedAt: later }]);
+        await settle();
+
+        expect(form().controls.startTime.value).toEqual(at(10, 30));
+      });
+
+      it('shows it stopped once it leaves the live list stopped', async () => {
+        const stopped = { ...sleep, endTime: NOW.toISOString(), updatedAt: later };
+        sleeps.get.mockReturnValue(of(stopped));
+
+        sync.inProgress.set([]);
+        await settle();
+
+        expect(sleeps.get).toHaveBeenCalledWith('s7');
+        expect(toggle().textContent?.trim()).toBe(en.timer.start);
+        expect(form().controls.endTime.value).toEqual(NOW);
+        expect(sheetRef.close).not.toHaveBeenCalled();
+      });
+
+      it('closes with a message once it was deleted', async () => {
+        sync.inProgress.set([]);
+        await settle();
+
+        expect(snackBar.open).toHaveBeenCalledWith(
+          en.sleep.sheet.deletedElsewhere,
+          undefined,
+          expect.anything(),
+        );
+        expect(sheetRef.close).toHaveBeenCalledWith();
+      });
+    });
+
+    it('warns "Still sleeping?" on a sleep live for more than 12 hours', async () => {
+      await render(liveSleep(12 * 60 + 5));
+
+      expect(text('banner-title')).toBe(en.sleep.stillSleeping.title);
+      expect(text('banner-text')).toContain('12h 5m ago');
+    });
+
+    it('does not warn on a live sleep under 12 hours', async () => {
+      await render(liveSleep(12 * 60 - 1));
+
+      expect(find('banner-title')).toBeNull();
     });
   });
 });

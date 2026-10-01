@@ -1,7 +1,23 @@
+import { Injectable, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { fakeTimer, fakeTimerSource } from '../../testing/fake-timer-source';
-import { RUNNING_TIMER_SOURCES, RunningTimerSource } from './running-timer.models';
+import {
+  RUNNING_TIMER_SOURCES,
+  RunningTimer,
+  RunningTimerSource,
+  provideRunningTimerSource,
+} from './running-timer.models';
 import { RunningTimersService } from './running-timers.service';
+
+@Injectable({ providedIn: 'root' })
+class FirstSource implements RunningTimerSource {
+  readonly timers = signal<readonly RunningTimer[]>([fakeTimer({ id: 'first' })]);
+}
+
+@Injectable({ providedIn: 'root' })
+class SecondSource implements RunningTimerSource {
+  readonly timers = signal<readonly RunningTimer[]>([fakeTimer({ id: 'second' })]);
+}
 
 describe('RunningTimersService', () => {
   const setup = (sources: RunningTimerSource[]) => {
@@ -37,5 +53,17 @@ describe('RunningTimersService', () => {
 
     fake.set([]);
     expect(service.timers()).toEqual([]);
+  });
+
+  it('merges every section registered with provideRunningTimerSource, in order', () => {
+    TestBed.configureTestingModule({
+      providers: [provideRunningTimerSource(FirstSource), provideRunningTimerSource(SecondSource)],
+    });
+
+    const ids = TestBed.inject(RunningTimersService)
+      .timers()
+      .map((timer) => timer.id);
+
+    expect(ids).toEqual(['first', 'second']);
   });
 });

@@ -6,7 +6,7 @@ import { DurationPipe } from '../../../core/time/duration';
 /**
  * A single timer (spec 06; reused by later timer sections): its duration and a Start button (M3
  * tonal), which becomes a filled Stop while it runs. Emits `start` or `stop`; the caller owns the
- * timing.
+ * timing. `compact` is the smaller variant shown in a section card's running state.
  */
 @Component({
   selector: 'nala-timer',
@@ -19,6 +19,7 @@ export class TimerComponent {
   readonly seconds = input.required<number>();
   readonly running = input(false);
   readonly disabled = input(false);
+  readonly compact = input(false);
   readonly start = output<void>();
   readonly stop = output<void>();
 

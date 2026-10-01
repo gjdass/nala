@@ -513,12 +513,14 @@
       "empty": {
         "title": "No sleep logged yet",
         "text": "Tap + to log the first one."
-      }
+      },
+      "sleeping": "Sleeping"
     },
     "sheet": {
       "endTime": "End time",
       "duration": "Duration",
-      "sleeping": "Sleeping…"
+      "sleeping": "Sleeping…",
+      "deletedElsewhere": "This sleep was deleted on another device."
     },
     "summary": "{{duration}} · until {{end}}",
     "summaryLive": "Sleeping · {{duration}}",
@@ -527,6 +529,15 @@
       "sleepNotFound": "This sleep no longer exists.",
       "babyNotFound": "This baby no longer exists.",
       "sleepInProgress": "This baby is already sleeping."
+    },
+    "timer": {
+      "sleeping": "Sleeping"
+    },
+    "stillSleeping": {
+      "title": "Still sleeping?",
+      "card": "Started {{since}}.",
+      "sheet": "Started {{since}}. Correct the times, then save.",
+      "review": "Review"
     }
   },
   "offline": {

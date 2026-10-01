@@ -1,4 +1,4 @@
-import { signal } from '@angular/core';
+import { inject, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { Observable, Subject, of } from 'rxjs';
@@ -9,11 +9,15 @@ import { OfflineQueueService } from '../../../core/offline/offline-queue.service
 import { HistoryPage } from '../../../core/sections/section.models';
 import { Sleep } from '../../../core/sleeps/sleep.models';
 import { SleepService } from '../../../core/sleeps/sleep.service';
+import { SleepSyncService } from '../../../core/sleeps/sleep-sync.service';
+import { RUNNING_TIMER_SOURCES } from '../../../core/timers/running-timer.models';
 import { EntrySheetResult } from '../../../shared/ui/entry-sheet/entry-sheet.models';
 import { EntrySheetService } from '../../../shared/ui/entry-sheet/entry-sheet.service';
 import { fakeOfflineQueue } from '../../../testing/offline-queue';
+import { fakeSleepSync } from '../../../testing/sleep-sync';
 import { aSleep } from '../../../testing/sleeps';
 import { translocoTesting } from '../../../testing/transloco-testing';
+import { SleepTimerSource } from '../sleep-timers';
 import { SleepCardComponent } from './sleep-card.component';
 
 const NOW = new Date(2026, 8, 30, 12, 0, 0);
@@ -26,7 +30,9 @@ const sleep = (id: string, startMinutesAgo: number, endMinutesAgo: number) =>
 describe('SleepCardComponent', () => {
   let fixture: ComponentFixture<SleepCardComponent>;
   let pages: Subject<HistoryPage<Sleep>>[];
-  let sleeps: { page: ReturnType<typeof vi.fn> };
+  let sleeps: { page: ReturnType<typeof vi.fn>; stop: ReturnType<typeof vi.fn> };
+  let sync: ReturnType<typeof fakeSleepSync>;
+  let stopped: Subject<unknown>;
   let selected: ReturnType<typeof signal<Baby | null>>;
   let edited: Subject<EntrySheetResult | undefined>;
   let entrySheets: { add: ReturnType<typeof vi.fn>; edit: ReturnType<typeof vi.fn> };
@@ -51,7 +57,10 @@ describe('SleepCardComponent', () => {
         pages.push(page);
         return page;
       }),
+      stop: vi.fn(() => stopped),
     };
+    stopped = new Subject();
+    sync = fakeSleepSync();
     selected = signal<Baby | null>(baby('b1'));
     edited = new Subject();
     entrySheets = { add: vi.fn(() => of({ saved: aSleep() })), edit: vi.fn(() => edited) };
@@ -64,6 +73,8 @@ describe('SleepCardComponent', () => {
         { provide: SelectedBabyService, useValue: { selected } },
         { provide: EntrySheetService, useValue: entrySheets },
         { provide: OfflineQueueService, useValue: queue },
+        { provide: SleepSyncService, useValue: sync },
+        { provide: RUNNING_TIMER_SOURCES, useFactory: () => [inject(SleepTimerSource)] },
       ],
     }).compileComponents();
     fixture = TestBed.createComponent(SleepCardComponent);
@@ -194,5 +205,111 @@ describe('SleepCardComponent', () => {
     await fixture.whenStable();
 
     expect(sleeps.page).toHaveBeenLastCalledWith('b2', null);
+  });
+
+  describe('while a sleep is live', () => {
+    const live = (startMinutesAgo: number, overrides = {}) =>
+      aSleep({ id: 's3', startTime: minutesAgo(startMinutesAgo), endTime: null, ...overrides });
+
+    it('replaces the highlight by "Sleeping" with the live duration and a Stop button', async () => {
+      await respond([sleep('s2', 170, 80)]);
+      sync.inProgress.set([live(20)]);
+      await fixture.whenStable();
+
+      expect(find('sleep-highlight')).toBeNull();
+      expect(text('sleep-running-open')).toBe(en.sleep.card.sleeping);
+      expect(text('timer-duration')).toBe('20m');
+      expect(text('timer-toggle')).toBe(en.timer.stop);
+
+      await vi.advanceTimersByTimeAsync(10_000);
+      await fixture.whenStable();
+      expect(text('timer-duration')).toBe('20m 10s');
+    });
+
+    it('shows the live sleep of the selected baby only', async () => {
+      sync.inProgress.set([live(20, { babyId: 'b2' })]);
+      await respond([sleep('s2', 170, 80)]);
+
+      expect(find('sleep-running-open')).toBeNull();
+      expect(find('sleep-highlight')).not.toBeNull();
+    });
+
+    it('stops it with Stop, then the normal highlight is back', async () => {
+      sync.inProgress.set([live(20)]);
+      await respond([live(20), sleep('s2', 170, 80)]);
+
+      find('timer-toggle')!.click();
+      expect(sleeps.stop).toHaveBeenCalledWith('s3', NOW.toISOString());
+
+      const ended = live(20, { endTime: NOW.toISOString() });
+      stopped.next({ ok: true, queued: false, entry: ended });
+      expect(sync.puts).toEqual([ended]);
+
+      sync.inProgress.set([]);
+      await fixture.whenStable();
+      expect(find('sleep-running-open')).toBeNull();
+    });
+
+    it('opens the Sleep sheet when "Sleeping" is tapped', async () => {
+      const current = live(20);
+      sync.inProgress.set([current]);
+      await respond([current]);
+
+      find('sleep-running-open')!.click();
+
+      expect(entrySheets.edit).toHaveBeenCalledWith('sleep', 'sleep', current);
+    });
+
+    it('replaces + by the timer button, which opens the live sleep', async () => {
+      const current = live(20);
+      sync.inProgress.set([current]);
+      await respond([current]);
+
+      expect(find('section-add')).toBeNull();
+      find('section-live')!.click();
+
+      expect(entrySheets.edit).toHaveBeenCalledWith('sleep', 'sleep', current);
+    });
+
+    it('lists the live sleep as the shared state has it now', async () => {
+      await respond([live(20)]);
+      sync.inProgress.set([live(30)]);
+      await fixture.whenStable();
+
+      const summary = host().querySelector('[data-testid="entry-summary"]')?.textContent?.trim();
+      expect(summary).toBe('Sleeping · 30m');
+    });
+
+    it('reloads when a sleep becomes live or stops on any device', async () => {
+      await respond([]);
+
+      sync.inProgress.set([live(1)]);
+      await fixture.whenStable();
+      expect(sleeps.page).toHaveBeenCalledTimes(2);
+
+      sync.inProgress.set([]);
+      await fixture.whenStable();
+      expect(sleeps.page).toHaveBeenCalledTimes(3);
+    });
+
+    it('warns "Still sleeping?" after 12 hours, and Review opens the sheet', async () => {
+      const long = live(12 * 60 + 5);
+      sync.inProgress.set([long]);
+      await respond([long]);
+
+      expect(text('banner-title')).toBe(en.sleep.stillSleeping.title);
+      expect(text('banner-text')).toContain('12h 5m ago');
+      expect(text('banner-action')).toBe(en.sleep.stillSleeping.review);
+
+      find('banner-action')!.click();
+      expect(entrySheets.edit).toHaveBeenCalledWith('sleep', 'sleep', long);
+    });
+
+    it('does not warn before 12 hours', async () => {
+      sync.inProgress.set([live(12 * 60 - 1)]);
+      await respond([]);
+
+      expect(find('banner-title')).toBeNull();
+    });
   });
 });

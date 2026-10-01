@@ -1,17 +1,11 @@
-import {
-  EnvironmentProviders,
-  Injectable,
-  computed,
-  inject,
-  makeEnvironmentProviders,
-} from '@angular/core';
+import { EnvironmentProviders, Injectable, computed, inject } from '@angular/core';
 import { runningSide, sideSeconds } from '../../core/feeds/breastfeed';
 import { BreastfeedSyncService } from '../../core/feeds/breastfeed-sync.service';
 import { BreastSide, Feed } from '../../core/feeds/feed.models';
 import {
-  RUNNING_TIMER_SOURCES,
   RunningTimer,
   RunningTimerSource,
+  provideRunningTimerSource,
 } from '../../core/timers/running-timer.models';
 
 /**
@@ -44,7 +38,5 @@ function toTimer(feed: Feed, side: BreastSide): RunningTimer {
 
 /** Registers the Feed section's running timers with the mini-bar. */
 export function provideFeedTimers(): EnvironmentProviders {
-  return makeEnvironmentProviders([
-    { provide: RUNNING_TIMER_SOURCES, useFactory: () => [inject(FeedTimerSource)] },
-  ]);
+  return provideRunningTimerSource(FeedTimerSource);
 }

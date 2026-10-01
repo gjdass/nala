@@ -1,4 +1,39 @@
-<nala-section-card key="sleep" [entries]="entries()" (changed)="reload()">
+<nala-section-card
+  key="sleep"
+  [entries]="entries()"
+  [running]="!!inProgress()"
+  (changed)="reload()"
+>
+  @if (stillSleeping(); as sleep) {
+    <nala-banner
+      sectionBanner
+      icon="schedule"
+      [title]="'sleep.stillSleeping.title' | transloco"
+      [text]="'sleep.stillSleeping.card' | transloco: { since: sleep.startTime | nalaTimeSince }"
+      [actionLabel]="'sleep.stillSleeping.review' | transloco"
+      (action)="edit(sleep)"
+    />
+  }
+  @if (inProgress(); as sleep) {
+    <div sectionRunning class="running" data-testid="sleep-running">
+      <button
+        mat-button
+        type="button"
+        class="sleeping"
+        (click)="edit(sleep)"
+        data-testid="sleep-running-open"
+      >
+        {{ 'sleep.card.sleeping' | transloco }}
+      </button>
+      <nala-timer
+        [compact]="true"
+        [seconds]="liveSeconds()"
+        [running]="true"
+        [disabled]="busy()"
+        (stop)="stop()"
+      />
+    </div>
+  }
   @if (last()) {
     <div sectionHighlight class="highlight" data-testid="sleep-highlight">
       <mat-icon class="icon" aria-hidden="true">wb_sunny</mat-icon>

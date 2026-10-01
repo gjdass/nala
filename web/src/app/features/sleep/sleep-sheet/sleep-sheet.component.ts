@@ -1,16 +1,28 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+} from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ValidatorFn, Validators } from '@angular/forms';
-import { TranslocoPipe } from '@jsverse/transloco';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { Observable, map, startWith } from 'rxjs';
 import { SelectedBabyService } from '../../../core/babies/selected-baby.service';
 import { EntryResult } from '../../../core/entries/entry-result';
 import { applyServerErrors } from '../../../core/http/apply-server-errors';
 import { Sleep, SleepFields } from '../../../core/sleeps/sleep.models';
 import { SleepService } from '../../../core/sleeps/sleep.service';
+import { SleepSyncService } from '../../../core/sleeps/sleep-sync.service';
 import { DurationPipe } from '../../../core/time/duration';
 import { NowService } from '../../../core/time/now.service';
 import { notInFuture } from '../../../core/time/not-in-future';
+import { TimeSincePipe } from '../../../core/time/time-since';
+import { BannerComponent } from '../../../shared/ui/banner/banner.component';
 import { EntryAuditComponent } from '../../../shared/ui/entry-audit/entry-audit.component';
 import { EntrySheetComponent } from '../../../shared/ui/entry-sheet/entry-sheet.component';
 import {
@@ -22,7 +34,7 @@ import { NotesRowComponent, notesControl } from '../../../shared/ui/notes-row/no
 import { SHEET_DATA, SheetRef } from '../../../shared/ui/sheet/sheet-ref';
 import { TimeRowComponent } from '../../../shared/ui/time-row/time-row.component';
 import { TimerComponent } from '../../../shared/ui/timer/timer.component';
-import { sleepSeconds } from '../sleep-duration';
+import { isStillSleeping, sleepSeconds } from '../sleep-duration';
 
 /** Form-level codes with their own message; anything else is "unknown". */
 const FORM_ERRORS = ['sleepNotFound', 'babyNotFound'];
@@ -58,18 +70,25 @@ const onlyWhen =
  * opened to add whose Start created the sleep, it deletes it (after confirming); on a sleep whose
  * timer was tapped here, it closes with the sleep as the taps left it, so lists show it.
  *
+ * Taps, Save and Delete apply to the shared live state (`SleepSyncService`) at once. The sheet follows
+ * what other devices do to its live sleep: a new start time or notes (unless edited here), and once it
+ * leaves the live list, it is fetched: stopped, it is shown; deleted, the sheet closes with a message.
+ * A sleep live for more than 12 hours shows "Still sleeping?".
+ *
  * Closes with the saved sleep, or the id of the deleted one; offline, with `queued` once the change is
  * kept on the device.
  */
 @Component({
   selector: 'nala-sleep-sheet',
   imports: [
+    BannerComponent,
     DurationPipe,
     EntryAuditComponent,
     EntrySheetComponent,
     FormRowComponent,
     NotesRowComponent,
     TimeRowComponent,
+    TimeSincePipe,
     TimerComponent,
     TranslocoPipe,
   ],
@@ -79,6 +98,9 @@ const onlyWhen =
 })
 export class SleepSheetComponent {
   private readonly sleeps = inject(SleepService);
+  private readonly sync = inject(SleepSyncService);
+  private readonly snackBar = inject(MatSnackBar);
+  private readonly transloco = inject(TranslocoService);
   private readonly sheetRef = inject<SheetRef<EntrySheetResult<Sleep>>>(SheetRef);
   private readonly now = inject(NowService).now;
   /** Null when adding. */
@@ -90,6 +112,10 @@ export class SleepSheetComponent {
   /** As stored; null until Start creates it (or while looking for the live one). */
   protected readonly sleep = signal<Sleep | null>(this.entry);
   protected readonly live = computed(() => this.sleep()?.endTime === null);
+  protected readonly stillSleeping = computed(() => {
+    const sleep = this.sleep();
+    return !!sleep && isStillSleeping(sleep, this.now());
+  });
 
   private readonly startTime = new FormControl<Date | null>(
     this.entry ? new Date(this.entry.startTime) : new Date(),
@@ -104,10 +130,12 @@ export class SleepSheetComponent {
     ),
   );
 
+  private readonly notes = notesControl(this.entry?.notes ?? '');
+
   readonly form = new FormGroup({
     startTime: this.startTime,
     endTime: this.endTime,
-    notes: notesControl(this.entry?.notes ?? ''),
+    notes: this.notes,
   });
 
   protected readonly edited = computed(() => {
@@ -152,6 +180,10 @@ export class SleepSheetComponent {
 
   /** This sheet, opened to add, created the sleep with a Start: × deletes it. */
   private readonly createdHere = signal(false);
+  /** The sleep was listed as live by the shared state. */
+  private listed = false;
+  /** This sheet saved or deleted the sleep itself. */
+  private settled = false;
   /** A timer tap here changed the sleep: × closes with it as the taps left it. */
   private readonly tapped = signal(false);
   protected readonly discard = computed(() => {
@@ -167,8 +199,17 @@ export class SleepSheetComponent {
       .pipe(takeUntilDestroyed())
       .subscribe(() => this.endTime.updateValueAndValidity());
     if (!this.entry && this.babyId) {
-      this.openLive();
+      const current = this.sync.forBaby(this.babyId);
+      if (current) {
+        this.adopt(current);
+      } else {
+        this.openLive();
+      }
     }
+    effect(() => {
+      const list = this.sync.inProgress();
+      untracked(() => this.follow(list));
+    });
   }
 
   protected start(): void {
@@ -200,7 +241,13 @@ export class SleepSheetComponent {
     request.subscribe((result) => {
       this.saving.set(false);
       if (result.ok) {
-        this.sheetRef.close(result.queued ? { queued: true } : { saved: result.entry });
+        this.settled = true;
+        if (result.queued) {
+          this.sheetRef.close({ queued: true });
+          return;
+        }
+        this.sync.put(result.entry);
+        this.sheetRef.close({ saved: result.entry });
         return;
       }
       this.showFormError(applyServerErrors(this.form, result.errors));
@@ -214,7 +261,13 @@ export class SleepSheetComponent {
     this.sleeps.delete(sleep.id).subscribe((result) => {
       this.saving.set(false);
       if (result.ok) {
-        this.sheetRef.close(result.queued ? { queued: true } : { deleted: sleep.id });
+        this.settled = true;
+        if (result.queued) {
+          this.sheetRef.close({ queued: true });
+          return;
+        }
+        this.sync.remove(sleep.id);
+        this.sheetRef.close({ deleted: sleep.id });
       } else {
         this.showFormError(result.errors['form'] ?? 'unknown');
       }
@@ -236,6 +289,7 @@ export class SleepSheetComponent {
       this.saving.set(false);
       if (result.ok && !result.queued) {
         this.tapped.set(true);
+        this.sync.put(result.entry);
         this.show(result.entry);
         done();
       } else if (!result.ok && result.errors['form'] === 'sleepInProgress') {
@@ -252,12 +306,7 @@ export class SleepSheetComponent {
       next: (live) => {
         const current = live.find((sleep) => sleep.babyId === this.babyId);
         if (current && !this.sleep()) {
-          this.sleep.set(current);
-          this.form.reset({
-            startTime: new Date(current.startTime),
-            endTime: null,
-            notes: current.notes ?? '',
-          });
+          this.adopt(current);
         }
       },
       // Can't be loaded: the sheet still works, and Start would be refused with the live one.
@@ -265,11 +314,66 @@ export class SleepSheetComponent {
     });
   }
 
-  /** The sleep after a tap; a start time or an end time not edited yet follows the server's. */
+  /** Opens the live `sleep` in the sheet, with its start time and notes. */
+  private adopt(sleep: Sleep): void {
+    this.sleep.set(sleep);
+    this.form.reset({
+      startTime: new Date(sleep.startTime),
+      endTime: null,
+      notes: sleep.notes ?? '',
+    });
+  }
+
+  /**
+   * Follows what other devices did to this sheet's live sleep. Once it leaves the live list without
+   * this sheet stopping it, it was stopped or deleted elsewhere: the sleep is fetched to tell which.
+   */
+  private follow(list: readonly Sleep[]): void {
+    const sleep = this.sleep();
+    if (!sleep || this.saving() || this.settled) {
+      return;
+    }
+    const shared = list.find((s) => s.id === sleep.id);
+    if (shared) {
+      this.listed = true;
+      if (shared.updatedAt !== sleep.updatedAt) {
+        this.show(shared);
+      }
+    } else if (this.listed && sleep.endTime === null) {
+      this.listed = false;
+      this.sleeps.get(sleep.id).subscribe({
+        next: (current) => (current ? this.ended(current) : this.deletedElsewhere()),
+        // Offline or failing: keep what is shown.
+        error: () => undefined,
+      });
+    }
+  }
+
+  /** Stopped on another device: shown as it is now, unless this sheet moved on meanwhile. */
+  private ended(sleep: Sleep): void {
+    if (!this.settled && this.sleep()?.id === sleep.id) {
+      this.show(sleep);
+    }
+  }
+
+  private deletedElsewhere(): void {
+    if (this.settled) {
+      return;
+    }
+    this.snackBar.open(this.transloco.translate('sleep.sheet.deletedElsewhere'), undefined, {
+      duration: 5000,
+    });
+    this.sheetRef.close();
+  }
+
+  /** The sleep as stored now; a start time, end time or notes not edited here follow it. */
   private show(sleep: Sleep): void {
     this.sleep.set(sleep);
     if (this.startTime.pristine) {
       this.startTime.setValue(new Date(sleep.startTime));
+    }
+    if (this.notes.pristine) {
+      this.notes.setValue(sleep.notes ?? '');
     }
     if (sleep.endTime === null) {
       this.endTime.reset(null);

@@ -25,6 +25,7 @@ Log the selected baby's sleeps with a single Start / Stop timer, or by typing a 
 - **Running state (while live):** the highlight is replaced by "Sleeping" with the live duration and a Stop button; tapping elsewhere on it opens the sheet. + is the timer button (spec 04). The mini-bar row reads "Sleeping" with the live duration.
 - **"Still sleeping?"** shows when a live sleep started more than **12 hours** ago: the shared banner on the card (Review opens the sheet) and at the top of the sheet.
 - **Live sync and offline timers: shared, not copied.** Feed's breastfeed sync (`BreastfeedSyncService`: polling the live list every 5 s while visible, own actions applied at once, queued taps applied on top of the server's list) becomes a shared live-entries sync in `core/timers/`, used by Feed and Sleep (and Pump later). Sleep polls `GET /api/sleeps/in-progress`. Adds, edits, deletes and timer taps go through the shared device queue (spec 05 Offline), with the same snackbars.
+- **Changed or deleted elsewhere** (like Feed, spec 05): an open Sleep sheet follows a Stop and start-time / notes edits made on another device (a field edited in the sheet keeps its value); when its live sleep leaves the live list, the sheet fetches it (`GET /api/sleeps/{id}`): stopped, it shows it; deleted (404), it closes with a snackbar "This sleep was deleted on another device."
 - **No reminders, no notifications, no photos**, ever.
 
 ## User stories
@@ -41,8 +42,8 @@ Each item becomes at least one test, written failing first.
 ### Sleep card
 - [x] Highlight: "Awake for" with the time since the end of the most recent sleep that isn't live, updating live, and on the right that sleep's duration labelled "last sleep".
 - [x] With no sleep at all, an empty state is shown.
-- [ ] Running state: while a sleep is live, the highlight shows "Sleeping" with its live duration and a Stop button; tapping it opens the Sleep sheet. Once stopped, the normal highlight is back.
-- [ ] + opens the Sleep sheet directly (one kind); while a sleep is live, + is the timer button opening it.
+- [x] Running state: while a sleep is live, the highlight shows "Sleeping" with its live duration and a Stop button; tapping it opens the Sleep sheet. Once stopped, the normal highlight is back.
+- [x] + opens the Sleep sheet directly (one kind); while a sleep is live, + is the timer button opening it.
 
 ### Sleep sheet
 - [x] A single timer: the live duration (or the duration of a stopped sleep) and a Start / Stop button (M3 tonal, filled while running).
@@ -55,18 +56,18 @@ Each item becomes at least one test, written failing first.
 - [x] Save is disabled when the end time is missing (not live) or not after the start time, and when a time is in the future (1 min tolerance).
 - [x] Delete (live or stopped sleep) deletes it after confirmation.
 - [x] At most one live sleep per baby: opening the sheet while one is live (e.g. from another device) opens that one; Start refused with 409 opens the live one.
-- [ ] A live sleep older than 12 hours shows a "Still sleeping?" warning on the card and in the sheet.
+- [x] A live sleep older than 12 hours shows a "Still sleeping?" warning on the card and in the sheet.
 
 ### Entry list item
 - [x] `bedtime` icon, headline: the start time; supporting text: "1h 30m · until 2:30 PM" (end time in spec 04's entry time format); a live sleep shows "Sleeping · 45m" with its live duration.
-- [ ] A live sleep is listed in the card and history from its first Start.
+- [x] A live sleep is listed in the card and history from its first Start.
 - [x] Entries logged by a deleted account still show that person's display name.
 
 ### Shared timer state
-- [ ] The live sleep is stored on the server; reloading or opening the app on another member's device shows the same state and duration, computed from the stored start time.
-- [ ] Other devices see Start, Stop and edits within a few seconds without a manual refresh.
-- [ ] While a sleep is live it appears in the mini-bar ("Sleeping 45m 10s"); a stopped one doesn't.
-- [ ] Feed's live sync runs on the shared live-entries sync, its tests still green.
+- [x] The live sleep is stored on the server; reloading or opening the app on another member's device shows the same state and duration, computed from the stored start time.
+- [x] Other devices see Start, Stop and edits within a few seconds without a manual refresh.
+- [x] While a sleep is live it appears in the mini-bar ("Sleeping 45m 10s"); a stopped one doesn't.
+- [x] Feed's live sync runs on the shared live-entries sync, its tests still green.
 
 ### Editing and validation
 - [x] Any member can edit or delete any sleep; changes are saved with who edited it and when.
@@ -83,7 +84,7 @@ Each slice goes red → green → commit on `master`, in this order.
 
 - [x] **Slice 1 — Sleep entity, manual entry, card and history.** `Sleep` entity + migration (client UUID, baby FK with cascade, start time, end time nullable, notes, logged by, created at, updated at/by). Core `SleepService`: validation, create (idempotent), update, delete, paged list. Endpoints `POST/PUT/DELETE/GET /api/sleeps…` and `GET /api/babies/{babyId}/sleeps`. Web: `sleep` section registered (card, history, one kind, so + opens the sheet), `SleepService`, Sleep sheet without the timer (start time, end time, read-only duration, notes, delete), card highlight "Awake for" + last sleep duration + empty state, entry list item, history; add / edit / delete through the shared offline queue. Covers: card highlight and empty state, manual entry, validation, list item, editing, cascade, offline add/edit/delete.
 - [x] **Slice 2 — Single timer.** Start / stop endpoints (one live per baby, 409 `sleepInProgress`, `queued` exception), `PUT` on a live sleep, `GET /api/sleeps/in-progress`. Web: new shared **`nala-timer`** (one duration + Start / Stop, M3 tonal → filled), timer in the Sleep sheet, End time row "Sleeping…" while live, manual mode disabling Start, Save / × per spec 04, opening the live sleep, live sleep in the card and history lists. Covers: the Sleep sheet timer criteria and the live list item.
-- [ ] **Slice 3 — Shared live sync, running state, mini-bar.** Move `BreastfeedSyncService`'s polling and queued-tap overlay into a shared live-entries sync in `core/timers/` and run Feed on it (Feed tests green). Sleep's sync and `RUNNING_TIMER_SOURCES` entry ("Sleeping"), card running state with Stop, timer button, "Still sleeping?" banner. Covers: running state, timer button, Shared timer state, "Still sleeping?", and "A live sleep is listed in the card and history from its first Start" (other devices list it once the sync reloads their card).
+- [x] **Slice 3 — Shared live sync, running state, mini-bar.** Move `BreastfeedSyncService`'s polling and queued-tap overlay into a shared live-entries sync in `core/timers/` and run Feed on it (Feed tests green). Sleep's sync and `RUNNING_TIMER_SOURCES` entry ("Sleeping"), card running state with Stop, timer button, "Still sleeping?" banner. Covers: running state, timer button, Shared timer state, "Still sleeping?", and "A live sleep is listed in the card and history from its first Start" (other devices list it once the sync reloads their card).
 - [ ] **Slice 4 — Offline timers.** Start / Stop through the device queue (`queued: true` on Start), the live sleep shown from the server's list with waiting taps on top, a queued sleep kept as a separate one. Covers: Offline criteria 2 and 3, and the timer part of criterion 1.
 
 ## Data
@@ -96,7 +97,8 @@ Each slice goes red → green → commit on `master`, in this order.
 
 - Section colour token: `sleep` (violet palette, already in `_sections.scss`), with its container tokens.
 - Shared with Feed since slice 1 (moved out of Feed, not copied): API `Nala.Core/Entries` (`UserName`, `EntryCursor`, `EntryFields`, `EntryPaging`), `Nala.Api/Entries` (`UserNameResponse`); web `core/entries` (`UserName`, `EntryResult` / `EntryDeleteResult` with `toEntryResult` / `toDeleteResult`). `nala-time-row` offers "Add" when empty and shows `beforeStart`. `nala-notes-row` opens as soon as its control gets notes (also for an entry loaded once the sheet is open, e.g. the live sleep it adopts).
-- New shared component: **`nala-timer`**, a single timer (duration + Start / Stop), reused by later timer sections. Reused: section card, timer button, entry sheet, `nala-time-row`, notes row, banner, entry list item, history list, mini-bar.
+- New shared component: **`nala-timer`**, a single timer (duration + Start / Stop), reused by later timer sections; its `compact` variant is the card's running state.
+- Shared since slice 3: the live-entries sync `LiveEntriesSync` (`core/timers/`: polling, own actions applied at once, waiting offline changes applied on top by the section's overlay), which `BreastfeedSyncService` and `SleepSyncService` extend; timer sources registered with `provideRunningTimerSource`. Reused: section card, timer button, entry sheet, `nala-time-row`, notes row, banner, entry list item, history list, mini-bar.
 - All text through i18n (EN/FR).
 
 ## Out of scope

@@ -6,7 +6,8 @@ import { QueuedRequest } from '../offline/offline-queue.models';
 import { OfflineQueueService } from '../offline/offline-queue.service';
 import { AuthState } from '../auth/auth.models';
 import { AuthService } from '../auth/auth.service';
-import { BreastfeedSyncService, SYNC_INTERVAL_MS } from './breastfeed-sync.service';
+import { LiveEntriesSync, SYNC_INTERVAL_MS } from '../timers/live-entries-sync';
+import { BreastfeedSyncService } from './breastfeed-sync.service';
 import { Feed } from './feed.models';
 import { FeedService } from './feed.service';
 
@@ -21,7 +22,6 @@ const signedIn: AuthState = {
     isAdmin: true,
   },
 };
-const signedOut: AuthState = { ...signedIn, user: null };
 
 describe('BreastfeedSyncService', () => {
   let state: ReturnType<typeof signal<AuthState | null>>;
@@ -42,10 +42,6 @@ describe('BreastfeedSyncService', () => {
     TestBed.tick();
   };
   const answer = (list: Feed[]) => polls.at(-1)!.next(list);
-  const setVisibility = (next: DocumentVisibilityState) => {
-    visibility = next;
-    document.dispatchEvent(new Event('visibilitychange'));
-  };
 
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
@@ -75,95 +71,17 @@ describe('BreastfeedSyncService', () => {
     vi.restoreAllMocks();
   });
 
-  it('loads the breastfeeds in progress once signed in, then every 5 seconds', () => {
+  it('runs on the shared live sync, loading the live breastfeeds every 5 seconds', () => {
     start();
+    expect(service).toBeInstanceOf(LiveEntriesSync);
     expect(feeds.inProgress).toHaveBeenCalledTimes(1);
     answer([leas, toms]);
-    expect(service.inProgress()).toEqual([leas, toms]);
-
-    vi.advanceTimersByTime(SYNC_INTERVAL_MS);
-    expect(feeds.inProgress).toHaveBeenCalledTimes(2);
-    answer([toms]);
-    expect(service.inProgress()).toEqual([toms]);
-    expect(SYNC_INTERVAL_MS).toBe(5000);
-  });
-
-  it('does nothing while signed out, and clears the list on sign-out', () => {
-    state.set(signedOut);
-    start();
-    vi.advanceTimersByTime(3 * SYNC_INTERVAL_MS);
-    expect(feeds.inProgress).not.toHaveBeenCalled();
-
-    state.set(signedIn);
-    TestBed.tick();
-    answer([leas]);
-    state.set(signedOut);
-    TestBed.tick();
-
-    expect(service.inProgress()).toEqual([]);
-    vi.advanceTimersByTime(3 * SYNC_INTERVAL_MS);
-    expect(feeds.inProgress).toHaveBeenCalledTimes(1);
-  });
-
-  it('stops while the app is hidden and loads again as soon as it is shown', () => {
-    start();
-    setVisibility('hidden');
-    vi.advanceTimersByTime(3 * SYNC_INTERVAL_MS);
-    expect(feeds.inProgress).toHaveBeenCalledTimes(1);
-
-    setVisibility('visible');
-    expect(feeds.inProgress).toHaveBeenCalledTimes(2);
-    vi.advanceTimersByTime(SYNC_INTERVAL_MS);
-    expect(feeds.inProgress).toHaveBeenCalledTimes(3);
-  });
-
-  it('keeps the last list when a poll fails', () => {
-    start();
-    answer([leas]);
-    vi.advanceTimersByTime(SYNC_INTERVAL_MS);
-
-    polls.at(-1)!.error(new Error('offline'));
-
-    expect(service.inProgress()).toEqual([leas]);
-    vi.advanceTimersByTime(SYNC_INTERVAL_MS);
-    expect(feeds.inProgress).toHaveBeenCalledTimes(3);
-  });
-
-  it('applies a local action at once: put adds or replaces, a saved feed is removed', () => {
-    start();
-    answer([leas]);
-
-    const switched = { ...leas, updatedAt: '2026-09-30T10:20:00Z' };
-    service.put(switched);
-    service.put(toms);
-    expect(service.inProgress()).toEqual([switched, toms]);
-
-    service.put({ ...toms, endTime: '2026-09-30T10:30:00Z' });
-    expect(service.inProgress()).toEqual([switched]);
-
-    service.remove('lea');
-    expect(service.inProgress()).toEqual([]);
-  });
-
-  it('ignores a poll that started before a local action', () => {
-    start();
-    service.put(leas);
-
-    answer([]);
-
-    expect(service.inProgress()).toEqual([leas]);
-    vi.advanceTimersByTime(SYNC_INTERVAL_MS);
-    answer([]);
-    expect(service.inProgress()).toEqual([]);
-  });
-
-  it('gives the feed in progress of a baby', () => {
-    start();
-    answer([leas, toms]);
-
     expect(service.forBaby('b2')).toEqual(toms);
-    expect(service.forBaby('b3')).toBeNull();
+
+    vi.advanceTimersByTime(SYNC_INTERVAL_MS);
+    expect(feeds.inProgress).toHaveBeenCalledTimes(2);
   });
+
   describe('taps kept on the device (offline)', () => {
     const queuedStart = (id: string, side: 'left' | 'right', at: string): QueuedRequest => ({
       id: `q-${id}-${at}`,
@@ -219,17 +137,6 @@ describe('BreastfeedSyncService', () => {
 
       expect(service.forBaby('b1')).toMatchObject({ id: 'saved', endTime: null });
       expect(service.forBaby('b1')?.segments).toHaveLength(2);
-    });
-
-    it('loads again as soon as the waiting changes were sent', () => {
-      start();
-      answer([]);
-      expect(feeds.inProgress).toHaveBeenCalledTimes(1);
-
-      queue.sent.set(1);
-      TestBed.tick();
-
-      expect(feeds.inProgress).toHaveBeenCalledTimes(2);
     });
   });
 });

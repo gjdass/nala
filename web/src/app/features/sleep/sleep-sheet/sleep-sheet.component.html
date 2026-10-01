@@ -6,6 +6,16 @@
   (save)="save()"
   (delete)="delete()"
 >
+  @if (stillSleeping()) {
+    <nala-banner
+      icon="schedule"
+      [title]="'sleep.stillSleeping.title' | transloco"
+      [text]="
+        'sleep.stillSleeping.sheet' | transloco: { since: sleep()!.startTime | nalaTimeSince }
+      "
+    />
+  }
+
   <nala-timer
     [seconds]="timerSeconds()"
     [running]="live()"

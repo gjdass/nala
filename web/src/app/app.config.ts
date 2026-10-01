@@ -21,6 +21,7 @@ import { ThemeService } from './core/theme/theme.service';
 import { FEED_SECTION } from './features/feed/feed.section';
 import { SLEEP_SECTION } from './features/sleep/sleep.section';
 import { provideFeedTimers } from './features/feed/feed-timers';
+import { provideSleepTimers } from './features/sleep/sleep-timers';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -33,6 +34,7 @@ export const appConfig: ApplicationConfig = {
     provideNalaIcons(),
     { provide: SECTIONS, useValue: [FEED_SECTION, SLEEP_SECTION] },
     provideFeedTimers(),
+    provideSleepTimers(),
     provideOfflineQueue(),
     provideAppInitializer(() => void inject(ThemeService)),
     provideServiceWorker('ngsw-worker.js', {

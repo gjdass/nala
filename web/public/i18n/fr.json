@@ -513,12 +513,14 @@
       "empty": {
         "title": "Aucun sommeil enregistré",
         "text": "Touchez + pour enregistrer le premier."
-      }
+      },
+      "sleeping": "Dort"
     },
     "sheet": {
       "endTime": "Heure de fin",
       "duration": "Durée",
-      "sleeping": "Endormi…"
+      "sleeping": "Endormi…",
+      "deletedElsewhere": "Ce sommeil a été supprimé sur un autre appareil."
     },
     "summary": "{{duration}} · jusqu'à {{end}}",
     "summaryLive": "Dort · {{duration}}",
@@ -527,6 +529,15 @@
       "sleepNotFound": "Ce sommeil n'existe plus.",
       "babyNotFound": "Ce bébé n'existe plus.",
       "sleepInProgress": "Ce bébé dort déjà."
+    },
+    "timer": {
+      "sleeping": "Dort"
+    },
+    "stillSleeping": {
+      "title": "Dort toujours ?",
+      "card": "Commencé {{since}}.",
+      "sheet": "Commencé {{since}}. Corrigez les heures, puis enregistrez.",
+      "review": "Vérifier"
     }
   },
   "offline": {

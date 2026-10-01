@@ -1,4 +1,11 @@
-import { InjectionToken, Signal } from '@angular/core';
+import {
+  EnvironmentProviders,
+  InjectionToken,
+  Signal,
+  Type,
+  inject,
+  makeEnvironmentProviders,
+} from '@angular/core';
 import { SectionKey } from '../sections/section.models';
 
 /** A timer running now (spec 04 mini-bar), e.g. an in-progress breastfeed. */
@@ -23,8 +30,23 @@ export interface RunningTimerSource {
   readonly timers: Signal<readonly RunningTimer[]>;
 }
 
-/** Every registered running-timer source, merged by `RunningTimersService`. */
+/** The sources registered with `provideRunningTimerSource` (multi provider). */
+const RUNNING_TIMER_SOURCE = new InjectionToken<readonly RunningTimerSource[]>(
+  'RUNNING_TIMER_SOURCE',
+);
+
+/** Every registered running-timer source, in registration order, merged by `RunningTimersService`. */
 export const RUNNING_TIMER_SOURCES = new InjectionToken<readonly RunningTimerSource[]>(
   'RUNNING_TIMER_SOURCES',
-  { providedIn: 'root', factory: () => [] },
+  {
+    providedIn: 'root',
+    factory: () => inject(RUNNING_TIMER_SOURCE, { optional: true }) ?? [],
+  },
 );
+
+/** Registers a section's running timers with the mini-bar, after the ones registered before. */
+export function provideRunningTimerSource(source: Type<RunningTimerSource>): EnvironmentProviders {
+  return makeEnvironmentProviders([
+    { provide: RUNNING_TIMER_SOURCE, useExisting: source, multi: true },
+  ]);
+}
