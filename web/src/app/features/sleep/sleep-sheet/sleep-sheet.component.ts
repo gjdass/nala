@@ -18,6 +18,7 @@ import { applyServerErrors } from '../../../core/http/apply-server-errors';
 import { Sleep, SleepFields } from '../../../core/sleeps/sleep.models';
 import { SleepService } from '../../../core/sleeps/sleep.service';
 import { SleepSyncService } from '../../../core/sleeps/sleep-sync.service';
+import { stoppedSleep } from '../../../core/sleeps/sleep';
 import { DurationPipe } from '../../../core/time/duration';
 import { NowService } from '../../../core/time/now.service';
 import { notInFuture } from '../../../core/time/not-in-future';
@@ -76,7 +77,9 @@ const onlyWhen =
  * A sleep live for more than 12 hours shows "Still sleeping?".
  *
  * Closes with the saved sleep, or the id of the deleted one; offline, with `queued` once the change is
- * kept on the device.
+ * kept on the device. A timer tap kept on the device shows at once as the server will apply it (see
+ * `SleepSyncService`), so a sleep started offline runs and can be stopped, saved or deleted offline;
+ * opened to add, the sheet opens the baby's live sleep at once, including one started offline.
  */
 @Component({
   selector: 'nala-sleep-sheet',
@@ -214,16 +217,22 @@ export class SleepSheetComponent {
 
   protected start(): void {
     const id = this.sleep()?.id ?? this.newId;
-    this.tap(this.sleeps.start(id, this.babyId!, new Date().toISOString()), () => {
-      if (id === this.newId && !this.entry) {
-        this.createdHere.set(true);
-        this.form.markAsDirty();
-      }
-    });
+    this.tap(
+      this.sleeps.start(id, this.babyId!, new Date().toISOString()),
+      () => this.sync.inProgress().find((s) => s.id === id),
+      () => {
+        if (id === this.newId && !this.entry) {
+          this.createdHere.set(true);
+          this.form.markAsDirty();
+        }
+      },
+    );
   }
 
   protected stop(): void {
-    this.tap(this.sleeps.stop(this.sleep()!.id, new Date().toISOString()));
+    const sleep = this.sleep()!;
+    const at = new Date().toISOString();
+    this.tap(this.sleeps.stop(sleep.id, at), () => stoppedSleep(sleep, at));
   }
 
   protected save(): void {
@@ -275,11 +284,16 @@ export class SleepSheetComponent {
   }
 
   /**
-   * Sends a timer tap and shows the sleep the server answers with; `done` runs once it is accepted.
-   * Kept on the device (offline), the tap is sent later. Refused because another sleep of the baby is
+   * Sends a timer tap and shows the sleep the server answers with, or, when the tap is kept on the
+   * device (offline), the sleep as it will be once applied (`offline`, after the shared state applied
+   * it). `done` runs once the tap is accepted or kept. Refused because another sleep of the baby is
    * live, it opens that one.
    */
-  private tap(request: Observable<EntryResult<Sleep>>, done: () => void = () => undefined): void {
+  private tap(
+    request: Observable<EntryResult<Sleep>>,
+    offline: () => Sleep | undefined,
+    done: () => void = () => undefined,
+  ): void {
     if (this.saving()) {
       return;
     }
@@ -287,7 +301,15 @@ export class SleepSheetComponent {
     this.formError.set(null);
     request.subscribe((result) => {
       this.saving.set(false);
-      if (result.ok && !result.queued) {
+      if (result.ok && result.queued) {
+        this.sync.applyWaiting(this.sleep() ?? undefined);
+        const local = offline();
+        if (local) {
+          this.tapped.set(true);
+          this.show(local);
+        }
+        done();
+      } else if (result.ok) {
         this.tapped.set(true);
         this.sync.put(result.entry);
         this.show(result.entry);

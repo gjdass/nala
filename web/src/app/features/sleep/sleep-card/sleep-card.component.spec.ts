@@ -250,6 +250,18 @@ describe('SleepCardComponent', () => {
       expect(find('sleep-running-open')).toBeNull();
     });
 
+    it('applies a Stop kept on the device (offline) to the shared state at once', async () => {
+      const current = live(20);
+      sync.inProgress.set([current]);
+      await respond([current]);
+
+      find('timer-toggle')!.click();
+      stopped.next({ ok: true, queued: true });
+
+      expect(sync.applied).toEqual([current]);
+      expect(sync.puts).toEqual([]);
+    });
+
     it('opens the Sleep sheet when "Sleeping" is tapped', async () => {
       const current = live(20);
       sync.inProgress.set([current]);

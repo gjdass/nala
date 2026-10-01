@@ -1,6 +1,6 @@
 # 06 — Sleep
 
-Status: in progress
+Status: done
 
 Layout vocabulary (section card, entry sheet, timers, mini-bar…) is defined in [04 — App layout](04-app-layout.md). The timer rules (live or not, Save never starts or stops a timer, ×) are spec 04's **Timers** rules; this spec only adds what is specific to Sleep.
 
@@ -74,9 +74,9 @@ Each item becomes at least one test, written failing first.
 - [x] Sleeps are deleted with their baby (03).
 
 ### Offline
-- [ ] With no network, every action that creates or changes a sleep (Start, Stop, Save, manual entry, edit, delete) is queued on the device with its own time and applied when back online; re-sending is idempotent (client UUIDs).
-- [ ] A sleep started offline keeps running and displaying on that device, also after the app is reopened.
-- [ ] If a queued sleep reaches the server while another sleep is live for the same baby, both are kept.
+- [x] With no network, every action that creates or changes a sleep (Start, Stop, Save, manual entry, edit, delete) is queued on the device with its own time and applied when back online; re-sending is idempotent (client UUIDs).
+- [x] A sleep started offline keeps running and displaying on that device, also after the app is reopened.
+- [x] If a queued sleep reaches the server while another sleep is live for the same baby, both are kept.
 
 ## Build slices
 
@@ -85,7 +85,7 @@ Each slice goes red → green → commit on `master`, in this order.
 - [x] **Slice 1 — Sleep entity, manual entry, card and history.** `Sleep` entity + migration (client UUID, baby FK with cascade, start time, end time nullable, notes, logged by, created at, updated at/by). Core `SleepService`: validation, create (idempotent), update, delete, paged list. Endpoints `POST/PUT/DELETE/GET /api/sleeps…` and `GET /api/babies/{babyId}/sleeps`. Web: `sleep` section registered (card, history, one kind, so + opens the sheet), `SleepService`, Sleep sheet without the timer (start time, end time, read-only duration, notes, delete), card highlight "Awake for" + last sleep duration + empty state, entry list item, history; add / edit / delete through the shared offline queue. Covers: card highlight and empty state, manual entry, validation, list item, editing, cascade, offline add/edit/delete.
 - [x] **Slice 2 — Single timer.** Start / stop endpoints (one live per baby, 409 `sleepInProgress`, `queued` exception), `PUT` on a live sleep, `GET /api/sleeps/in-progress`. Web: new shared **`nala-timer`** (one duration + Start / Stop, M3 tonal → filled), timer in the Sleep sheet, End time row "Sleeping…" while live, manual mode disabling Start, Save / × per spec 04, opening the live sleep, live sleep in the card and history lists. Covers: the Sleep sheet timer criteria and the live list item.
 - [x] **Slice 3 — Shared live sync, running state, mini-bar.** Move `BreastfeedSyncService`'s polling and queued-tap overlay into a shared live-entries sync in `core/timers/` and run Feed on it (Feed tests green). Sleep's sync and `RUNNING_TIMER_SOURCES` entry ("Sleeping"), card running state with Stop, timer button, "Still sleeping?" banner. Covers: running state, timer button, Shared timer state, "Still sleeping?", and "A live sleep is listed in the card and history from its first Start" (other devices list it once the sync reloads their card).
-- [ ] **Slice 4 — Offline timers.** Start / Stop through the device queue (`queued: true` on Start), the live sleep shown from the server's list with waiting taps on top, a queued sleep kept as a separate one. Covers: Offline criteria 2 and 3, and the timer part of criterion 1.
+- [x] **Slice 4 — Offline timers.** Start / Stop through the device queue (`queued: true` on Start), the live sleep shown from the server's list with waiting taps on top, a queued sleep kept as a separate one. Covers: Offline criteria 2 and 3, and the timer part of criterion 1.
 
 ## Data
 
@@ -98,7 +98,7 @@ Each slice goes red → green → commit on `master`, in this order.
 - Section colour token: `sleep` (violet palette, already in `_sections.scss`), with its container tokens.
 - Shared with Feed since slice 1 (moved out of Feed, not copied): API `Nala.Core/Entries` (`UserName`, `EntryCursor`, `EntryFields`, `EntryPaging`), `Nala.Api/Entries` (`UserNameResponse`); web `core/entries` (`UserName`, `EntryResult` / `EntryDeleteResult` with `toEntryResult` / `toDeleteResult`). `nala-time-row` offers "Add" when empty and shows `beforeStart`. `nala-notes-row` opens as soon as its control gets notes (also for an entry loaded once the sheet is open, e.g. the live sleep it adopts).
 - New shared component: **`nala-timer`**, a single timer (duration + Start / Stop), reused by later timer sections; its `compact` variant is the card's running state.
-- Shared since slice 3: the live-entries sync `LiveEntriesSync` (`core/timers/`: polling, own actions applied at once, waiting offline changes applied on top by the section's overlay), which `BreastfeedSyncService` and `SleepSyncService` extend; timer sources registered with `provideRunningTimerSource`. Reused: section card, timer button, entry sheet, `nala-time-row`, notes row, banner, entry list item, history list, mini-bar.
+- Shared since slice 3: the live-entries sync `LiveEntriesSync` (`core/timers/`: polling, own actions applied at once, waiting offline changes applied on top by the section's overlay), which `BreastfeedSyncService` and `SleepSyncService` extend (Sleep's overlay: `applyQueuedSleeps` in `core/sleeps/sleep.ts`, the server's start / stop / edit / delete rules applied to the waiting changes); timer sources registered with `provideRunningTimerSource`. Reused: section card, timer button, entry sheet, `nala-time-row`, notes row, banner, entry list item, history list, mini-bar.
 - All text through i18n (EN/FR).
 
 ## Out of scope

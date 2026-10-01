@@ -157,7 +157,9 @@ export class SleepCardComponent {
     this.busy.set(true);
     this.sleeps.stop(sleep.id, new Date().toISOString()).subscribe((result) => {
       this.busy.set(false);
-      if (result.ok && !result.queued) {
+      if (result.ok && result.queued) {
+        this.sync.applyWaiting(sleep);
+      } else if (result.ok) {
         this.sync.put(result.entry);
       }
     });

@@ -558,6 +558,89 @@ describe('SleepSheetComponent', () => {
     });
   });
 
+  describe('offline (taps kept on the device)', () => {
+    /** Makes the shared state show `sleep` once the sheet applies the waiting taps. */
+    const offlineShows = (sleep: (id: string) => Sleep) =>
+      sync.whenApplied(() => sync.inProgress.set([sleep(sleeps.start.mock.calls.at(-1)?.[0])]));
+
+    it('shows a sleep started offline running, with its start time', async () => {
+      await render();
+      live.error(new Error('offline'));
+      offlineShows((id) => liveSleep(0, { id }));
+
+      await click('timer-toggle');
+      await respondTimer({ ok: true, queued: true });
+
+      expect(sync.applied).toEqual([undefined]);
+      expect(toggle().textContent?.trim()).toBe(en.timer.stop);
+      expect(form().controls.startTime.value).toEqual(NOW);
+      expect(text('sleep-end-time')).toContain(en.sleep.sheet.sleeping);
+      now.set(NOW.getTime() + 90_000);
+      await settle();
+      expect(text('timer-duration')).toBe('1m 30s');
+      expect(find('entry-delete')).not.toBeNull();
+    });
+
+    it('opens the sleep started offline when opened to add, without the server', async () => {
+      sync.inProgress.set([liveSleep(10, { notes: 'cot' })]);
+      await render();
+
+      expect(sleeps.inProgress).not.toHaveBeenCalled();
+      expect(toggle().textContent?.trim()).toBe(en.timer.stop);
+      expect(form().controls.notes.value).toBe('cot');
+    });
+
+    it('stops offline: the sleep is shown stopped, no longer live', async () => {
+      const sleep = liveSleep(10);
+      sync.inProgress.set([sleep]);
+      await render();
+      // Once the stop is applied, the sleep is no longer in the live list.
+      sync.whenApplied(() => sync.inProgress.set([]));
+
+      await click('timer-toggle');
+      await respondTimer({ ok: true, queued: true });
+
+      expect(sync.applied).toEqual([sleep]);
+      expect(toggle().textContent?.trim()).toBe(en.timer.start);
+      expect(form().controls.endTime.value).toEqual(NOW);
+      now.set(NOW.getTime() + 60_000);
+      await settle();
+      expect(text('timer-duration')).toBe('10m');
+      expect(sheetRef.close).not.toHaveBeenCalled();
+      expect(sleeps.get).not.toHaveBeenCalled();
+    });
+
+    it('makes a stopped sleep live again offline, from its start time', async () => {
+      const sleep = aSleep({ id: 's7', startTime: at(8).toISOString(), endTime: at(9).toISOString() });
+      await render(sleep);
+      offlineShows(() => ({ ...sleep, endTime: null }));
+
+      await click('timer-toggle');
+      await respondTimer({ ok: true, queued: true });
+
+      expect(sync.applied).toEqual([sleep]);
+      expect(toggle().textContent?.trim()).toBe(en.timer.stop);
+      expect(text('timer-duration')).toBe('4h');
+    });
+
+    it('deletes on × a sleep started offline in this sheet, after confirmation', async () => {
+      await render();
+      offlineShows((id) => liveSleep(0, { id }));
+      await click('timer-toggle');
+      await respondTimer({ ok: true, queued: true });
+      const id = sleeps.start.mock.calls[0][0];
+
+      await click('sheet-close');
+      confirmed.next(true);
+      await settle();
+      expect(sleeps.delete).toHaveBeenCalledWith(id);
+
+      deleted.next({ ok: true, queued: true });
+      await settle();
+      expect(sheetRef.close).toHaveBeenCalledWith({ queued: true });
+    });
+  });
+
   describe('shared live state', () => {
     it('opens the live sleep the shared state already has, at once', async () => {
       sync.inProgress.set([liveSleep(25, { id: 's9' })]);
