@@ -29,6 +29,7 @@ import { EntrySheetData } from './entry-sheet.models';
     [saving]="saving()"
     [saveDisabled]="saveDisabled()"
     [deletable]="deletable()"
+    [discard]="discard()"
     (save)="saves = saves + 1"
     (delete)="deletes = deletes + 1"
   >
@@ -49,6 +50,7 @@ class FakeKindSheet {
   readonly saving = signal(false);
   readonly saveDisabled = signal(false);
   readonly deletable = signal<boolean | null>(null);
+  readonly discard = signal<(() => void) | null>(null);
   saves = 0;
   deletes = 0;
 }
@@ -204,6 +206,30 @@ describe('EntrySheetComponent', () => {
 
       expect(sheetRef.close).toHaveBeenCalledWith();
       expect(fixture.componentInstance.saves).toBe(0);
+    });
+
+    it("lets the kind sheet discard itself once confirmed (e.g. deleting what a timer's Start created)", async () => {
+      const discard = vi.fn();
+      fixture.componentInstance.discard.set(discard);
+      await typeAmount('90');
+      await click('sheet-close');
+      expect(discard).not.toHaveBeenCalled();
+
+      confirmed.next(true);
+
+      expect(discard).toHaveBeenCalledOnce();
+      expect(sheetRef.close).not.toHaveBeenCalled();
+    });
+
+    it('lets the kind sheet discard itself at once when nothing changed', async () => {
+      const discard = vi.fn();
+      fixture.componentInstance.discard.set(discard);
+      await fixture.whenStable();
+      await click('sheet-close');
+
+      expect(dialog.open).not.toHaveBeenCalled();
+      expect(discard).toHaveBeenCalledOnce();
+      expect(sheetRef.close).not.toHaveBeenCalled();
     });
   });
 

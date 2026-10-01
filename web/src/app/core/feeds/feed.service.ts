@@ -1,6 +1,6 @@
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, catchError, map, of } from 'rxjs';
+import { Observable, catchError, map, of, throwError } from 'rxjs';
 import { toFieldErrors } from '../http/field-errors';
 import { SendOutcome } from '../offline/offline-queue.models';
 import { OfflineQueueService } from '../offline/offline-queue.service';
@@ -8,7 +8,6 @@ import { HistoryPage } from '../sections/section.models';
 import {
   BottleDefaults,
   BreastSide,
-  BreastfeedFields,
   BreastfeedState,
   Feed,
   FeedDeleteResult,
@@ -71,7 +70,21 @@ export class FeedService {
     );
   }
 
-  /** Every breastfeed in progress, of every baby; errors when it can't be loaded. */
+  /**
+   * The feed; null once it no longer exists (deleted, e.g. on another device). Errors when it can't be
+   * loaded.
+   */
+  get(id: string): Observable<Feed | null> {
+    return this.http
+      .get<Feed>(`/api/feeds/${id}`)
+      .pipe(
+        catchError((error: HttpErrorResponse) =>
+          error.status === 404 ? of(null) : throwError(() => error),
+        ),
+      );
+  }
+
+  /** Every live breastfeed, of every baby; errors when it can't be loaded. */
   inProgress(): Observable<Feed[]> {
     return this.http.get<Feed[]>('/api/feeds/in-progress');
   }
@@ -83,7 +96,7 @@ export class FeedService {
       .pipe(catchError(() => of(NO_BOTTLE_DEFAULTS)));
   }
 
-  /** The baby's breastfeed in progress and last side; none when they can't be loaded. */
+  /** The baby's live breastfeed and last side; none when they can't be loaded. */
   breastfeedState(babyId: string): Observable<BreastfeedState> {
     return this.http
       .get<BreastfeedState>(`/api/babies/${babyId}/feeds/breastfeed`)
@@ -92,10 +105,10 @@ export class FeedService {
 
   /**
    * Starts `side` of the breastfeed `feedId` at `at`, stopping the other side. The server creates the
-   * feed in progress when it doesn't exist, and reopens it when saved; another breastfeed in progress
-   * for the baby answers `breastfeedInProgress`. Client ids and times make a re-sent tap harmless.
+   * live feed when it doesn't exist, and makes a stopped one live again; another live breastfeed of
+   * the baby answers `breastfeedInProgress`. Client ids and times make a re-sent tap harmless.
    * Offline, the tap is kept on the device marked `queued`: the server then keeps it as a separate
-   * feed even if another one is in progress by the time it arrives.
+   * feed even if another one is live by the time it arrives.
    */
   startSide(
     feedId: string,
@@ -118,17 +131,10 @@ export class FeedService {
       .pipe(map(toFeedResult));
   }
 
-  /** Stops the running side at `at`; the feed stays in progress. */
+  /** Stops the running side at `at`, which ends the feed: it is no longer live. */
   stopSide(feedId: string, at: string): Observable<FeedResult> {
     return this.queue
       .send<Feed>('POST', `/api/feeds/${feedId}/breastfeed/stop`, { at }, { quiet: true })
-      .pipe(map(toFeedResult));
-  }
-
-  /** Saves the breastfeed: stops the running side and ends it at `at`. */
-  finish(feedId: string, fields: BreastfeedFields, at: string): Observable<FeedResult> {
-    return this.queue
-      .send<Feed>('POST', `/api/feeds/${feedId}/breastfeed/finish`, { ...fields, at })
       .pipe(map(toFeedResult));
   }
 }

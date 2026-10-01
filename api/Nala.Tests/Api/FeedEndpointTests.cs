@@ -442,32 +442,67 @@ public class FeedEndpointTests
     }
 
     [Test]
-    public async Task Any_member_switches_sides_pauses_and_saves_the_breastfeed()
+    public async Task Any_member_switches_sides_edits_and_stops_the_live_breastfeed()
     {
         var feedId = Guid.NewGuid();
         await StartSideAsync(_admin, feedId, "left", _now.AddMinutes(-10));
         var (ben, benId) = await RegisterBenAsync();
 
         var switched = await StartSideAsync(ben, feedId, "right", _now.AddMinutes(-6));
-        var paused = await ben.PostAsJsonAsync($"/api/feeds/{feedId}/breastfeed/stop", new { at = _now.AddMinutes(-2) });
-        var finished = await _admin.PostAsJsonAsync(
-            $"/api/feeds/{feedId}/breastfeed/finish", new { startTime = _now.AddMinutes(-10), notes = "calm", at = _now.AddMinutes(-1) });
+        var edited = await _admin.PutAsJsonAsync($"/api/feeds/{feedId}", new { startTime = _now.AddMinutes(-11), notes = "calm" });
 
         Assert.That(switched.StatusCode, Is.EqualTo(HttpStatusCode.OK));
-        Assert.That(paused.StatusCode, Is.EqualTo(HttpStatusCode.OK));
-        Assert.That((await JsonAsync(paused)).GetProperty("updatedBy").GetProperty("id").GetGuid(), Is.EqualTo(benId));
-        Assert.That(finished.StatusCode, Is.EqualTo(HttpStatusCode.OK));
-        var feed = await JsonAsync(finished);
+        Assert.That(edited.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        var live = await JsonAsync(edited);
         Assert.Multiple(() =>
         {
+            Assert.That(live.GetProperty("endTime").ValueKind, Is.EqualTo(JsonValueKind.Null));
+            Assert.That(live.GetProperty("notes").GetString(), Is.EqualTo("calm"));
+            Assert.That(live.GetProperty("segments")[1].GetProperty("endedAt").ValueKind, Is.EqualTo(JsonValueKind.Null));
+        });
+        var listed = (await PageAsync(_admin)).GetProperty("entries");
+        Assert.That(listed.GetArrayLength(), Is.EqualTo(1));
+        Assert.That(listed[0].GetProperty("id").GetGuid(), Is.EqualTo(feedId));
+
+        var stopped = await ben.PostAsJsonAsync($"/api/feeds/{feedId}/breastfeed/stop", new { at = _now.AddMinutes(-1) });
+
+        Assert.That(stopped.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        var feed = await JsonAsync(stopped);
+        Assert.Multiple(() =>
+        {
+            Assert.That(feed.GetProperty("updatedBy").GetProperty("id").GetGuid(), Is.EqualTo(benId));
             Assert.That(feed.GetProperty("endTime").GetDateTimeOffset(), Is.EqualTo(_now.AddMinutes(-1)).Within(TimeSpan.FromMilliseconds(1)));
-            Assert.That(feed.GetProperty("notes").GetString(), Is.EqualTo("calm"));
             Assert.That(feed.GetProperty("segments").EnumerateArray().Select(s => s.GetProperty("side").GetString()), Is.EqualTo(new[] { "left", "right" }));
         });
-        var entries = (await PageAsync(_admin)).GetProperty("entries");
-        Assert.That(entries.GetArrayLength(), Is.EqualTo(1));
-        Assert.That(entries[0].GetProperty("id").GetGuid(), Is.EqualTo(feedId));
+        Assert.That((await JsonAsync(await _admin.GetAsync("/api/feeds/in-progress"))).GetArrayLength(), Is.Zero);
         ben.Dispose();
+    }
+
+    [Test]
+    public async Task The_finish_endpoint_is_gone()
+    {
+        var feedId = Guid.NewGuid();
+        await StartSideAsync(_admin, feedId, "left", _now.AddMinutes(-10));
+
+        var response = await _admin.PostAsJsonAsync(
+            $"/api/feeds/{feedId}/breastfeed/finish", new { startTime = _now.AddMinutes(-10), at = _now });
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
+    }
+
+    [Test]
+    public async Task A_feed_is_read_by_id()
+    {
+        var feedId = Guid.NewGuid();
+        await StartSideAsync(_admin, feedId, "left", _now.AddMinutes(-10));
+
+        var found = await _admin.GetAsync($"/api/feeds/{feedId}");
+        var unknown = await _admin.GetAsync($"/api/feeds/{Guid.NewGuid()}");
+
+        Assert.That(found.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        Assert.That((await JsonAsync(found)).GetProperty("id").GetGuid(), Is.EqualTo(feedId));
+        Assert.That(unknown.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
+        Assert.That((await JsonAsync(unknown)).GetProperty("code").GetString(), Is.EqualTo("feedNotFound"));
     }
 
     [Test]
@@ -504,13 +539,9 @@ public class FeedEndpointTests
         await _admin.PostAsJsonAsync($"/api/feeds/{feedId}/breastfeed/stop", new { at = _now.AddMinutes(-10) });
 
         var side = await StartSideAsync(_admin, feedId, "middle", _now);
-        var zero = await _admin.PostAsJsonAsync(
-            $"/api/feeds/{feedId}/breastfeed/finish", new { startTime = _now.AddMinutes(-10), at = _now });
 
         Assert.That(side.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
         Assert.That((await JsonAsync(side)).GetProperty("errors").GetProperty("side")[0].GetString(), Is.EqualTo("invalid"));
-        Assert.That(zero.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
-        Assert.That((await JsonAsync(zero)).GetProperty("errors").GetProperty("durations")[0].GetString(), Is.EqualTo("zero"));
     }
 
     [Test]
@@ -534,7 +565,7 @@ public class FeedEndpointTests
         var saved = Guid.NewGuid();
         await StartSideAsync(_admin, saved, "left", _now.AddMinutes(-30));
         await StartSideAsync(_admin, saved, "right", _now.AddMinutes(-25));
-        await _admin.PostAsJsonAsync($"/api/feeds/{saved}/breastfeed/finish", new { startTime = _now.AddMinutes(-30), at = _now.AddMinutes(-20) });
+        await _admin.PostAsJsonAsync($"/api/feeds/{saved}/breastfeed/stop", new { at = _now.AddMinutes(-20) });
         var current = Guid.NewGuid();
         await StartSideAsync(_admin, current, "left", _now.AddMinutes(-5));
 
@@ -626,7 +657,7 @@ public class FeedEndpointTests
         var tomId = (await JsonAsync(response)).GetProperty("id").GetGuid();
         var saved = Guid.NewGuid();
         await StartSideAsync(_admin, saved, "left", _now.AddMinutes(-40));
-        await _admin.PostAsJsonAsync($"/api/feeds/{saved}/breastfeed/finish", new { startTime = _now.AddMinutes(-40), at = _now.AddMinutes(-30) });
+        await _admin.PostAsJsonAsync($"/api/feeds/{saved}/breastfeed/stop", new { at = _now.AddMinutes(-30) });
         var lea = Guid.NewGuid();
         await StartSideAsync(_admin, lea, "right", _now.AddMinutes(-10));
         var tom = Guid.NewGuid();

@@ -31,7 +31,7 @@ public class FakeFeedRepository : IFeedRepository
 
     public Task<IReadOnlyList<FeedEntry>> ListAsync(Guid babyId, FeedCursor? after, int limit, CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<FeedEntry>>(Feeds
-            .Where(f => f.BabyId == babyId && !(f.Kind == FeedKind.Breastfeed && f.EndTime == null))
+            .Where(f => f.BabyId == babyId)
             .Where(f => after is null || f.StartTime < after.StartTime || (f.StartTime == after.StartTime && f.Id.CompareTo(after.Id) < 0))
             .OrderByDescending(f => f.StartTime)
             .ThenByDescending(f => f.Id)

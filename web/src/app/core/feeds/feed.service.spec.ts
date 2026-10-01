@@ -223,6 +223,31 @@ describe('FeedService', () => {
     });
   });
 
+  describe('get()', () => {
+    it('gets the feed', async () => {
+      const result = firstValueFrom(service.get('f3'));
+      http.expectOne({ method: 'GET', url: '/api/feeds/f3' }).flush(aBreastfeed());
+
+      expect(await result).toEqual(aBreastfeed());
+    });
+
+    it('gives null for a feed that no longer exists', async () => {
+      const result = firstValueFrom(service.get('f3'));
+      http
+        .expectOne('/api/feeds/f3')
+        .flush({ code: 'feedNotFound' }, { status: 404, statusText: 'Not Found' });
+
+      expect(await result).toBeNull();
+    });
+
+    it('errors when it cannot be loaded', async () => {
+      const result = firstValueFrom(service.get('f3'));
+      http.expectOne('/api/feeds/f3').flush(null, networkError);
+
+      await expect(result).rejects.toBeTruthy();
+    });
+  });
+
   describe('inProgress()', () => {
     it('gets every breastfeed in progress', async () => {
       const feed = aBreastfeed({ endTime: null });
@@ -327,15 +352,6 @@ describe('FeedService', () => {
       ]);
     });
 
-    it('keeps a save on the device when offline', async () => {
-      const fields = { startTime: at, notes: null };
-      const result = firstValueFrom(service.finish('f3', fields, '2026-09-30T10:09:00.000Z'));
-      http.expectOne('/api/feeds/f3/breastfeed/finish').flush(null, networkError);
-
-      expect(await result).toEqual<FeedResult>({ ok: true, queued: true });
-      expect(queuedBodies()).toEqual([{ ...fields, at: '2026-09-30T10:09:00.000Z' }]);
-    });
-
     it('stops the running side', async () => {
       const result = firstValueFrom(service.stopSide('f3', at));
       const req = http.expectOne('/api/feeds/f3/breastfeed/stop');
@@ -343,15 +359,6 @@ describe('FeedService', () => {
       expect(req.request.body).toEqual({ at });
       req.flush(aBreastfeed());
       expect(await result).toEqual<FeedResult>({ ok: true, feed: aBreastfeed() });
-    });
-
-    it('finishes the feed with the sheet fields', async () => {
-      const fields = { startTime: at, notes: 'calm' };
-      const result = firstValueFrom(service.finish('f3', fields, '2026-09-30T10:09:00.000Z'));
-      const req = http.expectOne('/api/feeds/f3/breastfeed/finish');
-      expect(req.request.body).toEqual({ ...fields, at: '2026-09-30T10:09:00.000Z' });
-      req.flush(null, { status: 400, statusText: 'Bad Request' });
-      expect(await result).toEqual<FeedResult>({ ok: false, errors: { form: 'unknown' } });
     });
   });
 });

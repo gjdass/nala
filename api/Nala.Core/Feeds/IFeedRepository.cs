@@ -14,17 +14,17 @@ public interface IFeedRepository
 
     Task DeleteAsync(Feed feed, CancellationToken cancellationToken = default);
 
-    /// <summary>The baby's feeds newest first (start time, then id, both descending), after <paramref name="after"/> when given.</summary>
+    /// <summary>The baby's feeds, live ones included, newest first (start time, then id, both descending), after <paramref name="after"/> when given.</summary>
     Task<IReadOnlyList<FeedEntry>> ListAsync(Guid babyId, FeedCursor? after, int limit, CancellationToken cancellationToken = default);
 
     Task<BottleDefaults> GetBottleDefaultsAsync(Guid babyId, CancellationToken cancellationToken = default);
 
-    /// <summary>The baby's breastfeed without an end (the oldest when a queued one made two), with its segments; null when none.</summary>
+    /// <summary>The baby's live breastfeed (no end; the oldest when a queued one made two), with its segments; null when none.</summary>
     Task<FeedEntry?> GetInProgressBreastfeedAsync(Guid babyId, CancellationToken cancellationToken = default);
 
-    /// <summary>The side of the last segment of the baby's latest saved breastfeed; null when none.</summary>
+    /// <summary>The side of the last segment of the baby's latest breastfeed that isn't live; null when none.</summary>
     Task<BreastSide?> GetLastBreastSideAsync(Guid babyId, CancellationToken cancellationToken = default);
 
-    /// <summary>Every breastfeed without an end, of every baby, with its segments; oldest start first.</summary>
+    /// <summary>Every live breastfeed (no end), of every baby, with its segments; oldest start first.</summary>
     Task<IReadOnlyList<FeedEntry>> ListInProgressBreastfeedsAsync(CancellationToken cancellationToken = default);
 }

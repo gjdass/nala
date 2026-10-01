@@ -1,8 +1,9 @@
-import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { sideSeconds } from '../../../core/feeds/breastfeed';
 import { Feed } from '../../../core/feeds/feed.models';
 import { DurationPipe } from '../../../core/time/duration';
+import { NowService } from '../../../core/time/now.service';
 import { EntryListItemComponent } from '../../../shared/ui/entry-list-item/entry-list-item.component';
 import { FEED_KIND_ICONS } from '../feed-kinds';
 
@@ -23,12 +24,17 @@ export class FeedEntryComponent {
   readonly feed = input.required<Feed>();
   readonly open = output<void>();
 
+  private readonly now = inject(NowService).now;
+
   protected readonly icons = FEED_KIND_ICONS;
 
-  /** Seconds per side of a breastfeed (listed ones are saved, so every segment has its end). */
+  /** Seconds per side of a breastfeed; a live one's running side ticks. */
   protected readonly sides = computed(() => {
     const feed = this.feed();
-    const now = Date.now();
-    return { left: sideSeconds(feed, 'left', now), right: sideSeconds(feed, 'right', now) };
+    const now = this.now();
+    return {
+      left: Math.floor(sideSeconds(feed, 'left', now)),
+      right: Math.floor(sideSeconds(feed, 'right', now)),
+    };
   });
 }

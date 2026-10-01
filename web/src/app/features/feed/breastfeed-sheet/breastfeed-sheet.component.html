@@ -3,6 +3,7 @@
   [saving]="busy()"
   [saveDisabled]="(!feed() && !typed()) || total() === 0"
   [deletable]="!!feed()"
+  [discard]="discard()"
   (save)="save()"
   (delete)="delete()"
 >

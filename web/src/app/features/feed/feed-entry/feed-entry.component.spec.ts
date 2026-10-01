@@ -1,12 +1,15 @@
+import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatListModule } from '@angular/material/list';
 import en from '../../../../../public/i18n/en.json';
 import { aBottle, aBreastfeed, aSegment, aSolids } from '../../../testing/feeds';
+import { NowService } from '../../../core/time/now.service';
 import { translocoTesting } from '../../../testing/transloco-testing';
 import { FeedEntryComponent } from './feed-entry.component';
 
 describe('FeedEntryComponent', () => {
   let fixture: ComponentFixture<FeedEntryComponent>;
+  const now = signal(new Date('2026-09-30T10:10:00Z').getTime());
 
   const find = (testId: string) =>
     (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>(`[data-testid="${testId}"]`);
@@ -14,6 +17,7 @@ describe('FeedEntryComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [FeedEntryComponent, MatListModule, translocoTesting()],
+      providers: [{ provide: NowService, useValue: { now } }],
     }).compileComponents();
     fixture = TestBed.createComponent(FeedEntryComponent);
   });
@@ -27,6 +31,26 @@ describe('FeedEntryComponent', () => {
     expect(find('entry-time')?.textContent?.trim()).toBeTruthy();
     expect(find('entry-summary')?.textContent?.trim()).toBe('Formula · 120 ml');
     expect(find('entry-bar')).toBeNull();
+  });
+
+  it('shows the live total of a live breastfeed, ticking', async () => {
+    now.set(new Date('2026-09-30T10:10:00Z').getTime());
+    fixture.componentRef.setInput(
+      'feed',
+      aBreastfeed({
+        endTime: null,
+        segments: [
+          aSegment('left', '2026-09-30T10:00:00Z', '2026-09-30T10:05:00Z'),
+          aSegment('right', '2026-09-30T10:05:00Z', null),
+        ],
+      }),
+    );
+    await fixture.whenStable();
+    expect(find('entry-summary')?.textContent?.trim()).toBe('Total 10m · L 5m · R 5m');
+
+    now.set(new Date('2026-09-30T10:10:30Z').getTime());
+    fixture.detectChanges();
+    expect(find('entry-summary')?.textContent?.trim()).toBe('Total 10m 30s · L 5m · R 5m 30s');
   });
 
   it('names breast milk', async () => {

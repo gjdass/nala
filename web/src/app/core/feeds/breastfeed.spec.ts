@@ -93,15 +93,9 @@ describe('applyQueued', () => {
     });
   const stop = (id: string, time: string) =>
     request('POST', `/api/feeds/${id}/breastfeed/stop`, { at: iso(time) });
-  const finish = (id: string, time: string) =>
-    request('POST', `/api/feeds/${id}/breastfeed/finish`, {
-      startTime: iso('11:00:00'),
-      notes: 'calm',
-      at: iso(time),
-    });
   const sides = (feed: Feed) => feed.segments.map((s) => [s.side, s.startedAt, s.endedAt] as const);
 
-  it('creates the breastfeed in progress from a queued start, as the server would', () => {
+  it('creates the live breastfeed from a queued start, as the server would', () => {
     const [feed] = applyQueued([], [start('new', 'left', '11:00:00')], ben);
 
     expect(feed).toMatchObject({
@@ -117,22 +111,44 @@ describe('applyQueued', () => {
     expect(sides(feed)).toEqual([['left', iso('11:00:00'), null]]);
   });
 
-  it('switches sides and pauses in order', () => {
+  it('switches sides in order', () => {
     const [feed] = applyQueued(
       [],
-      [
-        start('new', 'left', '11:00:00'),
-        start('new', 'right', '11:05:00'),
-        stop('new', '11:07:00'),
-      ],
+      [start('new', 'left', '11:00:00'), start('new', 'right', '11:05:00')],
       ben,
     );
 
     expect(sides(feed)).toEqual([
       ['left', iso('11:00:00'), iso('11:05:00')],
-      ['right', iso('11:05:00'), iso('11:07:00')],
+      ['right', iso('11:05:00'), null],
     ]);
-    expect(runningSide(feed)).toBeNull();
+  });
+
+  it('ends the feed on a stop: it is no longer live, and a start makes it live again', () => {
+    const queue = [start('new', 'left', '11:00:00'), stop('new', '11:07:00')];
+
+    expect(applyQueued([], queue, ben)).toEqual([]);
+
+    const [feed] = applyQueued([], [...queue, start('new', 'right', '11:08:00')], ben);
+    expect(feed.endTime).toBeNull();
+    expect(sides(feed)).toEqual([
+      ['left', iso('11:00:00'), iso('11:07:00')],
+      ['right', iso('11:08:00'), null],
+    ]);
+  });
+
+  it('applies an edit of the start time and notes to a live feed, which keeps running', () => {
+    const [feed] = applyQueued(
+      [],
+      [
+        start('new', 'left', '11:00:00'),
+        request('PUT', '/api/feeds/new', { startTime: iso('10:58:00'), notes: ' calm ' }),
+      ],
+      ben,
+    );
+
+    expect(feed).toMatchObject({ startTime: iso('10:58:00'), notes: 'calm', endTime: null });
+    expect(runningSide(feed)).toBe('left');
   });
 
   it('applies queued taps on top of the feed the server knows', () => {
@@ -153,14 +169,14 @@ describe('applyQueued', () => {
   });
 
   it('changes nothing for a tap the feed already has (re-applied or already sent)', () => {
-    const queue = [start('new', 'left', '11:00:00'), stop('new', '11:03:00')];
+    const queue = [start('new', 'left', '11:00:00'), start('new', 'right', '11:03:00')];
     const once = applyQueued([], queue, ben);
 
     expect(applyQueued(once, queue, ben)).toEqual(once);
     expect(applyQueued(once, [start('new', 'left', '11:00:00', 'other')], ben)).toEqual(once);
   });
 
-  it('drops a feed once finished, deleted or saved with typed durations', () => {
+  it('drops a feed once stopped, deleted or saved with typed durations', () => {
     const known = aBreastfeed({
       id: 'f3',
       endTime: null,
@@ -173,7 +189,7 @@ describe('applyQueued', () => {
       applyQueued(
         [known, other, typed],
         [
-          finish('f3', '10:09:00'),
+          stop('f3', '10:09:00'),
           request('DELETE', '/api/feeds/f4', null),
           request('PUT', '/api/feeds/f5', {
             startTime: iso('10:00:00'),
@@ -194,7 +210,7 @@ describe('applyQueued', () => {
     expect(runningSide(feed)).toBe('left');
   });
 
-  it('leaves out saved feeds and ignores the other requests', () => {
+  it('leaves out feeds that are not live and ignores the other requests', () => {
     const list = applyQueued(
       [aBreastfeed()],
       [

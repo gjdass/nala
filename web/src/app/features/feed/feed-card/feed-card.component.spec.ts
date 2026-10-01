@@ -272,7 +272,7 @@ describe('FeedCardComponent', () => {
     expect(feeds.breastfeedState).toHaveBeenLastCalledWith('b2');
   });
 
-  /** In progress for baby b1 since `startedMinutesAgo`, right side running after 5 min on the left. */
+  /** Live for baby b1 since `startedMinutesAgo`, right side running after 5 min on the left. */
   const inProgress = (startedMinutesAgo: number, overrides: Partial<Feed> = {}) =>
     aBreastfeed({
       startTime: minutesAgo(startedMinutesAgo),
@@ -321,16 +321,16 @@ describe('FeedCardComponent', () => {
       expect(find('feed-highlight')).not.toBeNull();
     });
 
-    it('pauses on the running side Stop, applying the result at once', async () => {
+    it('stops on the running side Stop, applying the result at once', async () => {
       await respond([aBottle()]);
       await showInProgress(inProgress(12));
 
       find('split-right-toggle')!.click();
       expect(feeds.stopSide).toHaveBeenCalledWith('f3', NOW.toISOString());
 
-      const paused = inProgress(12, { updatedAt: NOW.toISOString() });
-      timer.next({ ok: true, feed: paused });
-      expect(sync.puts).toEqual([paused]);
+      const stopped = inProgress(12, { endTime: NOW.toISOString(), updatedAt: NOW.toISOString() });
+      timer.next({ ok: true, feed: stopped });
+      expect(sync.puts).toEqual([stopped]);
     });
 
     it('applies a tap kept on the device (offline) to the shared state at once', async () => {
@@ -363,16 +363,38 @@ describe('FeedCardComponent', () => {
       expect(entrySheets.edit).toHaveBeenCalledWith('feed', 'breastfeed', feed);
     });
 
-    it('reloads the feeds and last side once the feed is saved or deleted anywhere', async () => {
+    it('reloads at once when a feed becomes live, so it is listed from its first Start', async () => {
+      await respond([aBottle()]);
+      expect(feeds.page).toHaveBeenCalledTimes(1);
+
+      await showInProgress(inProgress(12));
+
+      expect(feeds.page).toHaveBeenCalledTimes(2);
+    });
+
+    it('reloads the feeds and last side once the feed is stopped or deleted anywhere, leaving the running state', async () => {
       await respond([aBottle()]);
       await showInProgress(inProgress(12));
-      expect(feeds.page).toHaveBeenCalledTimes(1);
+      expect(feeds.page).toHaveBeenCalledTimes(2);
 
       await showInProgress(null);
 
-      expect(feeds.page).toHaveBeenCalledTimes(2);
-      expect(feeds.breastfeedState).toHaveBeenCalledTimes(2);
+      expect(feeds.page).toHaveBeenCalledTimes(3);
+      expect(feeds.breastfeedState).toHaveBeenCalledTimes(3);
       expect(find('feed-running-open')).toBeNull();
+    });
+
+    it('lists the live feed as the shared state has it, with its live total', async () => {
+      await showInProgress(inProgress(12));
+      await respond([
+        inProgress(12, { segments: [aSegment('left', minutesAgo(12), null)] }),
+        aBottle(),
+      ]);
+
+      const summaries = [...host().querySelectorAll('[data-testid="entry-summary"]')].map((e) =>
+        e.textContent?.trim(),
+      );
+      expect(summaries[0]).toBe('Total 12m · L 5m · R 7m');
     });
   });
 

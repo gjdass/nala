@@ -20,7 +20,7 @@ export function totalSeconds(feed: Feed, now: number): number {
   return sideSeconds(feed, 'left', now) + sideSeconds(feed, 'right', now);
 }
 
-/** The side running now; null when paused or saved. */
+/** The side running now; null when the feed isn't live. */
 export function runningSide(feed: Feed): BreastSide | null {
   return feed.segments.find((segment) => segment.endedAt === null)?.side ?? null;
 }
@@ -33,12 +33,12 @@ export function endedOnSide(feed: Feed): BreastSide | null {
 /** How long a breastfeed may stay in progress before "Still feeding?" (spec 05). */
 export const STILL_FEEDING_AFTER_MS = 3 * 60 * 60 * 1000;
 
-/** Whether `feed` is in progress and started more than 3 hours before `now` (epoch ms). */
+/** Whether `feed` is live and started more than 3 hours before `now` (epoch ms). */
 export function isStillFeeding(feed: Feed, now: number): boolean {
   return feed.endTime === null && now - Date.parse(feed.startTime) > STILL_FEEDING_AFTER_MS;
 }
 
-const TIMER_URL = /^\/api\/feeds\/([^/]+)\/breastfeed\/(start|stop|finish)$/;
+const TIMER_URL = /^\/api\/feeds\/([^/]+)\/breastfeed\/(start|stop)$/;
 const FEED_URL = /^\/api\/feeds\/([^/]+)$/;
 
 interface StartBody {
@@ -48,19 +48,23 @@ interface StartBody {
   at: string;
 }
 
-interface TimerBody {
+interface StopBody {
   at: string;
-  startTime?: string;
-  notes?: string | null;
+}
+
+interface EditBody {
+  startTime: string;
+  notes: string | null;
+  durations?: unknown;
 }
 
 /**
- * The breastfeeds in progress once `requests` (the user's changes waiting on the device, oldest first)
- * are applied to `feeds`, following the server's rules (spec 05): a start creates the feed (start time
- * = its time) or reopens it and stops the other side, a stop pauses, a finish, a delete or durations
- * typed by hand end it. A tap the feed already has (same segment, side already running, or a time
- * before its latest segment) changes nothing, so applying the same requests again is harmless. A
- * feed created here is logged by `user`. Only the feeds still in progress are returned.
+ * The live breastfeeds once `requests` (the user's changes waiting on the device, oldest first) are
+ * applied to `feeds`, following the server's rules (spec 05): a start creates the feed (start time =
+ * its time) or makes it live again and stops the other side; a stop, a delete or durations typed by
+ * hand end it; an edit changes its start time and notes. A tap the feed already has (same segment,
+ * side already running, or a time before its latest segment) changes nothing, so applying the same
+ * requests again is harmless. A feed created here is logged by `user`. Only live feeds are returned.
  */
 export function applyQueued(
   feeds: readonly Feed[],
@@ -80,17 +84,26 @@ export function applyQueued(
       if (action === 'start') {
         replace(start(feed, id, request.body as StartBody, user));
       } else if (feed) {
-        const body = request.body as TimerBody;
-        replace(action === 'stop' ? stop(feed, body, user) : finish(feed, body, user));
+        replace(stopped(feed, (request.body as StopBody).at, user));
       }
       continue;
     }
     const entry = FEED_URL.exec(request.url);
-    const ends =
-      request.method === 'DELETE' ||
-      (request.method === 'PUT' && !!(request.body as { durations?: unknown })?.durations);
-    if (entry && ends) {
-      list = list.filter((f) => f.id !== entry[1]);
+    const feed = entry && list.find((f) => f.id === entry[1]);
+    if (!feed) {
+      continue;
+    }
+    const edit = request.body as EditBody;
+    if (request.method === 'DELETE' || (request.method === 'PUT' && edit?.durations)) {
+      list = list.filter((f) => f.id !== feed.id);
+    } else if (request.method === 'PUT') {
+      replace({
+        ...feed,
+        startTime: edit.startTime,
+        notes: edit.notes?.trim() || null,
+        updatedBy: user,
+        updatedAt: request.queuedAt,
+      });
     }
   }
   return list.filter((feed) => feed.endTime === null);
@@ -135,31 +148,21 @@ function start(feed: Feed | undefined, id: string, body: StartBody, user: UserNa
   };
 }
 
-function stop(feed: Feed, body: TimerBody, user: UserName): Feed {
+/**
+ * `feed` once its running side is stopped at `at` (ISO date-time): ended then, no longer live.
+ * Nothing running, or a time before the running side's start, changes nothing.
+ */
+export function stopped(feed: Feed, at: string, user: UserName = feed.updatedBy): Feed {
   const open = feed.segments.find((s) => s.endedAt === null);
-  if (!open || Date.parse(body.at) < Date.parse(open.startedAt)) {
+  if (!open || Date.parse(at) < Date.parse(open.startedAt)) {
     return feed;
   }
   return {
     ...feed,
-    segments: closeOpen(feed.segments, body.at),
+    endTime: at,
+    segments: closeOpen(feed.segments, at),
     updatedBy: user,
-    updatedAt: body.at,
-  };
-}
-
-function finish(feed: Feed, body: TimerBody, user: UserName): Feed {
-  if (feed.endTime !== null) {
-    return feed;
-  }
-  return {
-    ...feed,
-    startTime: body.startTime ?? feed.startTime,
-    notes: body.notes?.trim() || null,
-    endTime: body.at,
-    segments: closeOpen(feed.segments, body.at),
-    updatedBy: user,
-    updatedAt: body.at,
+    updatedAt: at,
   };
 }
 

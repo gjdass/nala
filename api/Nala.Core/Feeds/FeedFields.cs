@@ -18,9 +18,6 @@ public sealed record FeedInput(
 /// <summary>A breastfeed's durations typed by hand, in whole seconds, and the side it ended on.</summary>
 public sealed record BreastfeedDurations(int? LeftSeconds, int? RightSeconds, string? EndedOn);
 
-/// <summary>What finishing a breastfeed sends: its start time and notes as edited in the sheet, and when it ended.</summary>
-public sealed record BreastfeedFinishInput(DateTimeOffset? StartTime, string? Notes, DateTimeOffset? At);
-
 /// <summary>Validation of a feed's fields, for adding and editing (spec 05).</summary>
 public static class FeedFields
 {

@@ -30,16 +30,16 @@ import { FeedEntryComponent } from '../feed-entry/feed-entry.component';
 
 /**
  * The Feed card on home (spec 05): the selected baby's feeds of the last 24 hours (at least the 3
- * most recent) in the shared section card, with
- * "Last feeding" and the time since the latest feed started, on the right the side the latest saved
- * breastfeed ended on ("last side", hidden without one), or an empty state without any feed. A
- * breastfeed in progress for more than 3 hours shows "Still feeding?", whose Review opens it.
+ * most recent) in the shared section card, a live breastfeed included with its live total, with
+ * "Last feeding" and the time since the latest feed started, on the right the side the latest
+ * breastfeed that isn't live ended on ("last side", hidden without one), or an empty state without any
+ * feed. A breastfeed live for more than 3 hours shows "Still feeding?", whose Review opens it.
  *
- * While the baby's breastfeed is in progress (on any device, see `BreastfeedSyncService`), the
- * highlight is replaced by "Feeding" (opens the sheet) and both sides' live durations with their
- * Start/Stop: the running side's Stop pauses, the other side's Start switches (offline too: the tap
- * is kept on the device and shows at once). Once that feed is saved or deleted anywhere, the card
- * reloads.
+ * While the baby has a live breastfeed (on any device, see `BreastfeedSyncService`), the highlight is
+ * replaced by "Feeding" (opens the sheet) and both sides' live durations with their Start/Stop: the
+ * running side's Stop stops the feed (an ordinary feed again), the other side's Start switches
+ * (offline too: the tap is kept on the device and shows at once). The card reloads when a feed
+ * becomes live and once it is stopped or deleted anywhere.
  * Reloads after an entry is added, edited or deleted, when another baby is selected, and once
  * changes kept on the device (offline) have been sent.
  */
@@ -70,9 +70,15 @@ export class FeedCardComponent {
   private readonly queue = inject(OfflineQueueService);
 
   /** Newest first; null while loading. */
-  protected readonly entries = signal<readonly Feed[] | null>(null);
+  private readonly loaded = signal<readonly Feed[] | null>(null);
+  /** The loaded feeds, a live one as the shared state has it now (switched or edited on any device). */
+  protected readonly entries = computed(
+    () =>
+      this.loaded()?.map((feed) => this.sync.inProgress().find((f) => f.id === feed.id) ?? feed) ??
+      null,
+  );
   protected readonly lastSide = signal<BreastSide | null>(null);
-  /** The selected baby's breastfeed in progress. */
+  /** The selected baby's live breastfeed. */
   protected readonly inProgress = computed(() => {
     const baby = this.store.selected();
     return baby ? this.sync.forBaby(baby.id) : null;
@@ -96,7 +102,7 @@ export class FeedCardComponent {
     effect(() => {
       const baby = this.store.selected();
       untracked(() => {
-        this.entries.set(null);
+        this.loaded.set(null);
         this.lastSide.set(null);
         if (baby) {
           this.load(baby.id);
@@ -114,13 +120,14 @@ export class FeedCardComponent {
         }
       });
     });
-    // Saved or deleted on any device: its entry and the last side change.
+    // Started, stopped or deleted on any device: listed from its first Start, then its entry and the
+    // last side change.
     let shown: { babyId: string; id: string | null } | null = null;
     effect(() => {
       const babyId = this.store.selected()?.id ?? null;
       const id = this.inProgress()?.id ?? null;
       untracked(() => {
-        if (babyId && shown?.babyId === babyId && shown.id !== null && shown.id !== id) {
+        if (babyId && shown?.babyId === babyId && shown.id !== id) {
           this.load(babyId);
         }
         shown = babyId ? { babyId, id } : null;
@@ -158,7 +165,7 @@ export class FeedCardComponent {
       (cursor) => this.feeds.page(babyId, cursor),
       (feed) => feed.startTime,
       new Date(),
-    ).subscribe({ next: (entries) => this.entries.set(entries) });
+    ).subscribe({ next: (entries) => this.loaded.set(entries) });
     this.stateRequest?.unsubscribe();
     this.stateRequest = this.feeds.breastfeedState(babyId).subscribe((state) => {
       this.lastSide.set(state.lastSide);

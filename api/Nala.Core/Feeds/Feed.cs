@@ -14,7 +14,7 @@ public class Feed
 
     public DateTimeOffset StartTime { get; set; }
 
-    /// <summary>Breastfeed only; null while it is in progress.</summary>
+    /// <summary>Breastfeed only: the end of its last segment; null while it is live (a side runs).</summary>
     public DateTimeOffset? EndTime { get; set; }
 
     public string? Notes { get; set; }

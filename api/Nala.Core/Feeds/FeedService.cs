@@ -53,7 +53,7 @@ public abstract record BottleDefaultsResult
 /// <summary>The outcome of a breastfeed timer action.</summary>
 public abstract record BreastfeedResult
 {
-    /// <summary>Starting a side created the in-progress breastfeed.</summary>
+    /// <summary>Starting a side created the live breastfeed.</summary>
     public sealed record Created(FeedEntry Entry) : BreastfeedResult;
 
     /// <summary>The feed after the action, also when it changed nothing (a re-sent action).</summary>
@@ -64,7 +64,7 @@ public abstract record BreastfeedResult
 
     public sealed record BabyNotFound : BreastfeedResult;
 
-    /// <summary>Another breastfeed of the baby is in progress.</summary>
+    /// <summary>Another breastfeed of the baby is live.</summary>
     public sealed record InProgressExists : BreastfeedResult;
 
     /// <summary>Field name → error code.</summary>
@@ -128,8 +128,8 @@ public class FeedService(IFeedRepository feeds, IBabyRepository babies, TimeProv
     }
 
     /// <summary>
-    /// Replaces every field of the feed's kind; the baby and the kind never change. On a breastfeed, typed durations
-    /// replace its segments and save it (also one in progress).
+    /// Replaces every field of the feed's kind; the baby and the kind never change. A breastfeed without typed durations
+    /// keeps its sides as they are, live or not; typed durations replace its segments, so it is no longer live.
     /// </summary>
     public async Task<UpdateFeedResult> UpdateAsync(User actor, Guid id, FeedInput input, CancellationToken cancellationToken = default)
     {
@@ -156,6 +156,10 @@ public class FeedService(IFeedRepository feeds, IBabyRepository babies, TimeProv
         await feeds.UpdateAsync(feed, cancellationToken);
         return new UpdateFeedResult.Updated((await feeds.GetEntryAsync(id, cancellationToken))!);
     }
+
+    /// <summary>The feed with who logged and last edited it; null when unknown.</summary>
+    public Task<FeedEntry?> GetAsync(Guid id, CancellationToken cancellationToken = default) =>
+        feeds.GetEntryAsync(id, cancellationToken);
 
     public async Task<DeleteFeedResult> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
@@ -207,8 +211,8 @@ public class FeedService(IFeedRepository feeds, IBabyRepository babies, TimeProv
 
     /// <summary>
     /// Starts a side of the breastfeed <paramref name="feedId"/> at <paramref name="at"/>, stopping the other one. An unknown
-    /// feed is created in progress (start time = <paramref name="at"/>); a saved one is reopened. Both are refused while
-    /// another breastfeed of the baby is in progress, unless the start was <paramref name="queued"/> offline: it is then kept
+    /// feed is created live (start time = <paramref name="at"/>); a stopped one becomes live again. Both are refused while
+    /// another breastfeed of the baby is live, unless the start was <paramref name="queued"/> offline: it is then kept
     /// as a separate feed, so nothing logged offline is lost. Re-sending the same <paramref name="segmentId"/> changes nothing.
     /// </summary>
     public async Task<BreastfeedResult> StartSideAsync(
@@ -246,7 +250,7 @@ public class FeedService(IFeedRepository feeds, IBabyRepository babies, TimeProv
             return await UpdatedAsync(feed, cancellationToken);
         }
 
-        // Creating or reopening a feed: at most one in progress per baby, except for a start queued offline.
+        // Making a feed live: at most one live per baby, except for a start queued offline.
         if (!queued
             && (feed is null || feed.EndTime is not null)
             && await feeds.GetInProgressBreastfeedAsync(feed?.BabyId ?? babyId, cancellationToken) is { } current
@@ -284,7 +288,10 @@ public class FeedService(IFeedRepository feeds, IBabyRepository babies, TimeProv
         return await UpdatedAsync(feed, cancellationToken);
     }
 
-    /// <summary>Stops the running side at <paramref name="at"/>; the feed stays in progress. Nothing to stop changes nothing.</summary>
+    /// <summary>
+    /// Stops the running side at <paramref name="at"/>, which becomes the feed's end time: it is no longer live, an ordinary
+    /// feed (spec 04 Timers). Nothing running changes nothing.
+    /// </summary>
     public async Task<BreastfeedResult> StopSideAsync(User actor, Guid feedId, DateTimeOffset? at, CancellationToken cancellationToken = default)
     {
         var errors = FeedFields.ValidateTimerAction(null, needsSide: false, at, time.GetUtcNow());
@@ -309,61 +316,8 @@ public class FeedService(IFeedRepository feeds, IBabyRepository babies, TimeProv
         }
 
         open.EndedAt = at;
+        feed.EndTime = at;
         Touch(feed, actor, time.GetUtcNow());
-        await feeds.UpdateAsync(feed, cancellationToken);
-        return await UpdatedAsync(feed, cancellationToken);
-    }
-
-    /// <summary>
-    /// Saves the breastfeed: stops the running side and sets the end time to <paramref name="input"/>'s <c>At</c>, with the
-    /// start time and notes from the sheet. Refused when both sides are at 0 s. A saved one is returned unchanged.
-    /// </summary>
-    public async Task<BreastfeedResult> FinishAsync(User actor, Guid feedId, BreastfeedFinishInput input, CancellationToken cancellationToken = default)
-    {
-        var now = time.GetUtcNow();
-        var fields = new FeedInput("breastfeed", input.StartTime, input.Notes, null, null);
-        var errors = FeedFields.Validate(fields, now);
-        foreach (var (field, code) in FeedFields.ValidateTimerAction(null, needsSide: false, input.At, now))
-        {
-            errors[field] = code;
-        }
-
-        if (errors.Count > 0)
-        {
-            return new BreastfeedResult.Invalid(errors);
-        }
-
-        if (await GetBreastfeedAsync(feedId, cancellationToken) is not { } feed)
-        {
-            return new BreastfeedResult.NotFound();
-        }
-
-        if (feed.EndTime is not null)
-        {
-            return await UpdatedAsync(feed, cancellationToken);
-        }
-
-        var end = input.At!.Value;
-        if (end < Breastfeed.LatestSegmentTime(feed))
-        {
-            return new BreastfeedResult.Invalid(new Dictionary<string, string> { ["at"] = "invalid" });
-        }
-
-        if (input.StartTime > end)
-        {
-            return new BreastfeedResult.Invalid(new Dictionary<string, string> { ["startTime"] = "afterEnd" });
-        }
-
-        if (Breastfeed.SideDuration(feed, BreastSide.Left, end) + Breastfeed.SideDuration(feed, BreastSide.Right, end) <= TimeSpan.Zero)
-        {
-            return new BreastfeedResult.Invalid(new Dictionary<string, string> { ["durations"] = "zero" });
-        }
-
-        Breastfeed.OpenSegment(feed)?.EndedAt = end;
-        feed.EndTime = end;
-        feed.StartTime = input.StartTime!.Value;
-        feed.Notes = FeedFields.NormalizeText(input.Notes);
-        Touch(feed, actor, now);
         await feeds.UpdateAsync(feed, cancellationToken);
         return await UpdatedAsync(feed, cancellationToken);
     }
@@ -380,7 +334,7 @@ public class FeedService(IFeedRepository feeds, IBabyRepository babies, TimeProv
             await feeds.GetLastBreastSideAsync(babyId, cancellationToken)));
     }
 
-    /// <summary>Every breastfeed in progress, of every baby (one instance is one family), oldest start first.</summary>
+    /// <summary>Every live breastfeed, of every baby (one instance is one family), oldest start first.</summary>
     public Task<IReadOnlyList<FeedEntry>> ListInProgressBreastfeedsAsync(CancellationToken cancellationToken = default) =>
         feeds.ListInProgressBreastfeedsAsync(cancellationToken);
 

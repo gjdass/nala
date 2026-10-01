@@ -209,6 +209,21 @@ public class FeedServiceTests
         Assert.That(await _service.DeleteAsync(Guid.NewGuid()), Is.InstanceOf<DeleteFeedResult.NotFound>());
 
     [Test]
+    public async Task Getting_a_feed_returns_it_with_who_logged_it()
+    {
+        var created = await CreateAsync(_anna, Bottle());
+
+        var entry = await _service.GetAsync(created.Feed.Id);
+
+        Assert.That(entry?.Feed.Id, Is.EqualTo(created.Feed.Id));
+        Assert.That(entry?.LoggedBy.DisplayName, Is.EqualTo("Anna"));
+    }
+
+    [Test]
+    public async Task Getting_an_unknown_feed_gives_nothing() =>
+        Assert.That(await _service.GetAsync(Guid.NewGuid()), Is.Null);
+
+    [Test]
     public async Task Listing_pages_newest_first_with_a_cursor()
     {
         for (var i = 0; i < 5; i++)

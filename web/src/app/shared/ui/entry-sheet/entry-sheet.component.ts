@@ -17,7 +17,7 @@ import { EntrySheetData } from './entry-sheet.models';
  * The frame of every add / edit sheet of a section (spec 04), wrapping the kind's rows: header in
  * the section colour with ×, the kind title and Save (disabled while `form` is invalid, saving or
  * `saveDisabled`), and, when editing (or `deletable`), a Delete action. × asks before discarding
- * changes; Delete asks before emitting. The kind's sheet saves or deletes, then closes itself
+ * changes (then closes, or runs `discard`); Delete asks before emitting. The kind's sheet saves or deletes, then closes itself
  * through `SheetRef`.
  */
 @Component({
@@ -39,6 +39,11 @@ export class EntrySheetComponent {
   readonly saveDisabled = input(false);
   /** Whether Delete is offered; by default when editing an entry. */
   readonly deletable = input<boolean | null>(null);
+  /**
+   * What × does once confirmed (or at once without changes), instead of closing: the kind's sheet then
+   * closes itself (e.g. after deleting the entry a timer's Start created, spec 04 Timers).
+   */
+  readonly discard = input<(() => void) | null>(null);
   readonly save = output();
   readonly delete = output();
 
@@ -54,11 +59,12 @@ export class EntrySheetComponent {
 
   /** Asks before discarding what was entered. */
   protected close(): void {
+    const discard = () => (this.discard() ?? (() => this.sheetRef.close()))();
     if (!this.form().dirty) {
-      this.sheetRef.close();
+      discard();
       return;
     }
-    this.confirm('discard').subscribe(() => this.sheetRef.close());
+    this.confirm('discard').subscribe(discard);
   }
 
   protected confirmDelete(): void {

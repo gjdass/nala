@@ -466,7 +466,7 @@
         "sheet": "Commencée {{since}}. Corrigez les durées avec les crayons, puis enregistrez.",
         "review": "Vérifier"
       },
-      "endedElsewhere": "Cette tétée a été enregistrée ou supprimée sur un autre appareil."
+      "endedElsewhere": "Cette tétée a été supprimée sur un autre appareil."
     },
     "mealType": {
       "breakfast": "Petit-déjeuner",
@@ -498,8 +498,7 @@
     },
     "timer": {
       "left": "Tétée · G",
-      "right": "Tétée · D",
-      "paused": "Tétée · en pause"
+      "right": "Tétée · D"
     }
   },
   "offline": {

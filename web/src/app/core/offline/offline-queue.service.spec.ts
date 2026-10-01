@@ -260,6 +260,48 @@ describe('OfflineQueueService', () => {
       expect(stored()).toEqual([]);
     });
 
+    it('sends a finish tap kept from before "live or not" as a stop, then the start time and notes as an edit', async () => {
+      store([
+        queued({
+          id: 'old',
+          url: '/api/feeds/f3/breastfeed/finish',
+          body: {
+            startTime: '2026-09-30T09:55:00.000Z',
+            notes: 'calm',
+            at: '2026-09-30T10:09:00.000Z',
+          },
+        }),
+      ]);
+      start();
+
+      expect(service.waiting().map((r) => [r.method, r.url, r.body, r.userId, r.queuedAt])).toEqual(
+        [
+          [
+            'POST',
+            '/api/feeds/f3/breastfeed/stop',
+            { at: '2026-09-30T10:09:00.000Z' },
+            'anna',
+            '2026-09-30T10:00:00.000Z',
+          ],
+          [
+            'PUT',
+            '/api/feeds/f3',
+            { startTime: '2026-09-30T09:55:00.000Z', notes: 'calm' },
+            'anna',
+            '2026-09-30T10:00:00.000Z',
+          ],
+        ],
+      );
+      const stop = http.expectOne('/api/feeds/f3/breastfeed/stop');
+      expect(stop.request.body).toEqual({ at: '2026-09-30T10:09:00.000Z' });
+      stop.flush({ id: 'f3' });
+      await Promise.resolve();
+      const edit = http.expectOne({ method: 'PUT', url: '/api/feeds/f3' });
+      expect(edit.request.body).toEqual({ startTime: '2026-09-30T09:55:00.000Z', notes: 'calm' });
+      edit.flush({ id: 'f3' });
+      expect(stored()).toEqual([]);
+    });
+
     it('drops a feed the server already has (re-sent create answered 200)', async () => {
       store([queued({ url: '/api/feeds', body: { id: 'f1' } })]);
       start();

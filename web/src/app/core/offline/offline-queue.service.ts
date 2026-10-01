@@ -16,6 +16,7 @@ import { TranslocoService } from '@jsverse/transloco';
 import { Observable, catchError, map, of } from 'rxjs';
 import { AuthService } from '../auth/auth.service';
 import { QueuedMethod, QueuedRequest, SendOptions, SendOutcome } from './offline-queue.models';
+import { upgradeQueued } from './queue-upgrades';
 
 export const QUEUE_STORAGE_KEY = 'nala.offlineQueue';
 
@@ -216,7 +217,7 @@ export class OfflineQueueService {
       const stored = this.storage?.getItem(QUEUE_STORAGE_KEY);
       if (stored !== null && stored !== undefined) {
         const list: unknown = JSON.parse(stored);
-        return Array.isArray(list) ? (list as QueuedRequest[]) : [];
+        return Array.isArray(list) ? upgradeQueued(list as QueuedRequest[]) : [];
       }
       return this.storage ? [] : this.memory;
     } catch {

@@ -11,7 +11,7 @@ import { FeedService } from './feed.service';
 export const SYNC_INTERVAL_MS = 5000;
 
 /**
- * The breastfeeds in progress of every baby, shared by every device (spec 05): polled every 5 s
+ * The live breastfeeds of every baby, shared by every device (spec 05): polled every 5 s
  * while signed in and the app is visible, polled again as soon as it is shown, cleared on sign-out.
  * This device's own actions apply at once through `put` / `remove`; a poll that started before one
  * is ignored, so it can't bring back an older state. A failed poll keeps the last list.
@@ -66,12 +66,12 @@ export class BreastfeedSyncService {
     });
   }
 
-  /** The baby's breastfeed in progress; null when none. */
+  /** The baby's live breastfeed (the oldest with two); null when none. */
   forBaby(babyId: string): Feed | null {
     return this.list().find((feed) => feed.babyId === babyId) ?? null;
   }
 
-  /** A feed as this device just changed it: kept while in progress, dropped once saved. */
+  /** A feed as this device just changed it: kept while live, dropped once stopped. */
   put(feed: Feed): void {
     this.version++;
     this.list.update((list) => {
@@ -86,7 +86,7 @@ export class BreastfeedSyncService {
 
   /**
    * Applies the timer taps waiting on the device now (their effects show at once), on top of `base`
-   * when the list doesn't have that feed (a saved feed reopened offline).
+   * when the list doesn't have that feed (a stopped feed made live again offline).
    */
   applyWaiting(base?: Feed): void {
     const user = this.user();

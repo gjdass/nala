@@ -28,7 +28,7 @@ import { BreastfeedSheetComponent } from './breastfeed-sheet.component';
 const NOW = new Date('2026-09-30T10:10:00Z');
 const iso = (time: string) => `2026-09-30T${time}Z`;
 
-/** In progress since 10:00: 5 min left, then right running since 10:05. */
+/** Live since 10:00: 5 min left, then right running since 10:05. */
 const running = (overrides: Partial<Feed> = {}) =>
   aBreastfeed({
     endTime: null,
@@ -46,8 +46,9 @@ describe('BreastfeedSheetComponent', () => {
   let timer: Subject<FeedResult>;
   let saved: Subject<FeedResult>;
   let deleted: Subject<FeedDeleteResult>;
+  let fetched: Subject<Feed | null>;
   let feeds: Record<
-    'breastfeedState' | 'startSide' | 'stopSide' | 'finish' | 'create' | 'update' | 'delete',
+    'breastfeedState' | 'startSide' | 'stopSide' | 'get' | 'create' | 'update' | 'delete',
     ReturnType<typeof vi.fn>
   >;
   let sheetRef: { close: ReturnType<typeof vi.fn> };
@@ -106,6 +107,7 @@ describe('BreastfeedSheetComponent', () => {
     timer = new Subject();
     saved = new Subject();
     deleted = new Subject();
+    fetched = new Subject();
     feeds = {
       breastfeedState: vi.fn(() => {
         const state = new Subject<BreastfeedState>();
@@ -114,7 +116,7 @@ describe('BreastfeedSheetComponent', () => {
       }),
       startSide: vi.fn(() => timer),
       stopSide: vi.fn(() => timer),
-      finish: vi.fn(() => saved),
+      get: vi.fn(() => fetched),
       create: vi.fn(() => saved),
       update: vi.fn(() => saved),
       delete: vi.fn(() => deleted),
@@ -206,6 +208,52 @@ describe('BreastfeedSheetComponent', () => {
       expect(find('entry-delete')).not.toBeNull();
     });
 
+    describe('× once a Start created the feed', () => {
+      let feedId: string;
+
+      beforeEach(async () => {
+        await click('split-left-toggle');
+        feedId = feeds.startSide.mock.calls[0][0];
+        await respondTimer({
+          ok: true,
+          feed: running({ id: feedId, segments: [aSegment('left', NOW.toISOString(), null)] }),
+        });
+        await click('sheet-close');
+      });
+
+      it('asks to discard, as a Start counts as a change', () => {
+        expect(dialog.open).toHaveBeenCalledWith(ConfirmDialogComponent, expect.anything());
+        expect(feeds.delete).not.toHaveBeenCalled();
+      });
+
+      it('deletes the feed once confirmed, and closes with its id', async () => {
+        confirmed.next(true);
+        await settle();
+
+        expect(feeds.delete).toHaveBeenCalledWith(feedId);
+        deleted.next({ ok: true });
+        await settle();
+        expect(sync.removed).toEqual([feedId]);
+        expect(sheetRef.close).toHaveBeenCalledWith({ deleted: feedId });
+      });
+
+      it('closes once the delete is kept on the device (offline)', async () => {
+        confirmed.next(true);
+        deleted.next({ ok: true, queued: true });
+        await settle();
+
+        expect(sheetRef.close).toHaveBeenCalledWith({ queued: true });
+      });
+
+      it('stays open, the feed running, when cancelled', async () => {
+        confirmed.next(false);
+        await settle();
+
+        expect(feeds.delete).not.toHaveBeenCalled();
+        expect(sheetRef.close).not.toHaveBeenCalled();
+      });
+    });
+
     it('keeps the same feed id when starting again after a failure', async () => {
       await click('split-left-toggle');
       await respondTimer({ ok: false, errors: { form: 'unknown' } });
@@ -216,7 +264,7 @@ describe('BreastfeedSheetComponent', () => {
       expect(feeds.startSide.mock.calls[1][0]).toBe(feeds.startSide.mock.calls[0][0]);
     });
 
-    it('opens the feed already in progress when starting one is refused', async () => {
+    it('opens the live feed when starting one is refused', async () => {
       await click('split-right-toggle');
       await respondTimer({ ok: false, errors: { form: 'breastfeedInProgress' } });
 
@@ -266,17 +314,11 @@ describe('BreastfeedSheetComponent', () => {
       expect(fixture.componentInstance.form.controls.notes.value).toBe('calm');
     });
 
-    it('pauses offline', async () => {
+    it('stops offline: the feed is shown stopped, no longer live', async () => {
       sync.inProgress.set([running()]);
       await render();
-      const paused = running({
-        updatedAt: NOW.toISOString(),
-        segments: [
-          aSegment('left', iso('10:00:00'), iso('10:05:00')),
-          aSegment('right', iso('10:05:00'), iso('10:10:00')),
-        ],
-      });
-      offlineShows(() => paused);
+      // Once the stop is applied, the feed is no longer in the live list.
+      sync.whenApplied(() => sync.inProgress.set([]));
 
       await click('split-right-toggle');
       await respondTimer({ ok: true, queued: true });
@@ -284,6 +326,8 @@ describe('BreastfeedSheetComponent', () => {
       expect(text('split-right-toggle')).toBe(en.splitTimer.startRight);
       await tick(60_000);
       expect(text('total-time')).toBe('10m');
+      expect(sheetRef.close).not.toHaveBeenCalled();
+      expect(feeds.get).not.toHaveBeenCalled();
     });
 
     it('reopens a saved feed offline from its own entry', async () => {
@@ -310,18 +354,21 @@ describe('BreastfeedSheetComponent', () => {
       saved.next({ ok: true, queued: true });
       await settle();
 
-      expect(feeds.finish).toHaveBeenCalled();
+      expect(feeds.update).toHaveBeenCalledWith('f3', {
+        startTime: iso('10:00:00.000'),
+        notes: null,
+      });
       expect(sheetRef.close).toHaveBeenCalledWith({ queued: true });
     });
   });
 
-  describe('a feed in progress', () => {
+  describe('a live feed', () => {
     beforeEach(async () => {
       await render();
       await respondState({ inProgress: running({ notes: 'calm' }), lastSide: 'right' });
     });
 
-    it('opens the feed in progress instead of a new one', () => {
+    it('opens the live feed instead of a new one', () => {
       const value = fixture.componentInstance.form.getRawValue();
       expect(value.startTime).toEqual(new Date(iso('10:00:00')));
       expect(value.notes).toBe('calm');
@@ -351,46 +398,63 @@ describe('BreastfeedSheetComponent', () => {
       expect(feeds.startSide).toHaveBeenCalledWith('f3', 'b1', 'left', NOW.toISOString());
     });
 
-    it('pauses the running side on Stop, keeping the feed in progress', async () => {
+    it('stops the running side on Stop: an ordinary feed, ended now, the sheet still open', async () => {
       await click('split-right-toggle');
 
       expect(feeds.stopSide).toHaveBeenCalledWith('f3', NOW.toISOString());
-      await respondTimer({
-        ok: true,
-        feed: running({
-          segments: [
-            aSegment('left', iso('10:00:00'), iso('10:05:00')),
-            aSegment('right', iso('10:05:00'), iso('10:10:00')),
-          ],
-        }),
+      const stopped = running({
+        endTime: NOW.toISOString(),
+        segments: [
+          aSegment('left', iso('10:00:00'), iso('10:05:00')),
+          aSegment('right', iso('10:05:00'), iso('10:10:00')),
+        ],
       });
+      await respondTimer({ ok: true, feed: stopped });
 
+      expect(sync.puts).toEqual([stopped]);
       expect(text('split-right-toggle')).toBe(en.splitTimer.startRight);
       expect(sheetRef.close).not.toHaveBeenCalled();
       await tick(60_000);
       expect(text('total-time')).toBe('10m');
     });
 
-    it('closes on × without saving, leaving the feed running', async () => {
+    it('closes on × without saving or deleting, leaving the feed running (it was not started here)', async () => {
       await click('sheet-close');
 
       expect(sheetRef.close).toHaveBeenCalledWith();
-      expect(feeds.finish).not.toHaveBeenCalled();
+      expect(feeds.update).not.toHaveBeenCalled();
+      expect(feeds.stopSide).not.toHaveBeenCalled();
+      expect(feeds.delete).not.toHaveBeenCalled();
+    });
+
+    it('discards edits on × once confirmed, keeping the taps made in the sheet', async () => {
+      await click('split-left-toggle');
+      await respondTimer({ ok: true, feed: running({ updatedAt: iso('10:10:00') }) });
+      fixture.componentInstance.form.controls.notes.setValue('changed');
+      fixture.componentInstance.form.markAsDirty();
+      await click('sheet-close');
+      confirmed.next(true);
+      await settle();
+
+      expect(sheetRef.close).toHaveBeenCalledWith();
+      expect(feeds.update).not.toHaveBeenCalled();
+      expect(feeds.delete).not.toHaveBeenCalled();
       expect(feeds.stopSide).not.toHaveBeenCalled();
     });
 
-    it('finishes the feed on Save with the start time and notes, and closes with it', async () => {
+    it('saves the start time and notes on Save, leaving the feed live, and closes with it', async () => {
       await click('sheet-save');
 
-      expect(feeds.finish).toHaveBeenCalledWith(
-        'f3',
-        { startTime: iso('10:00:00.000'), notes: 'calm' },
-        NOW.toISOString(),
-      );
-      const done = running({ endTime: NOW.toISOString() });
-      saved.next({ ok: true, feed: done });
+      expect(feeds.update).toHaveBeenCalledWith('f3', {
+        startTime: iso('10:00:00.000'),
+        notes: 'calm',
+      });
+      expect(feeds.stopSide).not.toHaveBeenCalled();
+      const live = running({ notes: 'calm', updatedAt: NOW.toISOString() });
+      saved.next({ ok: true, feed: live });
       await settle();
-      expect(sheetRef.close).toHaveBeenCalledWith({ saved: done });
+      expect(sync.puts).toEqual([live]);
+      expect(sheetRef.close).toHaveBeenCalledWith({ saved: live });
     });
 
     it('shows the errors the server sends back on Save', async () => {
@@ -445,7 +509,6 @@ describe('BreastfeedSheetComponent', () => {
         startTime: iso('10:00:00.000'),
         notes: 'calm',
       });
-      expect(feeds.finish).not.toHaveBeenCalled();
     });
 
     it('closes once the edit is kept on the device (offline)', async () => {
@@ -467,7 +530,7 @@ describe('BreastfeedSheetComponent', () => {
       expect(sync.removed).toEqual([]);
     });
 
-    it('reopens it when a side starts', async () => {
+    it('makes it live again when a side starts', async () => {
       await click('split-left-toggle');
 
       expect(feeds.startSide).toHaveBeenCalledWith('f3', 'b1', 'left', NOW.toISOString());
@@ -590,7 +653,7 @@ describe('BreastfeedSheetComponent', () => {
     });
   });
 
-  describe('correcting a feed in progress', () => {
+  describe('correcting a live feed', () => {
     beforeEach(async () => {
       await render();
       await respondState({ inProgress: running({ notes: 'calm' }), lastSide: 'right' });
@@ -614,7 +677,7 @@ describe('BreastfeedSheetComponent', () => {
       expect(toggle('right').disabled).toBe(true);
     });
 
-    it('saves the typed durations through update instead of finishing', async () => {
+    it('saves the typed durations through update', async () => {
       await typeDuration('left', 120);
       await click('sheet-save');
 
@@ -623,7 +686,6 @@ describe('BreastfeedSheetComponent', () => {
         notes: 'calm',
         durations: { leftSeconds: 120, rightSeconds: 300, endedOn: 'left' },
       });
-      expect(feeds.finish).not.toHaveBeenCalled();
     });
   });
 
@@ -642,7 +704,7 @@ describe('BreastfeedSheetComponent', () => {
   });
 
   describe('Still feeding?', () => {
-    it('warns about a feed in progress that started more than 3 hours ago', async () => {
+    it('warns about a live feed that started more than 3 hours ago', async () => {
       await render();
       await respondState({ inProgress: running({ startTime: iso('07:09:00') }), lastSide: null });
 
@@ -685,10 +747,10 @@ describe('BreastfeedSheetComponent', () => {
       expect(sync.puts).toEqual([switched]);
 
       await click('sheet-save');
-      const done = running({ endTime: NOW.toISOString() });
-      saved.next({ ok: true, feed: done });
+      const edited = running({ notes: 'calm', updatedAt: iso('10:10:00') });
+      saved.next({ ok: true, feed: edited });
       await settle();
-      expect(sync.puts).toEqual([switched, done]);
+      expect(sync.puts).toEqual([switched, edited]);
     });
 
     it('removes a deleted feed from the shared state', async () => {
@@ -727,8 +789,32 @@ describe('BreastfeedSheetComponent', () => {
       expect(text('split-right-duration')).toBe('5m');
     });
 
-    it('closes with a snackbar once the feed is saved or deleted on another device', async () => {
+    it('fetches the feed once it leaves the live list, and shows it stopped on another device', async () => {
       await showSync();
+
+      expect(feeds.get).toHaveBeenCalledWith('f3');
+      fetched.next(
+        running({
+          endTime: iso('10:09:00'),
+          updatedAt: iso('10:09:00'),
+          segments: [
+            aSegment('left', iso('10:00:00'), iso('10:05:00')),
+            aSegment('right', iso('10:05:00'), iso('10:09:00')),
+          ],
+        }),
+      );
+      await settle();
+
+      expect(text('split-right-toggle')).toBe(en.splitTimer.startRight);
+      expect(text('total-time')).toBe('9m');
+      expect(sheetRef.close).not.toHaveBeenCalled();
+      expect(snackBar.open).not.toHaveBeenCalled();
+    });
+
+    it('closes with a snackbar once the feed is deleted on another device', async () => {
+      await showSync();
+      fetched.next(null);
+      await settle();
 
       expect(sheetRef.close).toHaveBeenCalledWith();
       expect(snackBar.open).toHaveBeenCalledWith(
@@ -738,16 +824,13 @@ describe('BreastfeedSheetComponent', () => {
       );
     });
 
-    it('does not warn when it saved the feed itself', async () => {
-      await click('sheet-save');
-      const done = running({ endTime: NOW.toISOString() });
-      saved.next({ ok: true, feed: done });
-      await settle();
+    it('does not fetch the feed when it stopped it itself', async () => {
+      await click('split-right-toggle');
+      await respondTimer({ ok: true, feed: running({ endTime: NOW.toISOString() }) });
       await showSync();
 
-      expect(sheetRef.close).toHaveBeenCalledTimes(1);
-      expect(sheetRef.close).toHaveBeenCalledWith({ saved: done });
-      expect(snackBar.open).not.toHaveBeenCalled();
+      expect(feeds.get).not.toHaveBeenCalled();
+      expect(sheetRef.close).not.toHaveBeenCalled();
     });
 
     it('stays open while durations are being typed', async () => {
@@ -755,6 +838,7 @@ describe('BreastfeedSheetComponent', () => {
 
       await showSync();
 
+      expect(feeds.get).not.toHaveBeenCalled();
       expect(sheetRef.close).not.toHaveBeenCalled();
       expect(snackBar.open).not.toHaveBeenCalled();
     });

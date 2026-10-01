@@ -493,16 +493,16 @@ public class FeedRepositoryTests
     }
 
     [Test]
-    public async Task The_list_leaves_out_the_breastfeed_in_progress()
+    public async Task The_list_includes_the_live_breastfeed_from_its_first_start()
     {
         var saved = await AddBreastfeedAsync(Now.AddHours(-2), Now.AddHours(-1.5), null, (BreastSide.Left, 0, 5));
-        await AddBreastfeedAsync(Now.AddMinutes(-10), null, null, (BreastSide.Left, 0, null));
+        var live = await AddBreastfeedAsync(Now.AddMinutes(-10), null, null, (BreastSide.Left, 0, null));
         var bottle = await AddAsync(startTime: Now.AddMinutes(-20));
 
         var list = await ListAsync();
 
-        Assert.That(list.Select(e => e.Feed.Id), Is.EqualTo(new[] { bottle.Id, saved.Id }));
-        Assert.That(list[1].Feed.Segments, Has.Count.EqualTo(1));
+        Assert.That(list.Select(e => e.Feed.Id), Is.EqualTo(new[] { live.Id, bottle.Id, saved.Id }));
+        Assert.That(list[0].Feed.Segments.Single().EndedAt, Is.Null);
     }
 
     [Test]

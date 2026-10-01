@@ -466,7 +466,7 @@
         "sheet": "Started {{since}}. Correct the durations with the pencils, then save.",
         "review": "Review"
       },
-      "endedElsewhere": "This feed was saved or deleted on another device."
+      "endedElsewhere": "This feed was deleted on another device."
     },
     "mealType": {
       "breakfast": "Breakfast",
@@ -498,8 +498,7 @@
     },
     "timer": {
       "left": "Feeding · L",
-      "right": "Feeding · R",
-      "paused": "Feeding · paused"
+      "right": "Feeding · R"
     }
   },
   "offline": {

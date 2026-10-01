@@ -141,11 +141,11 @@ Each item becomes at least one test, written failing first.
 - [x] No duration bar is shown.
 
 ### Timers
-- [ ] Save on a live entry saves the form and leaves its timers running.
-- [ ] × on a sheet opened to add, after a Start, deletes the entry that Start created (after confirmation), online and offline.
-- [ ] × on an existing live entry discards the form edits and keeps the timer taps made in the sheet.
-- [ ] Only a live entry (a timer runs) shows the card's running state and a mini-bar row; once its timers are stopped it is an ordinary entry.
-- [ ] A live entry is listed in the card and history at once, with its live total.
+- [x] Save on a live entry saves the form and leaves its timers running.
+- [x] × on a sheet opened to add, after a Start, deletes the entry that Start created (after confirmation), online and offline.
+- [x] × on an existing live entry discards the form edits and keeps the timer taps made in the sheet.
+- [x] Only a live entry (a timer runs) shows the card's running state and a mini-bar row; once its timers are stopped it is an ordinary entry.
+- [x] A live entry is listed in the card and history at once, with its live total.
 - [ ] While the section has a live entry for the selected baby, + is replaced by the timer button, which opens that entry's sheet.
 
 ### Bottom navigation bar

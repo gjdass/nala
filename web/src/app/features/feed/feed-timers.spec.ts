@@ -24,7 +24,7 @@ describe('FeedTimerSource', () => {
     expect(TestBed.inject(RUNNING_TIMER_SOURCES)).toContain(source);
   });
 
-  it('has one timer per breastfeed in progress, opening it in the Breastfeed sheet', () => {
+  it('has one timer per live breastfeed, opening it in the Breastfeed sheet', () => {
     const feed = aBreastfeed({
       id: 'f9',
       babyId: 'b2',
@@ -62,21 +62,9 @@ describe('FeedTimerSource', () => {
     expect(timer.seconds(at('10:15:04'))).toBe(12 * 60 + 4);
   });
 
-  it('shows a paused feed with the total of both sides, not ticking', () => {
-    sync.inProgress.set([
-      aBreastfeed({
-        endTime: null,
-        segments: [
-          aSegment('left', iso('10:00:00'), iso('10:05:00')),
-          aSegment('right', iso('10:05:00'), iso('10:08:30')),
-        ],
-      }),
-    ]);
+  it('has no row for a feed that is not live (stopped: an ordinary feed)', () => {
+    sync.inProgress.set([aBreastfeed()]);
 
-    const [timer] = source.timers();
-
-    expect(timer.label).toBe('feed.timer.paused');
-    expect(timer.seconds(at('10:20:00'))).toBe(510);
-    expect(timer.seconds(at('11:00:00'))).toBe(510);
+    expect(source.timers()).toEqual([]);
   });
 });

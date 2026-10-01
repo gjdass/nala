@@ -14,7 +14,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { Observable } from 'rxjs';
 import { SelectedBabyService } from '../../../core/babies/selected-baby.service';
-import { isStillFeeding, runningSide, sideSeconds } from '../../../core/feeds/breastfeed';
+import { isStillFeeding, runningSide, sideSeconds, stopped } from '../../../core/feeds/breastfeed';
 import { BreastfeedSyncService } from '../../../core/feeds/breastfeed-sync.service';
 import {
   BREAST_SIDES,
@@ -64,25 +64,29 @@ type Durations = Record<BreastSide, number>;
 
 /**
  * The Breastfeed sheet (spec 05): two per-side timers side by side (the hard requirement), the start
- * time, the total time and notes. The timers live on the server: each tap is sent at once (the first
- * Start creates the feed in progress, with its start time; Start on a saved feed reopens it), and the
- * durations come from the stored segments, live. Opened to add while a breastfeed is in progress for
- * the baby, it opens that one. × leaves the feed running; Save finishes it (or saves the edits of a
- * saved one), refused while both sides are at 0 s. Closes with the saved feed or the deleted id.
+ * time, the total time and notes. The timers live on the server: each tap is sent at once and the
+ * durations come from the stored segments, live. The feed is live while a side runs (spec 04
+ * Timers): the first Start creates it live, with its start time; Stop makes it an ordinary feed,
+ * ended now; Start on it makes it live again. Opened to add while the baby has a live breastfeed, it
+ * opens that one. Save saves the start time and notes (`PUT`) and never starts or stops a side,
+ * refused while both sides are at 0 s. × discards the form; on a sheet opened to add whose Start
+ * created the feed, it deletes that feed (after confirming: the Start counts as a change). Closes
+ * with the saved feed or the deleted id.
  *
  * Each side's pencil lets its duration be typed: both durations are then frozen (the timers are off
  * until Save or ×), the ended-on side is asked when both are above 0, and Save sends the durations
- * (adding a feed logged by hand, or replacing the timed ones). An in-progress feed started more than
- * 3 hours ago shows "Still feeding?".
+ * (adding a feed logged by hand, or replacing the timed ones, so it is no longer live). A live feed
+ * started more than 3 hours ago shows "Still feeding?".
  *
- * Other devices: its own actions update the shared in-progress state at once; changes made elsewhere
- * (side switch, pause) show live, unless durations are being typed; if the feed is saved or deleted
- * elsewhere, the sheet closes with a snackbar (unless durations are being typed).
+ * Other devices: its own actions update the shared live state at once; changes made elsewhere (side
+ * switch) show live, unless durations are being typed. When the feed leaves the live list without
+ * this sheet stopping it, the sheet fetches it: stopped elsewhere, it shows it; deleted, it closes
+ * with a snackbar (unless durations are being typed).
  *
  * Offline, every change is kept on the device. A save, an edit or a delete closes the sheet with
  * `queued`; a timer tap shows at once as the server will apply it (see `BreastfeedSyncService`), so a
- * breastfeed started offline runs and can be switched, paused and saved offline. Opened to add, it
- * opens the baby's breastfeed in progress right away, including one started offline.
+ * breastfeed started offline runs and can be switched, stopped and saved offline. Opened to add, it
+ * opens the baby's live breastfeed right away, including one started offline.
  */
 @Component({
   selector: 'nala-breastfeed-sheet',
@@ -149,7 +153,7 @@ export class BreastfeedSheetComponent {
     const feed = this.feed();
     return feed ? runningSide(feed) : null;
   });
-  /** "last side" helps choose where to start: not shown on a saved feed. */
+  /** "last side" helps choose where to start: not shown once the feed has ended. */
   protected readonly markedSide = computed(() => (this.feed()?.endTime ? null : this.lastSide()));
   protected readonly edited = computed(() => {
     const feed = this.feed();
@@ -160,8 +164,11 @@ export class BreastfeedSheetComponent {
   /** Translation key of the form-level error. */
   protected readonly formError = signal<string | null>(null);
 
-  /** The feed was listed as in progress by the shared state. */
+  /** The feed was listed as live by the shared state. */
   private listed = false;
+  /** This sheet, opened to add, created the feed with a Start: × deletes it. */
+  private readonly createdHere = signal(false);
+  protected readonly discard = computed(() => (this.createdHere() ? () => this.delete() : null));
   /** This sheet saved or deleted the feed itself. */
   private settled = false;
 
@@ -181,12 +188,22 @@ export class BreastfeedSheetComponent {
 
   protected start(side: BreastSide): void {
     const id = this.feed()?.id ?? this.newId;
-    this.send(id, this.feeds.startSide(id, this.babyId!, side, new Date().toISOString()));
+    this.send(
+      this.feeds.startSide(id, this.babyId!, side, new Date().toISOString()),
+      () => this.sync.inProgress().find((f) => f.id === id),
+      () => {
+        if (id === this.newId && !this.entry) {
+          this.createdHere.set(true);
+          this.form.markAsDirty();
+        }
+      },
+    );
   }
 
   protected stop(): void {
-    const id = this.feed()!.id;
-    this.send(id, this.feeds.stopSide(id, new Date().toISOString()));
+    const feed = this.feed()!;
+    const at = new Date().toISOString();
+    this.send(this.feeds.stopSide(feed.id, at), () => stopped(feed, at));
   }
 
   /** Opens the duration dialog for `side`; a typed duration freezes both sides. */
@@ -222,14 +239,10 @@ export class BreastfeedSheetComponent {
     this.busy.set(true);
     this.formError.set(null);
     const fields = this.fields();
-    let request: Observable<FeedResult>;
-    if (!feed) {
-      request = this.feeds.create(this.babyId!, 'breastfeed', fields, this.newId);
-    } else if (typed || feed.endTime !== null) {
-      request = this.feeds.update(feed.id, fields);
-    } else {
-      request = this.feeds.finish(feed.id, fields, new Date().toISOString());
-    }
+    // Live or not, Save never starts or stops a side.
+    const request = feed
+      ? this.feeds.update(feed.id, fields)
+      : this.feeds.create(this.babyId!, 'breastfeed', fields, this.newId);
     request.subscribe((result) => {
       this.busy.set(false);
       if (result.ok) {
@@ -274,10 +287,15 @@ export class BreastfeedSheetComponent {
   }
 
   /**
-   * Sends a timer tap on the feed `id` and shows the feed the server answers with, or, when the tap is
-   * kept on the device, the feed as it will be once applied.
+   * Sends a timer tap and shows the feed the server answers with, or, when the tap is kept on the
+   * device, the feed as it will be once applied (`offline`, after the shared state applied it).
+   * `done` runs once the tap is accepted or kept.
    */
-  private send(id: string, request: Observable<FeedResult>): void {
+  private send(
+    request: Observable<FeedResult>,
+    offline: () => Feed | undefined,
+    done: () => void = () => undefined,
+  ): void {
     if (this.busy()) {
       return;
     }
@@ -287,13 +305,15 @@ export class BreastfeedSheetComponent {
       this.busy.set(false);
       if (result.ok && result.queued) {
         this.sync.applyWaiting(this.feed() ?? undefined);
-        const local = this.sync.inProgress().find((f) => f.id === id);
+        const local = offline();
         if (local) {
           this.show(local);
         }
+        done();
       } else if (result.ok) {
         this.sync.put(result.feed);
         this.show(result.feed);
+        done();
       } else if (result.errors['form'] === 'breastfeedInProgress') {
         // Started from another device meanwhile: open that one.
         this.loadState(this.babyId!);
@@ -303,7 +323,10 @@ export class BreastfeedSheetComponent {
     });
   }
 
-  /** Follows what other devices did to this sheet's feed. */
+  /**
+   * Follows what other devices did to this sheet's feed. Once it leaves the live list without this
+   * sheet stopping it, it was stopped or deleted elsewhere: the feed is fetched to tell which.
+   */
   private follow(list: readonly Feed[]): void {
     const feed = this.feed();
     if (!feed || this.busy() || this.typed() || this.settled) {
@@ -316,11 +339,30 @@ export class BreastfeedSheetComponent {
         this.show(shared);
       }
     } else if (this.listed && feed.endTime === null) {
-      this.snackBar.open(this.transloco.translate('feed.breastfeed.endedElsewhere'), undefined, {
-        duration: 5000,
+      this.listed = false;
+      this.feeds.get(feed.id).subscribe({
+        next: (current) => (current ? this.ended(current) : this.deletedElsewhere()),
+        // Offline or failing: keep what is shown.
+        error: () => undefined,
       });
-      this.sheetRef.close();
     }
+  }
+
+  /** Stopped on another device: shown as it is now, unless this sheet moved on meanwhile. */
+  private ended(feed: Feed): void {
+    if (!this.typed() && !this.settled && this.feed()?.id === feed.id) {
+      this.show(feed);
+    }
+  }
+
+  private deletedElsewhere(): void {
+    if (this.typed() || this.settled) {
+      return;
+    }
+    this.snackBar.open(this.transloco.translate('feed.breastfeed.endedElsewhere'), undefined, {
+      duration: 5000,
+    });
+    this.sheetRef.close();
   }
 
   private loadState(babyId: string): void {

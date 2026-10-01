@@ -30,8 +30,7 @@ public class FeedRepository(NalaDbContext db) : IFeedRepository
 
     public async Task<IReadOnlyList<FeedEntry>> ListAsync(Guid babyId, FeedCursor? after, int limit, CancellationToken cancellationToken = default)
     {
-        // A breastfeed shows in the history once saved.
-        var feeds = db.Set<Feed>().Where(f => f.BabyId == babyId && !(f.Kind == FeedKind.Breastfeed && f.EndTime == null));
+        var feeds = db.Set<Feed>().Where(f => f.BabyId == babyId);
         if (after is not null)
         {
             // Row comparison, so feeds sharing a start time are paged by id without gaps or repeats.

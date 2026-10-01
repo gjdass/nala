@@ -5,7 +5,7 @@ using Nala.Tests.Support;
 
 namespace Nala.Tests.Core;
 
-/// <summary>The breastfeed timer actions of <see cref="FeedService"/> (spec 05 slice 3).</summary>
+/// <summary>The breastfeed timer actions of <see cref="FeedService"/> (spec 05: live or not).</summary>
 public class BreastfeedServiceTests
 {
     private static readonly DateTimeOffset Now = new(2026, 9, 30, 12, 0, 0, TimeSpan.Zero);
@@ -51,12 +51,12 @@ public class BreastfeedServiceTests
         _ => throw new AssertionException($"Expected a feed, got {result}"),
     };
 
-    /// <summary>A breastfeed finished <paramref name="minutesAgo"/> minutes ago after 5 minutes on <paramref name="side"/>.</summary>
+    /// <summary>A breastfeed stopped <paramref name="minutesAgo"/> minutes ago after 5 minutes on <paramref name="side"/>.</summary>
     private async Task<Guid> FinishedAsync(string side, int minutesAgo)
     {
         var id = Guid.NewGuid();
         await StartAsync(id, side, At(minutesAgo + 5));
-        await _service.FinishAsync(_anna, id, new BreastfeedFinishInput(At(minutesAgo + 5), null, At(minutesAgo)));
+        await _service.StopSideAsync(_anna, id, At(minutesAgo));
         return id;
     }
 
@@ -236,14 +236,11 @@ public class BreastfeedServiceTests
             Assert.That(await StartAsync(bottle, "left", At(1)), Is.InstanceOf<BreastfeedResult.NotFound>());
             Assert.That(await _service.StopSideAsync(_anna, bottle, At(1)), Is.InstanceOf<BreastfeedResult.NotFound>());
             Assert.That(await _service.StopSideAsync(_anna, Guid.NewGuid(), At(1)), Is.InstanceOf<BreastfeedResult.NotFound>());
-            Assert.That(
-                await _service.FinishAsync(_anna, bottle, new BreastfeedFinishInput(At(10), null, At(1))),
-                Is.InstanceOf<BreastfeedResult.NotFound>());
         });
     }
 
     [Test]
-    public async Task Stopping_pauses_the_running_side_and_keeps_the_feed_in_progress()
+    public async Task Stopping_ends_the_running_side_and_the_feed_is_no_longer_live()
     {
         var feedId = Guid.NewGuid();
         await StartAsync(feedId, "left", At(10));
@@ -253,7 +250,7 @@ public class BreastfeedServiceTests
         Assert.Multiple(() =>
         {
             Assert.That(feed.Segments.Single().EndedAt, Is.EqualTo(At(3)));
-            Assert.That(feed.EndTime, Is.Null);
+            Assert.That(feed.EndTime, Is.EqualTo(At(3)));
             Assert.That(Breastfeed.RunningSide(feed), Is.Null);
             Assert.That(feed.UpdatedByUserId, Is.EqualTo(_ben.Id));
         });
@@ -272,59 +269,34 @@ public class BreastfeedServiceTests
     }
 
     [Test]
-    public async Task Finishing_stops_the_running_side_and_sets_the_end_time()
+    public async Task A_stopped_breastfeed_does_not_block_a_new_one()
+    {
+        await FinishedAsync("left", 1);
+
+        var result = await StartAsync(Guid.NewGuid(), "right", At(0));
+
+        Assert.That(result, Is.InstanceOf<BreastfeedResult.Created>());
+    }
+
+    [Test]
+    public async Task Editing_a_live_breastfeed_changes_its_start_time_and_notes_and_keeps_its_side_running()
     {
         var feedId = Guid.NewGuid();
         await StartAsync(feedId, "left", At(10));
         await StartAsync(feedId, "right", At(6));
 
-        var feed = FeedOf(await _service.FinishAsync(_ben, feedId, new BreastfeedFinishInput(At(12), " calm ", At(1))));
+        var result = await _service.UpdateAsync(_ben, feedId, new FeedInput(null, At(12), " calm ", null, null));
 
+        var feed = ((UpdateFeedResult.Updated)result).Entry.Feed;
         Assert.Multiple(() =>
         {
-            Assert.That(feed.EndTime, Is.EqualTo(At(1)));
             Assert.That(feed.StartTime, Is.EqualTo(At(12)));
             Assert.That(feed.Notes, Is.EqualTo("calm"));
-            Assert.That(feed.Segments[^1].EndedAt, Is.EqualTo(At(1)));
-            Assert.That(Breastfeed.SideDuration(feed, BreastSide.Left, Now), Is.EqualTo(TimeSpan.FromMinutes(4)));
-            Assert.That(Breastfeed.SideDuration(feed, BreastSide.Right, Now), Is.EqualTo(TimeSpan.FromMinutes(5)));
+            Assert.That(feed.EndTime, Is.Null);
+            Assert.That(Breastfeed.RunningSide(feed), Is.EqualTo(BreastSide.Right));
+            Assert.That(feed.Segments, Has.Count.EqualTo(2));
             Assert.That(feed.UpdatedByUserId, Is.EqualTo(_ben.Id));
         });
-    }
-
-    [Test]
-    public async Task Finishing_with_both_sides_at_zero_is_refused()
-    {
-        var feedId = Guid.NewGuid();
-        await StartAsync(feedId, "left", At(10));
-        await _service.StopSideAsync(_anna, feedId, At(10));
-
-        var result = await _service.FinishAsync(_anna, feedId, new BreastfeedFinishInput(At(10), null, At(1)));
-
-        Assert.That(((BreastfeedResult.Invalid)result).Errors, Is.EqualTo(new Dictionary<string, string> { ["durations"] = "zero" }));
-        Assert.That(_feeds.Feeds.Single().EndTime, Is.Null);
-    }
-
-    [Test]
-    public async Task Finishing_with_a_start_after_the_end_is_refused()
-    {
-        var feedId = Guid.NewGuid();
-        await StartAsync(feedId, "left", At(10));
-
-        var result = await _service.FinishAsync(_anna, feedId, new BreastfeedFinishInput(At(0), null, At(1)));
-
-        Assert.That(((BreastfeedResult.Invalid)result).Errors, Is.EqualTo(new Dictionary<string, string> { ["startTime"] = "afterEnd" }));
-    }
-
-    [Test]
-    public async Task Finishing_a_saved_breastfeed_again_changes_nothing()
-    {
-        var feedId = await FinishedAsync("left", 30);
-
-        var feed = FeedOf(await _service.FinishAsync(_anna, feedId, new BreastfeedFinishInput(At(50), "later", At(1))));
-
-        Assert.That(feed.EndTime, Is.EqualTo(At(30)));
-        Assert.That(feed.Notes, Is.Null);
     }
 
     [Test]
@@ -474,17 +446,6 @@ public class BreastfeedServiceTests
         var state = ((BreastfeedStateResult.Found)await _service.GetBreastfeedStateAsync(_lea.Id)).State;
 
         Assert.That(state.LastSide, Is.EqualTo(BreastSide.Left));
-    }
-
-    [Test]
-    public async Task The_history_leaves_out_the_breastfeed_in_progress()
-    {
-        var saved = await FinishedAsync("left", 30);
-        await StartAsync(Guid.NewGuid(), "right", At(5));
-
-        var page = (ListFeedsResult.Page)await _service.ListAsync(_lea.Id, null, null);
-
-        Assert.That(page.Entries.Select(e => e.Feed.Id), Is.EqualTo(new[] { saved }));
     }
 
     [Test]
