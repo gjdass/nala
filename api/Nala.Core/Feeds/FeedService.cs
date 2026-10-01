@@ -1,4 +1,5 @@
 using Nala.Core.Babies;
+using Nala.Core.Entries;
 using Nala.Core.Users;
 
 namespace Nala.Core.Feeds;
@@ -81,9 +82,9 @@ public abstract record BreastfeedStateResult
 /// <summary>A baby's feeds (spec 05). Any member can add, edit and delete any feed.</summary>
 public class FeedService(IFeedRepository feeds, IBabyRepository babies, TimeProvider time)
 {
-    public const int DefaultPageSize = 20;
+    public const int DefaultPageSize = EntryPaging.DefaultPageSize;
 
-    public const int MaxPageSize = 50;
+    public const int MaxPageSize = EntryPaging.MaxPageSize;
 
     /// <summary>
     /// Adds a feed under the client's id. Re-sending an id that exists already (e.g. a queued request sent twice)
@@ -179,8 +180,8 @@ public class FeedService(IFeedRepository feeds, IBabyRepository babies, TimeProv
     /// </summary>
     public async Task<ListFeedsResult> ListAsync(Guid babyId, string? cursor, int? limit, CancellationToken cancellationToken = default)
     {
-        FeedCursor? after = null;
-        if (cursor is not null && (after = FeedCursor.TryDecode(cursor)) is null)
+        EntryCursor? after = null;
+        if (cursor is not null && (after = EntryCursor.TryDecode(cursor)) is null)
         {
             return new ListFeedsResult.InvalidCursor();
         }
@@ -190,18 +191,12 @@ public class FeedService(IFeedRepository feeds, IBabyRepository babies, TimeProv
             return new ListFeedsResult.BabyNotFound();
         }
 
-        var size = Math.Clamp(limit ?? DefaultPageSize, 1, MaxPageSize);
+        var size = EntryPaging.Size(limit);
 
         // One more than asked tells whether another page follows.
-        var entries = await feeds.ListAsync(babyId, after, size + 1, cancellationToken);
-        if (entries.Count <= size)
-        {
-            return new ListFeedsResult.Page(entries, null);
-        }
-
-        var page = entries.Take(size).ToList();
-        var last = page[^1].Feed;
-        return new ListFeedsResult.Page(page, new FeedCursor(last.StartTime, last.Id).Encode());
+        var (page, next) = EntryPaging.Split(
+            await feeds.ListAsync(babyId, after, size + 1, cancellationToken), size, e => new EntryCursor(e.Feed.StartTime, e.Feed.Id));
+        return new ListFeedsResult.Page(page, next);
     }
 
     public async Task<BottleDefaultsResult> GetBottleDefaultsAsync(Guid babyId, CancellationToken cancellationToken = default) =>
@@ -354,7 +349,7 @@ public class FeedService(IFeedRepository feeds, IBabyRepository babies, TimeProv
     private static void Apply(Feed feed, FeedInput input, User actor, DateTimeOffset now)
     {
         feed.StartTime = input.StartTime!.Value;
-        feed.Notes = FeedFields.NormalizeText(input.Notes);
+        feed.Notes = EntryFields.NormalizeText(input.Notes);
         if (feed.Kind == FeedKind.Breastfeed && input.Durations is { } durations)
         {
             var left = TimeSpan.FromSeconds(durations.LeftSeconds!.Value);
@@ -371,7 +366,7 @@ public class FeedService(IFeedRepository feeds, IBabyRepository babies, TimeProv
         else if (feed.Kind == FeedKind.Solids)
         {
             feed.MealType = FeedFields.ParseMealType(input.MealType);
-            feed.Food = FeedFields.NormalizeText(input.Food);
+            feed.Food = EntryFields.NormalizeText(input.Food);
             feed.Reaction = FeedFields.ParseReaction(input.Reaction);
         }
 

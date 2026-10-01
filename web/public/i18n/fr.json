@@ -371,7 +371,8 @@
     "audit": {
       "logged": "Enregistré par {{name}}",
       "edited": "Modifié par {{name}}, {{time}}"
-    }
+    },
+    "beforeStart": "Ne peut pas être avant le début."
   },
   "suggestion": {
     "yes": "Oui"
@@ -496,6 +497,29 @@
     "timer": {
       "left": "Tétée · G",
       "right": "Tétée · D"
+    }
+  },
+  "sleep": {
+    "kinds": {
+      "sleep": "Sommeil"
+    },
+    "card": {
+      "awakeFor": "Temps d'éveil",
+      "lastSleep": "dernier sommeil",
+      "empty": {
+        "title": "Aucun sommeil enregistré",
+        "text": "Touchez + pour enregistrer le premier."
+      }
+    },
+    "sheet": {
+      "endTime": "Heure de fin",
+      "duration": "Durée"
+    },
+    "summary": "{{duration}} · jusqu'à {{end}}",
+    "errors": {
+      "unknown": "Une erreur s'est produite. Vérifiez votre connexion et réessayez.",
+      "sleepNotFound": "Ce sommeil n'existe plus.",
+      "babyNotFound": "Ce bébé n'existe plus."
     }
   },
   "offline": {

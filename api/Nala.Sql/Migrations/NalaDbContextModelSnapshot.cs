@@ -336,6 +336,58 @@ namespace Nala.Sql.Migrations
                     b.ToTable("user_section_preferences", (string)null);
                 });
 
+            modelBuilder.Entity("Nala.Core.Sleeps.Sleep", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("BabyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("baby_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset?>("EndTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("end_time");
+
+                    b.Property<Guid>("LoggedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("logged_by_user_id");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("notes");
+
+                    b.Property<DateTimeOffset>("StartTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("start_time");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UpdatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by_user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LoggedByUserId");
+
+                    b.HasIndex("UpdatedByUserId");
+
+                    b.HasIndex("BabyId", "StartTime", "Id")
+                        .IsDescending(false, true, true)
+                        .HasDatabaseName("ix_sleeps_baby_id_start_time_id");
+
+                    b.ToTable("sleeps", (string)null);
+                });
+
             modelBuilder.Entity("Nala.Core.Users.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -502,6 +554,27 @@ namespace Nala.Sql.Migrations
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Nala.Core.Sleeps.Sleep", b =>
+                {
+                    b.HasOne("Nala.Core.Babies.Baby", null)
+                        .WithMany()
+                        .HasForeignKey("BabyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Nala.Core.Users.User", null)
+                        .WithMany()
+                        .HasForeignKey("LoggedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Nala.Core.Users.User", null)
+                        .WithMany()
+                        .HasForeignKey("UpdatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 

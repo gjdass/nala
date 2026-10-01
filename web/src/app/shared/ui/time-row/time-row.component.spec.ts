@@ -120,4 +120,32 @@ describe('TimeRowComponent', () => {
 
     expect(find('[role="alert"]')?.textContent?.trim()).toBe(en.entrySheet.afterEnd);
   });
+
+  it('shows a time before the start', async () => {
+    fixture.componentInstance.control.setErrors({ beforeStart: true });
+    fixture.componentInstance.control.markAsTouched();
+    await fixture.whenStable();
+
+    expect(find('[role="alert"]')?.textContent?.trim()).toBe(en.entrySheet.beforeStart);
+  });
+
+  describe('without a value', () => {
+    beforeEach(async () => {
+      fixture.componentInstance.control.setValue(null);
+      await fixture.whenStable();
+    });
+
+    it('offers to add one', () => {
+      expect(find('nala-form-row')?.textContent).toContain(en.entrySheet.add);
+    });
+
+    it('is set to now once tapped, with the pickers open', async () => {
+      await open();
+
+      expect(fixture.componentInstance.control.value).toEqual(NOW);
+      expect(fixture.componentInstance.control.dirty).toBe(true);
+      expect(find('[data-testid="time-row-time"]')).toBeTruthy();
+      expect(find('nala-form-row')?.textContent).toContain(`Today ${shortTime(NOW)}`);
+    });
+  });
 });

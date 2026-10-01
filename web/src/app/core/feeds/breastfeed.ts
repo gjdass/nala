@@ -1,5 +1,6 @@
 import { QueuedRequest } from '../offline/offline-queue.models';
-import { BreastFeedSegment, BreastSide, Feed, UserName } from './feed.models';
+import { UserName } from '../entries/entry.models';
+import { BreastFeedSegment, BreastSide, Feed } from './feed.models';
 
 /**
  * Seconds spent on `side` (spec 05): the sum of its segments, from their stored timestamps, the

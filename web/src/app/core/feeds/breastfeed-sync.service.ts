@@ -4,7 +4,8 @@ import { Subscription } from 'rxjs';
 import { AuthService } from '../auth/auth.service';
 import { OfflineQueueService } from '../offline/offline-queue.service';
 import { applyQueued } from './breastfeed';
-import { Feed, UserName } from './feed.models';
+import { UserName } from '../entries/entry.models';
+import { Feed } from './feed.models';
 import { FeedService } from './feed.service';
 
 /** How often other devices' changes are fetched (spec 05: within a few seconds). */

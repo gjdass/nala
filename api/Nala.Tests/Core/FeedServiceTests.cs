@@ -1,4 +1,5 @@
 using Nala.Core.Babies;
+using Nala.Core.Entries;
 using Nala.Core.Feeds;
 using Nala.Core.Users;
 using Nala.Tests.Support;
@@ -281,9 +282,9 @@ public class FeedServiceTests
     [Test]
     public void A_cursor_round_trips()
     {
-        var cursor = new FeedCursor(Now, Guid.NewGuid());
+        var cursor = new EntryCursor(Now, Guid.NewGuid());
 
-        Assert.That(FeedCursor.TryDecode(cursor.Encode()), Is.EqualTo(cursor));
+        Assert.That(EntryCursor.TryDecode(cursor.Encode()), Is.EqualTo(cursor));
     }
 
     [Test]

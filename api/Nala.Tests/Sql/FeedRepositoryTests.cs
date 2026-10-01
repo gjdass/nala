@@ -1,11 +1,12 @@
 using Microsoft.EntityFrameworkCore;
 using Nala.Core.Babies;
+using Nala.Core.Entries;
 using Nala.Core.Feeds;
 using Nala.Core.Users;
-using Nala.Sql;
 using Nala.Sql.Babies;
 using Nala.Sql.Feeds;
 using Nala.Sql.Users;
+using Nala.Sql;
 using Nala.Tests.Support;
 
 namespace Nala.Tests.Sql;
@@ -99,7 +100,7 @@ public class FeedRepositoryTests
         return feed;
     }
 
-    private async Task<IReadOnlyList<FeedEntry>> ListAsync(Baby? baby = null, FeedCursor? after = null, int limit = 50)
+    private async Task<IReadOnlyList<FeedEntry>> ListAsync(Baby? baby = null, EntryCursor? after = null, int limit = 50)
     {
         await using var db = _db();
         return await new FeedRepository(db).ListAsync((baby ?? _lea).Id, after, limit);
@@ -204,8 +205,8 @@ public class FeedRepositoryTests
         var all = await ListAsync();
 
         var first = await ListAsync(limit: 2);
-        var second = await ListAsync(after: new FeedCursor(first[^1].Feed.StartTime, first[^1].Feed.Id), limit: 2);
-        var rest = await ListAsync(after: new FeedCursor(second[^1].Feed.StartTime, second[^1].Feed.Id));
+        var second = await ListAsync(after: new EntryCursor(first[^1].Feed.StartTime, first[^1].Feed.Id), limit: 2);
+        var rest = await ListAsync(after: new EntryCursor(second[^1].Feed.StartTime, second[^1].Feed.Id));
 
         Assert.That(
             first.Concat(second).Concat(rest).Select(e => e.Feed.Id),

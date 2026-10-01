@@ -1,6 +1,7 @@
 import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, catchError, map, of, throwError } from 'rxjs';
+import { toDeleteResult } from '../entries/entry-result';
 import { toFieldErrors } from '../http/field-errors';
 import { SendOutcome } from '../offline/offline-queue.models';
 import { OfflineQueueService } from '../offline/offline-queue.service';
@@ -60,14 +61,7 @@ export class FeedService {
   }
 
   delete(id: string): Observable<FeedDeleteResult> {
-    return this.queue.send<void>('DELETE', `/api/feeds/${id}`, null).pipe(
-      map((outcome): FeedDeleteResult => {
-        if ('error' in outcome) {
-          return { ok: false, errors: toFieldErrors(outcome.error) };
-        }
-        return 'queued' in outcome ? { ok: true, queued: true } : { ok: true };
-      }),
-    );
+    return this.queue.send<void>('DELETE', `/api/feeds/${id}`, null).pipe(map(toDeleteResult));
   }
 
   /**

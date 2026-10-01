@@ -1,3 +1,4 @@
+using Nala.Core.Entries;
 using Nala.Core.Feeds;
 
 namespace Nala.Tests.Support;
@@ -29,7 +30,7 @@ public class FakeFeedRepository : IFeedRepository
         return Task.CompletedTask;
     }
 
-    public Task<IReadOnlyList<FeedEntry>> ListAsync(Guid babyId, FeedCursor? after, int limit, CancellationToken cancellationToken = default) =>
+    public Task<IReadOnlyList<FeedEntry>> ListAsync(Guid babyId, EntryCursor? after, int limit, CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<FeedEntry>>(Feeds
             .Where(f => f.BabyId == babyId)
             .Where(f => after is null || f.StartTime < after.StartTime || (f.StartTime == after.StartTime && f.Id.CompareTo(after.Id) < 0))

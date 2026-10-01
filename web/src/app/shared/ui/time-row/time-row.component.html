@@ -1,8 +1,8 @@
 <nala-form-row
   [label]="label()"
-  [value]="iso() ? (iso()! | nalaEntryTime: true) : ''"
+  [value]="iso() ? (iso()! | nalaEntryTime: true) : ('entrySheet.add' | transloco)"
   [error]="errorKey() ? (errorKey()! | transloco) : null"
-  (activate)="open.set(!open())"
+  (activate)="toggle()"
 >
   @if (open()) {
     <div rowEditor class="pickers">

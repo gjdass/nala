@@ -31,7 +31,7 @@ Status: `idea` → `specified` → `in progress` → `done`. A feature moves to 
 | 03 | Family & baby profile | [03-family-baby.md](03-family-baby.md) | done | |
 | 04 | App layout & section pattern (home cards, entry sheet, mini-bar, bottom navigation, timers) | [04-app-layout.md](04-app-layout.md) | done | Shared by every section, including the timer rules (live or not, Save never stops a timer) for every section with timers. |
 | 05 | Feed | [05-feed.md](05-feed.md) | done | **Hard requirement:** breast feeding has two independent per-side timers (left/right), side by side in the Breastfeed sheet. A single timer with a "side" field is not acceptable. |
-| 06 | Sleep | [06-sleep.md](06-sleep.md) | specified | One kind, single Start/Stop timer, start/end times, notes. |
+| 06 | Sleep | [06-sleep.md](06-sleep.md) | in progress | One kind, single Start/Stop timer, start/end times, notes. |
 | 07 | Diaper | — | idea | From the reference screenshots: time, wet / dirty / dry selector, diaper-rash toggle, notes. |
 | 08 | Medication | — | idea | |
 | 09 | Growth | — | idea | Birth weight/length/head circumference are stored on the baby profile (03) and must appear as the starting point of the growth history. **Hard requirement:** simple measurement entries over time — weight, height, head circumference, milestones. Raw logging only, no percentile/trend charts. |

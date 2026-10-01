@@ -2,16 +2,16 @@ using System.Buffers.Text;
 using System.Globalization;
 using System.Text;
 
-namespace Nala.Core.Feeds;
+namespace Nala.Core.Entries;
 
-/// <summary>Where a page of a baby's feeds ends: the start time and id of its last feed. Opaque to clients.</summary>
-public sealed record FeedCursor(DateTimeOffset StartTime, Guid Id)
+/// <summary>Where a page of a baby's entries ends: the start time and id of its last entry. Opaque to clients.</summary>
+public sealed record EntryCursor(DateTimeOffset StartTime, Guid Id)
 {
     public string Encode() =>
         Base64Url.EncodeToString(Encoding.UTF8.GetBytes($"{StartTime.UtcTicks}.{Id:N}"));
 
     /// <summary>Null when <paramref name="value"/> isn't a cursor this API issued.</summary>
-    public static FeedCursor? TryDecode(string? value)
+    public static EntryCursor? TryDecode(string? value)
     {
         if (string.IsNullOrEmpty(value) || !Base64Url.IsValid(value))
         {
@@ -23,7 +23,7 @@ public sealed record FeedCursor(DateTimeOffset StartTime, Guid Id)
             && long.TryParse(parts[0], NumberStyles.None, CultureInfo.InvariantCulture, out var ticks)
             && ticks <= DateTimeOffset.MaxValue.UtcTicks
             && Guid.TryParseExact(parts[1], "N", out var id)
-                ? new FeedCursor(new DateTimeOffset(ticks, TimeSpan.Zero), id)
+                ? new EntryCursor(new DateTimeOffset(ticks, TimeSpan.Zero), id)
                 : null;
     }
 }

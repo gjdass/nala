@@ -1,0 +1,12 @@
+@let entry = sleep();
+<nala-entry-list-item
+  icon="bedtime"
+  [time]="entry.startTime"
+  [summary]="
+    entry.endTime
+      ? ('sleep.summary'
+        | transloco: { duration: seconds()! | nalaDuration, end: entry.endTime | nalaEntryTime })
+      : ''
+  "
+  (open)="open.emit()"
+/>

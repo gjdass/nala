@@ -1,0 +1,26 @@
+<nala-entry-sheet [form]="form" [saving]="saving()" (save)="save()" (delete)="delete()">
+  <nala-time-row [label]="'entrySheet.startTime' | transloco" [control]="form.controls.startTime" />
+  <nala-time-row [label]="'sleep.sheet.endTime' | transloco" [control]="form.controls.endTime" />
+
+  <nala-form-row [label]="'sleep.sheet.duration' | transloco" [interactive]="false">
+    <span rowTrailing data-testid="sleep-duration">{{
+      seconds() === null ? '' : (seconds()! | nalaDuration)
+    }}</span>
+  </nala-form-row>
+
+  <nala-notes-row [control]="form.controls.notes" />
+
+  @if (formError(); as code) {
+    <p class="form-error" role="alert" data-testid="form-error">
+      {{ 'sleep.errors.' + code | transloco }}
+    </p>
+  }
+
+  @if (sleep; as sleep) {
+    <nala-entry-audit
+      [loggedBy]="sleep.loggedBy.displayName"
+      [editedBy]="edited ? sleep.updatedBy.displayName : null"
+      [editedAt]="edited ? sleep.updatedAt : null"
+    />
+  }
+</nala-entry-sheet>

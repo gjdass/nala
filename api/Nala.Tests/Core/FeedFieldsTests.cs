@@ -1,3 +1,4 @@
+using Nala.Core.Entries;
 using Nala.Core.Feeds;
 
 namespace Nala.Tests.Core;
@@ -72,8 +73,8 @@ public class FeedFieldsTests
     [Test]
     public void Blank_notes_are_stored_as_none()
     {
-        Assert.That(FeedFields.NormalizeText("  "), Is.Null);
-        Assert.That(FeedFields.NormalizeText(" hungry "), Is.EqualTo("hungry"));
+        Assert.That(EntryFields.NormalizeText("  "), Is.Null);
+        Assert.That(EntryFields.NormalizeText(" hungry "), Is.EqualTo("hungry"));
     }
 
     [Test]

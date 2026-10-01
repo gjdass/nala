@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Nala.Core.Entries;
 using Nala.Core.Feeds;
 using Nala.Core.Users;
 
@@ -28,7 +29,7 @@ public class FeedRepository(NalaDbContext db) : IFeedRepository
         await db.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task<IReadOnlyList<FeedEntry>> ListAsync(Guid babyId, FeedCursor? after, int limit, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<FeedEntry>> ListAsync(Guid babyId, EntryCursor? after, int limit, CancellationToken cancellationToken = default)
     {
         var feeds = db.Set<Feed>().Where(f => f.BabyId == babyId);
         if (after is not null)

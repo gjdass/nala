@@ -371,7 +371,8 @@
     "audit": {
       "logged": "Logged by {{name}}",
       "edited": "Edited by {{name}}, {{time}}"
-    }
+    },
+    "beforeStart": "Can't be before the start."
   },
   "suggestion": {
     "yes": "Yes"
@@ -496,6 +497,29 @@
     "timer": {
       "left": "Feeding · L",
       "right": "Feeding · R"
+    }
+  },
+  "sleep": {
+    "kinds": {
+      "sleep": "Sleep"
+    },
+    "card": {
+      "awakeFor": "Awake for",
+      "lastSleep": "last sleep",
+      "empty": {
+        "title": "No sleep logged yet",
+        "text": "Tap + to log the first one."
+      }
+    },
+    "sheet": {
+      "endTime": "End time",
+      "duration": "Duration"
+    },
+    "summary": "{{duration}} · until {{end}}",
+    "errors": {
+      "unknown": "Something went wrong. Check your connection and try again.",
+      "sleepNotFound": "This sleep no longer exists.",
+      "babyNotFound": "This baby no longer exists."
     }
   },
   "offline": {

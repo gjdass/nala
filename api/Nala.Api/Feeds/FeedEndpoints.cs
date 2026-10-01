@@ -1,4 +1,5 @@
 using Nala.Api.Auth;
+using Nala.Api.Entries;
 using Nala.Core.Feeds;
 
 namespace Nala.Api.Feeds;
@@ -51,8 +52,6 @@ public sealed record DurationsRequest(int? LeftSeconds, int? RightSeconds, strin
 public sealed record StartSideRequest(Guid? BabyId, Guid? SegmentId, string? Side, DateTimeOffset? At, bool? Queued = null);
 
 public sealed record StopSideRequest(DateTimeOffset? At);
-
-public sealed record UserNameResponse(Guid Id, string DisplayName);
 
 /// <summary>One timed stretch of a breastfeed; <c>EndedAt</c> is null while that side runs.</summary>
 public sealed record SegmentResponse(Guid Id, string Side, DateTimeOffset StartedAt, DateTimeOffset? EndedAt);
@@ -253,8 +252,8 @@ public static class FeedEndpoints
             feed.Food,
             feed.Reaction is { } reaction ? FeedFields.Format(reaction) : null,
             feed.Segments.Select(s => new SegmentResponse(s.Id, FeedFields.Format(s.Side), s.StartedAt, s.EndedAt)),
-            new UserNameResponse(entry.LoggedBy.Id, entry.LoggedBy.DisplayName),
-            new UserNameResponse(entry.UpdatedBy.Id, entry.UpdatedBy.DisplayName),
+            UserNameResponse.From(entry.LoggedBy),
+            UserNameResponse.From(entry.UpdatedBy),
             feed.CreatedAt,
             feed.UpdatedAt);
     }

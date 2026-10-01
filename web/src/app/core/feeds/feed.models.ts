@@ -1,4 +1,6 @@
 import { FieldErrors } from '../auth/auth.models';
+import { EntryDeleteResult } from '../entries/entry-result';
+import { UserName } from '../entries/entry.models';
 
 export type FeedKind = 'bottle' | 'breastfeed' | 'solids';
 
@@ -30,12 +32,6 @@ export interface BreastFeedSegment {
   /** ISO date-time (UTC). */
   startedAt: string;
   endedAt: string | null;
-}
-
-/** A user as shown on an entry; a deleted account keeps its display name. */
-export interface UserName {
-  id: string;
-  displayName: string;
 }
 
 /** A feed as the API returns it (spec 05); the fields of the other kinds are null. */
@@ -126,4 +122,4 @@ export type FeedResult =
   | { ok: true; queued: true }
   | { ok: false; errors: FieldErrors };
 
-export type FeedDeleteResult = { ok: true; queued?: true } | { ok: false; errors: FieldErrors };
+export type FeedDeleteResult = EntryDeleteResult;

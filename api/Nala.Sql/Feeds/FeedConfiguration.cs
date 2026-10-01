@@ -1,6 +1,7 @@
-using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Microsoft.EntityFrameworkCore;
 using Nala.Core.Babies;
+using Nala.Core.Entries;
 using Nala.Core.Feeds;
 using Nala.Core.Users;
 
@@ -18,7 +19,7 @@ public class FeedConfiguration : IEntityTypeConfiguration<Feed>
             .HasConversion(k => FeedFields.Format(k), k => FeedFields.ParseKind(k));
         feed.Property(f => f.StartTime).HasColumnName("start_time");
         feed.Property(f => f.EndTime).HasColumnName("end_time");
-        feed.Property(f => f.Notes).HasColumnName("notes").HasMaxLength(FeedFields.NotesMaxLength);
+        feed.Property(f => f.Notes).HasColumnName("notes").HasMaxLength(EntryFields.NotesMaxLength);
         feed.Property(f => f.MilkType).HasColumnName("milk_type").HasMaxLength(16)
             .HasConversion(m => FeedFields.Format(m!.Value), m => FeedFields.ParseMilkType(m));
         feed.Property(f => f.AmountMl).HasColumnName("amount_ml");

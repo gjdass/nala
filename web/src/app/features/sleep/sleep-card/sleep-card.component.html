@@ -1,0 +1,30 @@
+<nala-section-card key="sleep" [entries]="entries()" (changed)="reload()">
+  @if (last()) {
+    <div sectionHighlight class="highlight" data-testid="sleep-highlight">
+      <mat-icon class="icon" aria-hidden="true">wb_sunny</mat-icon>
+      <div class="awake">
+        <span class="label" data-testid="sleep-awake-label">{{
+          'sleep.card.awakeFor' | transloco
+        }}</span>
+        <span class="since" data-testid="sleep-awake-for">{{ awakeSeconds() | nalaDuration }}</span>
+      </div>
+      <div class="last">
+        <span class="last-value" data-testid="sleep-last-duration">{{
+          lastSeconds() | nalaDuration
+        }}</span>
+        <span class="label" data-testid="sleep-last-duration-label">{{
+          'sleep.card.lastSleep' | transloco
+        }}</span>
+      </div>
+    </div>
+  }
+  <nala-empty-state
+    sectionEmpty
+    icon="bedtime"
+    [title]="'sleep.card.empty.title' | transloco"
+    [text]="'sleep.card.empty.text' | transloco"
+  />
+  <ng-template nalaSectionEntry let-sleep>
+    <nala-sleep-entry [sleep]="sleep" (open)="edit(sleep)" />
+  </ng-template>
+</nala-section-card>

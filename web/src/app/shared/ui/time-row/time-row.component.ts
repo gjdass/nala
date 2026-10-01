@@ -24,12 +24,15 @@ const ERRORS: Record<string, string> = {
   required: 'entrySheet.required',
   inFuture: 'entrySheet.inFuture',
   afterEnd: 'entrySheet.afterEnd',
+  beforeStart: 'entrySheet.beforeStart',
 };
 
 /**
  * A date-and-time row of an entry sheet (spec 04, e.g. Start time): the value as "Today 2:37 PM",
  * "Yesterday …" or a date, and, once tapped, a datepicker and a timepicker that edit the date and the
- * time of `control` separately. Shows the control's `required` / `inFuture` errors once touched.
+ * time of `control` separately. Without a value it offers "Add", and tapping it sets the value to now
+ * (e.g. End time). Shows the control's errors once touched (`required`, `inFuture`, `afterEnd`,
+ * `beforeStart`).
  */
 @Component({
   selector: 'nala-time-row',
@@ -111,6 +114,14 @@ export class TimeRowComponent {
         );
       }
     });
+  }
+
+  /** Opens or closes the pickers; a row without a value starts from now. */
+  protected toggle(): void {
+    if (this.control().value === null) {
+      this.change(new Date());
+    }
+    this.open.set(!this.open());
   }
 
   private change(value: Date): void {

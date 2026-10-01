@@ -1,3 +1,5 @@
+using Nala.Core.Entries;
+
 namespace Nala.Core.Feeds;
 
 /// <summary>
@@ -21,8 +23,6 @@ public sealed record BreastfeedDurations(int? LeftSeconds, int? RightSeconds, st
 /// <summary>Validation of a feed's fields, for adding and editing (spec 05).</summary>
 public static class FeedFields
 {
-    public const int NotesMaxLength = 1000;
-
     public const int FoodMaxLength = 500;
 
     public const int AmountMinMl = 1;
@@ -31,9 +31,6 @@ public static class FeedFields
 
     /// <summary>The longest duration typed by hand for one side: 4 h.</summary>
     public const int DurationMaxSeconds = 4 * 60 * 60;
-
-    /// <summary>How far ahead of the server clock a time may be, for devices whose clock runs a little fast.</summary>
-    public static readonly TimeSpan FutureTolerance = TimeSpan.FromMinutes(1);
 
     private static readonly Dictionary<string, FeedKind> Kinds = new()
     {
@@ -89,12 +86,12 @@ public static class FeedFields
         {
             errors["startTime"] = "required";
         }
-        else if (startTime > now + FutureTolerance)
+        else if (startTime > now + EntryFields.FutureTolerance)
         {
             errors["startTime"] = "inFuture";
         }
 
-        if (NormalizeText(input.Notes)?.Length > NotesMaxLength)
+        if (EntryFields.NormalizeText(input.Notes)?.Length > EntryFields.NotesMaxLength)
         {
             errors["notes"] = "tooLong";
         }
@@ -114,10 +111,6 @@ public static class FeedFields
 
         return errors;
     }
-
-    /// <summary>Trimmed; blank text (notes, food) is none.</summary>
-    public static string? NormalizeText(string? input) =>
-        string.IsNullOrWhiteSpace(input) ? null : input.Trim();
 
     /// <summary>Call only on validated input.</summary>
     public static FeedKind ParseKind(string input) => Kinds[input];
@@ -146,7 +139,7 @@ public static class FeedFields
         {
             errors["at"] = "required";
         }
-        else if (time > now + FutureTolerance)
+        else if (time > now + EntryFields.FutureTolerance)
         {
             errors["at"] = "inFuture";
         }
@@ -215,7 +208,7 @@ public static class FeedFields
         {
             errors["durations"] = "zero";
         }
-        else if (startTime?.AddSeconds(total) > now + FutureTolerance)
+        else if (startTime?.AddSeconds(total) > now + EntryFields.FutureTolerance)
         {
             errors["durations"] = "inFuture";
         }
@@ -240,7 +233,7 @@ public static class FeedFields
             errors["mealType"] = "invalid";
         }
 
-        var food = NormalizeText(input.Food);
+        var food = EntryFields.NormalizeText(input.Food);
         if (food is null)
         {
             errors["food"] = "required";

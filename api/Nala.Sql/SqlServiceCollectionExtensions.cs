@@ -5,12 +5,14 @@ using Nala.Core.Babies;
 using Nala.Core.Feeds;
 using Nala.Core.Invitations;
 using Nala.Core.Sections;
+using Nala.Core.Sleeps;
 using Nala.Core.Users;
 using Nala.Sql.Auth;
 using Nala.Sql.Babies;
 using Nala.Sql.Feeds;
 using Nala.Sql.Invitations;
 using Nala.Sql.Sections;
+using Nala.Sql.Sleeps;
 using Nala.Sql.Users;
 
 namespace Nala.Sql;
@@ -27,5 +29,6 @@ public static class SqlServiceCollectionExtensions
             .AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>()
             .AddScoped<IBabyRepository, BabyRepository>()
             .AddScoped<IFeedRepository, FeedRepository>()
+            .AddScoped<ISleepRepository, SleepRepository>()
             .AddScoped<ISectionPreferenceRepository, SectionPreferenceRepository>();
 }

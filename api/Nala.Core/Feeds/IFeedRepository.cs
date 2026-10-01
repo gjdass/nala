@@ -1,3 +1,5 @@
+using Nala.Core.Entries;
+
 namespace Nala.Core.Feeds;
 
 public interface IFeedRepository
@@ -15,7 +17,7 @@ public interface IFeedRepository
     Task DeleteAsync(Feed feed, CancellationToken cancellationToken = default);
 
     /// <summary>The baby's feeds, live ones included, newest first (start time, then id, both descending), after <paramref name="after"/> when given.</summary>
-    Task<IReadOnlyList<FeedEntry>> ListAsync(Guid babyId, FeedCursor? after, int limit, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<FeedEntry>> ListAsync(Guid babyId, EntryCursor? after, int limit, CancellationToken cancellationToken = default);
 
     Task<BottleDefaults> GetBottleDefaultsAsync(Guid babyId, CancellationToken cancellationToken = default);
 
