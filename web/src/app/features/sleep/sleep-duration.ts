@@ -1,8 +1,13 @@
 import { Sleep } from '../../core/sleeps/sleep.models';
 
-/** A sleep's duration in whole seconds, from its start to its end; null while it is live. */
-export function sleepSeconds(sleep: Pick<Sleep, 'startTime' | 'endTime'>): number | null {
-  return sleep.endTime === null
-    ? null
-    : Math.floor((Date.parse(sleep.endTime) - Date.parse(sleep.startTime)) / 1000);
+/**
+ * A sleep's duration in whole seconds, from its start to its end, or to `now` (epoch ms) while it is
+ * live; null for a live sleep without `now`.
+ */
+export function sleepSeconds(
+  sleep: Pick<Sleep, 'startTime' | 'endTime'>,
+  now?: number,
+): number | null {
+  const end = sleep.endTime === null ? now : Date.parse(sleep.endTime);
+  return end === undefined ? null : Math.floor((end - Date.parse(sleep.startTime)) / 1000);
 }

@@ -10,10 +10,12 @@ import {
   linkedSignal,
   viewChild,
 } from '@angular/core';
+import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { TranslocoPipe } from '@jsverse/transloco';
+import { startWith, switchMap } from 'rxjs';
 import { FormRowComponent } from '../form-row/form-row.component';
 
 export const NOTES_MAX_LENGTH = 1000;
@@ -27,7 +29,7 @@ export const notesControl = (value = ''): FormControl<string> =>
 
 /**
  * The Notes row of every entry sheet: "Notes … Add" until tapped, then a multi-line text field;
- * open from the start when there are notes.
+ * open as soon as there are notes (from the start, or once an entry is loaded into the sheet).
  */
 @Component({
   selector: 'nala-notes-row',
@@ -49,7 +51,17 @@ export class NotesRowComponent {
 
   readonly control = input.required<FormControl<string>>();
 
-  protected readonly open = linkedSignal(() => this.control().value !== '');
+  private readonly notes = toSignal(
+    toObservable(this.control).pipe(
+      switchMap((control) => control.valueChanges.pipe(startWith(control.value))),
+    ),
+    { initialValue: '' },
+  );
+  /** Never closes by itself: clearing the text keeps the field open. */
+  protected readonly open = linkedSignal<string, boolean>({
+    source: this.notes,
+    computation: (notes, previous) => (previous?.value ?? false) || notes !== '',
+  });
 
   protected reveal(): void {
     this.open.set(true);

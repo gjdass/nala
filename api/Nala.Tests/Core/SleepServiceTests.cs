@@ -205,4 +205,249 @@ public class SleepServiceTests
     [Test]
     public async Task Listing_an_unknown_baby_is_refused() =>
         Assert.That(await _service.ListAsync(Guid.NewGuid(), null, null), Is.TypeOf<ListSleepsResult.BabyNotFound>());
+
+    private async Task<SleepTimerResult> StartAsync(Guid id, DateTimeOffset? at = null, Baby? baby = null, bool queued = false, User? actor = null) =>
+        await _service.StartAsync(actor ?? _anna, id, (baby ?? _lea).Id, at ?? Now, queued);
+
+    private async Task<Sleep> StartLiveAsync(int minutesAgo = 30)
+    {
+        var id = Guid.NewGuid();
+        await StartAsync(id, Now.AddMinutes(-minutesAgo));
+        return _sleeps.Sleeps.Single(s => s.Id == id);
+    }
+
+    [Test]
+    public async Task Start_on_an_unknown_id_creates_a_live_sleep_starting_at_the_tap()
+    {
+        var id = Guid.NewGuid();
+
+        var result = await StartAsync(id, Now.AddMinutes(-2));
+
+        var sleep = _sleeps.Sleeps.Single();
+        Assert.Multiple(() =>
+        {
+            Assert.That(result, Is.TypeOf<SleepTimerResult.Created>());
+            Assert.That(((SleepTimerResult.Created)result).Entry.Sleep, Is.SameAs(sleep));
+            Assert.That(sleep.Id, Is.EqualTo(id));
+            Assert.That(sleep.BabyId, Is.EqualTo(_lea.Id));
+            Assert.That(sleep.StartTime, Is.EqualTo(Now.AddMinutes(-2)));
+            Assert.That(sleep.EndTime, Is.Null);
+            Assert.That(sleep.LoggedByUserId, Is.EqualTo(_anna.Id));
+            Assert.That(sleep.UpdatedByUserId, Is.EqualTo(_anna.Id));
+            Assert.That(sleep.CreatedAt, Is.EqualTo(Now));
+        });
+    }
+
+    [Test]
+    public async Task Start_for_an_unknown_baby_is_refused() =>
+        Assert.That(
+            await _service.StartAsync(_anna, Guid.NewGuid(), Guid.NewGuid(), Now),
+            Is.TypeOf<SleepTimerResult.BabyNotFound>());
+
+    [Test]
+    public async Task Start_needs_a_time_not_in_the_future()
+    {
+        var missing = await _service.StartAsync(_anna, Guid.NewGuid(), _lea.Id, null);
+        var future = await StartAsync(Guid.NewGuid(), Now.AddMinutes(2));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(((SleepTimerResult.Invalid)missing).Errors, Is.EqualTo(new Dictionary<string, string> { ["at"] = "required" }));
+            Assert.That(((SleepTimerResult.Invalid)future).Errors, Is.EqualTo(new Dictionary<string, string> { ["at"] = "inFuture" }));
+            Assert.That(_sleeps.Sleeps, Is.Empty);
+        });
+    }
+
+    [Test]
+    public async Task Start_on_a_stopped_sleep_makes_it_live_again_from_its_start_time()
+    {
+        var stopped = (await CreateAsync(_anna, Sleep(startMinutesAgo: 90, endMinutesAgo: 30))).Sleep;
+        _time.Now = Now.AddMinutes(5);
+
+        var result = await StartAsync(stopped.Id, Now.AddMinutes(5), actor: _ben);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result, Is.TypeOf<SleepTimerResult.Updated>());
+            Assert.That(stopped.EndTime, Is.Null);
+            Assert.That(stopped.StartTime, Is.EqualTo(Now.AddMinutes(-90)));
+            Assert.That(stopped.UpdatedByUserId, Is.EqualTo(_ben.Id));
+            Assert.That(stopped.UpdatedAt, Is.EqualTo(Now.AddMinutes(5)));
+        });
+    }
+
+    [Test]
+    public async Task Start_on_a_stopped_sleep_before_its_start_time_is_refused()
+    {
+        var stopped = (await CreateAsync(_anna, Sleep(startMinutesAgo: 90, endMinutesAgo: 30))).Sleep;
+
+        var result = await StartAsync(stopped.Id, Now.AddMinutes(-100));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(((SleepTimerResult.Invalid)result).Errors, Is.EqualTo(new Dictionary<string, string> { ["at"] = "invalid" }));
+            Assert.That(stopped.EndTime, Is.EqualTo(Now.AddMinutes(-30)));
+        });
+    }
+
+    [Test]
+    public async Task Start_on_a_live_sleep_changes_nothing()
+    {
+        var live = await StartLiveAsync();
+        _time.Now = Now.AddMinutes(1);
+
+        var result = await StartAsync(live.Id, Now.AddMinutes(1), actor: _ben);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result, Is.TypeOf<SleepTimerResult.Updated>());
+            Assert.That(live.StartTime, Is.EqualTo(Now.AddMinutes(-30)));
+            Assert.That(live.UpdatedByUserId, Is.EqualTo(_anna.Id));
+            Assert.That(live.UpdatedAt, Is.EqualTo(Now));
+        });
+    }
+
+    [Test]
+    public async Task Start_while_another_sleep_of_the_baby_is_live_is_refused()
+    {
+        await StartLiveAsync();
+        var stopped = (await CreateAsync(_anna, Sleep())).Sleep;
+
+        var created = await StartAsync(Guid.NewGuid());
+        var restarted = await StartAsync(stopped.Id);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(created, Is.TypeOf<SleepTimerResult.InProgressExists>());
+            Assert.That(restarted, Is.TypeOf<SleepTimerResult.InProgressExists>());
+            Assert.That(stopped.EndTime, Is.Not.Null);
+            Assert.That(_sleeps.Sleeps.Count(s => s.EndTime is null), Is.EqualTo(1));
+        });
+    }
+
+    [Test]
+    public async Task Another_babys_live_sleep_does_not_stop_a_start()
+    {
+        var tom = new Baby { Id = Guid.NewGuid(), Name = "Tom", BirthDate = new DateOnly(2026, 9, 1), CreatedAt = Now };
+        _babies.Babies.Add(tom);
+        await StartAsync(Guid.NewGuid(), baby: tom);
+
+        Assert.That(await StartAsync(Guid.NewGuid()), Is.TypeOf<SleepTimerResult.Created>());
+    }
+
+    [Test]
+    public async Task A_start_queued_offline_is_kept_while_another_sleep_is_live()
+    {
+        await StartLiveAsync();
+
+        var result = await StartAsync(Guid.NewGuid(), Now.AddMinutes(-10), queued: true);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result, Is.TypeOf<SleepTimerResult.Created>());
+            Assert.That(_sleeps.Sleeps.Count(s => s.EndTime is null), Is.EqualTo(2));
+        });
+    }
+
+    [Test]
+    public async Task Stop_ends_the_live_sleep_at_the_tap()
+    {
+        var live = await StartLiveAsync();
+        _time.Now = Now.AddMinutes(1);
+
+        var result = await _service.StopAsync(_ben, live.Id, Now);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result, Is.TypeOf<SleepTimerResult.Updated>());
+            Assert.That(live.EndTime, Is.EqualTo(Now));
+            Assert.That(live.UpdatedByUserId, Is.EqualTo(_ben.Id));
+            Assert.That(live.UpdatedAt, Is.EqualTo(Now.AddMinutes(1)));
+        });
+    }
+
+    [Test]
+    public async Task Stop_on_a_stopped_sleep_changes_nothing()
+    {
+        var stopped = (await CreateAsync(_anna, Sleep())).Sleep;
+
+        var result = await _service.StopAsync(_ben, stopped.Id, Now);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result, Is.TypeOf<SleepTimerResult.Updated>());
+            Assert.That(stopped.EndTime, Is.EqualTo(Now.AddMinutes(-60)));
+            Assert.That(stopped.UpdatedByUserId, Is.EqualTo(_anna.Id));
+        });
+    }
+
+    [Test]
+    public async Task Stop_before_the_start_time_is_refused()
+    {
+        var live = await StartLiveAsync(minutesAgo: 30);
+
+        var result = await _service.StopAsync(_anna, live.Id, Now.AddMinutes(-40));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(((SleepTimerResult.Invalid)result).Errors, Is.EqualTo(new Dictionary<string, string> { ["at"] = "invalid" }));
+            Assert.That(live.EndTime, Is.Null);
+        });
+    }
+
+    [Test]
+    public async Task Stop_needs_its_time() =>
+        Assert.That(
+            ((SleepTimerResult.Invalid)await _service.StopAsync(_anna, Guid.NewGuid(), null)).Errors,
+            Is.EqualTo(new Dictionary<string, string> { ["at"] = "required" }));
+
+    [Test]
+    public async Task Stop_on_an_unknown_sleep_is_not_found() =>
+        Assert.That(await _service.StopAsync(_anna, Guid.NewGuid(), Now), Is.TypeOf<SleepTimerResult.NotFound>());
+
+    [Test]
+    public async Task Updating_a_live_sleep_keeps_it_live()
+    {
+        var live = await StartLiveAsync(minutesAgo: 30);
+
+        var result = await _service.UpdateAsync(_ben, live.Id, new SleepInput(Now.AddMinutes(-45), null, "cot"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result, Is.TypeOf<UpdateSleepResult.Updated>());
+            Assert.That(live.StartTime, Is.EqualTo(Now.AddMinutes(-45)));
+            Assert.That(live.EndTime, Is.Null);
+            Assert.That(live.Notes, Is.EqualTo("cot"));
+            Assert.That(live.UpdatedByUserId, Is.EqualTo(_ben.Id));
+        });
+    }
+
+    [Test]
+    public async Task Updating_a_live_sleep_with_an_end_time_is_refused()
+    {
+        var live = await StartLiveAsync();
+
+        var result = await _service.UpdateAsync(_anna, live.Id, Sleep());
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(((UpdateSleepResult.Invalid)result).Errors, Is.EqualTo(new Dictionary<string, string> { ["endTime"] = "notAllowed" }));
+            Assert.That(live.EndTime, Is.Null);
+        });
+    }
+
+    [Test]
+    public async Task Live_sleeps_of_every_baby_are_listed_oldest_first()
+    {
+        var tom = new Baby { Id = Guid.NewGuid(), Name = "Tom", BirthDate = new DateOnly(2026, 9, 1), CreatedAt = Now };
+        _babies.Babies.Add(tom);
+        var recent = await StartLiveAsync(minutesAgo: 10);
+        var tomId = Guid.NewGuid();
+        await StartAsync(tomId, Now.AddMinutes(-50), baby: tom);
+        await CreateAsync(_anna, Sleep());
+
+        var live = await _service.ListLiveAsync();
+
+        Assert.That(live.Select(e => e.Sleep.Id), Is.EqualTo(new[] { tomId, recent.Id }));
+    }
 }

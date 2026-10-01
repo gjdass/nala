@@ -186,4 +186,72 @@ describe('SleepService', () => {
       expect(await result).toBeNull();
     });
   });
+
+  describe('start()', () => {
+    const at = '2026-09-30T12:00:00.000Z';
+
+    it('starts the sleep for the baby at the given time', async () => {
+      const result = firstValueFrom(service.start('s1', 'b1', at));
+      const req = http.expectOne('/api/sleeps/s1/start');
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual({ babyId: 'b1', at, queued: false });
+      const live = aSleep({ endTime: null });
+      req.flush(live, { status: 201, statusText: 'Created' });
+
+      expect(await result).toEqual<EntryResult<Sleep>>({ ok: true, entry: live });
+    });
+
+    it('maps another live sleep to its code', async () => {
+      const result = firstValueFrom(service.start('s1', 'b1', at));
+      http
+        .expectOne('/api/sleeps/s1/start')
+        .flush({ code: 'sleepInProgress' }, { status: 409, statusText: 'Conflict' });
+
+      expect(await result).toEqual<EntryResult<Sleep>>({
+        ok: false,
+        errors: { form: 'sleepInProgress' },
+      });
+    });
+
+    it('keeps the tap on the device marked queued when offline', async () => {
+      const result = firstValueFrom(service.start('s1', 'b1', at));
+      http.expectOne('/api/sleeps/s1/start').flush(null, networkError);
+
+      expect(await result).toEqual<EntryResult<Sleep>>({ ok: true, queued: true });
+      expect(queuedBodies()).toEqual([{ babyId: 'b1', at, queued: true }]);
+    });
+  });
+
+  describe('stop()', () => {
+    it('stops the sleep at the given time', async () => {
+      const at = '2026-09-30T12:00:00.000Z';
+      const result = firstValueFrom(service.stop('s1', at));
+      const req = http.expectOne('/api/sleeps/s1/stop');
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual({ at });
+      req.flush(aSleep());
+
+      expect(await result).toEqual<EntryResult<Sleep>>({ ok: true, entry: aSleep() });
+    });
+  });
+
+  describe('inProgress()', () => {
+    it('gets every live sleep', async () => {
+      const live = [aSleep({ endTime: null })];
+      const result = firstValueFrom(service.inProgress());
+      const req = http.expectOne('/api/sleeps/in-progress');
+      expect(req.request.method).toBe('GET');
+      req.flush(live);
+
+      expect(await result).toEqual(live);
+    });
+  });
+
+  it('puts a live sleep without an end time', () => {
+    const live = { startTime: fields.startTime, endTime: null, notes: 'cot' };
+    service.update('s1', live).subscribe();
+    const req = http.expectOne('/api/sleeps/s1');
+    expect(req.request.body).toEqual(live);
+    req.flush(aSleep({ endTime: null }));
+  });
 });

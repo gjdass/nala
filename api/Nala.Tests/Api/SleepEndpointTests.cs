@@ -312,4 +312,144 @@ public class SleepEndpointTests
         Assert.That((await anonymous.GetAsync($"/api/babies/{_leaId}/sleeps")).StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
         Assert.That((await anonymous.PostAsJsonAsync("/api/sleeps", Sleep())).StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
     }
+
+    private Task<HttpResponseMessage> StartAsync(Guid id, int minutesAgo = 0, Guid? babyId = null, bool? queued = null) =>
+        _admin.PostAsJsonAsync($"/api/sleeps/{id}/start", new { babyId = babyId ?? _leaId, at = _now.AddMinutes(-minutesAgo), queued });
+
+    private async Task<Guid> AddBabyAsync(string name)
+    {
+        var response = await _admin.PostAsJsonAsync("/api/babies", new { name, birthDate = "2026-09-01" });
+        return (await JsonAsync(response)).GetProperty("id").GetGuid();
+    }
+
+    [Test]
+    public async Task Start_creates_a_live_sleep_listed_at_once()
+    {
+        var id = Guid.NewGuid();
+
+        var response = await StartAsync(id, minutesAgo: 5);
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Created));
+        Assert.That(response.Headers.Location?.ToString(), Is.EqualTo($"/api/sleeps/{id}"));
+        var body = await JsonAsync(response);
+        var listed = (await PageAsync(_admin)).GetProperty("entries")[0];
+        Assert.Multiple(() =>
+        {
+            Assert.That(body.GetProperty("id").GetGuid(), Is.EqualTo(id));
+            Assert.That(body.GetProperty("startTime").GetDateTimeOffset(), Is.EqualTo(_now.AddMinutes(-5)));
+            Assert.That(body.GetProperty("endTime").ValueKind, Is.EqualTo(JsonValueKind.Null));
+            Assert.That(body.GetProperty("loggedBy").GetProperty("displayName").GetString(), Is.EqualTo("Anna"));
+            Assert.That(listed.GetProperty("id").GetGuid(), Is.EqualTo(id));
+            Assert.That(listed.GetProperty("endTime").ValueKind, Is.EqualTo(JsonValueKind.Null));
+        });
+    }
+
+    [Test]
+    public async Task Start_on_a_stopped_sleep_makes_it_live_again_and_twice_changes_nothing()
+    {
+        var id = Guid.NewGuid();
+        await _admin.PostAsJsonAsync("/api/sleeps", Sleep(id, startMinutesAgo: 90, endMinutesAgo: 30));
+
+        var restarted = await StartAsync(id);
+        var again = await StartAsync(id);
+
+        Assert.That(restarted.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        Assert.That(again.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        var body = await JsonAsync(again);
+        Assert.That(body.GetProperty("endTime").ValueKind, Is.EqualTo(JsonValueKind.Null));
+        Assert.That(body.GetProperty("startTime").GetDateTimeOffset(), Is.EqualTo(_now.AddMinutes(-90)));
+    }
+
+    [Test]
+    public async Task Start_while_another_sleep_is_live_is_a_conflict_unless_queued()
+    {
+        await StartAsync(Guid.NewGuid(), minutesAgo: 20);
+
+        var refused = await StartAsync(Guid.NewGuid());
+        var queued = await StartAsync(Guid.NewGuid(), minutesAgo: 10, queued: true);
+
+        Assert.That(refused.StatusCode, Is.EqualTo(HttpStatusCode.Conflict));
+        AssertCode(await JsonAsync(refused), "sleepInProgress");
+        Assert.That(queued.StatusCode, Is.EqualTo(HttpStatusCode.Created));
+        var live = await JsonAsync(await _admin.GetAsync("/api/sleeps/in-progress"));
+        Assert.That(live.GetArrayLength(), Is.EqualTo(2));
+    }
+
+    [Test]
+    public async Task Start_validates_its_body_and_the_baby()
+    {
+        var missing = await _admin.PostAsJsonAsync($"/api/sleeps/{Guid.NewGuid()}/start", new { });
+        var future = await StartAsync(Guid.NewGuid(), minutesAgo: -5);
+        var unknown = await StartAsync(Guid.NewGuid(), babyId: Guid.NewGuid());
+
+        Assert.That(missing.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
+        var errors = (await JsonAsync(missing)).GetProperty("errors");
+        Assert.That(errors.GetProperty("babyId")[0].GetString(), Is.EqualTo("required"));
+        Assert.That((await JsonAsync(future)).GetProperty("errors").GetProperty("at")[0].GetString(), Is.EqualTo("inFuture"));
+        Assert.That(unknown.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
+        AssertCode(await JsonAsync(unknown), "babyNotFound");
+    }
+
+    [Test]
+    public async Task Stop_ends_the_live_sleep()
+    {
+        var id = Guid.NewGuid();
+        await StartAsync(id, minutesAgo: 30);
+
+        var response = await _admin.PostAsJsonAsync($"/api/sleeps/{id}/stop", new { at = _now });
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        Assert.That((await JsonAsync(response)).GetProperty("endTime").GetDateTimeOffset(), Is.EqualTo(_now));
+        Assert.That((await JsonAsync(await _admin.GetAsync("/api/sleeps/in-progress"))).GetArrayLength(), Is.EqualTo(0));
+    }
+
+    [Test]
+    public async Task Stop_before_the_start_or_on_an_unknown_sleep_is_refused()
+    {
+        var id = Guid.NewGuid();
+        await StartAsync(id, minutesAgo: 30);
+
+        var early = await _admin.PostAsJsonAsync($"/api/sleeps/{id}/stop", new { at = _now.AddMinutes(-40) });
+        var unknown = await _admin.PostAsJsonAsync($"/api/sleeps/{Guid.NewGuid()}/stop", new { at = _now });
+
+        Assert.That(early.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
+        Assert.That((await JsonAsync(early)).GetProperty("errors").GetProperty("at")[0].GetString(), Is.EqualTo("invalid"));
+        Assert.That(unknown.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
+        AssertCode(await JsonAsync(unknown), "sleepNotFound");
+    }
+
+    [Test]
+    public async Task Editing_a_live_sleep_keeps_it_live_and_refuses_an_end_time()
+    {
+        var id = Guid.NewGuid();
+        await StartAsync(id, minutesAgo: 30);
+
+        var edited = await _admin.PutAsJsonAsync($"/api/sleeps/{id}", new { startTime = _now.AddMinutes(-45), endTime = (DateTimeOffset?)null, notes = "cot" });
+        var withEnd = await _admin.PutAsJsonAsync($"/api/sleeps/{id}", new { startTime = _now.AddMinutes(-45), endTime = _now, notes = "cot" });
+
+        Assert.That(edited.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        var body = await JsonAsync(edited);
+        Assert.That(body.GetProperty("endTime").ValueKind, Is.EqualTo(JsonValueKind.Null));
+        Assert.That(body.GetProperty("startTime").GetDateTimeOffset(), Is.EqualTo(_now.AddMinutes(-45)));
+        Assert.That(body.GetProperty("notes").GetString(), Is.EqualTo("cot"));
+        Assert.That(withEnd.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
+        Assert.That((await JsonAsync(withEnd)).GetProperty("errors").GetProperty("endTime")[0].GetString(), Is.EqualTo("notAllowed"));
+    }
+
+    [Test]
+    public async Task Live_sleeps_of_every_baby_are_listed_oldest_first()
+    {
+        var tomId = await AddBabyAsync("Tom");
+        var lea = Guid.NewGuid();
+        var tom = Guid.NewGuid();
+        await StartAsync(lea, minutesAgo: 10);
+        await StartAsync(tom, minutesAgo: 50, babyId: tomId);
+        await _admin.PostAsJsonAsync("/api/sleeps", Sleep());
+
+        var response = await _admin.GetAsync("/api/sleeps/in-progress");
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        var live = await JsonAsync(response);
+        Assert.That(live.EnumerateArray().Select(s => s.GetProperty("id").GetGuid()), Is.EqualTo(new[] { tom, lea }));
+    }
 }

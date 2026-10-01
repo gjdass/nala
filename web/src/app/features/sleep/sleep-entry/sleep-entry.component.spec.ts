@@ -11,6 +11,7 @@ const shortTime = (d: Date) => new Intl.DateTimeFormat('en', { timeStyle: 'short
 
 describe('SleepEntryComponent', () => {
   let fixture: ComponentFixture<SleepEntryComponent>;
+  let now: ReturnType<typeof signal<number>>;
 
   const find = (testId: string) =>
     (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>(`[data-testid="${testId}"]`);
@@ -18,9 +19,10 @@ describe('SleepEntryComponent', () => {
   beforeEach(async () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(NOW);
+    now = signal(NOW.getTime());
     await TestBed.configureTestingModule({
       imports: [SleepEntryComponent, MatListModule, translocoTesting()],
-      providers: [{ provide: NowService, useValue: { now: signal(NOW.getTime()) } }],
+      providers: [{ provide: NowService, useValue: { now } }],
     }).compileComponents();
     fixture = TestBed.createComponent(SleepEntryComponent);
   });
@@ -54,6 +56,23 @@ describe('SleepEntryComponent', () => {
     expect(find('entry-summary')?.textContent?.trim()).toBe(
       `2h 45m · until Yesterday ${shortTime(end)}`,
     );
+  });
+
+  it('shows a live sleep as "Sleeping" with its live duration', async () => {
+    const start = new Date(NOW.getTime() - 45 * 60_000);
+    fixture.componentRef.setInput(
+      'sleep',
+      aSleep({ startTime: start.toISOString(), endTime: null }),
+    );
+    await fixture.whenStable();
+
+    expect(find('entry-time')?.textContent?.trim()).toBe(shortTime(start));
+    expect(find('entry-summary')?.textContent?.trim()).toBe('Sleeping · 45m');
+
+    now.set(NOW.getTime() + 10_000);
+    await fixture.whenStable();
+
+    expect(find('entry-summary')?.textContent?.trim()).toBe('Sleeping · 45m 10s');
   });
 
   it('emits open when tapped', async () => {

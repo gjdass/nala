@@ -389,6 +389,10 @@
     "editLeft": "Modifier la durée gauche",
     "editRight": "Modifier la durée droite"
   },
+  "timer": {
+    "start": "Démarrer",
+    "stop": "Arrêter"
+  },
   "durationField": {
     "minutes": "Minutes",
     "seconds": "Secondes",
@@ -513,13 +517,16 @@
     },
     "sheet": {
       "endTime": "Heure de fin",
-      "duration": "Durée"
+      "duration": "Durée",
+      "sleeping": "Endormi…"
     },
     "summary": "{{duration}} · jusqu'à {{end}}",
+    "summaryLive": "Dort · {{duration}}",
     "errors": {
       "unknown": "Une erreur s'est produite. Vérifiez votre connexion et réessayez.",
       "sleepNotFound": "Ce sommeil n'existe plus.",
-      "babyNotFound": "Ce bébé n'existe plus."
+      "babyNotFound": "Ce bébé n'existe plus.",
+      "sleepInProgress": "Ce bébé dort déjà."
     }
   },
   "offline": {

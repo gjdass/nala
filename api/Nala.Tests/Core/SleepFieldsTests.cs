@@ -46,4 +46,31 @@ public class SleepFieldsTests
         Assert.That(Validate(Sleep(notes: $"  {new string('a', 1000)}  ")), Is.Empty);
         Assert.That(Validate(Sleep(notes: new string('a', 1001))), Is.EqualTo(new Dictionary<string, string> { ["notes"] = "tooLong" }));
     }
+
+    [Test]
+    public void A_live_sleep_has_no_end_time() =>
+        Assert.That(SleepFields.Validate(Sleep() with { EndTime = null }, Now, live: true), Is.Empty);
+
+    [Test]
+    public void A_live_sleep_refuses_an_end_time() =>
+        Assert.That(
+            SleepFields.Validate(Sleep(), Now, live: true),
+            Is.EqualTo(new Dictionary<string, string> { ["endTime"] = "notAllowed" }));
+
+    [Test]
+    public void A_live_sleep_still_checks_its_start_time_and_notes() =>
+        Assert.That(
+            SleepFields.Validate(new SleepInput(Now.AddMinutes(5), null, new string('a', 1001)), Now, live: true),
+            Is.EqualTo(new Dictionary<string, string> { ["startTime"] = "inFuture", ["notes"] = "tooLong" }));
+
+    [Test]
+    public void A_timer_tap_needs_its_time() =>
+        Assert.That(SleepFields.ValidateTimerAt(null, Now), Is.EqualTo(new Dictionary<string, string> { ["at"] = "required" }));
+
+    [Test]
+    public void A_timer_tap_may_be_up_to_one_minute_ahead()
+    {
+        Assert.That(SleepFields.ValidateTimerAt(Now.AddSeconds(60), Now), Is.Empty);
+        Assert.That(SleepFields.ValidateTimerAt(Now.AddSeconds(61), Now), Is.EqualTo(new Dictionary<string, string> { ["at"] = "inFuture" }));
+    }
 }

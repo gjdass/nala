@@ -18,6 +18,7 @@ export interface Sleep {
 /** What the Sleep sheet sends, to add or to edit. */
 export interface SleepFields {
   startTime: string;
-  endTime: string;
+  /** Null for a live sleep, which keeps running. */
+  endTime: string | null;
   notes: string | null;
 }

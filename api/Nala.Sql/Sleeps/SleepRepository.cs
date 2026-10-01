@@ -43,6 +43,16 @@ public class SleepRepository(NalaDbContext db) : ISleepRepository
             .ToListAsync(cancellationToken);
     }
 
+    public Task<SleepEntry?> GetLiveAsync(Guid babyId, CancellationToken cancellationToken = default) =>
+        Entries(Live().Where(s => s.BabyId == babyId)).FirstOrDefaultAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<SleepEntry>> ListLiveAsync(CancellationToken cancellationToken = default) =>
+        await Entries(Live()).ToListAsync(cancellationToken);
+
+    /// <summary>Sleeps without an end time, oldest start first.</summary>
+    private IQueryable<Sleep> Live() =>
+        db.Set<Sleep>().Where(s => s.EndTime == null).OrderBy(s => s.StartTime).ThenBy(s => s.Id);
+
     private IQueryable<SleepEntry> Entries(IQueryable<Sleep> sleeps) =>
         from sleep in sleeps.AsNoTracking()
         join loggedBy in db.Set<User>() on sleep.LoggedByUserId equals loggedBy.Id

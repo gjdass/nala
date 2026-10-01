@@ -62,6 +62,15 @@ describe('NotesRowComponent', () => {
     expect(textarea()?.value).toBe('Spat up');
   });
 
+  it('opens when notes are set later, e.g. an entry loaded once the sheet is open', async () => {
+    await render();
+
+    fixture.componentInstance.control.reset('Spat up');
+    await fixture.whenStable();
+
+    expect(textarea()?.value).toBe('Spat up');
+  });
+
   it(`refuses more than ${NOTES_MAX_LENGTH} characters, with a field error`, async () => {
     await render('x');
     expect(NOTES_MAX_LENGTH).toBe(1000);

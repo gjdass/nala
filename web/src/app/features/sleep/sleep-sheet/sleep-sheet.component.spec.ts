@@ -8,6 +8,7 @@ import { SelectedBabyService } from '../../../core/babies/selected-baby.service'
 import { EntryDeleteResult, EntryResult } from '../../../core/entries/entry-result';
 import { Sleep } from '../../../core/sleeps/sleep.models';
 import { SleepService } from '../../../core/sleeps/sleep.service';
+import { NowService } from '../../../core/time/now.service';
 import { EntrySheetData } from '../../../shared/ui/entry-sheet/entry-sheet.models';
 import { SHEET_DATA, SheetRef } from '../../../shared/ui/sheet/sheet-ref';
 import { aSleep } from '../../../testing/sleeps';
@@ -23,7 +24,13 @@ describe('SleepSheetComponent', () => {
   let fixture: ComponentFixture<SleepSheetComponent>;
   let saved: Subject<EntryResult<Sleep>>;
   let deleted: Subject<EntryDeleteResult>;
-  let sleeps: Record<'create' | 'update' | 'delete', ReturnType<typeof vi.fn>>;
+  let tapped: Subject<EntryResult<Sleep>>;
+  let live: Subject<Sleep[]>;
+  let now: ReturnType<typeof signal<number>>;
+  let sleeps: Record<
+    'create' | 'update' | 'delete' | 'start' | 'stop' | 'inProgress',
+    ReturnType<typeof vi.fn>
+  >;
   let sheetRef: { close: ReturnType<typeof vi.fn> };
   let confirmed: Subject<boolean | undefined>;
 
@@ -32,6 +39,22 @@ describe('SleepSheetComponent', () => {
     host().querySelector<T>(`[data-testid="${testId}"]`);
   const text = (testId: string) => find(testId)?.textContent?.replace(/\s+/g, ' ').trim();
   const save = () => find<HTMLButtonElement>('sheet-save')!;
+  const toggle = () => find<HTMLButtonElement>('timer-toggle')!;
+  const click = async (testId: string) => {
+    find<HTMLButtonElement>(testId)!.click();
+    await settle();
+  };
+  const respondTimer = async (result: EntryResult<Sleep>) => {
+    tapped.next(result);
+    await settle();
+  };
+  /** A live sleep of b1 started `minutes` before NOW. */
+  const liveSleep = (minutes: number, overrides: Partial<Sleep> = {}) =>
+    aSleep({
+      startTime: new Date(NOW.getTime() - minutes * 60_000).toISOString(),
+      endTime: null,
+      ...overrides,
+    });
   const settle = () => fixture.whenStable();
   const form = () => fixture.componentInstance.form;
   const rows = () => [...host().querySelectorAll('nala-time-row')];
@@ -58,10 +81,16 @@ describe('SleepSheetComponent', () => {
     vi.setSystemTime(NOW);
     saved = new Subject();
     deleted = new Subject();
+    tapped = new Subject();
+    live = new Subject();
+    now = signal(NOW.getTime());
     sleeps = {
       create: vi.fn(() => saved),
       update: vi.fn(() => saved),
       delete: vi.fn(() => deleted),
+      start: vi.fn(() => tapped),
+      stop: vi.fn(() => tapped),
+      inProgress: vi.fn(() => live),
     };
     sheetRef = { close: vi.fn() };
     confirmed = new Subject();
@@ -73,6 +102,7 @@ describe('SleepSheetComponent', () => {
         { provide: SelectedBabyService, useValue: { selected: signal({ id: 'b1' }) } },
         { provide: SheetRef, useValue: sheetRef },
         { provide: SHEET_DATA, useValue: null },
+        { provide: NowService, useValue: { now } },
         { provide: MatDialog, useValue: { open: vi.fn(() => ({ afterClosed: () => confirmed })) } },
       ],
     }).compileComponents();
@@ -294,6 +324,227 @@ describe('SleepSheetComponent', () => {
 
       expect(sheetRef.close).not.toHaveBeenCalled();
       expect(text('form-error')).toBe(en.sleep.errors.unknown);
+    });
+  });
+
+  describe('timer', () => {
+    describe('adding', () => {
+      beforeEach(() => render());
+
+      it('shows the timer at 0 with Start', () => {
+        expect(text('timer-duration')).toBe('0s');
+        expect(toggle().textContent?.trim()).toBe(en.timer.start);
+        expect(toggle().disabled).toBe(false);
+      });
+
+      it('looks for a live sleep of the baby', () => {
+        expect(sleeps.inProgress).toHaveBeenCalled();
+      });
+
+      it('creates the live sleep for the selected baby on Start, now', async () => {
+        await click('timer-toggle');
+
+        expect(sleeps.start).toHaveBeenCalledWith(
+          expect.stringMatching(/^[0-9a-f-]{36}$/),
+          'b1',
+          NOW.toISOString(),
+        );
+        const id = sleeps.start.mock.calls[0][0];
+        await respondTimer({ ok: true, entry: liveSleep(0, { id }) });
+
+        expect(toggle().textContent?.trim()).toBe(en.timer.stop);
+        expect(form().controls.startTime.value).toEqual(NOW);
+        expect(text('sleep-end-time')).toContain(en.sleep.sheet.sleeping);
+        expect(rows()).toHaveLength(1);
+        expect(find('entry-delete')).not.toBeNull();
+      });
+
+      it('ticks from the stored start time while live, and Save keeps it live', async () => {
+        await click('timer-toggle');
+        const id = sleeps.start.mock.calls[0][0];
+        await respondTimer({ ok: true, entry: liveSleep(45, { id }) });
+
+        expect(text('timer-duration')).toBe('45m');
+        expect(text('sleep-duration')).toBe('45m');
+        now.set(NOW.getTime() + 10_000);
+        await settle();
+        expect(text('timer-duration')).toBe('45m 10s');
+
+        expect(save().disabled).toBe(false);
+        save().click();
+        await settle();
+        expect(sleeps.update).toHaveBeenCalledWith(id, {
+          startTime: new Date(NOW.getTime() - 45 * 60_000).toISOString(),
+          endTime: null,
+          notes: null,
+        });
+        expect(sleeps.stop).not.toHaveBeenCalled();
+      });
+
+      it('opens the live sleep when Start is refused because one is live', async () => {
+        await click('timer-toggle');
+        await respondTimer({ ok: false, errors: { form: 'sleepInProgress' } });
+
+        expect(sleeps.inProgress).toHaveBeenCalledTimes(2);
+        live.next([liveSleep(30, { id: 'other', babyId: 'b2' }), liveSleep(20, { id: 's9' })]);
+        await settle();
+
+        expect(toggle().textContent?.trim()).toBe(en.timer.stop);
+        expect(text('timer-duration')).toBe('20m');
+      });
+
+      it('keeps the same id when Start is tried again after a failure', async () => {
+        await click('timer-toggle');
+        await respondTimer({ ok: false, errors: { form: 'unknown' } });
+        expect(text('form-error')).toBe(en.sleep.errors.unknown);
+
+        await click('timer-toggle');
+        const ids = sleeps.start.mock.calls.map((call) => call[0]);
+        expect(ids[0]).toBe(ids[1]);
+      });
+
+      it('turns Start off once an end time is typed', async () => {
+        form().controls.endTime.setValue(at(11));
+        form().controls.endTime.markAsDirty();
+        await settle();
+
+        expect(toggle().disabled).toBe(true);
+      });
+
+      describe('× once Start created the sleep', () => {
+        let id: string;
+
+        beforeEach(async () => {
+          await click('timer-toggle');
+          id = sleeps.start.mock.calls[0][0];
+          await respondTimer({ ok: true, entry: liveSleep(0, { id }) });
+          await click('sheet-close');
+        });
+
+        it('asks first, then deletes it and closes with its id', async () => {
+          expect(sleeps.delete).not.toHaveBeenCalled();
+
+          confirmed.next(true);
+          await settle();
+          expect(sleeps.delete).toHaveBeenCalledWith(id);
+
+          deleted.next({ ok: true });
+          await settle();
+          expect(sheetRef.close).toHaveBeenCalledWith({ deleted: id });
+        });
+
+        it('stays open, the sleep live, when cancelled', async () => {
+          confirmed.next(false);
+          await settle();
+
+          expect(sleeps.delete).not.toHaveBeenCalled();
+          expect(sheetRef.close).not.toHaveBeenCalled();
+        });
+      });
+    });
+
+    describe('opened to add while the baby has a live sleep', () => {
+      beforeEach(async () => {
+        await render();
+        live.next([
+          liveSleep(90, { id: 'tom', babyId: 'b2' }),
+          liveSleep(30, { id: 's8', notes: 'cot' }),
+          liveSleep(10, { id: 's9' }),
+        ]);
+        await settle();
+      });
+
+      it('opens the oldest live sleep of the baby', () => {
+        expect(text('timer-duration')).toBe('30m');
+        expect(toggle().textContent?.trim()).toBe(en.timer.stop);
+        expect(find<HTMLTextAreaElement>('notes-input')!.value).toBe('cot');
+      });
+
+      it('closes on × without deleting it (it was not started here)', async () => {
+        await click('sheet-close');
+
+        expect(sleeps.delete).not.toHaveBeenCalled();
+        expect(sheetRef.close).toHaveBeenCalledWith();
+      });
+    });
+
+    describe('editing a live sleep', () => {
+      const sleep = liveSleep(60, { id: 's7' });
+
+      beforeEach(() => render(sleep));
+
+      it('does not look for another live sleep', () => {
+        expect(sleeps.inProgress).not.toHaveBeenCalled();
+      });
+
+      it('stops it on Stop: ended now, no longer live, the sheet still open', async () => {
+        await click('timer-toggle');
+
+        expect(sleeps.stop).toHaveBeenCalledWith('s7', NOW.toISOString());
+        await respondTimer({ ok: true, entry: { ...sleep, endTime: NOW.toISOString() } });
+
+        expect(toggle().textContent?.trim()).toBe(en.timer.start);
+        expect(form().controls.endTime.value).toEqual(NOW);
+        expect(rows()).toHaveLength(2);
+        expect(text('sleep-duration')).toBe('1h');
+        expect(text('timer-duration')).toBe('1h');
+        expect(toggle().disabled).toBe(false);
+        expect(sheetRef.close).not.toHaveBeenCalled();
+      });
+
+      it('closes on × with the sleep as the taps left it, discarding the form edits', async () => {
+        await click('timer-toggle');
+        const stopped = { ...sleep, endTime: NOW.toISOString() };
+        await respondTimer({ ok: true, entry: stopped });
+
+        await click('sheet-close');
+
+        expect(sleeps.update).not.toHaveBeenCalled();
+        expect(sheetRef.close).toHaveBeenCalledWith({ saved: stopped });
+      });
+
+      it('closes on × without a result when no timer was tapped', async () => {
+        await click('sheet-close');
+
+        expect(sheetRef.close).toHaveBeenCalledWith();
+      });
+    });
+
+    describe('editing a stopped sleep', () => {
+      const sleep = aSleep({
+        id: 's7',
+        startTime: at(8).toISOString(),
+        endTime: at(9, 45).toISOString(),
+      });
+
+      beforeEach(() => render(sleep));
+
+      it('shows its duration on the timer, with Start', () => {
+        expect(text('timer-duration')).toBe('1h 45m');
+        expect(toggle().textContent?.trim()).toBe(en.timer.start);
+        expect(toggle().disabled).toBe(false);
+      });
+
+      it('makes it live again on Start, running from its start time', async () => {
+        await click('timer-toggle');
+
+        expect(sleeps.start).toHaveBeenCalledWith('s7', 'b1', NOW.toISOString());
+        await respondTimer({ ok: true, entry: { ...sleep, endTime: null } });
+
+        expect(toggle().textContent?.trim()).toBe(en.timer.stop);
+        expect(text('timer-duration')).toBe('4h');
+        expect(form().controls.endTime.value).toBeNull();
+        expect(text('sleep-end-time')).toContain(en.sleep.sheet.sleeping);
+        expect(find('entry-delete')).not.toBeNull();
+      });
+
+      it('turns Start off once its end time is changed', async () => {
+        form().controls.endTime.setValue(at(10));
+        form().controls.endTime.markAsDirty();
+        await settle();
+
+        expect(toggle().disabled).toBe(true);
+      });
     });
   });
 });

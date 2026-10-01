@@ -40,6 +40,14 @@ public class FakeSleepRepository : ISleepRepository
             .Select(ToEntry)
             .ToList());
 
+    public Task<SleepEntry?> GetLiveAsync(Guid babyId, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Live().Where(s => s.BabyId == babyId).Select(ToEntry).FirstOrDefault());
+
+    public Task<IReadOnlyList<SleepEntry>> ListLiveAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<SleepEntry>>(Live().Select(ToEntry).ToList());
+
+    private IEnumerable<Sleep> Live() => Sleeps.Where(s => s.EndTime is null).OrderBy(s => s.StartTime).ThenBy(s => s.Id);
+
     private SleepEntry ToEntry(Sleep sleep) =>
         new(sleep, new UserName(sleep.LoggedByUserId, Names[sleep.LoggedByUserId]), new UserName(sleep.UpdatedByUserId, Names[sleep.UpdatedByUserId]));
 }

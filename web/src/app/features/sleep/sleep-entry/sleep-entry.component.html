@@ -5,8 +5,8 @@
   [summary]="
     entry.endTime
       ? ('sleep.summary'
-        | transloco: { duration: seconds()! | nalaDuration, end: entry.endTime | nalaEntryTime })
-      : ''
+        | transloco: { duration: seconds() | nalaDuration, end: entry.endTime | nalaEntryTime })
+      : ('sleep.summaryLive' | transloco: { duration: seconds() | nalaDuration })
   "
   (open)="open.emit()"
 />

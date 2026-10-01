@@ -46,7 +46,7 @@ export class SleepService {
       .pipe(map(toEntryResult));
   }
 
-  /** Replaces the start time, end time and notes. */
+  /** Replaces the start time, end time and notes; a live sleep has no end time and stays live. */
   update(id: string, fields: SleepFields): Observable<EntryResult<Sleep>> {
     return this.queue.send<Sleep>('PUT', `/api/sleeps/${id}`, fields).pipe(map(toEntryResult));
   }
@@ -64,5 +64,35 @@ export class SleepService {
           error.status === 404 ? of(null) : throwError(() => error),
         ),
       );
+  }
+
+  /**
+   * Starts the timer of the sleep `id` at `at`: the server creates it live for the baby when it
+   * doesn't exist, makes a stopped one live again and leaves a live one as it is; another live sleep
+   * of the baby answers `sleepInProgress`. Offline, the tap is kept on the device marked `queued`:
+   * the server then keeps it as a separate sleep even if another one is live by the time it arrives.
+   */
+  start(id: string, babyId: string, at: string): Observable<EntryResult<Sleep>> {
+    const body = { babyId, at };
+    return this.queue
+      .send<Sleep>(
+        'POST',
+        `/api/sleeps/${id}/start`,
+        { ...body, queued: false },
+        { queuedBody: { ...body, queued: true }, quiet: true },
+      )
+      .pipe(map(toEntryResult));
+  }
+
+  /** Stops the timer at `at`, the sleep's end time: it is no longer live. */
+  stop(id: string, at: string): Observable<EntryResult<Sleep>> {
+    return this.queue
+      .send<Sleep>('POST', `/api/sleeps/${id}/stop`, { at }, { quiet: true })
+      .pipe(map(toEntryResult));
+  }
+
+  /** Every live sleep, of every baby, oldest start first. */
+  inProgress(): Observable<Sleep[]> {
+    return this.http.get<Sleep[]>('/api/sleeps/in-progress');
   }
 }

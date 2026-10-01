@@ -18,4 +18,10 @@ public interface ISleepRepository
 
     /// <summary>The baby's sleeps, newest first (start time, then id, both descending), after <paramref name="after"/> when given.</summary>
     Task<IReadOnlyList<SleepEntry>> ListAsync(Guid babyId, EntryCursor? after, int limit, CancellationToken cancellationToken = default);
+
+    /// <summary>The baby's live sleep (no end time); the oldest one when several are live; null when none.</summary>
+    Task<SleepEntry?> GetLiveAsync(Guid babyId, CancellationToken cancellationToken = default);
+
+    /// <summary>Every live sleep, of every baby, oldest start first.</summary>
+    Task<IReadOnlyList<SleepEntry>> ListLiveAsync(CancellationToken cancellationToken = default);
 }

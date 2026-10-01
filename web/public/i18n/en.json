@@ -389,6 +389,10 @@
     "editLeft": "Edit left duration",
     "editRight": "Edit right duration"
   },
+  "timer": {
+    "start": "Start",
+    "stop": "Stop"
+  },
   "durationField": {
     "minutes": "Minutes",
     "seconds": "Seconds",
@@ -513,13 +517,16 @@
     },
     "sheet": {
       "endTime": "End time",
-      "duration": "Duration"
+      "duration": "Duration",
+      "sleeping": "Sleeping…"
     },
     "summary": "{{duration}} · until {{end}}",
+    "summaryLive": "Sleeping · {{duration}}",
     "errors": {
       "unknown": "Something went wrong. Check your connection and try again.",
       "sleepNotFound": "This sleep no longer exists.",
-      "babyNotFound": "This baby no longer exists."
+      "babyNotFound": "This baby no longer exists.",
+      "sleepInProgress": "This baby is already sleeping."
     }
   },
   "offline": {

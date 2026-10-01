@@ -1,6 +1,31 @@
-<nala-entry-sheet [form]="form" [saving]="saving()" (save)="save()" (delete)="delete()">
+<nala-entry-sheet
+  [form]="form"
+  [saving]="saving()"
+  [deletable]="!!sleep()"
+  [discard]="discard()"
+  (save)="save()"
+  (delete)="delete()"
+>
+  <nala-timer
+    [seconds]="timerSeconds()"
+    [running]="live()"
+    [disabled]="saving() || manual()"
+    (start)="start()"
+    (stop)="stop()"
+  />
+
   <nala-time-row [label]="'entrySheet.startTime' | transloco" [control]="form.controls.startTime" />
-  <nala-time-row [label]="'sleep.sheet.endTime' | transloco" [control]="form.controls.endTime" />
+  @if (live()) {
+    <nala-form-row
+      [label]="'sleep.sheet.endTime' | transloco"
+      [interactive]="false"
+      data-testid="sleep-end-time"
+    >
+      <span rowTrailing>{{ 'sleep.sheet.sleeping' | transloco }}</span>
+    </nala-form-row>
+  } @else {
+    <nala-time-row [label]="'sleep.sheet.endTime' | transloco" [control]="form.controls.endTime" />
+  }
 
   <nala-form-row [label]="'sleep.sheet.duration' | transloco" [interactive]="false">
     <span rowTrailing data-testid="sleep-duration">{{
@@ -16,11 +41,11 @@
     </p>
   }
 
-  @if (sleep; as sleep) {
+  @if (sleep(); as sleep) {
     <nala-entry-audit
       [loggedBy]="sleep.loggedBy.displayName"
-      [editedBy]="edited ? sleep.updatedBy.displayName : null"
-      [editedAt]="edited ? sleep.updatedAt : null"
+      [editedBy]="edited() ? sleep.updatedBy.displayName : null"
+      [editedAt]="edited() ? sleep.updatedAt : null"
     />
   }
 </nala-entry-sheet>

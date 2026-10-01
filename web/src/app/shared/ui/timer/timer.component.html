@@ -1,0 +1,13 @@
+<div class="timer">
+  <span class="duration" data-testid="timer-duration">{{ seconds() | nalaDuration }}</span>
+  <button
+    type="button"
+    [matButton]="running() ? 'filled' : 'tonal'"
+    [disabled]="disabled()"
+    [attr.aria-pressed]="running()"
+    (click)="toggle()"
+    data-testid="timer-toggle"
+  >
+    {{ (running() ? 'timer.stop' : 'timer.start') | transloco }}
+  </button>
+</div>

@@ -131,6 +131,18 @@ describe('SleepCardComponent', () => {
     expect(summaries[0]).toMatch(/^1h 30m · until /);
   });
 
+  it('lists a live sleep, and counts the time awake from the latest stopped one', async () => {
+    const live = aSleep({ id: 's3', startTime: minutesAgo(20), endTime: null });
+    await respond([live, sleep('s2', 170, 80)]);
+
+    const summaries = [...host().querySelectorAll('[data-testid="entry-summary"]')].map((e) =>
+      e.textContent?.trim(),
+    );
+    expect(summaries[0]).toBe('Sleeping · 20m');
+    expect(text('sleep-awake-for')).toBe('1h 20m');
+    expect(text('sleep-last-duration')).toBe('1h 30m');
+  });
+
   it('opens a tapped sleep in the Sleep sheet, then reloads', async () => {
     const tapped = sleep('s1', 170, 80);
     await respond([tapped]);

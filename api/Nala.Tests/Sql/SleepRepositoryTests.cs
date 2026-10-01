@@ -57,7 +57,7 @@ public class SleepRepositoryTests
         UpdatedAt = Now,
     };
 
-    private async Task<Sleep> AddAsync(Baby? baby = null, DateTimeOffset? startTime = null, DateTimeOffset? endTime = null, User? by = null, string? notes = null)
+    private async Task<Sleep> AddAsync(Baby? baby = null, DateTimeOffset? startTime = null, DateTimeOffset? endTime = null, User? by = null, string? notes = null, bool live = false)
     {
         var start = startTime ?? Now.AddHours(-1);
         var sleep = new Sleep
@@ -65,7 +65,7 @@ public class SleepRepositoryTests
             Id = Guid.NewGuid(),
             BabyId = (baby ?? _lea).Id,
             StartTime = start,
-            EndTime = endTime ?? start.AddMinutes(45),
+            EndTime = live ? null : endTime ?? start.AddMinutes(45),
             Notes = notes,
             LoggedByUserId = (by ?? _anna).Id,
             UpdatedByUserId = (by ?? _anna).Id,
@@ -198,5 +198,44 @@ public class SleepRepositoryTests
         }
 
         Assert.That((await ListAsync()).Select(e => e.Sleep.Id), Is.EqualTo(new[] { kept.Id }));
+    }
+
+    [Test]
+    public async Task The_live_sleep_of_a_baby_is_its_oldest_one_without_an_end()
+    {
+        await AddAsync(startTime: Now.AddHours(-3));
+        await AddAsync(_tom, startTime: Now.AddHours(-4), live: true);
+        var newer = await AddAsync(startTime: Now.AddMinutes(-10), live: true);
+        var older = await AddAsync(startTime: Now.AddMinutes(-40), live: true, by: _ben);
+
+        await using var db = _db();
+        var repository = new SleepRepository(db);
+        var live = (await repository.GetLiveAsync(_lea.Id))!;
+        var none = await repository.GetLiveAsync(Guid.NewGuid());
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(live.Sleep.Id, Is.EqualTo(older.Id));
+            Assert.That(live.LoggedBy, Is.EqualTo(new UserName(_ben.Id, "Ben")));
+            Assert.That(newer.EndTime, Is.Null);
+            Assert.That(none, Is.Null);
+        });
+    }
+
+    [Test]
+    public async Task Live_sleeps_of_every_baby_are_listed_oldest_start_first()
+    {
+        await AddAsync(startTime: Now.AddHours(-5));
+        var lea = await AddAsync(startTime: Now.AddMinutes(-10), live: true);
+        var tom = await AddAsync(_tom, startTime: Now.AddMinutes(-50), live: true);
+
+        await using var db = _db();
+        var live = await new SleepRepository(db).ListLiveAsync();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(live.Select(e => e.Sleep.Id), Is.EqualTo(new[] { tom.Id, lea.Id }));
+            Assert.That(live.Select(e => e.LoggedBy.DisplayName), Is.All.EqualTo("Anna"));
+        });
     }
 }
