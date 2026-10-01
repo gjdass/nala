@@ -40,18 +40,28 @@ describe('BottomNavComponent', () => {
     await visit('/');
   });
 
-  it('lists Dashboard, History, Trends and Settings in that order, with an icon and a label', () => {
+  it('lists Dashboard, History, Trends and Settings in that order, as icons named by their aria-label', () => {
     expect(
       items().map((a) => [
         a.getAttribute('href'),
         a.querySelector('mat-icon')?.textContent?.trim(),
-        a.querySelector('[data-testid="nav-label"]')?.textContent?.trim(),
+        a.getAttribute('aria-label'),
       ]),
     ).toEqual([
       ['/', 'dashboard', en.nav.dashboard],
       ['/history', 'history', en.nav.history],
       ['/trends', 'insights', en.nav.trends],
       ['/settings', 'settings', en.nav.settings],
+    ]);
+  });
+
+  it('shows no visible text label, only icons', () => {
+    expect(host().querySelector('[data-testid="nav-label"]')).toBeNull();
+    expect(items().map((a) => a.textContent?.trim())).toEqual([
+      'dashboard',
+      'history',
+      'insights',
+      'settings',
     ]);
   });
 

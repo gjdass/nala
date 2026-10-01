@@ -36,7 +36,7 @@ Give every activity section (Feed, Diaper, Sleep, Medication, Growth, Pump…) t
   - The end time is the end of the last timed segment, empty while live.
   - Warnings about an entry live for too long ("Still feeding?") are defined per feature.
 - **Live timer button:** while the section has a live entry for the selected baby, the card's + is replaced by a **timer button** (same small FAB and colours, `timer` icon, labelled "Open live <section>") that opens that entry's sheet (`EntrySheetService.edit`). Other kinds can be added again once the timers are stopped. The card finds the live entry through `RunningTimersService` (section + baby), so a new timer section gets it without its own code.
-- **Bottom navigation bar:** a floating navigation bar on every signed-in screen, never on the signed-out ones (setup, login, invitation, password reset). Four destinations, in this order: **Dashboard** (`/`, home), **History** (`/history`), **Trends** (`/trends`), **Settings** (`/settings`), each with an icon and a label, the current one marked with the M3 active indicator. History and Trends are placeholders for now: the shared top app bar (selected baby + switcher), the destination as page title and a "Coming soon" empty state; their content is features 11 and 12. A section's history page (`/history/:section`) is reached from a home card, so **Dashboard** stays the active destination there; History is active on `/history` only. The bar shows once the user is signed in (auth state with a user); the mini-bar and the bar share one dock pinned at the bottom of the app shell, after the page, so the page's last element always scrolls above both (no per-page padding). The translucent surface is the theme token `--nala-nav-bar-surface` (`_navigation.scss`). The settings button leaves the top app bar, and the settings page loses its back link (it is a destination).
+- **Bottom navigation bar:** a floating navigation bar on every signed-in screen, never on the signed-out ones (setup, login, invitation, password reset). Four destinations, in this order: **Dashboard** (`/`, home), **History** (`/history`), **Trends** (`/trends`), **Settings** (`/settings`), each shown as an icon only (the destination name is its accessible name and tooltip), the current one marked with the M3 active indicator. History and Trends are placeholders for now: the shared top app bar (selected baby + switcher), the destination as page title and a "Coming soon" empty state; their content is features 11 and 12. A section's history page (`/history/:section`) is reached from a home card, so **Dashboard** stays the active destination there; History is active on `/history` only. The bar shows once the user is signed in (auth state with a user); the mini-bar and the bar share one dock pinned at the bottom of the app shell, after the page, so the page's last element always scrolls above both (no per-page padding). The translucent surface is the theme token `--nala-nav-bar-surface` (`_navigation.scss`). The settings button leaves the top app bar, and the settings page loses its back link (it is a destination).
 
 ## Structure
 
@@ -44,8 +44,8 @@ Give every activity section (Feed, Diaper, Sleep, Medication, Growth, Pump…) t
 - Selected baby (name + age) with the baby switcher (03). Shared `nala-top-app-bar` (built in 03). Settings is reached from the bottom navigation bar.
 
 ### Bottom navigation bar
-- Floating, fixed at the bottom of the screen above the safe area: not full width (16 px from each side, at most 420 px wide, centred), fully rounded ends, a translucent surface with the page blurred behind it (`backdrop-filter`), like the iOS "liquid glass" bars.
-- Four destinations: Dashboard, History, Trends, Settings (icon + label; the current one with the active indicator pill).
+- Floating, fixed at the bottom of the screen above the safe area: not full width (70 % of the screen width minus the 16 px side margins, at most 294 px wide, centred), compact (about 60 px tall: 48 dp destinations, no visible labels), fully rounded ends, a translucent surface with the page blurred behind it (`backdrop-filter`), like the iOS "liquid glass" bars.
+- Four destinations: Dashboard, History, Trends, Settings (icon only, the name as accessible name and tooltip; the current one with the active indicator pill).
 - The page's last element can always scroll above the bar (the bar sits in a sticky dock after the page).
 
 ### Home
@@ -149,7 +149,7 @@ Each item becomes at least one test, written failing first.
 - [x] While the section has a live entry for the selected baby, + is replaced by the timer button, which opens that entry's sheet.
 
 ### Bottom navigation bar
-- [x] Every signed-in screen shows the floating bottom navigation bar with Dashboard, History, Trends and Settings, in that order; the current destination is marked active.
+- [x] Every signed-in screen shows the floating bottom navigation bar with Dashboard, History, Trends and Settings, in that order, icons only with their names as accessible names; the current destination is marked active.
 - [x] Signed-out screens don't show it.
 - [x] The top app bar has no settings button; the settings page has no back link.
 - [x] History (`/history`) and Trends (`/trends`) show a "Coming soon" empty state.
@@ -206,7 +206,7 @@ Use Angular Material's M3 components as-is. Customize only through the global th
 | Feedback after save / offline queued | Snackbar |
 | Section reorder | Drag and drop (CDK) list with drag handle icons |
 | Live timer button | Small FAB (`mat-mini-fab`) with the `timer` icon, in place of + |
-| Bottom navigation bar | No Angular Material component: built from M3 navigation bar guidance (icon + label destinations, active indicator pill) on a translucent surface, with router links |
+| Bottom navigation bar | No Angular Material component: built from M3 navigation bar guidance (icon-only destinations with accessible names, active indicator pill) on a translucent surface, with router links |
 
 ## Data
 

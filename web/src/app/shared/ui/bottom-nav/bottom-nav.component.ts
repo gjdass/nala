@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/c
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatIconModule } from '@angular/material/icon';
 import { MatRippleModule } from '@angular/material/core';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { NavigationEnd, Router, RouterLink } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { filter, map } from 'rxjs';
@@ -30,11 +31,11 @@ const destinationOf = (url: string): Destination['key'] | null => {
 
 /**
  * The floating bottom navigation bar of the signed-in screens (spec 04): Dashboard, History,
- * Trends and Settings, each an icon and a label, the current one with the M3 active indicator.
+ * Trends and Settings, each an icon only (its name as accessible name and tooltip), the current one with the M3 active indicator.
  */
 @Component({
   selector: 'nala-bottom-nav',
-  imports: [MatIconModule, MatRippleModule, RouterLink, TranslocoPipe],
+  imports: [MatIconModule, MatRippleModule, MatTooltipModule, RouterLink, TranslocoPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './bottom-nav.component.html',
   styleUrl: './bottom-nav.component.scss',
