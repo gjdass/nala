@@ -9,18 +9,33 @@
 >
   <div class="header" data-testid="section-header">
     <h2 class="title" data-testid="section-title">{{ 'sections.' + key() | transloco }}</h2>
-    <button
-      mat-mini-fab
-      type="button"
-      class="nala-section-fab"
-      [attr.aria-label]="
-        'sectionCard.add' | transloco: { section: ('sections.' + key() | transloco) }
-      "
-      (click)="add()"
-      data-testid="section-add"
-    >
-      <mat-icon>add</mat-icon>
-    </button>
+    @if (live(); as timer) {
+      <button
+        mat-mini-fab
+        type="button"
+        class="nala-section-fab"
+        [attr.aria-label]="
+          'sectionCard.openLive' | transloco: { section: ('sections.' + key() | transloco) }
+        "
+        (click)="openLive(timer)"
+        data-testid="section-live"
+      >
+        <mat-icon>timer</mat-icon>
+      </button>
+    } @else {
+      <button
+        mat-mini-fab
+        type="button"
+        class="nala-section-fab"
+        [attr.aria-label]="
+          'sectionCard.add' | transloco: { section: ('sections.' + key() | transloco) }
+        "
+        (click)="add()"
+        data-testid="section-add"
+      >
+        <mat-icon>add</mat-icon>
+      </button>
+    }
   </div>
 
   <ng-content select="[sectionBanner]" />

@@ -312,6 +312,7 @@
   },
   "sectionCard": {
     "add": "Add {{section}}",
+    "openLive": "Open live {{section}}",
     "showMore": "Show more",
     "showLess": "Show less",
     "allActivities": "All activities"

@@ -1,4 +1,4 @@
-import { signal } from '@angular/core';
+import { inject, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { Observable, Subject, of } from 'rxjs';
@@ -12,6 +12,8 @@ import { HistoryPage } from '../../../core/sections/section.models';
 import { EntrySheetResult } from '../../../shared/ui/entry-sheet/entry-sheet.models';
 import { EntrySheetService } from '../../../shared/ui/entry-sheet/entry-sheet.service';
 import { OfflineQueueService } from '../../../core/offline/offline-queue.service';
+import { RUNNING_TIMER_SOURCES } from '../../../core/timers/running-timer.models';
+import { FeedTimerSource } from '../feed-timers';
 import { fakeBreastfeedSync } from '../../../testing/breastfeed-sync';
 import { fakeOfflineQueue } from '../../../testing/offline-queue';
 import { aBottle, aBreastfeed, aSegment } from '../../../testing/feeds';
@@ -96,6 +98,7 @@ describe('FeedCardComponent', () => {
         { provide: EntrySheetService, useValue: entrySheets },
         { provide: BreastfeedSyncService, useValue: sync },
         { provide: OfflineQueueService, useValue: queue },
+        { provide: RUNNING_TIMER_SOURCES, useFactory: () => [inject(FeedTimerSource)] },
       ],
     }).compileComponents();
     fixture = TestBed.createComponent(FeedCardComponent);
@@ -311,6 +314,17 @@ describe('FeedCardComponent', () => {
 
       expect(find('feed-running-open')).not.toBeNull();
       expect(find('empty-title')).toBeNull();
+    });
+
+    it('replaces + with the timer button opening the live breastfeed', async () => {
+      await respond([aBottle()]);
+      const feed = inProgress(12);
+      await showInProgress(feed);
+
+      expect(find('section-add')).toBeNull();
+      find('section-live')!.click();
+
+      expect(entrySheets.edit).toHaveBeenCalledWith('feed', 'breastfeed', feed);
     });
 
     it("is not shown for another baby's feed", async () => {

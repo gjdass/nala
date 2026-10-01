@@ -3,7 +3,11 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { Subject } from 'rxjs';
 import en from '../../../../../public/i18n/en.json';
+import { Baby } from '../../../core/babies/baby.models';
+import { SelectedBabyService } from '../../../core/babies/selected-baby.service';
 import { SectionKey } from '../../../core/sections/section.models';
+import { RUNNING_TIMER_SOURCES } from '../../../core/timers/running-timer.models';
+import { fakeTimer, fakeTimerSource } from '../../../testing/fake-timer-source';
 import { translocoTesting } from '../../../testing/transloco-testing';
 import { EntrySheetResult } from '../entry-sheet/entry-sheet.models';
 import { EntrySheetService } from '../entry-sheet/entry-sheet.service';
@@ -40,7 +44,9 @@ const twelve = Array.from({ length: 12 }, (_, i) => `e${i + 1}`);
 describe('SectionCardComponent', () => {
   let fixture: ComponentFixture<Host>;
   let sheetClosed: Subject<EntrySheetResult | undefined>;
-  let entrySheets: { add: ReturnType<typeof vi.fn> };
+  let entrySheets: { add: ReturnType<typeof vi.fn>; edit: ReturnType<typeof vi.fn> };
+  let timers: ReturnType<typeof fakeTimerSource>;
+  let selected: ReturnType<typeof signal<Pick<Baby, 'id'> | null>>;
 
   const host = () => fixture.nativeElement as HTMLElement;
   const find = (testId: string) => host().querySelector<HTMLElement>(`[data-testid="${testId}"]`);
@@ -58,10 +64,17 @@ describe('SectionCardComponent', () => {
   beforeEach(async () => {
     localStorage.clear();
     sheetClosed = new Subject();
-    entrySheets = { add: vi.fn(() => sheetClosed) };
+    entrySheets = { add: vi.fn(() => sheetClosed), edit: vi.fn(() => sheetClosed) };
+    timers = fakeTimerSource();
+    selected = signal<Pick<Baby, 'id'> | null>({ id: 'baby-1' });
     await TestBed.configureTestingModule({
       imports: [Host, translocoTesting()],
-      providers: [provideRouter([]), { provide: EntrySheetService, useValue: entrySheets }],
+      providers: [
+        provideRouter([]),
+        { provide: EntrySheetService, useValue: entrySheets },
+        { provide: RUNNING_TIMER_SOURCES, useValue: [timers.source] },
+        { provide: SelectedBabyService, useValue: { selected } },
+      ],
     }).compileComponents();
   });
 
@@ -259,6 +272,70 @@ describe('SectionCardComponent', () => {
       await fixture.whenStable();
 
       expect(entries()).toHaveLength(12);
+    });
+  });
+
+  describe('live timer button', () => {
+    const live = async (...list: Parameters<typeof timers.set>[0]) => {
+      timers.set(list);
+      await fixture.whenStable();
+    };
+
+    beforeEach(() => create(twelve));
+
+    it('replaces + with a labelled timer small FAB while the section has a live entry for the selected baby', async () => {
+      await live(fakeTimer());
+
+      expect(find('section-add')).toBeNull();
+      const button = find('section-live') as HTMLButtonElement;
+      expect(button.hasAttribute('mat-mini-fab')).toBe(true);
+      expect(button.classList).toContain('nala-section-fab');
+      expect(button.textContent?.trim()).toBe('timer');
+      expect(button.getAttribute('aria-label')).toBe('Open live Feed');
+    });
+
+    it("opens the live entry's sheet and emits what it saved", async () => {
+      await live(fakeTimer({ kind: 'breastfeed', entry: { id: 'f1' } }));
+
+      find('section-live')!.click();
+      sheetClosed.next({ saved: { id: 'f1' } });
+
+      expect(entrySheets.edit).toHaveBeenCalledWith('feed', 'breastfeed', { id: 'f1' });
+      expect(entrySheets.add).not.toHaveBeenCalled();
+      expect(fixture.componentInstance.changes).toEqual([{ saved: { id: 'f1' } }]);
+    });
+
+    it("keeps + for another baby's live entry", async () => {
+      await live(fakeTimer({ babyId: 'baby-2' }));
+
+      expect(find('section-live')).toBeNull();
+      expect(find('section-add')).not.toBeNull();
+    });
+
+    it("keeps + for another section's live entry", async () => {
+      await live(fakeTimer({ section: 'sleep' }));
+
+      expect(find('section-live')).toBeNull();
+      expect(find('section-add')).not.toBeNull();
+    });
+
+    it('opens the oldest when two entries are live', async () => {
+      await live(
+        fakeTimer({ id: 't1', entry: { id: 'oldest' } }),
+        fakeTimer({ id: 't2', entry: { id: 'newest' } }),
+      );
+
+      find('section-live')!.click();
+
+      expect(entrySheets.edit).toHaveBeenCalledWith('feed', 'only', { id: 'oldest' });
+    });
+
+    it('comes back to + once the timer stops', async () => {
+      await live(fakeTimer());
+      await live();
+
+      expect(find('section-live')).toBeNull();
+      expect(find('section-add')).not.toBeNull();
     });
   });
 });

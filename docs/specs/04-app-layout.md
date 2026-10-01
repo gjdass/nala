@@ -146,7 +146,7 @@ Each item becomes at least one test, written failing first.
 - [x] × on an existing live entry discards the form edits and keeps the timer taps made in the sheet.
 - [x] Only a live entry (a timer runs) shows the card's running state and a mini-bar row; once its timers are stopped it is an ordinary entry.
 - [x] A live entry is listed in the card and history at once, with its live total.
-- [ ] While the section has a live entry for the selected baby, + is replaced by the timer button, which opens that entry's sheet.
+- [x] While the section has a live entry for the selected baby, + is replaced by the timer button, which opens that entry's sheet.
 
 ### Bottom navigation bar
 - [ ] Every signed-in screen shows the floating bottom navigation bar with Dashboard, History, Trends and Settings, in that order; the current destination is marked active.
@@ -180,7 +180,7 @@ Changes after the first review of the Feed section (built in this order, with 05
 - [x] **Slice 6 — Same-height entry list items.** `nala-entry-list-item`: always a two-line item, headline "time · label", one-line supporting text aligned with the headline (ellipsis), `summaryLines`, `durationSeconds`, `durationScaleSeconds` and the bar removed. Feed entries: solids "4:23 PM · Snack · Liked" / food on one line; breastfeed "Total 8m 30s · L 5m · R 3m 30s". Feed card "last side" capitalised ("Right" / "Left"). Covers: the Entry list item criteria, 05's Entry list items criteria and the capitalised last side.
 - [x] **Slice 7 — Section colours on the card buttons.** `--nala-section-<key>-container` / `--nala-on-section-<key>-container` tokens; the + small FAB and the Show more / Show less text button take the section colours through the theme. Covers: the container-token theming criterion and the card buttons colour criterion.
 - [x] **Slice 8 — 3 recent entries, last 24 hours, All activities.** Shared helper loading a section's entries of the last 24 h (at least 3) through its page loader; section card shows 3 folded, the 24 h list expanded, Show more hidden when it adds nothing; "All activities" link; `RECENT_ENTRIES` removed. Feed card uses the helper (`loadRecentEntries` in `core/sections/`; a failed page leaves the card as a failed load does). Covers: the three new Section card criteria about recent entries and All activities.
-- [ ] **Slice 9 — Live timer button.** The section card takes the section's live entry for the selected baby from `RunningTimersService` and replaces + with the timer button opening it. Tested with a fake timer source. Covers: the last Timers criterion (the other Timers criteria are covered by 05's slice 8, the first section with timers).
+- [x] **Slice 9 — Live timer button.** The section card takes the section's live entry for the selected baby from `RunningTimersService` and replaces + with the timer button opening it. Tested with a fake timer source. Covers: the last Timers criterion (the other Timers criteria are covered by 05's slice 8, the first section with timers).
 - [ ] **Slice 10 — Bottom navigation bar.** Shared `nala-bottom-nav` (floating, rounded, translucent with backdrop blur, safe area) on every signed-in screen; `/history` and `/trends` placeholder pages (empty state "Coming soon"); settings button removed from the top app bar and back link from the settings page; the mini-bar stacked above the bar; bottom padding on pages. Covers: every Bottom navigation bar criterion.
 
 ## Material 3 mapping
