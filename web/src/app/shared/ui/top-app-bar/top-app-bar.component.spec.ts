@@ -92,19 +92,17 @@ describe('TopAppBarComponent', () => {
     expect(chosen).toHaveBeenCalledWith(tom.id);
   });
 
-  it('has a settings button linking to /settings with a translated label', async () => {
+  it('has no settings button: settings is a bottom navigation destination', async () => {
     await show([lea], lea);
-    const settings = host().querySelector('a[data-testid="settings"]');
-
-    expect(settings?.getAttribute('href')).toBe('/settings');
-    expect(settings?.getAttribute('aria-label')).toBe(en.topBar.settings);
+    expect(find('settings')).toBeNull();
+    expect(host().querySelector('a')).toBeNull();
   });
 
-  it('with no baby, shows only the settings button', async () => {
+  it('with no baby, shows an empty bar', async () => {
     await show([], null);
 
     expect(find('selected-name')).toBeNull();
     expect(find('baby-switcher')).toBeNull();
-    expect(find('settings')).toBeTruthy();
+    expect(find('settings')).toBeNull();
   });
 });

@@ -181,8 +181,8 @@ describe('SettingsPage', () => {
     ]);
   });
 
-  it('has a link back to home', () => {
-    expect(button('back').getAttribute('href')).toBe('/');
+  it('has no back link: settings is a bottom navigation destination', () => {
+    expect(host().querySelector('[data-testid="back"]')).toBeNull();
   });
 
   describe('display name', () => {

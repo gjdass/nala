@@ -46,6 +46,20 @@ export const routes: Routes = [
     loadComponent: () => import('./features/settings/settings.page').then((m) => m.SettingsPage),
   },
   {
+    path: 'history',
+    canActivate: [authGuard],
+    data: { destination: 'history' },
+    loadComponent: () =>
+      import('./features/coming-soon/coming-soon.page').then((m) => m.ComingSoonPage),
+  },
+  {
+    path: 'trends',
+    canActivate: [authGuard],
+    data: { destination: 'trends' },
+    loadComponent: () =>
+      import('./features/coming-soon/coming-soon.page').then((m) => m.ComingSoonPage),
+  },
+  {
     path: 'history/:section',
     canActivate: [authGuard, registeredSectionGuard],
     loadComponent: () => import('./features/history/history.page').then((m) => m.HistoryPage),

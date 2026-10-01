@@ -1,6 +1,6 @@
 # 04 — App layout & section pattern
 
-Status: in progress
+Status: done
 
 ## Goal
 
@@ -36,7 +36,7 @@ Give every activity section (Feed, Diaper, Sleep, Medication, Growth, Pump…) t
   - The end time is the end of the last timed segment, empty while live.
   - Warnings about an entry live for too long ("Still feeding?") are defined per feature.
 - **Live timer button:** while the section has a live entry for the selected baby, the card's + is replaced by a **timer button** (same small FAB and colours, `timer` icon, labelled "Open live <section>") that opens that entry's sheet (`EntrySheetService.edit`). Other kinds can be added again once the timers are stopped. The card finds the live entry through `RunningTimersService` (section + baby), so a new timer section gets it without its own code.
-- **Bottom navigation bar:** a floating navigation bar on every signed-in screen, never on the signed-out ones (setup, login, invitation, password reset). Four destinations, in this order: **Dashboard** (`/`, home), **History** (`/history`), **Trends** (`/trends`), **Settings** (`/settings`), each with an icon and a label, the current one marked with the M3 active indicator. History and Trends are placeholders for now ("Coming soon" empty state; their content is features 11 and 12). The settings button leaves the top app bar, and the settings page loses its back link (it is a destination).
+- **Bottom navigation bar:** a floating navigation bar on every signed-in screen, never on the signed-out ones (setup, login, invitation, password reset). Four destinations, in this order: **Dashboard** (`/`, home), **History** (`/history`), **Trends** (`/trends`), **Settings** (`/settings`), each with an icon and a label, the current one marked with the M3 active indicator. History and Trends are placeholders for now: the shared top app bar (selected baby + switcher), the destination as page title and a "Coming soon" empty state; their content is features 11 and 12. A section's history page (`/history/:section`) is reached from a home card, so **Dashboard** stays the active destination there; History is active on `/history` only. The bar shows once the user is signed in (auth state with a user); the mini-bar and the bar share one dock pinned at the bottom of the app shell, after the page, so the page's last element always scrolls above both (no per-page padding). The translucent surface is the theme token `--nala-nav-bar-surface` (`_navigation.scss`). The settings button leaves the top app bar, and the settings page loses its back link (it is a destination).
 
 ## Structure
 
@@ -46,7 +46,7 @@ Give every activity section (Feed, Diaper, Sleep, Medication, Growth, Pump…) t
 ### Bottom navigation bar
 - Floating, fixed at the bottom of the screen above the safe area: not full width (16 px from each side, at most 420 px wide, centred), fully rounded ends, a translucent surface with the page blurred behind it (`backdrop-filter`), like the iOS "liquid glass" bars.
 - Four destinations: Dashboard, History, Trends, Settings (icon + label; the current one with the active indicator pill).
-- Pages keep enough bottom padding that their last element can scroll above the bar.
+- The page's last element can always scroll above the bar (the bar sits in a sticky dock after the page).
 
 ### Home
 - A **single column of section cards**, one above the other, scrollable.
@@ -149,12 +149,12 @@ Each item becomes at least one test, written failing first.
 - [x] While the section has a live entry for the selected baby, + is replaced by the timer button, which opens that entry's sheet.
 
 ### Bottom navigation bar
-- [ ] Every signed-in screen shows the floating bottom navigation bar with Dashboard, History, Trends and Settings, in that order; the current destination is marked active.
-- [ ] Signed-out screens don't show it.
-- [ ] The top app bar has no settings button; the settings page has no back link.
-- [ ] History (`/history`) and Trends (`/trends`) show a "Coming soon" empty state.
-- [ ] The mini-bar sits above the navigation bar, and the last element of a page can scroll above both.
-- [ ] The sheet is usable one-handed on a phone: touch targets follow M3 minimums (48 × 48 dp). *(Tests check that only default-density Material controls are used; still to be checked by hand on a phone.)*
+- [x] Every signed-in screen shows the floating bottom navigation bar with Dashboard, History, Trends and Settings, in that order; the current destination is marked active.
+- [x] Signed-out screens don't show it.
+- [x] The top app bar has no settings button; the settings page has no back link.
+- [x] History (`/history`) and Trends (`/trends`) show a "Coming soon" empty state.
+- [x] The mini-bar sits above the navigation bar, and the last element of a page can scroll above both.
+- [x] The sheet is usable one-handed on a phone: touch targets follow M3 minimums (48 × 48 dp). *(Tests check that only default-density Material controls are used; still to be checked by hand on a phone.)*
 
 ### Mini-bar
 - [x] The mini-bar appears on every screen as soon as a timer runs, and disappears when none runs.
@@ -181,7 +181,7 @@ Changes after the first review of the Feed section (built in this order, with 05
 - [x] **Slice 7 — Section colours on the card buttons.** `--nala-section-<key>-container` / `--nala-on-section-<key>-container` tokens; the + small FAB and the Show more / Show less text button take the section colours through the theme. Covers: the container-token theming criterion and the card buttons colour criterion.
 - [x] **Slice 8 — 3 recent entries, last 24 hours, All activities.** Shared helper loading a section's entries of the last 24 h (at least 3) through its page loader; section card shows 3 folded, the 24 h list expanded, Show more hidden when it adds nothing; "All activities" link; `RECENT_ENTRIES` removed. Feed card uses the helper (`loadRecentEntries` in `core/sections/`; a failed page leaves the card as a failed load does). Covers: the three new Section card criteria about recent entries and All activities.
 - [x] **Slice 9 — Live timer button.** The section card takes the section's live entry for the selected baby from `RunningTimersService` and replaces + with the timer button opening it. Tested with a fake timer source. Covers: the last Timers criterion (the other Timers criteria are covered by 05's slice 8, the first section with timers).
-- [ ] **Slice 10 — Bottom navigation bar.** Shared `nala-bottom-nav` (floating, rounded, translucent with backdrop blur, safe area) on every signed-in screen; `/history` and `/trends` placeholder pages (empty state "Coming soon"); settings button removed from the top app bar and back link from the settings page; the mini-bar stacked above the bar; bottom padding on pages. Covers: every Bottom navigation bar criterion.
+- [x] **Slice 10 — Bottom navigation bar.** Shared `nala-bottom-nav` (floating, rounded, translucent with backdrop blur, safe area) on every signed-in screen; `/history` and `/trends` placeholder pages (empty state "Coming soon"); settings button removed from the top app bar and back link from the settings page; the mini-bar stacked above the bar; bottom padding on pages. Covers: every Bottom navigation bar criterion.
 
 ## Material 3 mapping
 

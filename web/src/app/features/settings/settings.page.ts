@@ -12,7 +12,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { Router, RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { take } from 'rxjs';
 import { AccountService } from '../../core/account/account.service';
@@ -42,7 +42,6 @@ const SNACK_DURATION = 3000;
     MatFormFieldModule,
     MatInputModule,
     ReactiveFormsModule,
-    RouterLink,
     SettingsBabiesComponent,
     SettingsInvitationsComponent,
     SettingsMembersComponent,

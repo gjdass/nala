@@ -4,14 +4,13 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { NgTemplateOutlet } from '@angular/common';
-import { RouterLink } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { BabyAgePipe } from '../../../core/babies/baby-age.pipe';
 import { Baby } from '../../../core/babies/baby.models';
 
 /**
  * The app's top bar: the selected baby (name + age), a switcher menu when the family has
- * several babies, and the settings button.
+ * several babies. Settings is a bottom navigation destination.
  */
 @Component({
   selector: 'nala-top-app-bar',
@@ -22,7 +21,6 @@ import { Baby } from '../../../core/babies/baby.models';
     MatMenuModule,
     MatToolbarModule,
     NgTemplateOutlet,
-    RouterLink,
     TranslocoPipe,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,

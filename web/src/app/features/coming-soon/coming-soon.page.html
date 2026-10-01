@@ -1,0 +1,14 @@
+<nala-top-app-bar
+  [babies]="store.babies() ?? []"
+  [selected]="store.selected()"
+  (babySelected)="store.select($event)"
+/>
+
+<main>
+  <h1 data-testid="destination-title">{{ 'nav.' + destination | transloco }}</h1>
+  <nala-empty-state
+    [icon]="icons[destination]"
+    [title]="'comingSoon.title' | transloco"
+    [text]="'comingSoon.text' | transloco"
+  />
+</main>

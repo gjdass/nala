@@ -99,7 +99,6 @@
   },
   "settings": {
     "title": "Paramètres",
-    "back": "Retour",
     "saved": "Enregistré",
     "account": {
       "title": "Compte",
@@ -298,9 +297,6 @@
       }
     },
     "switcher": "Changer de bébé"
-  },
-  "topBar": {
-    "settings": "Paramètres"
   },
   "sections": {
     "feed": "Repas",
@@ -505,5 +501,16 @@
   "offline": {
     "queued": "Enregistré sur cet appareil. Ce sera envoyé dès le retour du réseau.",
     "refused": "Une modification faite hors ligne n'a pas pu être appliquée."
+  },
+  "nav": {
+    "label": "Navigation principale",
+    "dashboard": "Tableau de bord",
+    "history": "Historique",
+    "trends": "Tendances",
+    "settings": "Paramètres"
+  },
+  "comingSoon": {
+    "title": "Bientôt disponible",
+    "text": "Cette page arrive bientôt."
   }
 }

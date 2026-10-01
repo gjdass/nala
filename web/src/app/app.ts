@@ -1,30 +1,48 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import { AuthService } from './core/auth/auth.service';
 import { RunningTimersService } from './core/timers/running-timers.service';
+import { BottomNavComponent } from './shared/ui/bottom-nav/bottom-nav.component';
 import { RunningTimersBarComponent } from './shared/ui/running-timers-bar/running-timers-bar.component';
 
 @Component({
   selector: 'nala-root',
-  imports: [RouterOutlet, RunningTimersBarComponent],
+  imports: [BottomNavComponent, RouterOutlet, RunningTimersBarComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   // The mini-bar (and the sheets it opens) loads only once a timer runs, keeping it out of the initial bundle.
+  // Both bars share a dock pinned at the bottom: the mini-bar above the navigation bar.
   template: `
     <router-outlet />
-    @defer (when running()) {
-      <nala-running-timers-bar />
-    }
+    <div class="dock">
+      @defer (when running()) {
+        <nala-running-timers-bar />
+      }
+      @if (signedIn()) {
+        <nala-bottom-nav />
+      }
+    </div>
   `,
-  // A column at least a screen tall, so the mini-bar sits at the bottom of a short page.
+  // A column at least a screen tall, so the dock sits at the bottom of a short page; being sticky
+  // and after the page, the page's last element always scrolls above it.
   styles: `
     :host {
       display: flex;
       flex-direction: column;
       min-height: 100dvh;
     }
+
+    .dock {
+      position: sticky;
+      bottom: 0;
+      margin-top: auto;
+      z-index: 1;
+    }
   `,
 })
 export class App {
   private readonly timers = inject(RunningTimersService).timers;
+  private readonly auth = inject(AuthService).state;
 
   protected readonly running = computed(() => this.timers().length > 0);
+  protected readonly signedIn = computed(() => !!this.auth()?.user);
 }

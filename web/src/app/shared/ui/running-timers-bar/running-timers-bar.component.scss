@@ -1,9 +1,5 @@
+// Pinned at the bottom by the app shell's dock, above the bottom navigation bar.
 :host {
-  position: sticky;
-  bottom: 0;
-  // The app shell is at least a screen tall: on a short page this keeps the bar at its bottom.
-  margin-top: auto;
-  z-index: 1;
   display: block;
 }
 
@@ -11,7 +7,6 @@
   display: block;
   background: var(--mat-sys-surface-container);
   box-shadow: var(--mat-sys-level2);
-  padding-bottom: env(safe-area-inset-bottom);
 }
 
 .meta {

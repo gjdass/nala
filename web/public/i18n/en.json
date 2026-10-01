@@ -99,7 +99,6 @@
   },
   "settings": {
     "title": "Settings",
-    "back": "Back",
     "saved": "Saved",
     "account": {
       "title": "Account",
@@ -298,9 +297,6 @@
       }
     },
     "switcher": "Switch baby"
-  },
-  "topBar": {
-    "settings": "Settings"
   },
   "sections": {
     "feed": "Feed",
@@ -505,5 +501,16 @@
   "offline": {
     "queued": "Saved on this device. It will be sent when you're back online.",
     "refused": "A change made offline couldn't be applied."
+  },
+  "nav": {
+    "label": "Main navigation",
+    "dashboard": "Dashboard",
+    "history": "History",
+    "trends": "Trends",
+    "settings": "Settings"
+  },
+  "comingSoon": {
+    "title": "Coming soon",
+    "text": "This page is on its way."
   }
 }

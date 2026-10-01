@@ -1,0 +1,4 @@
+// Floating bottom navigation bar (spec 04): a translucent surface, the page blurred behind it.
+html {
+  --nala-nav-bar-surface: color-mix(in srgb, var(--mat-sys-surface-container) 72%, transparent);
+}

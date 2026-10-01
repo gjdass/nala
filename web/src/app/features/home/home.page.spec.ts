@@ -121,9 +121,8 @@ describe('HomePage', () => {
     await fixture.whenStable();
   });
 
-  it('shows the top bar with the settings button, whatever the babies', () => {
-    const link = host().querySelector('nala-top-app-bar a[data-testid="settings"]');
-    expect(link?.getAttribute('href')).toBe('/settings');
+  it('shows the top bar, whatever the babies', () => {
+    expect(host().querySelector('nala-top-app-bar')).not.toBeNull();
   });
 
   it('shows neither the empty state nor the app content while the babies load', () => {

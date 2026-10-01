@@ -113,4 +113,12 @@ describe('app routes', () => {
   it('a signed-out visitor opening a history lands on the login screen', async () => {
     expect(await navigate('/history/feed', signedOut)).toBe('/login');
   });
+
+  it.each(['/history', '/trends'])('a signed-in user can open %s', async (url) => {
+    expect(await navigate(url, signedIn)).toBe(url);
+  });
+
+  it.each(['/history', '/trends'])('a signed-out visitor opening %s lands on the login screen', async (url) => {
+    expect(await navigate(url, signedOut)).toBe('/login');
+  });
 });

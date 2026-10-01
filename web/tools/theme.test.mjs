@@ -49,6 +49,10 @@ describe('global theme', () => {
     assert.match(text, /--mat-button-text-label-text-color:\s*var\(--nala-section-accent\)/);
   });
 
+  it('defines a translucent surface token for the floating bottom navigation bar, from the theme surface', () => {
+    assert.match(css, /--nala-nav-bar-surface:\s*color-mix\([^;]*var\(--mat-sys-surface-container\)[^;]*transparent\)/);
+  });
+
   it("keeps Material's default density, so controls keep their 48 dp touch targets", () => {
     assert.doesNotMatch(css, /density/);
     assert.doesNotMatch(css, /touch-target-(display|size)/);

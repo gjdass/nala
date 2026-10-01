@@ -1,0 +1,59 @@
+// M3 navigation bar layout (no Angular Material component exists): icon in a 64 × 32 indicator
+// pill, label under it, each destination at least 48 dp tall. Floating, translucent, page blurred behind.
+:host {
+  display: block;
+  padding: 0 16px calc(12px + env(safe-area-inset-bottom));
+}
+
+nav {
+  display: flex;
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 8px;
+  border-radius: var(--mat-sys-corner-full);
+  background: var(--nala-nav-bar-surface);
+  backdrop-filter: blur(16px) saturate(1.5);
+  box-shadow: var(--mat-sys-level2);
+}
+
+.item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-height: 48px;
+  padding: 4px 0;
+  color: var(--mat-sys-on-surface-variant);
+  text-decoration: none;
+
+  &:focus-visible {
+    outline: 2px solid var(--mat-sys-secondary);
+    outline-offset: -2px;
+    border-radius: var(--mat-sys-corner-large);
+  }
+}
+
+.indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 32px;
+  border-radius: var(--mat-sys-corner-full);
+  overflow: hidden;
+
+  &.active {
+    background: var(--mat-sys-secondary-container);
+    color: var(--mat-sys-on-secondary-container);
+  }
+}
+
+.label {
+  font: var(--mat-sys-label-medium);
+}
+
+[aria-current='page'] .label {
+  color: var(--mat-sys-on-surface);
+  font-weight: 600;
+}

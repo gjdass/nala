@@ -3,6 +3,8 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 import { App } from './app';
+import { AuthState } from './core/auth/auth.models';
+import { AuthService } from './core/auth/auth.service';
 import { SelectedBabyService } from './core/babies/selected-baby.service';
 import { RUNNING_TIMER_SOURCES } from './core/timers/running-timer.models';
 import { fakeTimer, fakeTimerSource } from './testing/fake-timer-source';
@@ -10,7 +12,14 @@ import { translocoTesting } from './testing/transloco-testing';
 import { EntrySheetService } from './shared/ui/entry-sheet/entry-sheet.service';
 
 describe('App', () => {
-  const setup = async (running: boolean) => {
+  const signedIn: AuthState = {
+    setupRequired: false,
+    smtpEnabled: false,
+    user: { id: 'u1', email: 'anna@mail.com', displayName: 'Anna', language: 'en', isAdmin: true },
+  };
+  const signedOut: AuthState = { setupRequired: false, smtpEnabled: false, user: null };
+
+  const setup = async (running: boolean, auth: AuthState | null = signedIn) => {
     const fake = fakeTimerSource(running ? [fakeTimer()] : []);
     await TestBed.configureTestingModule({
       imports: [App, translocoTesting()],
@@ -19,6 +28,7 @@ describe('App', () => {
         { provide: RUNNING_TIMER_SOURCES, useValue: [fake.source] },
         { provide: SelectedBabyService, useValue: { babies: signal(null) } },
         { provide: EntrySheetService, useValue: { edit: () => of(undefined) } },
+        { provide: AuthService, useValue: { state: signal(auth) } },
       ],
     }).compileComponents();
     const fixture = TestBed.createComponent(App);
@@ -35,11 +45,27 @@ describe('App', () => {
 
   it('shows the running timers bar on every screen while a timer runs', async () => {
     const host = await setup(true);
-    expect(host.querySelector('router-outlet ~ nala-running-timers-bar')).not.toBeNull();
+    expect(host.querySelector('router-outlet ~ .dock > nala-running-timers-bar')).not.toBeNull();
   });
 
   it("doesn't load the running timers bar while no timer runs", async () => {
     const host = await setup(false);
     expect(host.querySelector('nala-running-timers-bar')).toBeNull();
+  });
+
+  it('shows the bottom navigation bar on signed-in screens', async () => {
+    const host = await setup(false);
+    expect(host.querySelector('router-outlet ~ .dock > nala-bottom-nav')).not.toBeNull();
+  });
+
+  it("doesn't show the bottom navigation bar on signed-out screens", async () => {
+    expect((await setup(false, signedOut)).querySelector('nala-bottom-nav')).toBeNull();
+    TestBed.resetTestingModule();
+    expect((await setup(false, null)).querySelector('nala-bottom-nav')).toBeNull();
+  });
+
+  it('stacks the running timers bar above the bottom navigation bar', async () => {
+    const host = await setup(true);
+    expect(host.querySelector('.dock > nala-running-timers-bar + nala-bottom-nav')).not.toBeNull();
   });
 });

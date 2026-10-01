@@ -1,0 +1,15 @@
+<nav [attr.aria-label]="'nav.label' | transloco">
+  @for (d of destinations; track d.key) {
+    <a
+      class="item"
+      [routerLink]="d.path"
+      [attr.aria-current]="current() === d.key ? 'page' : null"
+      data-testid="nav-item"
+    >
+      <span class="indicator" [class.active]="current() === d.key" matRipple>
+        <mat-icon aria-hidden="true">{{ d.icon }}</mat-icon>
+      </span>
+      <span class="label" data-testid="nav-label">{{ 'nav.' + d.key | transloco }}</span>
+    </a>
+  }
+</nav>
