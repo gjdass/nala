@@ -1,6 +1,6 @@
 # 05 — Feed
 
-Status: in progress
+Status: done
 
 Layout vocabulary (section card, kind picker, entry sheet, mini-bar…) is defined in [04 — App layout](04-app-layout.md).
 
