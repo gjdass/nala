@@ -22,3 +22,6 @@ coverage/
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# Local data exports from other apps (may contain personal data)
+export_*.csv
