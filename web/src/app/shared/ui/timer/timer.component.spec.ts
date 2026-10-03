@@ -64,11 +64,4 @@ describe('TimerComponent', () => {
     expect(toggle().disabled).toBe(true);
   });
 
-  it('uses a smaller duration when compact', async () => {
-    expect(find('timer-duration')!.closest('.compact')).toBeNull();
-
-    await set({ compact: true });
-
-    expect(find('timer-duration')!.closest('.compact')).not.toBeNull();
-  });
 });

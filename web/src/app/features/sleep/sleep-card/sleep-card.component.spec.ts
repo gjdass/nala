@@ -211,65 +211,27 @@ describe('SleepCardComponent', () => {
     const live = (startMinutesAgo: number, overrides = {}) =>
       aSleep({ id: 's3', startTime: minutesAgo(startMinutesAgo), endTime: null, ...overrides });
 
-    it('replaces the highlight by "Sleeping" with the live duration and a Stop button', async () => {
-      await respond([sleep('s2', 170, 80)]);
-      sync.inProgress.set([live(20)]);
-      await fixture.whenStable();
+    const noTimer = () => {
+      expect(find('sleep-running')).toBeNull();
+      expect(host().querySelector('nala-timer')).toBeNull();
+      expect(find('timer-toggle')).toBeNull();
+    };
 
-      expect(find('sleep-highlight')).toBeNull();
-      expect(text('sleep-running-open')).toBe(en.sleep.card.sleeping);
-      expect(text('timer-duration')).toBe('20m');
-      expect(text('timer-toggle')).toBe(en.timer.stop);
-
-      await vi.advanceTimersByTimeAsync(10_000);
-      await fixture.whenStable();
-      expect(text('timer-duration')).toBe('20m 10s');
-    });
-
-    it('shows the live sleep of the selected baby only', async () => {
-      sync.inProgress.set([live(20, { babyId: 'b2' })]);
-      await respond([sleep('s2', 170, 80)]);
-
-      expect(find('sleep-running-open')).toBeNull();
-      expect(find('sleep-highlight')).not.toBeNull();
-    });
-
-    it('stops it with Stop, then the normal highlight is back', async () => {
+    it('keeps the normal highlight and shows no timer or Stop', async () => {
       sync.inProgress.set([live(20)]);
       await respond([live(20), sleep('s2', 170, 80)]);
 
-      find('timer-toggle')!.click();
-      expect(sleeps.stop).toHaveBeenCalledWith('s3', NOW.toISOString());
-
-      const ended = live(20, { endTime: NOW.toISOString() });
-      stopped.next({ ok: true, queued: false, entry: ended });
-      expect(sync.puts).toEqual([ended]);
-
-      sync.inProgress.set([]);
-      await fixture.whenStable();
-      expect(find('sleep-running-open')).toBeNull();
+      expect(find('sleep-highlight')).not.toBeNull();
+      expect(text('sleep-awake-for')).toBe('1h 20m');
+      noTimer();
     });
 
-    it('applies a Stop kept on the device (offline) to the shared state at once', async () => {
-      const current = live(20);
-      sync.inProgress.set([current]);
-      await respond([current]);
+    it('keeps the empty state without any stopped sleep', async () => {
+      sync.inProgress.set([live(20)]);
+      await respond([]);
 
-      find('timer-toggle')!.click();
-      stopped.next({ ok: true, queued: true });
-
-      expect(sync.applied).toEqual([current]);
-      expect(sync.puts).toEqual([]);
-    });
-
-    it('opens the Sleep sheet when "Sleeping" is tapped', async () => {
-      const current = live(20);
-      sync.inProgress.set([current]);
-      await respond([current]);
-
-      find('sleep-running-open')!.click();
-
-      expect(entrySheets.edit).toHaveBeenCalledWith('sleep', 'sleep', current);
+      expect(find('empty-title')).not.toBeNull();
+      noTimer();
     });
 
     it('replaces + by the timer button, which opens the live sleep', async () => {

@@ -39,14 +39,3 @@
   color: var(--mat-sys-on-surface);
   font: var(--mat-sys-headline-medium);
 }
-
-.running {
-  display: flex;
-  flex-direction: column;
-  padding-top: 8px;
-}
-
-.feeding {
-  align-self: flex-start;
-  margin-left: 8px;
-}

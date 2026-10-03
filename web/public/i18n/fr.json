@@ -420,8 +420,7 @@
       "side": {
         "left": "Gauche",
         "right": "Droite"
-      },
-      "feeding": "Tétée en cours"
+      }
     },
     "milkType": {
       "breastMilk": "Lait maternel",
@@ -513,8 +512,7 @@
       "empty": {
         "title": "Aucun sommeil enregistré",
         "text": "Touchez + pour enregistrer le premier."
-      },
-      "sleeping": "Dort"
+      }
     },
     "sheet": {
       "endTime": "Heure de fin",

@@ -33,8 +33,8 @@ const storageKey = (key: SectionKey) => `nala.sectionExpanded.${key}`;
  * and a + small FAB opening the section's kind picker or entry sheet (`changed` once an entry is
  * saved), replaced by the timer button while the section has a live entry for the selected baby (from
  * `RunningTimersService`, the oldest with two), which opens that entry's sheet; an optional banner (`[sectionBanner]`, shown whatever the entries), the highlight
- * (`[sectionHighlight]`) or, without entries, the empty state (`[sectionEmpty]`), both replaced by
- * the running state (`[sectionRunning]`) while `running`, then the 3 most recent `entries` rendered
+ * (`[sectionHighlight]`) or, without entries, the empty state (`[sectionEmpty]`), unchanged while an
+ * entry is live (no timer on the card), then the 3 most recent `entries` rendered
  * through the `nalaSectionEntry` template, Show more / Show less listing all of them (hidden when
  * there are no more than 3), and "All activities", the section's history. `entries` is null while
  * loading. The expanded state is remembered per device and section.
@@ -63,8 +63,6 @@ export class SectionCardComponent<T = unknown> {
   readonly key = input.required<SectionKey>();
   /** The section's entries of the last 24 hours, at least the 3 most recent (`loadRecentEntries`), newest first; null while loading. */
   readonly entries = input<readonly T[] | null>(null);
-  /** A timer of the section runs: `[sectionRunning]` replaces the highlight or the empty state. */
-  readonly running = input(false);
   /** An entry was added through +: the section reloads its entries. */
   readonly changed = output<EntrySheetResult>();
 

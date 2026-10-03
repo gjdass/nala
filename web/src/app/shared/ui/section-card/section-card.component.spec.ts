@@ -20,7 +20,6 @@ import { SectionEntryDirective } from './section-entry.directive';
   template: `<nala-section-card
     [key]="key()"
     [entries]="entries()"
-    [running]="running()"
     (changed)="changes.push($event)"
   >
     <p sectionBanner data-testid="banner">Still feeding?</p>
@@ -35,7 +34,6 @@ import { SectionEntryDirective } from './section-entry.directive';
 class Host {
   readonly key = signal<SectionKey>('feed');
   readonly entries = signal<readonly string[] | null>(null);
-  readonly running = signal(false);
   readonly changes: EntrySheetResult[] = [];
 }
 
@@ -174,25 +172,29 @@ describe('SectionCardComponent', () => {
     ).toBeTruthy();
   });
 
-  it('shows the running state instead of the highlight, keeping show more', async () => {
-    await create(twelve);
-    expect(find('running')).toBeNull();
+  describe('while the section has a live entry (no timer on the card)', () => {
+    const goLive = async () => {
+      timers.set([fakeTimer()]);
+      await fixture.whenStable();
+    };
 
-    fixture.componentInstance.running.set(true);
-    await fixture.whenStable();
+    it('keeps the highlight, show more and the recent entries, and renders no running content', async () => {
+      await create(twelve);
+      await goLive();
 
-    expect(text('running')).toBe('Feeding');
-    expect(find('highlight')).toBeNull();
-    expect(find('section-toggle')).not.toBeNull();
-  });
+      expect(text('highlight')).toBe('Last feeding');
+      expect(find('running')).toBeNull();
+      expect(find('section-toggle')).not.toBeNull();
+      expect(entries()).toEqual(['e1', 'e2', 'e3']);
+    });
 
-  it('shows the running state instead of the empty state', async () => {
-    await create([]);
-    fixture.componentInstance.running.set(true);
-    await fixture.whenStable();
+    it('keeps the empty state', async () => {
+      await create([]);
+      await goLive();
 
-    expect(text('running')).toBe('Feeding');
-    expect(find('empty')).toBeNull();
+      expect(text('empty')).toBe('No feed yet');
+      expect(find('running')).toBeNull();
+    });
   });
 
   describe('recent entries', () => {
@@ -207,14 +209,6 @@ describe('SectionCardComponent', () => {
       expect(follows(find('highlight')!, first)).toBe(true);
       expect(follows(first, find('section-toggle')!)).toBe(true);
       expect(follows(find('section-toggle')!, find('section-history')!)).toBe(true);
-    });
-
-    it('lists the 3 most recent entries under the running state too', async () => {
-      await create(twelve);
-      fixture.componentInstance.running.set(true);
-      await fixture.whenStable();
-
-      expect(entries()).toEqual(['e1', 'e2', 'e3']);
     });
 
     it('lists fewer when there are fewer, without show more', async () => {

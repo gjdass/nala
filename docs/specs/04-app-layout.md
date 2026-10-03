@@ -147,7 +147,7 @@ Each item becomes at least one test, written failing first.
 - [x] × on a sheet opened to add, after a Start, deletes the entry that Start created (after confirmation), online and offline.
 - [x] × on an existing live entry discards the form edits and keeps the timer taps made in the sheet.
 - [x] Only a live entry (a timer runs) shows the timer button and a mini-bar row; once its timers are stopped it is an ordinary entry.
-- [ ] A section card never shows a timer or timer controls: while an entry is live it keeps its normal highlight (or empty state).
+- [x] A section card never shows a timer or timer controls: while an entry is live it keeps its normal highlight (or empty state).
 - [x] A live entry is listed in the card and history at once, with its live total.
 - [x] While the section has a live entry for the selected baby, + is replaced by the timer button, which opens that entry's sheet.
 

@@ -291,29 +291,28 @@ describe('FeedCardComponent', () => {
     await fixture.whenStable();
   };
 
-  describe('running state', () => {
-    it('replaces the highlight with Feeding and both sides live, the running side marked', async () => {
+  describe('while a breastfeed is live (no timer on the card)', () => {
+    const noTimer = () => {
+      expect(find('feed-running')).toBeNull();
+      expect(host().querySelector('nala-split-timer')).toBeNull();
+      expect(find('split-left-toggle')).toBeNull();
+      expect(find('split-right-toggle')).toBeNull();
+    };
+
+    it('keeps the normal highlight and shows no timer or Start / Stop', async () => {
       await respond([aBottle()]);
       await showInProgress(inProgress(12));
 
-      expect(find('feed-highlight')).toBeNull();
-      expect(text('feed-running-open')).toBe(en.feed.card.feeding);
-      expect(text('split-left-duration')).toBe('5m');
-      expect(text('split-right-duration')).toBe('7m');
-      expect(text('split-right-toggle')).toBe(en.splitTimer.stop);
-      expect(host().querySelector('nala-split-timer .compact')).not.toBeNull();
-
-      await vi.advanceTimersByTimeAsync(3_000);
-      await fixture.whenStable();
-      expect(text('split-right-duration')).toBe('7m 3s');
+      expect(find('feed-highlight')).not.toBeNull();
+      noTimer();
     });
 
-    it('shows even without any saved feed', async () => {
+    it('keeps the empty state without any saved feed', async () => {
       await respond([]);
       await showInProgress(inProgress(12));
 
-      expect(find('feed-running-open')).not.toBeNull();
-      expect(find('empty-title')).toBeNull();
+      expect(find('empty-title')).not.toBeNull();
+      noTimer();
     });
 
     it('replaces + with the timer button opening the live breastfeed', async () => {
@@ -327,56 +326,6 @@ describe('FeedCardComponent', () => {
       expect(entrySheets.edit).toHaveBeenCalledWith('feed', 'breastfeed', feed);
     });
 
-    it("is not shown for another baby's feed", async () => {
-      await respond([aBottle()]);
-      await showInProgress(inProgress(12, { babyId: 'b2' }));
-
-      expect(find('feed-running-open')).toBeNull();
-      expect(find('feed-highlight')).not.toBeNull();
-    });
-
-    it('stops on the running side Stop, applying the result at once', async () => {
-      await respond([aBottle()]);
-      await showInProgress(inProgress(12));
-
-      find('split-right-toggle')!.click();
-      expect(feeds.stopSide).toHaveBeenCalledWith('f3', NOW.toISOString());
-
-      const stopped = inProgress(12, { endTime: NOW.toISOString(), updatedAt: NOW.toISOString() });
-      timer.next({ ok: true, feed: stopped });
-      expect(sync.puts).toEqual([stopped]);
-    });
-
-    it('applies a tap kept on the device (offline) to the shared state at once', async () => {
-      await respond([aBottle()]);
-      await showInProgress(inProgress(12));
-
-      find('split-right-toggle')!.click();
-      timer.next({ ok: true, queued: true });
-
-      expect(sync.applied).toEqual([inProgress(12)]);
-      expect(sync.puts).toEqual([]);
-    });
-
-    it('switches side on the other side Start', async () => {
-      await respond([aBottle()]);
-      await showInProgress(inProgress(12));
-
-      find('split-left-toggle')!.click();
-
-      expect(feeds.startSide).toHaveBeenCalledWith('f3', 'b1', 'left', NOW.toISOString());
-    });
-
-    it('opens the Breastfeed sheet on Feeding', async () => {
-      const feed = inProgress(12);
-      await respond([aBottle()]);
-      await showInProgress(feed);
-
-      find('feed-running-open')!.click();
-
-      expect(entrySheets.edit).toHaveBeenCalledWith('feed', 'breastfeed', feed);
-    });
-
     it('reloads at once when a feed becomes live, so it is listed from its first Start', async () => {
       await respond([aBottle()]);
       expect(feeds.page).toHaveBeenCalledTimes(1);
@@ -386,7 +335,7 @@ describe('FeedCardComponent', () => {
       expect(feeds.page).toHaveBeenCalledTimes(2);
     });
 
-    it('reloads the feeds and last side once the feed is stopped or deleted anywhere, leaving the running state', async () => {
+    it('reloads the feeds and last side once the feed is stopped or deleted anywhere', async () => {
       await respond([aBottle()]);
       await showInProgress(inProgress(12));
       expect(feeds.page).toHaveBeenCalledTimes(2);
@@ -395,7 +344,6 @@ describe('FeedCardComponent', () => {
 
       expect(feeds.page).toHaveBeenCalledTimes(3);
       expect(feeds.breastfeedState).toHaveBeenCalledTimes(3);
-      expect(find('feed-running-open')).toBeNull();
     });
 
     it('lists the live feed as the shared state has it, with its live total', async () => {

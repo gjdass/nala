@@ -7,7 +7,6 @@ import {
   signal,
   untracked,
 } from '@angular/core';
-import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { Subscription, filter } from 'rxjs';
@@ -25,7 +24,6 @@ import { EmptyStateComponent } from '../../../shared/ui/empty-state/empty-state.
 import { EntrySheetService } from '../../../shared/ui/entry-sheet/entry-sheet.service';
 import { SectionCardComponent } from '../../../shared/ui/section-card/section-card.component';
 import { SectionEntryDirective } from '../../../shared/ui/section-card/section-entry.directive';
-import { TimerComponent } from '../../../shared/ui/timer/timer.component';
 import { isStillSleeping, sleepSeconds } from '../sleep-duration';
 import { SleepEntryComponent } from '../sleep-entry/sleep-entry.component';
 
@@ -34,9 +32,9 @@ import { SleepEntryComponent } from '../sleep-entry/sleep-entry.component';
  * most recent) in the shared section card, with "Awake for" and the time since the latest sleep ended
  * (ticking), on the right that sleep's duration ("last sleep"), or an empty state without any sleep.
  *
- * While the baby has a live sleep (on any device, see `SleepSyncService`), the highlight is replaced
- * by "Sleeping" (opens the sheet) and the compact timer with its live duration and Stop; a sleep live
- * for more than 12 hours shows "Still sleeping?", whose Review opens it. The live sleep is listed as
+ * A live sleep (on any device, see `SleepSyncService`) changes nothing in the highlight (no timer on
+ * the card, spec 04): the timer button opens it; a sleep live for more than 12 hours shows "Still
+ * sleeping?", whose Review opens it. The live sleep is listed as
  * the shared state has it now, and the card reloads when a sleep becomes live or stops anywhere.
  * Reloads after an entry is added, edited or deleted, when another baby is selected, and once changes
  * kept on the device (offline) have been sent.
@@ -47,13 +45,11 @@ import { SleepEntryComponent } from '../sleep-entry/sleep-entry.component';
     BannerComponent,
     DurationPipe,
     EmptyStateComponent,
-    MatButtonModule,
     MatIconModule,
     SectionCardComponent,
     SectionEntryDirective,
     SleepEntryComponent,
     TimeSincePipe,
-    TimerComponent,
     TranslocoPipe,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -82,16 +78,10 @@ export class SleepCardComponent {
     const baby = this.store.selected();
     return baby ? this.sync.forBaby(baby.id) : null;
   });
-  protected readonly liveSeconds = computed(() => {
-    const sleep = this.inProgress();
-    return sleep ? Math.max(0, sleepSeconds(sleep, this.now()) ?? 0) : 0;
-  });
   protected readonly stillSleeping = computed(() => {
     const sleep = this.inProgress();
     return sleep && isStillSleeping(sleep, this.now()) ? sleep : null;
   });
-  /** Sending a Stop. */
-  protected readonly busy = signal(false);
   /** The sleep that ended last; null without one. */
   protected readonly last = computed(() =>
     (this.entries() ?? [])
@@ -146,22 +136,6 @@ export class SleepCardComponent {
         }
         shown = babyId ? { babyId, id } : null;
       });
-    });
-  }
-
-  protected stop(): void {
-    const sleep = this.inProgress();
-    if (!sleep || this.busy()) {
-      return;
-    }
-    this.busy.set(true);
-    this.sleeps.stop(sleep.id, new Date().toISOString()).subscribe((result) => {
-      this.busy.set(false);
-      if (result.ok && result.queued) {
-        this.sync.applyWaiting(sleep);
-      } else if (result.ok) {
-        this.sync.put(result.entry);
-      }
     });
   }
 

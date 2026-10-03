@@ -57,7 +57,7 @@ Each item becomes at least one test, written failing first.
 ### Feed card
 - [x] Highlight: "Last feeding" with the time since the **start** of the most recent feed of any kind (e.g. "26m ago"), and on the right, in an M3 display/headline typescale, the side the most recent breastfeed that isn't live ended on, capitalised ("Right" / "Left"), labelled "last side".
 - [x] If there has been no breastfeed yet, the "last side" part is hidden; with no feed at all, an empty state is shown.
-- [ ] While a breastfeed is live, the card keeps its normal highlight and shows no timer or Start / Stop; the timer button opens the Breastfeed sheet. *(Changed by 04 slice 11; it replaced the card's running state.)*
+- [x] While a breastfeed is live, the card keeps its normal highlight and shows no timer or Start / Stop; the timer button opens the Breastfeed sheet. *(Changed by 04 slice 11; it replaced the card's running state.)*
 
 ### Breastfeed sheet
 - [x] Two timers side by side, Left and Right. Each shows its side's accumulated duration and a Start/Stop button ("Start Left", "Start Right" / "Stop"; M3 tonal button, filled while that side runs).

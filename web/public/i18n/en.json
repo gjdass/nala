@@ -420,8 +420,7 @@
       "side": {
         "left": "Left",
         "right": "Right"
-      },
-      "feeding": "Feeding"
+      }
     },
     "milkType": {
       "breastMilk": "Breast milk",
@@ -513,8 +512,7 @@
       "empty": {
         "title": "No sleep logged yet",
         "text": "Tap + to log the first one."
-      },
-      "sleeping": "Sleeping"
+      }
     },
     "sheet": {
       "endTime": "End time",
