@@ -1,12 +1,12 @@
-// Pinned at the bottom by the app shell's dock, above the bottom navigation bar.
+// Projected into the bottom navigation bar's pill (above the destinations): no surface of its own.
 :host {
   display: block;
 }
 
-.bar {
-  display: block;
-  background: var(--mat-sys-surface-container);
-  box-shadow: var(--mat-sys-level2);
+.avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .meta {

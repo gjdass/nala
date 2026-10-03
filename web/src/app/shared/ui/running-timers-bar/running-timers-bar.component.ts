@@ -11,9 +11,9 @@ import { RunningTimersService } from '../../../core/timers/running-timers.servic
 import { EntrySheetService } from '../entry-sheet/entry-sheet.service';
 
 /**
- * The running timers mini-bar (spec 04), pinned at the bottom of every screen while a timer runs:
- * one list item per timer (section icon, label, the baby's name when the family has several, live
- * duration, chevron); tapping one opens that timer's entry sheet. Renders nothing when none runs.
+ * The running timers mini-bar (spec 04), shown inside the bottom navigation bar's pill while a timer
+ * runs: one list item per timer (section icon in a circle in the section's container colours, label,
+ * the baby's name when the family has several, live duration, chevron); tapping one opens that timer's entry sheet. Renders nothing when none runs.
  */
 @Component({
   selector: 'nala-running-timers-bar',

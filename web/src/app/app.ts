@@ -10,15 +10,16 @@ import { RunningTimersBarComponent } from './shared/ui/running-timers-bar/runnin
   imports: [BottomNavComponent, RouterOutlet, RunningTimersBarComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   // The mini-bar (and the sheets it opens) loads only once a timer runs, keeping it out of the initial bundle.
-  // Both bars share a dock pinned at the bottom: the mini-bar above the navigation bar.
+  // It shows inside the navigation bar's pill, above the destinations, in a dock pinned at the bottom.
   template: `
     <router-outlet />
     <div class="dock">
-      @defer (when running()) {
-        <nala-running-timers-bar />
-      }
       @if (signedIn()) {
-        <nala-bottom-nav />
+        <nala-bottom-nav [withTimers]="running()">
+          @defer (when running()) {
+            <nala-running-timers-bar />
+          }
+        </nala-bottom-nav>
       }
     </div>
   `,

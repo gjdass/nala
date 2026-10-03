@@ -50,7 +50,10 @@ describe('RunningTimersBarComponent', () => {
       imports: [RunningTimersBarComponent, translocoTesting()],
       providers: [
         { provide: RUNNING_TIMER_SOURCES, useValue: [fake.source] },
-        { provide: SECTIONS, useValue: [fakeSection('feed', 'restaurant'), fakeSection('sleep', 'bedtime')] },
+        {
+          provide: SECTIONS,
+          useValue: [fakeSection('feed', 'restaurant'), fakeSection('sleep', 'bedtime')],
+        },
         { provide: NowService, useValue: { now } },
         { provide: SelectedBabyService, useValue: { babies } },
         { provide: EntrySheetService, useValue: entrySheets },
@@ -77,17 +80,51 @@ describe('RunningTimersBarComponent', () => {
   it('shows one row per running timer with section icon, label and duration', async () => {
     fake.set([
       fakeTimer({ id: 'a', startedAt }),
-      fakeTimer({ id: 'b', section: 'sleep', label: 'sections.sleep', startedAt: startedAt + 4000 }),
+      fakeTimer({
+        id: 'b',
+        section: 'sleep',
+        label: 'sections.sleep',
+        startedAt: startedAt + 4000,
+      }),
     ]);
     await render();
 
     expect(rows().length).toBe(2);
-    expect(rows()[0].querySelector('[data-testid="timer-icon"]')?.textContent?.trim()).toBe('restaurant');
-    expect(rows()[0].querySelector('[data-testid="timer-label"]')?.textContent?.trim()).toBe(en.sections.feed);
-    expect(rows()[0].querySelector('[data-testid="timer-duration"]')?.textContent?.trim()).toBe('12m 4s');
-    expect(rows()[1].querySelector('[data-testid="timer-icon"]')?.textContent?.trim()).toBe('bedtime');
-    expect(rows()[1].querySelector('[data-testid="timer-label"]')?.textContent?.trim()).toBe(en.sections.sleep);
-    expect(rows()[1].querySelector('[data-testid="timer-duration"]')?.textContent?.trim()).toBe('12m');
+    expect(rows()[0].querySelector('[data-testid="timer-icon"]')?.textContent?.trim()).toBe(
+      'restaurant',
+    );
+    expect(rows()[0].querySelector('[data-testid="timer-label"]')?.textContent?.trim()).toBe(
+      en.sections.feed,
+    );
+    expect(rows()[0].querySelector('[data-testid="timer-duration"]')?.textContent?.trim()).toBe(
+      '12m 4s',
+    );
+    expect(rows()[1].querySelector('[data-testid="timer-icon"]')?.textContent?.trim()).toBe(
+      'bedtime',
+    );
+    expect(rows()[1].querySelector('[data-testid="timer-label"]')?.textContent?.trim()).toBe(
+      en.sections.sleep,
+    );
+    expect(rows()[1].querySelector('[data-testid="timer-duration"]')?.textContent?.trim()).toBe(
+      '12m',
+    );
+  });
+
+  it("shows each section icon in a circle in its section's container colours", async () => {
+    fake.set([
+      fakeTimer({ id: 'a', startedAt }),
+      fakeTimer({ id: 'b', section: 'sleep', startedAt }),
+    ]);
+    await render();
+
+    const avatar = (row: HTMLElement) =>
+      row.querySelector<HTMLElement>('[data-testid="timer-avatar"]')!;
+    expect(avatar(rows()[0]).hasAttribute('matListItemAvatar')).toBe(true);
+    expect(avatar(rows()[0]).querySelector('[data-testid="timer-icon"]')).not.toBeNull();
+    const style = (row: HTMLElement) => avatar(row).getAttribute('style') ?? '';
+    expect(style(rows()[0])).toContain('var(--nala-section-feed-container)');
+    expect(style(rows()[0])).toContain('var(--nala-on-section-feed-container)');
+    expect(style(rows()[1])).toContain('var(--nala-section-sleep-container)');
   });
 
   it('updates the duration live', async () => {
@@ -97,7 +134,9 @@ describe('RunningTimersBarComponent', () => {
     now.set(at + 60_000);
     await render();
 
-    expect(rows()[0].querySelector('[data-testid="timer-duration"]')?.textContent?.trim()).toBe('13m 4s');
+    expect(rows()[0].querySelector('[data-testid="timer-duration"]')?.textContent?.trim()).toBe(
+      '13m 4s',
+    );
   });
 
   it("hides the baby's name with a single baby", async () => {
@@ -115,10 +154,9 @@ describe('RunningTimersBarComponent', () => {
     ]);
     await render();
 
-    expect(rows().map((r) => r.querySelector('[data-testid="timer-baby"]')?.textContent?.trim())).toEqual([
-      'Léo',
-      'Emma',
-    ]);
+    expect(
+      rows().map((r) => r.querySelector('[data-testid="timer-baby"]')?.textContent?.trim()),
+    ).toEqual(['Léo', 'Emma']);
   });
 
   it("opens the timer's entry sheet on tap", async () => {

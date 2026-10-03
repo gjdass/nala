@@ -45,7 +45,7 @@ describe('App', () => {
 
   it('shows the running timers bar on every screen while a timer runs', async () => {
     const host = await setup(true);
-    expect(host.querySelector('router-outlet ~ .dock > nala-running-timers-bar')).not.toBeNull();
+    expect(host.querySelector('router-outlet ~ .dock nala-running-timers-bar')).not.toBeNull();
   });
 
   it("doesn't load the running timers bar while no timer runs", async () => {
@@ -64,8 +64,15 @@ describe('App', () => {
     expect((await setup(false, null)).querySelector('nala-bottom-nav')).toBeNull();
   });
 
-  it('stacks the running timers bar above the bottom navigation bar', async () => {
+  it('shows the running timers inside the bottom navigation bar, marking it as holding timers', async () => {
     const host = await setup(true);
-    expect(host.querySelector('.dock > nala-running-timers-bar + nala-bottom-nav')).not.toBeNull();
+    expect(host.querySelector('.dock > nala-bottom-nav nala-running-timers-bar')).not.toBeNull();
+    expect(host.querySelector('.dock > nala-running-timers-bar')).toBeNull();
+    expect(host.querySelector('[data-testid="nav-pill"]')?.classList).toContain('with-timers');
+  });
+
+  it("doesn't mark the bottom navigation bar as holding timers while none runs", async () => {
+    const host = await setup(false);
+    expect(host.querySelector('[data-testid="nav-pill"]')?.classList).not.toContain('with-timers');
   });
 });

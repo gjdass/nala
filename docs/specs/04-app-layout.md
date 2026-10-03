@@ -45,7 +45,7 @@ Give every activity section (Feed, Diaper, Sleep, Medication, Growth, Pump…) t
 - Selected baby (name + age) with the baby switcher (03). Shared `nala-top-app-bar` (built in 03). Settings is reached from the bottom navigation bar.
 
 ### Bottom navigation bar
-- Floating, fixed at the bottom of the screen above the safe area: not full width (70 % of the screen width minus the 16 px side margins, at most 294 px wide, centred), compact (about 60 px tall: 48 dp destinations, no visible labels), fully rounded ends (a large M3 corner instead while it holds timer rows), a translucent surface with the page blurred behind it (`backdrop-filter`), like the iOS "liquid glass" bars.
+- Floating, fixed at the bottom of the screen above the safe area: not full width (70 % of the screen width minus the 16 px side margins, at most 294 px wide, centred), compact (about 60 px tall: 48 dp destinations, no visible labels), fully rounded ends; while it holds timer rows it takes the full width between the side margins, at most 360 px, so a label and its duration fit, and the M3 large corner, a translucent surface with the page blurred behind it (`backdrop-filter`), like the iOS "liquid glass" bars.
 - Four destinations: Dashboard, History, Trends, Settings (icon only, the name as accessible name and tooltip; the current one with the active indicator pill).
 - The page's last element can always scroll above the bar (the bar sits in a sticky dock after the page).
 
@@ -104,7 +104,7 @@ Shared by the card's expanded list and the history page:
 - The same sheet is used to add and to edit an entry.
 
 ### Running timers mini-bar
-- When any entry is live (breast feed, sleep; pump later), the timers show **inside the bottom navigation bar's pill**, above the destinations and separated from them by a divider: one row per live entry with the section icon (in a small circle in the section's container colours), label, live duration and a chevron. The rows sit on the pill's translucent surface (no surface of their own); while they show, the pill's corners become the M3 large corner instead of fully round. It is one surface: no separate bar above the navigation bar.
+- When any entry is live (breast feed, sleep; pump later), the timers show **inside the bottom navigation bar's pill**, above the destinations and separated from them by a divider: one row per live entry with the section icon (in a small circle in the section's container colours), label, live duration and a chevron. The rows sit on the pill's translucent surface (no surface of their own); while they show, the pill widens (full width between the side margins, at most 360 px) and its corners become the M3 large corner instead of fully round. It is one surface: no separate bar above the navigation bar.
 - The rows are a separate shared component (`nala-running-timers-bar`), projected into `nala-bottom-nav` by the app shell and loaded only once a timer runs (deferred).
 - When the family has more than one baby, each row also shows the baby's name, and timers of all babies are listed.
 - Tapping a row opens that timer's entry sheet.
@@ -163,8 +163,8 @@ Each item becomes at least one test, written failing first.
 - [x] The mini-bar appears on every screen as soon as a timer runs, and disappears when none runs.
 - [x] It shows each live entry with a live duration and opens the matching entry sheet on tap.
 - [x] It reflects timers started or stopped from other devices within a few seconds.
-- [ ] Its rows show inside the navigation bar's pill, above the destinations with a divider, and the pill takes the large corner only while timers show.
-- [ ] Each row's section icon sits in a circle in its section's container colours.
+- [x] Its rows show inside the navigation bar's pill, above the destinations with a divider, and the pill takes the large corner only while timers show.
+- [x] Each row's section icon sits in a circle in its section's container colours.
 
 ### Theming
 - [x] Each section has a colour token (and an "on colour" token for text/icons on it) defined in the global theme, with light and dark values. Components never hard-code these colours. Tokens: `--nala-section-<key>` / `--nala-on-section-<key>` (placeholders created in 01, `web/src/styles/_sections.scss`).
@@ -187,7 +187,7 @@ Changes after the first review of the Feed section (built in this order, with 05
 - [x] **Slice 8 — 3 recent entries, last 24 hours, All activities.** Shared helper loading a section's entries of the last 24 h (at least 3) through its page loader; section card shows 3 folded, the 24 h list expanded, Show more hidden when it adds nothing; "All activities" link; `RECENT_ENTRIES` removed. Feed card uses the helper (`loadRecentEntries` in `core/sections/`; a failed page leaves the card as a failed load does). Covers: the three new Section card criteria about recent entries and All activities.
 - [x] **Slice 9 — Live timer button.** The section card takes the section's live entry for the selected baby from `RunningTimersService` and replaces + with the timer button opening it. Tested with a fake timer source. Covers: the last Timers criterion (the other Timers criteria are covered by 05's slice 8, the first section with timers).
 - [x] **Slice 10 — Bottom navigation bar.** Shared `nala-bottom-nav` (floating, rounded, translucent with backdrop blur, safe area) on every signed-in screen; `/history` and `/trends` placeholder pages (empty state "Coming soon"); settings button removed from the top app bar and back link from the settings page; the mini-bar stacked above the bar; bottom padding on pages. Covers: every Bottom navigation bar criterion.
-- [ ] **Slice 11 — No timer on cards, mini-bar in the nav pill.** The shared section card loses `running` and the `[sectionRunning]` slot; Feed and Sleep cards lose their running state (compact split timer / compact `nala-timer` and their card-side Start / Stop) and keep their normal highlight while live; the `compact` variants go if nothing else uses them. `nala-bottom-nav` gets a projection slot above the destinations (divider, large corner while filled); the app shell projects the deferred `nala-running-timers-bar` into it; the mini-bar loses its own surface and shows each section icon in a circle in the section's container colours. Covers: the "No timer on the card" Timers criterion and the two new Mini-bar criteria.
+- [x] **Slice 11 — No timer on cards, mini-bar in the nav pill.** The shared section card loses `running` and the `[sectionRunning]` slot; Feed and Sleep cards lose their running state (compact split timer / compact `nala-timer` and their card-side Start / Stop) and keep their normal highlight while live; the `compact` variants go if nothing else uses them. `nala-bottom-nav` gets a projection slot above the destinations (divider, large corner while filled); the app shell projects the deferred `nala-running-timers-bar` into it; the mini-bar loses its own surface and shows each section icon in a circle in the section's container colours. Covers: the "No timer on the card" Timers criterion and the two new Mini-bar criteria.
 
 ## Material 3 mapping
 

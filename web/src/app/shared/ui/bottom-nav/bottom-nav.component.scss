@@ -5,16 +5,32 @@
   padding: 0 16px calc(12px + env(safe-area-inset-bottom));
 }
 
-nav {
-  display: flex;
+// The pill holds the projected running timers (if any) above the destinations, on one surface.
+.pill {
   width: 70%;
   max-width: 294px;
   margin: 0 auto;
   padding: 6px;
+  overflow: hidden;
   border-radius: var(--mat-sys-corner-full);
   background: var(--nala-nav-bar-surface);
   backdrop-filter: blur(16px) saturate(1.5);
   box-shadow: var(--mat-sys-level2);
+
+  // Wider while it holds timer rows, so a label and its duration fit side by side.
+  &.with-timers {
+    width: 100%;
+    max-width: 360px;
+    border-radius: var(--mat-sys-corner-large);
+  }
+}
+
+mat-divider {
+  margin: 0 10px 6px;
+}
+
+nav {
+  display: flex;
 }
 
 .item {

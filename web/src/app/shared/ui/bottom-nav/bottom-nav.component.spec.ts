@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import en from '../../../../../public/i18n/en.json';
@@ -91,5 +91,62 @@ describe('BottomNavComponent', () => {
 
   it('uses no density override, so destinations keep their 48 dp touch targets', () => {
     expect(host().querySelector('[class*="density"]')).toBeNull();
+  });
+});
+
+@Component({
+  imports: [BottomNavComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `<nala-bottom-nav [withTimers]="withTimers()">
+    <p data-testid="projected">Feeding · L</p>
+  </nala-bottom-nav>`,
+})
+class TimersHost {
+  readonly withTimers = signal(false);
+}
+
+describe('BottomNavComponent with running timers', () => {
+  let fixture: ComponentFixture<TimersHost>;
+
+  const host = () => fixture.nativeElement as HTMLElement;
+  const pill = () => host().querySelector<HTMLElement>('[data-testid="nav-pill"]')!;
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [TimersHost, translocoTesting()],
+      providers: [provideRouter([])],
+    }).compileComponents();
+    fixture = TestBed.createComponent(TimersHost);
+    await fixture.whenStable();
+  });
+
+  it('shows the projected timer rows inside the pill, above the destinations', () => {
+    const projected = host().querySelector('[data-testid="projected"]')!;
+    const nav = host().querySelector('nav')!;
+
+    expect(pill().contains(projected)).toBe(true);
+    expect(pill().contains(nav)).toBe(true);
+    expect(projected.compareDocumentPosition(nav) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(nav.contains(projected)).toBe(false);
+  });
+
+  it('separates the timers from the destinations with a divider and takes the large corner only while timers show', async () => {
+    expect(host().querySelector('mat-divider')).toBeNull();
+    expect(pill().classList).not.toContain('with-timers');
+
+    fixture.componentInstance.withTimers.set(true);
+    await fixture.whenStable();
+
+    const divider = host().querySelector('mat-divider')!;
+    expect(divider).not.toBeNull();
+    expect(
+      host().querySelector('[data-testid="projected"]')!.compareDocumentPosition(divider) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      divider.compareDocumentPosition(host().querySelector('nav')!) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(pill().classList).toContain('with-timers');
   });
 });

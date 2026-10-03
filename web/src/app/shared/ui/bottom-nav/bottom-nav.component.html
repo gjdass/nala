@@ -1,16 +1,22 @@
-<nav [attr.aria-label]="'nav.label' | transloco">
-  @for (d of destinations; track d.key) {
-    <a
-      class="item"
-      [routerLink]="d.path"
-      [attr.aria-current]="current() === d.key ? 'page' : null"
-      [attr.aria-label]="'nav.' + d.key | transloco"
-      [matTooltip]="'nav.' + d.key | transloco"
-      data-testid="nav-item"
-    >
-      <span class="indicator" [class.active]="current() === d.key" matRipple>
-        <mat-icon aria-hidden="true">{{ d.icon }}</mat-icon>
-      </span>
-    </a>
+<div class="pill" [class.with-timers]="withTimers()" data-testid="nav-pill">
+  <ng-content />
+  @if (withTimers()) {
+    <mat-divider />
   }
-</nav>
+  <nav [attr.aria-label]="'nav.label' | transloco">
+    @for (d of destinations; track d.key) {
+      <a
+        class="item"
+        [routerLink]="d.path"
+        [attr.aria-current]="current() === d.key ? 'page' : null"
+        [attr.aria-label]="'nav.' + d.key | transloco"
+        [matTooltip]="'nav.' + d.key | transloco"
+        data-testid="nav-item"
+      >
+        <span class="indicator" [class.active]="current() === d.key" matRipple>
+          <mat-icon aria-hidden="true">{{ d.icon }}</mat-icon>
+        </span>
+      </a>
+    }
+  </nav>
+</div>

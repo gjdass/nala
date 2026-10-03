@@ -1,5 +1,6 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
+import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
 import { MatRippleModule } from '@angular/material/core';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -32,10 +33,19 @@ const destinationOf = (url: string): Destination['key'] | null => {
 /**
  * The floating bottom navigation bar of the signed-in screens (spec 04): Dashboard, History,
  * Trends and Settings, each an icon only (its name as accessible name and tooltip), the current one with the M3 active indicator.
+ * The running timers (the mini-bar) are projected into the same pill, above the destinations: while
+ * `withTimers`, a divider separates them and the pill takes the large corner instead of fully round ends.
  */
 @Component({
   selector: 'nala-bottom-nav',
-  imports: [MatIconModule, MatRippleModule, MatTooltipModule, RouterLink, TranslocoPipe],
+  imports: [
+    MatDividerModule,
+    MatIconModule,
+    MatRippleModule,
+    MatTooltipModule,
+    RouterLink,
+    TranslocoPipe,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './bottom-nav.component.html',
   styleUrl: './bottom-nav.component.scss',
@@ -49,6 +59,9 @@ export class BottomNavComponent {
     ),
     { initialValue: this.router.url },
   );
+
+  /** The projected running timers show: divider and large corner. */
+  readonly withTimers = input(false);
 
   protected readonly destinations = DESTINATIONS;
   protected readonly current = computed(() => destinationOf(this.url()));

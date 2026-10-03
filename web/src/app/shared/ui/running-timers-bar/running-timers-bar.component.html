@@ -1,8 +1,16 @@
 @if (rows().length > 0) {
-  <mat-action-list class="bar" [attr.aria-label]="'timers.bar' | transloco">
+  <mat-action-list [attr.aria-label]="'timers.bar' | transloco">
     @for (row of rows(); track row.timer.id) {
       <button mat-list-item type="button" data-testid="timer-row" (click)="open(row.timer)">
-        <mat-icon matListItemIcon data-testid="timer-icon">{{ row.icon }}</mat-icon>
+        <span
+          matListItemAvatar
+          class="avatar"
+          [style.background]="'var(--nala-section-' + row.timer.section + '-container)'"
+          [style.color]="'var(--nala-on-section-' + row.timer.section + '-container)'"
+          data-testid="timer-avatar"
+        >
+          <mat-icon aria-hidden="true" data-testid="timer-icon">{{ row.icon }}</mat-icon>
+        </span>
         <span matListItemTitle data-testid="timer-label">{{
           row.timer.label | transloco: row.timer.labelParams
         }}</span>
