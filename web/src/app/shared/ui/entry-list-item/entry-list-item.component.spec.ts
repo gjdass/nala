@@ -55,6 +55,12 @@ describe('EntryListItemComponent', () => {
   });
 
   const item = () => host().querySelector('button[mat-list-item]')!;
+
+  it("wraps the chevron in the trailing meta, so the two-line item's baseline strut doesn't clip it", () => {
+    const chevron = host().querySelector('[data-testid="entry-chevron"]')!;
+    expect(chevron.hasAttribute('matListItemMeta')).toBe(false);
+    expect(chevron.parentElement!.hasAttribute('matListItemMeta')).toBe(true);
+  });
   const headline = () => item().querySelector('[matListItemTitle]')!.textContent!.replace(/\s+/g, ' ').trim();
 
   it('shows no duration bar', () => {
