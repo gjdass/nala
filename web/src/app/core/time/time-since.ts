@@ -8,7 +8,7 @@ const DAY = 24 * HOUR;
 
 /**
  * How long ago an ISO date-time was, in the active language (spec 04): "just now", "26m ago",
- * "2h 15m ago", "3 days ago". Impure: it follows the language and the shared clock, so it updates live.
+ * "2h 15m ago", and ">24h ago" from 24 hours on (never seconds). Impure: it follows the language and the shared clock, so it updates live.
  */
 @Pipe({ name: 'nalaTimeSince', pure: false })
 export class TimeSincePipe implements PipeTransform {
@@ -31,8 +31,6 @@ export class TimeSincePipe implements PipeTransform {
       const m = Math.floor((elapsed % HOUR) / MINUTE);
       return m > 0 ? t('hoursMinutesAgo', { h, m }) : t('hoursAgo', { h });
     }
-    const count = Math.floor(elapsed / DAY);
-    const form = new Intl.PluralRules(lang).select(count) === 'one' ? 'one' : 'other';
-    return t(`daysAgo.${form}`, { count });
+    return t('over24hAgo', {});
   }
 }

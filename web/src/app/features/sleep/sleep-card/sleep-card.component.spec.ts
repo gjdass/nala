@@ -105,11 +105,25 @@ describe('SleepCardComponent', () => {
     await respond([sleep('s2', 90, 26.5), sleep('s1', 300, 200)]);
 
     expect(text('sleep-awake-label')).toBe(en.sleep.card.awakeFor);
-    expect(text('sleep-awake-for')).toBe('26m 30s');
+    expect(text('sleep-awake-for')).toBe('26m');
 
     await vi.advanceTimersByTimeAsync(60_000);
     await fixture.whenStable();
-    expect(text('sleep-awake-for')).toBe('27m 30s');
+    expect(text('sleep-awake-for')).toBe('27m');
+  });
+
+  it('shows the highlight in hours and minutes only: <1m under a minute, >24h from 24 hours on', async () => {
+    await respond([sleep('s2', 25 * 60, 0.5)]);
+
+    expect(text('sleep-awake-for')).toBe('<1m');
+    expect(text('sleep-last-duration')).toBe('>24h');
+  });
+
+  it('caps the time awake at >24h', async () => {
+    await respond([sleep('s2', 26 * 60, 24 * 60 + 2)]);
+
+    expect(text('sleep-awake-for')).toBe('>24h');
+    expect(text('sleep-last-duration')).toBe('1h 58m');
   });
 
   it('shows the duration of that sleep on the right, labelled last sleep', async () => {

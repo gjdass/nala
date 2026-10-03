@@ -1,8 +1,4 @@
-<nala-section-card
-  key="sleep"
-  [entries]="entries()"
-  (changed)="reload()"
->
+<nala-section-card key="sleep" [entries]="entries()" (changed)="reload()">
   @if (stillSleeping(); as sleep) {
     <nala-banner
       sectionBanner
@@ -20,11 +16,13 @@
         <span class="label" data-testid="sleep-awake-label">{{
           'sleep.card.awakeFor' | transloco
         }}</span>
-        <span class="since" data-testid="sleep-awake-for">{{ awakeSeconds() | nalaDuration }}</span>
+        <span class="since" data-testid="sleep-awake-for">{{
+          awakeSeconds() | nalaHighlightDuration
+        }}</span>
       </div>
       <div class="last">
         <span class="last-value" data-testid="sleep-last-duration">{{
-          lastSeconds() | nalaDuration
+          lastSeconds() | nalaHighlightDuration
         }}</span>
         <span class="label" data-testid="sleep-last-duration-label">{{
           'sleep.card.lastSleep' | transloco

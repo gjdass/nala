@@ -41,8 +41,9 @@ describe('TimeSincePipe', () => {
     expect(pipe.transform(ago(26 * MIN + 40 * SEC))).toBe('26m ago');
     expect(pipe.transform(ago(2 * HOUR + 15 * MIN))).toBe('2h 15m ago');
     expect(pipe.transform(ago(2 * HOUR + 30 * SEC))).toBe('2h ago');
-    expect(pipe.transform(ago(DAY))).toBe('1 day ago');
-    expect(pipe.transform(ago(3 * DAY + 5 * HOUR))).toBe('3 days ago');
+    expect(pipe.transform(ago(DAY - SEC))).toBe('23h 59m ago');
+    expect(pipe.transform(ago(DAY))).toBe('>24h ago');
+    expect(pipe.transform(ago(3 * DAY + 5 * HOUR))).toBe('>24h ago');
   });
 
   it('formats in French', () => {
@@ -52,8 +53,8 @@ describe('TimeSincePipe', () => {
     expect(pipe.transform(ago(26 * MIN))).toBe('il y a 26 min');
     expect(pipe.transform(ago(2 * HOUR + 15 * MIN))).toBe('il y a 2 h 15 min');
     expect(pipe.transform(ago(2 * HOUR))).toBe('il y a 2 h');
-    expect(pipe.transform(ago(DAY))).toBe('il y a 1 jour');
-    expect(pipe.transform(ago(3 * DAY))).toBe('il y a 3 jours');
+    expect(pipe.transform(ago(DAY))).toBe('il y a plus de 24 h');
+    expect(pipe.transform(ago(3 * DAY))).toBe('il y a plus de 24 h');
   });
 
   it('reads a time in the future as just now', () => {

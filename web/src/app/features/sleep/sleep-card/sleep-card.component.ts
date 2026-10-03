@@ -16,7 +16,7 @@ import { loadRecentEntries } from '../../../core/sections/recent-entries';
 import { Sleep } from '../../../core/sleeps/sleep.models';
 import { SleepService } from '../../../core/sleeps/sleep.service';
 import { SleepSyncService } from '../../../core/sleeps/sleep-sync.service';
-import { DurationPipe } from '../../../core/time/duration';
+import { HighlightDurationPipe } from '../../../core/time/highlight-duration';
 import { NowService } from '../../../core/time/now.service';
 import { TimeSincePipe } from '../../../core/time/time-since';
 import { BannerComponent } from '../../../shared/ui/banner/banner.component';
@@ -30,7 +30,7 @@ import { SleepEntryComponent } from '../sleep-entry/sleep-entry.component';
 /**
  * The Sleep card on home (spec 06): the selected baby's sleeps of the last 24 hours (at least the 3
  * most recent) in the shared section card, with "Awake for" and the time since the latest sleep ended
- * (ticking), on the right that sleep's duration ("last sleep"), or an empty state without any sleep.
+ * (in hours and minutes only, see `HighlightDurationPipe`), on the right that sleep's duration ("last sleep"), or an empty state without any sleep.
  *
  * A live sleep (on any device, see `SleepSyncService`) changes nothing in the highlight (no timer on
  * the card, spec 04): the timer button opens it; a sleep live for more than 12 hours shows "Still
@@ -43,8 +43,8 @@ import { SleepEntryComponent } from '../sleep-entry/sleep-entry.component';
   selector: 'nala-sleep-card',
   imports: [
     BannerComponent,
-    DurationPipe,
     EmptyStateComponent,
+    HighlightDurationPipe,
     MatIconModule,
     SectionCardComponent,
     SectionEntryDirective,

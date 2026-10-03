@@ -40,7 +40,7 @@ Log the selected baby's sleeps with a single Start / Stop timer, or by typing a 
 Each item becomes at least one test, written failing first.
 
 ### Sleep card
-- [ ] Highlight: "Awake for" with the time since the end of the most recent sleep that isn't live, updating live, and on the right that sleep's duration labelled "last sleep", both in hours and minutes only ("<1m", ">24h" at the ends).
+- [x] Highlight: "Awake for" with the time since the end of the most recent sleep that isn't live, updating live, and on the right that sleep's duration labelled "last sleep", both in hours and minutes only ("<1m", ">24h" at the ends).
 - [x] With no sleep at all, an empty state is shown.
 - [x] While a sleep is live, the card keeps its normal highlight and shows no timer or Stop; the timer button opens the Sleep sheet. *(Changed by 04 slice 11; it replaced the card's running state.)*
 - [x] + opens the Sleep sheet directly (one kind); while a sleep is live, + is the timer button opening it.

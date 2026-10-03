@@ -328,16 +328,17 @@
     "minutesAgo": "il y a {{m}} min",
     "hoursAgo": "il y a {{h}} h",
     "hoursMinutesAgo": "il y a {{h}} h {{m}} min",
-    "daysAgo": {
-      "one": "il y a {{count}} jour",
-      "other": "il y a {{count}} jours"
-    },
+    "over24hAgo": "il y a plus de 24 h",
     "duration": {
       "s": "{{s}} s",
       "m": "{{m}} min",
       "ms": "{{m}} min {{s}} s",
       "h": "{{h}} h",
       "hm": "{{h}} h {{m}} min"
+    },
+    "highlight": {
+      "underMinute": "<1 min",
+      "over24h": ">24 h"
     },
     "yesterday": "Hier {{time}}",
     "today": "Aujourd'hui {{time}}"

@@ -129,7 +129,7 @@ Each item becomes at least one test, written failing first.
 - [x] The + button and the Show more / Show less button use the section's colour tokens, not the app's primary colour.
 - [x] With no entry yet, the highlight shows a section-specific empty state.
 - [x] Time-since values ("26m ago") update live without reloading.
-- [ ] Card highlights never show seconds: time since and highlight durations show hours and minutes only, `>24h ago` / `>24h` from 24 hours on, and `just now` / `<1m` under a minute.
+- [x] Card highlights never show seconds: time since and highlight durations show hours and minutes only, `>24h ago` / `>24h` from 24 hours on, and `just now` / `<1m` under a minute.
 
 ### + and entry sheet
 - [x] + opens the kind picker when the section has several kinds, the entry sheet directly otherwise.
