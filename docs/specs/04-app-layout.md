@@ -29,14 +29,15 @@ Give every activity section (Feed, Diaper, Sleep, Medication, Growth, Pump…) t
 - **Running timer sources:** a feature with timers provides a source through `RUNNING_TIMER_SOURCES`: a signal of its live entries, each with an id, section, kind and the live entry (tapping it opens `EntrySheetService.edit(section, kind, entry)`), the baby, a label translation key (+ params) and its live duration in seconds at a given time. Each section registers its source with `provideRunningTimerSource`; `RunningTimersService` merges them in registration order. The duration uses the spec 04 duration format. The app shell loads the mini-bar only once a timer runs (deferred, out of the initial bundle).
 - **Timers (every section with timers: Feed's breastfeed now, Sleep and Pump later).** An entry with timers is either **live** (one of its timers runs) or **not live**. There is no paused, in-progress or finished state: stopping the timers makes it an ordinary entry, and Start on it (from its sheet) makes it live again.
   - The entry exists from its first Start, and is listed at once (card and history) with its live total.
-  - Only live entries show the section's running state on the card, the timer button, a mini-bar row, and are synced live between devices.
+  - Only live entries show the timer button, a mini-bar row, and are synced live between devices.
+  - **No timer on the card:** a section card never shows a live timer or timer controls. While an entry is live the card keeps its normal highlight (or empty state), the live entry is listed with its live total, and the timer button opens it; the timers are driven from the entry sheet only.
   - At most one live entry per baby and section: starting a timer while another entry of that baby and section is live is refused (409) and the sheet opens the live one. Exception: a Start sent from a device's offline queue is kept anyway (two live entries; the card, the timer button and + show the oldest; the mini-bar lists both).
   - **Save saves the form and never starts or stops a timer:** a live entry stays live after Save.
   - **× discards what Save would have saved.** On a sheet opened to add, it deletes the entry its Start created (after the unsaved-changes confirmation: a Start counts as a change). On an existing entry it discards the form edits only; timer taps made in the sheet stay (they are live actions, already seen by other devices).
   - The end time is the end of the last timed segment, empty while live.
   - Warnings about an entry live for too long ("Still feeding?") are defined per feature.
 - **Live timer button:** while the section has a live entry for the selected baby, the card's + is replaced by a **timer button** (same small FAB and colours, `timer` icon, labelled "Open live <section>") that opens that entry's sheet (`EntrySheetService.edit`). Other kinds can be added again once the timers are stopped. The card finds the live entry through `RunningTimersService` (section + baby), so a new timer section gets it without its own code.
-- **Bottom navigation bar:** a floating navigation bar on every signed-in screen, never on the signed-out ones (setup, login, invitation, password reset). Four destinations, in this order: **Dashboard** (`/`, home), **History** (`/history`), **Trends** (`/trends`), **Settings** (`/settings`), each shown as an icon only (the destination name is its accessible name and tooltip), the current one marked with the M3 active indicator. History and Trends are placeholders for now: the shared top app bar (selected baby + switcher), the destination as page title and a "Coming soon" empty state; their content is features 11 and 12. A section's history page (`/history/:section`) is reached from a home card, so **Dashboard** stays the active destination there; History is active on `/history` only. The bar shows once the user is signed in (auth state with a user); the mini-bar and the bar share one dock pinned at the bottom of the app shell, after the page, so the page's last element always scrolls above both (no per-page padding). The translucent surface is the theme token `--nala-nav-bar-surface` (`_navigation.scss`). The settings button leaves the top app bar, and the settings page loses its back link (it is a destination).
+- **Bottom navigation bar:** a floating navigation bar on every signed-in screen, never on the signed-out ones (setup, login, invitation, password reset). Four destinations, in this order: **Dashboard** (`/`, home), **History** (`/history`), **Trends** (`/trends`), **Settings** (`/settings`), each shown as an icon only (the destination name is its accessible name and tooltip), the current one marked with the M3 active indicator. History and Trends are placeholders for now: the shared top app bar (selected baby + switcher), the destination as page title and a "Coming soon" empty state; their content is features 11 and 12. A section's history page (`/history/:section`) is reached from a home card, so **Dashboard** stays the active destination there; History is active on `/history` only. The bar shows once the user is signed in (auth state with a user); the mini-bar's rows live inside the bar's pill (see Running timers mini-bar); the bar sits in a dock pinned at the bottom of the app shell, after the page, so the page's last element always scrolls above it (no per-page padding). The translucent surface is the theme token `--nala-nav-bar-surface` (`_navigation.scss`). The settings button leaves the top app bar, and the settings page loses its back link (it is a destination).
 
 ## Structure
 
@@ -44,7 +45,7 @@ Give every activity section (Feed, Diaper, Sleep, Medication, Growth, Pump…) t
 - Selected baby (name + age) with the baby switcher (03). Shared `nala-top-app-bar` (built in 03). Settings is reached from the bottom navigation bar.
 
 ### Bottom navigation bar
-- Floating, fixed at the bottom of the screen above the safe area: not full width (70 % of the screen width minus the 16 px side margins, at most 294 px wide, centred), compact (about 60 px tall: 48 dp destinations, no visible labels), fully rounded ends, a translucent surface with the page blurred behind it (`backdrop-filter`), like the iOS "liquid glass" bars.
+- Floating, fixed at the bottom of the screen above the safe area: not full width (70 % of the screen width minus the 16 px side margins, at most 294 px wide, centred), compact (about 60 px tall: 48 dp destinations, no visible labels), fully rounded ends (a large M3 corner instead while it holds timer rows), a translucent surface with the page blurred behind it (`backdrop-filter`), like the iOS "liquid glass" bars.
 - Four destinations: Dashboard, History, Trends, Settings (icon only, the name as accessible name and tooltip; the current one with the active indicator pill).
 - The page's last element can always scroll above the bar (the bar sits in a sticky dock after the page).
 
@@ -75,7 +76,7 @@ Every section card has the same frame (shared component), filled with section-sp
 - **Header band** in the section's colour (theme token), with the section title in an M3 title typescale.
 - **+ button**: a Material 3 small FAB (standard M3 shape, not a circle) at the right of the header band, in the section's container colours. While the section has a live entry it becomes the **timer button**, which opens that entry.
 - **Highlight**: the summary of the last record(s), defined by each feature spec (e.g. "Last feeding 26m ago · right last side", "Last session 3 days ago · 155 ml", latest weight/height/head size).
-- **Running state**: when the section has a running timer, the highlight is replaced by the live timer with its quick controls (defined by the feature spec) The shared card takes `running` and then shows its `[sectionRunning]` content in place of the highlight or the empty state; the split timer and the single timer (`nala-timer`) have a `compact` variant for it.
+- **No running state**: a live entry changes nothing in the card body (no timer, no Start / Stop): the highlight stays, the live entry is listed with its live total, and the timer button in the header opens it (see Timers).
 - **Recent entries**: the 3 most recent entries, always shown under the highlight.
 - **Show more / Show less** (text button in the section colour): expands to every entry of the last 24 hours, or folds back to 3.
 - **All activities**: opens the section's history page.
@@ -103,7 +104,8 @@ Shared by the card's expanded list and the history page:
 - The same sheet is used to add and to edit an entry.
 
 ### Running timers mini-bar
-- When any entry is live (breast feed now; sleep and pump later), a compact surface is **pinned at the bottom of every screen, just above the bottom navigation bar** (elevated M3 surface), containing one M3 list item per live entry: section icon, label, live duration, and a chevron.
+- When any entry is live (breast feed, sleep; pump later), the timers show **inside the bottom navigation bar's pill**, above the destinations and separated from them by a divider: one row per live entry with the section icon (in a small circle in the section's container colours), label, live duration and a chevron. The rows sit on the pill's translucent surface (no surface of their own); while they show, the pill's corners become the M3 large corner instead of fully round. It is one surface: no separate bar above the navigation bar.
+- The rows are a separate shared component (`nala-running-timers-bar`), projected into `nala-bottom-nav` by the app shell and loaded only once a timer runs (deferred).
 - When the family has more than one baby, each row also shows the baby's name, and timers of all babies are listed.
 - Tapping a row opens that timer's entry sheet.
 
@@ -144,7 +146,8 @@ Each item becomes at least one test, written failing first.
 - [x] Save on a live entry saves the form and leaves its timers running.
 - [x] × on a sheet opened to add, after a Start, deletes the entry that Start created (after confirmation), online and offline.
 - [x] × on an existing live entry discards the form edits and keeps the timer taps made in the sheet.
-- [x] Only a live entry (a timer runs) shows the card's running state and a mini-bar row; once its timers are stopped it is an ordinary entry.
+- [x] Only a live entry (a timer runs) shows the timer button and a mini-bar row; once its timers are stopped it is an ordinary entry.
+- [ ] A section card never shows a timer or timer controls: while an entry is live it keeps its normal highlight (or empty state).
 - [x] A live entry is listed in the card and history at once, with its live total.
 - [x] While the section has a live entry for the selected baby, + is replaced by the timer button, which opens that entry's sheet.
 
@@ -153,13 +156,15 @@ Each item becomes at least one test, written failing first.
 - [x] Signed-out screens don't show it.
 - [x] The top app bar has no settings button; the settings page has no back link.
 - [x] History (`/history`) and Trends (`/trends`) show a "Coming soon" empty state.
-- [x] The mini-bar sits above the navigation bar, and the last element of a page can scroll above both.
+- [x] The last element of a page can scroll above the navigation bar.
 - [x] The sheet is usable one-handed on a phone: touch targets follow M3 minimums (48 × 48 dp). *(Tests check that only default-density Material controls are used; still to be checked by hand on a phone.)*
 
 ### Mini-bar
 - [x] The mini-bar appears on every screen as soon as a timer runs, and disappears when none runs.
 - [x] It shows each live entry with a live duration and opens the matching entry sheet on tap.
 - [x] It reflects timers started or stopped from other devices within a few seconds.
+- [ ] Its rows show inside the navigation bar's pill, above the destinations with a divider, and the pill takes the large corner only while timers show.
+- [ ] Each row's section icon sits in a circle in its section's container colours.
 
 ### Theming
 - [x] Each section has a colour token (and an "on colour" token for text/icons on it) defined in the global theme, with light and dark values. Components never hard-code these colours. Tokens: `--nala-section-<key>` / `--nala-on-section-<key>` (placeholders created in 01, `web/src/styles/_sections.scss`).
@@ -182,6 +187,7 @@ Changes after the first review of the Feed section (built in this order, with 05
 - [x] **Slice 8 — 3 recent entries, last 24 hours, All activities.** Shared helper loading a section's entries of the last 24 h (at least 3) through its page loader; section card shows 3 folded, the 24 h list expanded, Show more hidden when it adds nothing; "All activities" link; `RECENT_ENTRIES` removed. Feed card uses the helper (`loadRecentEntries` in `core/sections/`; a failed page leaves the card as a failed load does). Covers: the three new Section card criteria about recent entries and All activities.
 - [x] **Slice 9 — Live timer button.** The section card takes the section's live entry for the selected baby from `RunningTimersService` and replaces + with the timer button opening it. Tested with a fake timer source. Covers: the last Timers criterion (the other Timers criteria are covered by 05's slice 8, the first section with timers).
 - [x] **Slice 10 — Bottom navigation bar.** Shared `nala-bottom-nav` (floating, rounded, translucent with backdrop blur, safe area) on every signed-in screen; `/history` and `/trends` placeholder pages (empty state "Coming soon"); settings button removed from the top app bar and back link from the settings page; the mini-bar stacked above the bar; bottom padding on pages. Covers: every Bottom navigation bar criterion.
+- [ ] **Slice 11 — No timer on cards, mini-bar in the nav pill.** The shared section card loses `running` and the `[sectionRunning]` slot; Feed and Sleep cards lose their running state (compact split timer / compact `nala-timer` and their card-side Start / Stop) and keep their normal highlight while live; the `compact` variants go if nothing else uses them. `nala-bottom-nav` gets a projection slot above the destinations (divider, large corner while filled); the app shell projects the deferred `nala-running-timers-bar` into it; the mini-bar loses its own surface and shows each section icon in a circle in the section's container colours. Covers: the "No timer on the card" Timers criterion and the two new Mini-bar criteria.
 
 ## Material 3 mapping
 
@@ -220,7 +226,7 @@ Section card (with the live timer button), entry list item (two lines: time · o
 ## What each feature spec must define
 
 - Kinds of entry (and their icons) and whether + opens a kind picker.
-- Card highlight (normal and running state) and empty state.
+- Card highlight and empty state (the highlight stays the same while an entry is live).
 - Entry list item summary per kind.
 - Entry sheet rows per kind, defaults and suggestion rows.
 

@@ -22,7 +22,7 @@ Log the selected baby's sleeps with a single Start / Stop timer, or by typing a 
 - **Manual mode in the sheet:** typing an End time on a sleep that isn't live disables Start until Save or ×. On a live sleep the End time row reads "Sleeping…" and can't be edited; Stop ends it.
 - **Save and ×** follow spec 04: Save sends the start time, end time and notes (`PUT`, or `POST` for a sleep that only exists in the sheet, typed by hand) and never starts or stops the timer. × on a sheet opened to add, once Start created the sleep, asks to discard and deletes it. × on an existing sleep discards the form edits only; when its timer was tapped in the sheet, the sheet closes with the sleep as the taps left it, so the card and history show it.
 - **Card highlight:** "Awake for" (FR "Temps d'éveil") with the time since the **end** of the most recent sleep that isn't live (the one that ended last among the card's loaded entries; no separate endpoint), in spec 04's duration format, refreshed every second ("1h 20m", "45m 10s"); on the right, in an M3 display/headline typescale, that sleep's duration, labelled "last sleep". With no sleep at all: an empty state.
-- **Running state (while live):** the highlight is replaced by "Sleeping" with the live duration and a Stop button; tapping elsewhere on it opens the sheet. + is the timer button (spec 04). The mini-bar row reads "Sleeping" with the live duration.
+- **While live:** the card keeps its normal highlight ("Awake for" since the last sleep that isn't live, or the empty state) and has no timer (spec 04); + is the timer button, which opens the Sleep sheet. The mini-bar row reads "Sleeping" with the live duration.
 - **"Still sleeping?"** shows when a live sleep started more than **12 hours** ago: the shared banner on the card (Review opens the sheet) and at the top of the sheet.
 - **Live sync and offline timers: shared, not copied.** Feed's breastfeed sync (`BreastfeedSyncService`: polling the live list every 5 s while visible, own actions applied at once, queued taps applied on top of the server's list) becomes a shared live-entries sync in `core/timers/`, used by Feed and Sleep (and Pump later). Sleep polls `GET /api/sleeps/in-progress`. Adds, edits, deletes and timer taps go through the shared device queue (spec 05 Offline), with the same snackbars.
 - **Changed or deleted elsewhere** (like Feed, spec 05): an open Sleep sheet follows a Stop and start-time / notes edits made on another device (a field edited in the sheet keeps its value); when its live sleep leaves the live list, the sheet fetches it (`GET /api/sleeps/{id}`): stopped, it shows it; deleted (404), it closes with a snackbar "This sleep was deleted on another device."
@@ -42,7 +42,7 @@ Each item becomes at least one test, written failing first.
 ### Sleep card
 - [x] Highlight: "Awake for" with the time since the end of the most recent sleep that isn't live, updating live, and on the right that sleep's duration labelled "last sleep".
 - [x] With no sleep at all, an empty state is shown.
-- [x] Running state: while a sleep is live, the highlight shows "Sleeping" with its live duration and a Stop button; tapping it opens the Sleep sheet. Once stopped, the normal highlight is back.
+- [ ] While a sleep is live, the card keeps its normal highlight and shows no timer or Stop; the timer button opens the Sleep sheet. *(Changed by 04 slice 11; it replaced the card's running state.)*
 - [x] + opens the Sleep sheet directly (one kind); while a sleep is live, + is the timer button opening it.
 
 ### Sleep sheet
@@ -97,7 +97,7 @@ Each slice goes red → green → commit on `master`, in this order.
 
 - Section colour token: `sleep` (violet palette, already in `_sections.scss`), with its container tokens.
 - Shared with Feed since slice 1 (moved out of Feed, not copied): API `Nala.Core/Entries` (`UserName`, `EntryCursor`, `EntryFields`, `EntryPaging`), `Nala.Api/Entries` (`UserNameResponse`); web `core/entries` (`UserName`, `EntryResult` / `EntryDeleteResult` with `toEntryResult` / `toDeleteResult`). `nala-time-row` offers "Add" when empty and shows `beforeStart`. `nala-notes-row` opens as soon as its control gets notes (also for an entry loaded once the sheet is open, e.g. the live sleep it adopts).
-- New shared component: **`nala-timer`**, a single timer (duration + Start / Stop), reused by later timer sections; its `compact` variant is the card's running state.
+- New shared component: **`nala-timer`**, a single timer (duration + Start / Stop), reused by later timer sections (sheets only: cards show no timer).
 - Shared since slice 3: the live-entries sync `LiveEntriesSync` (`core/timers/`: polling, own actions applied at once, waiting offline changes applied on top by the section's overlay), which `BreastfeedSyncService` and `SleepSyncService` extend (Sleep's overlay: `applyQueuedSleeps` in `core/sleeps/sleep.ts`, the server's start / stop / edit / delete rules applied to the waiting changes); timer sources registered with `provideRunningTimerSource`. Reused: section card, timer button, entry sheet, `nala-time-row`, notes row, banner, entry list item, history list, mini-bar.
 - All text through i18n (EN/FR).
 
