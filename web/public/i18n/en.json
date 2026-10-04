@@ -588,6 +588,39 @@
       "babyNotFound": "This baby no longer exists."
     }
   },
+  "pump": {
+    "kinds": {
+      "pump": "Pump"
+    },
+    "card": {
+      "lastPumped": "Last pumped",
+      "empty": {
+        "title": "No pumping logged yet",
+        "text": "Tap + to log the first session."
+      }
+    },
+    "sheet": {
+      "endTime": "End time",
+      "duration": "Duration",
+      "left": "Left",
+      "right": "Right",
+      "mlUnit": "ml",
+      "volumeRange": "0 to 500 ml, whole numbers",
+      "total": "Total"
+    },
+    "volume": "{{ml}} ml",
+    "summary": {
+      "both": "L {{left}} ml · R {{right}} ml · {{duration}}",
+      "left": "L {{left}} ml · {{duration}}",
+      "right": "R {{right}} ml · {{duration}}",
+      "none": "{{duration}}"
+    },
+    "errors": {
+      "unknown": "Something went wrong. Check your connection and try again.",
+      "pumpNotFound": "This pumping session no longer exists.",
+      "babyNotFound": "This baby no longer exists."
+    }
+  },
   "offline": {
     "queued": "Saved on this device. It will be sent when you're back online.",
     "refused": "A change made offline couldn't be applied."

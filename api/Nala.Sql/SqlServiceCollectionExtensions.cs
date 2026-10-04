@@ -5,6 +5,7 @@ using Nala.Core.Babies;
 using Nala.Core.Diapers;
 using Nala.Core.Feeds;
 using Nala.Core.Invitations;
+using Nala.Core.Pumps;
 using Nala.Core.Sections;
 using Nala.Core.Sleeps;
 using Nala.Core.Users;
@@ -13,6 +14,7 @@ using Nala.Sql.Babies;
 using Nala.Sql.Diapers;
 using Nala.Sql.Feeds;
 using Nala.Sql.Invitations;
+using Nala.Sql.Pumps;
 using Nala.Sql.Sections;
 using Nala.Sql.Sleeps;
 using Nala.Sql.Users;
@@ -33,5 +35,6 @@ public static class SqlServiceCollectionExtensions
             .AddScoped<IFeedRepository, FeedRepository>()
             .AddScoped<ISleepRepository, SleepRepository>()
             .AddScoped<IDiaperRepository, DiaperRepository>()
+            .AddScoped<IPumpRepository, PumpRepository>()
             .AddScoped<ISectionPreferenceRepository, SectionPreferenceRepository>();
 }

@@ -588,6 +588,39 @@
       "babyNotFound": "Ce bébé n'existe plus."
     }
   },
+  "pump": {
+    "kinds": {
+      "pump": "Tire-lait"
+    },
+    "card": {
+      "lastPumped": "Dernier tirage",
+      "empty": {
+        "title": "Aucun tirage enregistré",
+        "text": "Touchez + pour enregistrer le premier."
+      }
+    },
+    "sheet": {
+      "endTime": "Heure de fin",
+      "duration": "Durée",
+      "left": "Gauche",
+      "right": "Droite",
+      "mlUnit": "ml",
+      "volumeRange": "De 0 à 500 ml, nombre entier",
+      "total": "Total"
+    },
+    "volume": "{{ml}} ml",
+    "summary": {
+      "both": "G {{left}} ml · D {{right}} ml · {{duration}}",
+      "left": "G {{left}} ml · {{duration}}",
+      "right": "D {{right}} ml · {{duration}}",
+      "none": "{{duration}}"
+    },
+    "errors": {
+      "unknown": "Une erreur s'est produite. Vérifiez votre connexion et réessayez.",
+      "pumpNotFound": "Cette séance de tirage n'existe plus.",
+      "babyNotFound": "Ce bébé n'existe plus."
+    }
+  },
   "offline": {
     "queued": "Enregistré sur cet appareil. Ce sera envoyé dès le retour du réseau.",
     "refused": "Une modification faite hors ligne n'a pas pu être appliquée."

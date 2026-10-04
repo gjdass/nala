@@ -15,34 +15,7 @@ public static class SleepFields
     public static Dictionary<string, string> Validate(SleepInput input, DateTimeOffset now, bool live = false)
     {
         var errors = new Dictionary<string, string>();
-        if (input.StartTime is not { } start)
-        {
-            errors["startTime"] = "required";
-        }
-        else if (EntryFields.IsInFuture(start, now))
-        {
-            errors["startTime"] = "inFuture";
-        }
-
-        if (live)
-        {
-            if (input.EndTime is not null)
-            {
-                errors["endTime"] = "notAllowed";
-            }
-        }
-        else if (input.EndTime is not { } end)
-        {
-            errors["endTime"] = "required";
-        }
-        else if (EntryFields.IsInFuture(end, now))
-        {
-            errors["endTime"] = "inFuture";
-        }
-        else if (input.StartTime is { } startTime && end <= startTime)
-        {
-            errors["endTime"] = "beforeStart";
-        }
+        EntryFields.ValidateStartEnd(input.StartTime, input.EndTime, now, live, errors);
 
         if (EntryFields.NormalizeText(input.Notes)?.Length > EntryFields.NotesMaxLength)
         {

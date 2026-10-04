@@ -1,0 +1,45 @@
+<nala-entry-sheet [form]="form" [saving]="saving()" (save)="save()" (delete)="delete()">
+  <nala-time-row [label]="'entrySheet.startTime' | transloco" [control]="form.controls.startTime" />
+  <nala-time-row [label]="'pump.sheet.endTime' | transloco" [control]="form.controls.endTime" />
+
+  <nala-form-row [label]="'pump.sheet.duration' | transloco" [interactive]="false">
+    <span rowTrailing data-testid="pump-duration">{{
+      seconds() === null ? '' : (seconds()! | nalaDuration)
+    }}</span>
+  </nala-form-row>
+
+  <nala-number-fields-row
+    [fields]="[
+      { name: 'pump-left', label: 'pump.sheet.left' | transloco, control: form.controls.leftMl },
+      { name: 'pump-right', label: 'pump.sheet.right' | transloco, control: form.controls.rightMl },
+    ]"
+    [suffix]="'pump.sheet.mlUnit' | transloco"
+    [min]="0"
+    [max]="maxMl"
+    [error]="'pump.sheet.volumeRange' | transloco"
+  />
+
+  @if (total() !== null) {
+    <nala-form-row [label]="'pump.sheet.total' | transloco" [interactive]="false">
+      <span rowTrailing data-testid="pump-total">{{
+        'pump.volume' | transloco: { ml: total() }
+      }}</span>
+    </nala-form-row>
+  }
+
+  <nala-notes-row [control]="form.controls.notes" />
+
+  @if (formError(); as code) {
+    <p class="form-error" role="alert" data-testid="form-error">
+      {{ 'pump.errors.' + code | transloco }}
+    </p>
+  }
+
+  @if (pump; as pump) {
+    <nala-entry-audit
+      [loggedBy]="pump.loggedBy.displayName"
+      [editedBy]="edited ? pump.updatedBy.displayName : null"
+      [editedAt]="edited ? pump.updatedAt : null"
+    />
+  }
+</nala-entry-sheet>

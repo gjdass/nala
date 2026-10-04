@@ -9,6 +9,11 @@ describe('appConfig', () => {
         typeof p === 'object' && p !== null && 'provide' in p && p.provide === SECTIONS,
     );
 
-    expect(provider?.useValue.map((section) => section.key)).toEqual(['feed', 'sleep', 'diaper']);
+    expect(provider?.useValue.map((section) => section.key)).toEqual([
+      'feed',
+      'sleep',
+      'diaper',
+      'pump',
+    ]);
   });
 });

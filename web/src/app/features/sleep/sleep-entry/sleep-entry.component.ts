@@ -4,8 +4,8 @@ import { Sleep } from '../../../core/sleeps/sleep.models';
 import { DurationPipe } from '../../../core/time/duration';
 import { EntryTimePipe } from '../../../core/time/entry-time';
 import { NowService } from '../../../core/time/now.service';
+import { spanSeconds } from '../../../core/time/span-seconds';
 import { EntryListItemComponent } from '../../../shared/ui/entry-list-item/entry-list-item.component';
-import { sleepSeconds } from '../sleep-duration';
 
 /**
  * A sleep as an entry list item (spec 06), in the sleep card and history: the bedtime icon, its start
@@ -24,5 +24,5 @@ export class SleepEntryComponent {
   private readonly now = inject(NowService).now;
 
   /** Its duration, live while it has no end. */
-  protected readonly seconds = computed(() => sleepSeconds(this.sleep(), this.now()) ?? 0);
+  protected readonly seconds = computed(() => spanSeconds(this.sleep(), this.now()) ?? 0);
 }

@@ -38,7 +38,7 @@ describe('registeredSectionGuard', () => {
   });
 
   it('sends a known but not yet built section to home', () => {
-    const result = run('pump');
+    const result = run('growth');
     expect(result).toBeInstanceOf(UrlTree);
     expect(url(result)).toBe('/');
   });

@@ -33,7 +33,7 @@ Status: `idea` → `specified` → `in progress` → `done`. A feature moves to 
 | 05 | Feed | [05-feed.md](05-feed.md) | done | **Hard requirement:** breast feeding has two independent per-side timers (left/right), side by side in the Breastfeed sheet. A single timer with a "side" field is not acceptable. |
 | 06 | Sleep | [06-sleep.md](06-sleep.md) | done | One kind, single Start/Stop timer, start/end times, notes. |
 | 07 | Diaper | [07-diaper.md](07-diaper.md) | done | Time, Wet and Dirty as two independent toggles (neither = dry), diaper-rash toggle, notes; a dirty diaper has optional colour and consistency. No timer. |
-| 08 | Pump | [08-pump.md](08-pump.md) | specified | **Hard requirement:** pumping sessions with volume and history. One Start/Stop timer (like Sleep), Left ml and Right ml, notes. |
+| 08 | Pump | [08-pump.md](08-pump.md) | in progress | **Hard requirement:** pumping sessions with volume and history. One Start/Stop timer (like Sleep), Left ml and Right ml, notes. |
 | 09 | Medication | — | idea | |
 | 10 | Growth | — | idea | Birth weight/length/head circumference are stored on the baby profile (03) and must appear as the starting point of the growth history. **Hard requirement:** simple measurement entries over time — weight, height, head circumference, milestones. Raw logging only, no percentile/trend charts. |
 | 11 | History (all sections) | — | idea | The bottom bar's History destination (placeholder built in 04). Every section's entries together, with filters. |

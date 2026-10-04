@@ -1,0 +1,21 @@
+<div class="fields">
+  @for (field of fields(); track field.name) {
+    <mat-form-field appearance="outline">
+      <mat-label>{{ field.label }}</mat-label>
+      <input
+        matInput
+        type="number"
+        inputmode="numeric"
+        step="1"
+        [attr.min]="min()"
+        [attr.max]="max()"
+        [formControl]="field.control"
+        [attr.data-testid]="field.name"
+      />
+      @if (suffix()) {
+        <span matTextSuffix>{{ suffix() }}</span>
+      }
+      <mat-error>{{ error() }}</mat-error>
+    </mat-form-field>
+  }
+</div>

@@ -1,0 +1,27 @@
+<nala-section-card key="pump" [entries]="entries()" (changed)="reload()">
+  @if (last()) {
+    <div sectionHighlight class="highlight" data-testid="pump-highlight">
+      <mat-icon class="icon" aria-hidden="true">schedule</mat-icon>
+      <div class="since">
+        <span class="label" data-testid="pump-last-label">{{
+          'pump.card.lastPumped' | transloco
+        }}</span>
+        <span class="since-value" data-testid="pump-since">{{
+          sinceSeconds() | nalaHighlightDuration
+        }}</span>
+      </div>
+      <span class="total" data-testid="pump-last-total">{{
+        lastTotal() === null ? '—' : ('pump.volume' | transloco: { ml: lastTotal() })
+      }}</span>
+    </div>
+  }
+  <nala-empty-state
+    sectionEmpty
+    icon="water_drop"
+    [title]="'pump.card.empty.title' | transloco"
+    [text]="'pump.card.empty.text' | transloco"
+  />
+  <ng-template nalaSectionEntry let-pump>
+    <nala-pump-entry [pump]="pump" (open)="edit(pump)" />
+  </ng-template>
+</nala-section-card>

@@ -20,6 +20,7 @@ import { SECTIONS } from './core/sections/section.models';
 import { ThemeService } from './core/theme/theme.service';
 import { DIAPER_SECTION } from './features/diaper/diaper.section';
 import { FEED_SECTION } from './features/feed/feed.section';
+import { PUMP_SECTION } from './features/pump/pump.section';
 import { SLEEP_SECTION } from './features/sleep/sleep.section';
 import { provideFeedTimers } from './features/feed/feed-timers';
 import { provideSleepTimers } from './features/sleep/sleep-timers';
@@ -33,7 +34,7 @@ export const appConfig: ApplicationConfig = {
     provideUserLanguage(),
     provideNalaDates(),
     provideNalaIcons(),
-    { provide: SECTIONS, useValue: [FEED_SECTION, SLEEP_SECTION, DIAPER_SECTION] },
+    { provide: SECTIONS, useValue: [FEED_SECTION, SLEEP_SECTION, DIAPER_SECTION, PUMP_SECTION] },
     provideFeedTimers(),
     provideSleepTimers(),
     provideOfflineQueue(),

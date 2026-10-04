@@ -1,0 +1,11 @@
+:host {
+  display: block;
+  padding: 8px 16px 0;
+}
+
+.fields {
+  display: grid;
+  grid-auto-columns: 1fr;
+  grid-auto-flow: column;
+  gap: 16px;
+}

@@ -1,12 +1,12 @@
 import { EnvironmentProviders, Injectable, computed, inject } from '@angular/core';
 import { Sleep } from '../../core/sleeps/sleep.models';
 import { SleepSyncService } from '../../core/sleeps/sleep-sync.service';
+import { spanSeconds } from '../../core/time/span-seconds';
 import {
   RunningTimer,
   RunningTimerSource,
   provideRunningTimerSource,
 } from '../../core/timers/running-timer.models';
-import { sleepSeconds } from './sleep-duration';
 
 /**
  * The Sleep section's running timers for the mini-bar (spec 06): one per live sleep, of every baby,
@@ -32,7 +32,7 @@ function toTimer(sleep: Sleep): RunningTimer {
     entry: sleep,
     babyId: sleep.babyId,
     label: 'sleep.timer.sleeping',
-    seconds: (now) => sleepSeconds(sleep, now) ?? 0,
+    seconds: (now) => spanSeconds(sleep, now) ?? 0,
   };
 }
 

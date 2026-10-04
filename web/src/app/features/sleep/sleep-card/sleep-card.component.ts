@@ -18,13 +18,14 @@ import { SleepService } from '../../../core/sleeps/sleep.service';
 import { SleepSyncService } from '../../../core/sleeps/sleep-sync.service';
 import { HighlightDurationPipe } from '../../../core/time/highlight-duration';
 import { NowService } from '../../../core/time/now.service';
+import { spanSeconds } from '../../../core/time/span-seconds';
 import { TimeSincePipe } from '../../../core/time/time-since';
 import { BannerComponent } from '../../../shared/ui/banner/banner.component';
 import { EmptyStateComponent } from '../../../shared/ui/empty-state/empty-state.component';
 import { EntrySheetService } from '../../../shared/ui/entry-sheet/entry-sheet.service';
 import { SectionCardComponent } from '../../../shared/ui/section-card/section-card.component';
 import { SectionEntryDirective } from '../../../shared/ui/section-card/section-entry.directive';
-import { isStillSleeping, sleepSeconds } from '../sleep-duration';
+import { isStillSleeping } from '../sleep-duration';
 import { SleepEntryComponent } from '../sleep-entry/sleep-entry.component';
 
 /**
@@ -99,7 +100,7 @@ export class SleepCardComponent {
   });
   protected readonly lastSeconds = computed(() => {
     const last = this.last();
-    return last ? (sleepSeconds(last) ?? 0) : 0;
+    return last ? (spanSeconds(last) ?? 0) : 0;
   });
   private request?: Subscription;
 

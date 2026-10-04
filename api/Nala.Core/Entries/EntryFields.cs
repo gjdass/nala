@@ -14,4 +14,42 @@ public static class EntryFields
 
     /// <summary>Whether <paramref name="time"/> is further ahead of <paramref name="now"/> than the tolerance.</summary>
     public static bool IsInFuture(DateTimeOffset time, DateTimeOffset now) => time > now + FutureTolerance;
+
+    /// <summary>
+    /// The start and end time rules of an entry with both (Sleep, Pump), added to <paramref name="errors"/>:
+    /// <c>startTime</c> <c>required</c> / <c>inFuture</c>; <c>endTime</c> <c>required</c> / <c>inFuture</c> /
+    /// <c>beforeStart</c> (not after the start), or <c>notAllowed</c> on a <paramref name="live"/> entry, which has none.
+    /// </summary>
+    public static void ValidateStartEnd(
+        DateTimeOffset? startTime, DateTimeOffset? endTime, DateTimeOffset now, bool live, Dictionary<string, string> errors)
+    {
+        if (startTime is not { } start)
+        {
+            errors["startTime"] = "required";
+        }
+        else if (IsInFuture(start, now))
+        {
+            errors["startTime"] = "inFuture";
+        }
+
+        if (live)
+        {
+            if (endTime is not null)
+            {
+                errors["endTime"] = "notAllowed";
+            }
+        }
+        else if (endTime is not { } end)
+        {
+            errors["endTime"] = "required";
+        }
+        else if (IsInFuture(end, now))
+        {
+            errors["endTime"] = "inFuture";
+        }
+        else if (startTime is { } from && end <= from)
+        {
+            errors["endTime"] = "beforeStart";
+        }
+    }
 }

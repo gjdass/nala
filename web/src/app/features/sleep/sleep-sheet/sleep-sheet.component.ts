@@ -19,9 +19,11 @@ import { Sleep, SleepFields } from '../../../core/sleeps/sleep.models';
 import { SleepService } from '../../../core/sleeps/sleep.service';
 import { SleepSyncService } from '../../../core/sleeps/sleep-sync.service';
 import { stoppedSleep } from '../../../core/sleeps/sleep';
+import { afterStart } from '../../../core/time/after-start';
 import { DurationPipe } from '../../../core/time/duration';
 import { NowService } from '../../../core/time/now.service';
 import { notInFuture } from '../../../core/time/not-in-future';
+import { spanSeconds } from '../../../core/time/span-seconds';
 import { TimeSincePipe } from '../../../core/time/time-since';
 import { BannerComponent } from '../../../shared/ui/banner/banner.component';
 import { EntryAuditComponent } from '../../../shared/ui/entry-audit/entry-audit.component';
@@ -35,19 +37,10 @@ import { NotesRowComponent, notesControl } from '../../../shared/ui/notes-row/no
 import { SHEET_DATA, SheetRef } from '../../../shared/ui/sheet/sheet-ref';
 import { TimeRowComponent } from '../../../shared/ui/time-row/time-row.component';
 import { TimerComponent } from '../../../shared/ui/timer/timer.component';
-import { isStillSleeping, sleepSeconds } from '../sleep-duration';
+import { isStillSleeping } from '../sleep-duration';
 
 /** Form-level codes with their own message; anything else is "unknown". */
 const FORM_ERRORS = ['sleepNotFound', 'babyNotFound'];
-
-/** Refuses an end that isn't after `start()` with `{ beforeStart: true }`; leaves empty values alone. */
-const afterStart =
-  (start: () => Date | null): ValidatorFn =>
-  (control) => {
-    const end = control.value as Date | null;
-    const from = start();
-    return end && from && end.getTime() <= from.getTime() ? { beforeStart: true } : null;
-  };
 
 /** Applies `validators` only while `when()` holds. */
 const onlyWhen =
@@ -165,7 +158,7 @@ export class SleepSheetComponent {
   /** The stored sleep's duration, live while it runs; 0 before Start. */
   protected readonly timerSeconds = computed(() => {
     const sleep = this.sleep();
-    return sleep ? Math.max(0, sleepSeconds(sleep, this.now()) ?? 0) : 0;
+    return sleep ? Math.max(0, spanSeconds(sleep, this.now()) ?? 0) : 0;
   });
 
   /** From the start to the end (live while it runs); null until both are set and the end is after the start. */
@@ -176,7 +169,7 @@ export class SleepSheetComponent {
     const { startTime, endTime } = this.times();
     const seconds =
       startTime && endTime
-        ? sleepSeconds({ startTime: startTime.toISOString(), endTime: endTime.toISOString() })
+        ? spanSeconds({ startTime: startTime.toISOString(), endTime: endTime.toISOString() })
         : null;
     return seconds !== null && seconds > 0 ? seconds : null;
   });
