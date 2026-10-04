@@ -70,6 +70,25 @@ describe('MedicationService', () => {
     });
   });
 
+  describe('recent()', () => {
+    it('gets the recent names of the baby', async () => {
+      const recent = [{ name: 'Paracetamol', amount: 2.5, unit: 'ml' }];
+      const result = firstValueFrom(service.recent('b1'));
+      const req = http.expectOne('/api/babies/b1/medications/recent');
+      expect(req.request.method).toBe('GET');
+      req.flush(recent);
+
+      expect(await result).toEqual(recent);
+    });
+
+    it('gives none when they cannot be loaded (offline or error)', async () => {
+      const result = firstValueFrom(service.recent('b1'));
+      http.expectOne('/api/babies/b1/medications/recent').flush(null, networkError);
+
+      expect(await result).toEqual([]);
+    });
+  });
+
   describe('create()', () => {
     it('posts the medication with the given client id', async () => {
       const result = firstValueFrom(service.create('b1', fields, 'm1'));

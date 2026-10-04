@@ -1,6 +1,6 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, map } from 'rxjs';
+import { Observable, catchError, map, of } from 'rxjs';
 import {
   EntryDeleteResult,
   EntryResult,
@@ -9,7 +9,7 @@ import {
 } from '../entries/entry-result';
 import { OfflineQueueService } from '../offline/offline-queue.service';
 import { HistoryPage } from '../sections/section.models';
-import { Medication, MedicationFields } from './medication.models';
+import { Medication, MedicationFields, RecentMedication } from './medication.models';
 
 /**
  * A baby's medication doses (spec 09); any member can add, edit and delete any dose. Adding, editing and
@@ -30,6 +30,13 @@ export class MedicationService {
       params = params.set('limit', limit);
     }
     return this.http.get<HistoryPage<Medication>>(`/api/babies/${babyId}/medications`, { params });
+  }
+
+  /** The baby's recently given names, most recent first, with their last dose; none when they can't be loaded. */
+  recent(babyId: string): Observable<RecentMedication[]> {
+    return this.http
+      .get<RecentMedication[]>(`/api/babies/${babyId}/medications/recent`)
+      .pipe(catchError(() => of([])));
   }
 
   /**

@@ -27,6 +27,9 @@ public sealed record MedicationResponse(
 /// <summary>Newest first; <c>Next</c> is the cursor of the following page, null after the last one.</summary>
 public sealed record MedicationPageResponse(IEnumerable<MedicationResponse> Entries, string? Next);
 
+/// <summary>A recently given name with the dose of its latest entry (no dose when that entry had none).</summary>
+public sealed record RecentMedicationResponse(string Name, decimal? Amount, string? Unit);
+
 /// <summary>A baby's medication doses (spec 09). Every member may add, edit and delete any dose (fallback session policy).</summary>
 public static class MedicationEndpoints
 {
@@ -42,6 +45,7 @@ public static class MedicationEndpoints
         medications.MapDelete("/{id:guid}", DeleteAsync);
 
         endpoints.MapGet("/api/babies/{babyId:guid}/medications", ListAsync);
+        endpoints.MapGet("/api/babies/{babyId:guid}/medications/recent", RecentAsync);
         return endpoints;
     }
 
@@ -102,6 +106,13 @@ public static class MedicationEndpoints
             ListMedicationsResult.InvalidCursor => AuthEndpoints.ValidationProblem(new Dictionary<string, string> { ["cursor"] = "invalid" }),
             _ => BabyNotFound(),
         };
+
+    /// <summary>At most 5 names, distinct whatever their case, most recently given first.</summary>
+    private static async Task<IResult> RecentAsync(Guid babyId, MedicationService medications, CancellationToken cancellationToken) =>
+        await medications.RecentAsync(babyId, cancellationToken) is RecentMedicationsResult.Found found
+            ? Results.Ok(found.Medications.Select(m => new RecentMedicationResponse(
+                m.Name, m.Amount, m.Unit is { } unit ? MedicationFields.Format(unit) : null)))
+            : BabyNotFound();
 
     private static IResult BabyNotFound() =>
         Results.Json(new ErrorResponse("babyNotFound"), statusCode: StatusCodes.Status404NotFound);

@@ -7,7 +7,11 @@
     (change)="choose($event)"
   >
     @for (option of options(); track option) {
-      <mat-chip-option [value]="option" [attr.data-testid]="name() + '-' + option">
+      <mat-chip-option
+        [value]="option"
+        [selectable]="clearable() || option !== value()"
+        [attr.data-testid]="name() + '-' + option"
+      >
         @if (dotToken(); as token) {
           <span
             class="dot"
@@ -16,7 +20,11 @@
             [attr.data-testid]="name() + '-' + option + '-dot'"
           ></span>
         }
-        {{ optionLabel() + option | transloco }}
+        @if (optionLabel(); as prefix) {
+          {{ prefix + option | transloco }}
+        } @else {
+          {{ option }}
+        }
       </mat-chip-option>
     }
   </mat-chip-listbox>

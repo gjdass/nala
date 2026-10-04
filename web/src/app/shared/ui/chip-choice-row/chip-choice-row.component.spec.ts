@@ -40,6 +40,22 @@ class DotHost {
   readonly control = new FormControl<string | null>('black');
 }
 
+@Component({
+  imports: [ChipChoiceRowComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `<nala-chip-choice-row
+    label="Recent"
+    name="recent"
+    [clearable]="false"
+    [options]="options"
+    [control]="control"
+  />`,
+})
+class RawHost {
+  readonly options = ['Vitamin D', 'Paracetamol'];
+  readonly control = new FormControl<string | null>('Paracetamol');
+}
+
 describe('ChipChoiceRowComponent', () => {
   let fixture: ComponentFixture<Host>;
 
@@ -112,5 +128,37 @@ describe('ChipChoiceRowComponent', () => {
     expect(dot('yellow')?.getAttribute('style')).toContain('var(--nala-stool-yellow)');
     expect(dot('black')?.getAttribute('style')).toContain('var(--nala-stool-black)');
     expect(dot('black')?.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  it('shows the options as they are without an option label', async () => {
+    const raw = TestBed.createComponent(RawHost);
+    await raw.whenStable();
+    const chipText = (option: string) =>
+      (raw.nativeElement as HTMLElement)
+        .querySelector(`[data-testid="recent-${option}"]`)
+        ?.textContent?.trim();
+
+    expect(chipText('Vitamin D')).toBe('Vitamin D');
+    expect(chipText('Paracetamol')).toBe('Paracetamol');
+  });
+
+  it('keeps the choice when the selected chip is tapped again, when not clearable', async () => {
+    const raw = TestBed.createComponent(RawHost);
+    await raw.whenStable();
+    const chipOf = (option: string) =>
+      (raw.nativeElement as HTMLElement).querySelector<HTMLElement>(
+        `[data-testid="recent-${option}"]`,
+      )!;
+    const tapRaw = async (option: string) => {
+      chipOf(option).querySelector<HTMLElement>('.mdc-evolution-chip__action--primary')!.click();
+      await raw.whenStable();
+    };
+
+    await tapRaw('Paracetamol');
+    expect(raw.componentInstance.control.value).toBe('Paracetamol');
+    expect(chipOf('Paracetamol').classList.contains('mat-mdc-chip-selected')).toBe(true);
+
+    await tapRaw('Vitamin D');
+    expect(raw.componentInstance.control.value).toBe('Vitamin D');
   });
 });

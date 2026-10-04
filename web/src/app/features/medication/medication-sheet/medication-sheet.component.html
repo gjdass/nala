@@ -18,6 +18,16 @@
     </mat-form-field>
   </nala-form-row>
 
+  @if (recentNames().length) {
+    <nala-chip-choice-row
+      name="recent"
+      [clearable]="false"
+      [label]="'medication.sheet.recent' | transloco"
+      [options]="recentNames()"
+      [control]="recentName"
+    />
+  }
+
   <nala-form-row [label]="'medication.sheet.dose' | transloco" [interactive]="false">
     <mat-form-field rowEditor appearance="outline">
       <input
@@ -36,6 +46,12 @@
       }}</mat-error>
     </mat-form-field>
   </nala-form-row>
+  @if (suggestion(); as last) {
+    <nala-suggestion-row
+      [text]="'medication.sheet.lastDose' | transloco: { dose: last | nalaMedicationDose }"
+      (accept)="useLast(last)"
+    />
+  }
 
   <nala-chip-choice-row
     name="unit"

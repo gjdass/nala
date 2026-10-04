@@ -31,3 +31,10 @@ export interface MedicationFields {
   unit: MedicationUnit | null;
   notes: string | null;
 }
+
+/** A recently given name with the dose of its latest entry (spec 09); no dose when that entry had none. */
+export interface RecentMedication {
+  name: string;
+  amount: number | null;
+  unit: MedicationUnit | null;
+}

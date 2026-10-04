@@ -336,4 +336,43 @@ public class MedicationEndpointTests
         Assert.That((await anonymous.GetAsync($"/api/babies/{_leaId}/medications")).StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
         Assert.That((await anonymous.PostAsJsonAsync("/api/medications", Medication())).StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
     }
+
+    [Test]
+    public async Task Recent_doses_list_name_amount_and_unit_most_recent_first()
+    {
+        await _admin.PostAsJsonAsync("/api/medications", Medication(minutesAgo: 100, name: "Paracetamol", amount: 2.5m, unit: "ml"));
+        await _admin.PostAsJsonAsync("/api/medications", Medication(minutesAgo: 50, name: "Vitamin D", amount: 4m, unit: "drops"));
+        await _admin.PostAsJsonAsync("/api/medications", Medication(minutesAgo: 10, name: "Saline", amount: null, unit: null));
+
+        var response = await _admin.GetAsync($"/api/babies/{_leaId}/medications/recent");
+        var recent = await JsonAsync(response);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+            Assert.That(recent.EnumerateArray().Select(r => r.GetProperty("name").GetString()), Is.EqualTo(new[] { "Saline", "Vitamin D", "Paracetamol" }));
+            Assert.That(recent[0].GetProperty("amount").ValueKind, Is.EqualTo(JsonValueKind.Null));
+            Assert.That(recent[0].GetProperty("unit").ValueKind, Is.EqualTo(JsonValueKind.Null));
+            Assert.That(recent[1].GetProperty("amount").GetDecimal(), Is.EqualTo(4m));
+            Assert.That(recent[1].GetProperty("unit").GetString(), Is.EqualTo("drops"));
+        });
+    }
+
+    [Test]
+    public async Task Recent_doses_of_a_baby_without_doses_are_empty()
+    {
+        var response = await _admin.GetAsync($"/api/babies/{_leaId}/medications/recent");
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        Assert.That((await JsonAsync(response)).GetArrayLength(), Is.EqualTo(0));
+    }
+
+    [Test]
+    public async Task Recent_doses_of_an_unknown_baby_are_not_found()
+    {
+        var response = await _admin.GetAsync($"/api/babies/{Guid.NewGuid()}/medications/recent");
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
+        AssertCode(await JsonAsync(response), "babyNotFound");
+    }
 }

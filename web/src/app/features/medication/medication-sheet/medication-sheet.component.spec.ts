@@ -2,11 +2,11 @@ import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideNativeDateAdapter } from '@angular/material/core';
 import { MatDialog } from '@angular/material/dialog';
-import { Subject } from 'rxjs';
+import { Subject, of } from 'rxjs';
 import en from '../../../../../public/i18n/en.json';
 import { SelectedBabyService } from '../../../core/babies/selected-baby.service';
 import { EntryDeleteResult, EntryResult } from '../../../core/entries/entry-result';
-import { Medication } from '../../../core/medications/medication.models';
+import { Medication, RecentMedication } from '../../../core/medications/medication.models';
 import { MedicationService } from '../../../core/medications/medication.service';
 import { EntrySheetData } from '../../../shared/ui/entry-sheet/entry-sheet.models';
 import { SHEET_DATA, SheetRef } from '../../../shared/ui/sheet/sheet-ref';
@@ -22,7 +22,8 @@ describe('MedicationSheetComponent', () => {
   let fixture: ComponentFixture<MedicationSheetComponent>;
   let saved: Subject<EntryResult<Medication>>;
   let deleted: Subject<EntryDeleteResult>;
-  let medications: Record<'create' | 'update' | 'delete', ReturnType<typeof vi.fn>>;
+  let medications: Record<'create' | 'update' | 'delete' | 'recent', ReturnType<typeof vi.fn>>;
+  let recent: RecentMedication[];
   let sheetRef: { close: ReturnType<typeof vi.fn> };
   let confirmed: Subject<boolean | undefined>;
 
@@ -39,6 +40,12 @@ describe('MedicationSheetComponent', () => {
     input.dispatchEvent(new Event('blur'));
     await settle();
   };
+  const chipOn = (chip: HTMLElement) => chip.classList.contains('mat-mdc-chip-selected');
+  const tapChip = async (chip: HTMLElement) => {
+    chip.querySelector<HTMLElement>('.mdc-evolution-chip__action--primary')!.click();
+    await settle();
+  };
+  const recentChip = (name: string) => find(`recent-${name}`)!;
   const unit = (option: string) => find(`unit-${option}`)!;
   const unitOn = (option: string) => unit(option).classList.contains('mat-mdc-chip-selected');
   const tapUnit = async (option: string) => {
@@ -67,7 +74,9 @@ describe('MedicationSheetComponent', () => {
     vi.setSystemTime(NOW);
     saved = new Subject();
     deleted = new Subject();
+    recent = [];
     medications = {
+      recent: vi.fn(() => of(recent)),
       create: vi.fn(() => saved),
       update: vi.fn(() => saved),
       delete: vi.fn(() => deleted),
@@ -100,6 +109,7 @@ describe('MedicationSheetComponent', () => {
       expect(rows).toContain(en.medication.sheet.dose);
       expect(rows).toContain(en.medication.sheet.unit);
       expect(rows).toContain(en.entrySheet.notes);
+      expect(rows).not.toContain(en.medication.sheet.recent);
       expect(host().querySelector('nala-time-row')).toBeTruthy();
       expect(host().querySelector('nala-chip-choice-row')).toBeTruthy();
       expect(find<HTMLInputElement>('amount')!.getAttribute('inputmode')).toBe('decimal');
@@ -375,6 +385,131 @@ describe('MedicationSheetComponent', () => {
 
       expect(sheetRef.close).not.toHaveBeenCalled();
       expect(text('form-error')).toBe(en.medication.errors.unknown);
+    });
+  });
+
+  describe('recent names', () => {
+    beforeEach(() => {
+      recent = [
+        { name: 'Vitamin D', amount: 4, unit: 'drops' },
+        { name: 'Paracetamol', amount: 2.5, unit: 'ml' },
+        { name: 'Saline', amount: null, unit: null },
+      ];
+    });
+
+    it("loads the selected baby's recent names", async () => {
+      await render();
+
+      expect(medications.recent).toHaveBeenCalledWith('b1');
+    });
+
+    it('shows them as chips in the order given, between the name and the dose', async () => {
+      await render();
+      const rows = [...host().querySelectorAll('nala-form-row')].map((r) => r.textContent!);
+      const at = (label: string) => rows.findIndex((r) => r.includes(label));
+
+      expect(at(en.medication.sheet.recent)).toBe(at(en.medication.sheet.name) + 1);
+      expect(at(en.medication.sheet.dose)).toBe(at(en.medication.sheet.recent) + 1);
+      expect(
+        [...host().querySelectorAll('[data-testid^="recent-"]')].map((c) => c.textContent!.trim()),
+      ).toEqual(['Vitamin D', 'Paracetamol', 'Saline']);
+    });
+
+    it('hides the row without recent names (none yet, offline, error)', async () => {
+      recent = [];
+      await render();
+
+      expect(host().textContent).not.toContain(en.medication.sheet.recent);
+      expect(host().querySelector('[data-testid^="recent-"]')).toBeNull();
+    });
+
+    it('fills the name with the tapped chip', async () => {
+      await render();
+      await tapChip(recentChip('Paracetamol'));
+
+      expect(find<HTMLInputElement>('name')!.value).toBe('Paracetamol');
+      expect(fixture.componentInstance.form.dirty).toBe(true);
+      expect(chipOn(recentChip('Paracetamol'))).toBe(true);
+      expect(save().disabled).toBe(false);
+    });
+
+    it('selects the chip matching the typed name, whatever its case', async () => {
+      await render();
+      await type('name', ' vitamin d ');
+
+      expect(chipOn(recentChip('Vitamin D'))).toBe(true);
+      expect(chipOn(recentChip('Paracetamol'))).toBe(false);
+
+      await type('name', 'Ibuprofen');
+      expect(chipOn(recentChip('Vitamin D'))).toBe(false);
+    });
+
+    it('keeps the name when the selected chip is tapped again', async () => {
+      await render();
+      await tapChip(recentChip('Paracetamol'));
+      await tapChip(recentChip('Paracetamol'));
+
+      expect(find<HTMLInputElement>('name')!.value).toBe('Paracetamol');
+      expect(chipOn(recentChip('Paracetamol'))).toBe(true);
+    });
+
+    it('shows them when editing a dose too', async () => {
+      await render(aMedication({ babyId: 'b2' }));
+
+      expect(medications.recent).toHaveBeenCalledWith('b2');
+      expect(recentChip('Vitamin D')).toBeTruthy();
+    });
+  });
+
+  describe('last dose', () => {
+    beforeEach(async () => {
+      recent = [
+        { name: 'Vitamin D', amount: 1, unit: 'drops' },
+        { name: 'Paracetamol', amount: 2.5, unit: 'ml' },
+        { name: 'Saline', amount: null, unit: null },
+      ];
+      await render();
+    });
+
+    it("offers the matching name's last dose while the amount is empty; Yes fills amount and unit", async () => {
+      await type('name', 'Paracetamol');
+
+      expect(text('suggestion-text')).toBe('Use last dose: 2.5 ml?');
+
+      find<HTMLButtonElement>('suggestion-accept')!.click();
+      await settle();
+
+      expect(find<HTMLInputElement>('amount')!.value).toBe('2.5');
+      expect(unitOn('ml')).toBe(true);
+      expect(find('suggestion-text')).toBeNull();
+      save().click();
+      await settle();
+      expect(fieldsSent()).toMatchObject({ name: 'Paracetamol', amount: 2.5, unit: 'ml' });
+    });
+
+    it('matches the name whatever its case, and writes the dose in the singular for 1', async () => {
+      await type('name', 'VITAMIN D');
+
+      expect(text('suggestion-text')).toBe('Use last dose: 1 drop?');
+    });
+
+    it('offers nothing once an amount is typed', async () => {
+      await type('name', 'Paracetamol');
+      await type('amount', '5');
+
+      expect(find('suggestion-text')).toBeNull();
+    });
+
+    it('offers nothing for a name that is not recent', async () => {
+      await type('name', 'Ibuprofen');
+
+      expect(find('suggestion-text')).toBeNull();
+    });
+
+    it('offers nothing when the last dose of that name had no amount', async () => {
+      await type('name', 'Saline');
+
+      expect(find('suggestion-text')).toBeNull();
     });
   });
 });

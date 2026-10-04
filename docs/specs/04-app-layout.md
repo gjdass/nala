@@ -242,7 +242,7 @@ Use Angular Material's M3 components as-is. Customize only through the global th
 
 ## UI notes — shared components
 
-Section card (with the live timer button), entry list item (two lines: time · optional label, one-line summary), bottom navigation bar, kind picker sheet, entry sheet (header, form row, suggestion row, notes row, chip choice row `nala-chip-choice-row` for optional single choices as filter chips, delete action, entry audit line), time picker row (`nala-time-row`: "Today 2:37 PM", datepicker + timepicker editing the date and the time separately), duration field (`nala-duration-field`, minutes + seconds, and `nala-duration-dialog` around it), banner (`nala-banner`: icon, title, text, optional action; a section card shows one above its highlight through the `[sectionBanner]` slot), running timers mini-bar, empty state.
+Section card (with the live timer button), entry list item (two lines: time · optional label, one-line summary), bottom navigation bar, kind picker sheet, entry sheet (header, form row, suggestion row, notes row, chip choice row `nala-chip-choice-row` for optional single choices as filter chips (translated or raw labels, optionally not clearable), delete action, entry audit line), time picker row (`nala-time-row`: "Today 2:37 PM", datepicker + timepicker editing the date and the time separately), duration field (`nala-duration-field`, minutes + seconds, and `nala-duration-dialog` around it), banner (`nala-banner`: icon, title, text, optional action; a section card shows one above its highlight through the `[sectionBanner]` slot), running timers mini-bar, empty state.
 
 ## What each feature spec must define
 

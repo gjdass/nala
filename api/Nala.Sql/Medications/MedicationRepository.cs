@@ -43,6 +43,20 @@ public class MedicationRepository(NalaDbContext db) : IMedicationRepository
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<RecentMedication>> ListRecentAsync(Guid babyId, int limit, CancellationToken cancellationToken = default)
+    {
+        var ofBaby = db.Set<Medication>().AsNoTracking().Where(m => m.BabyId == babyId);
+        // The latest dose of each name: no later one (time, then id) with the same name whatever its case.
+        return await ofBaby
+            .Where(m => !ofBaby.Any(later => later.Name.ToLower() == m.Name.ToLower()
+                && EF.Functions.GreaterThan(ValueTuple.Create(later.Time, later.Id), ValueTuple.Create(m.Time, m.Id))))
+            .OrderByDescending(m => m.Time)
+            .ThenByDescending(m => m.Id)
+            .Take(limit)
+            .Select(m => new RecentMedication(m.Name, m.Amount, m.Unit))
+            .ToListAsync(cancellationToken);
+    }
+
     private IQueryable<MedicationEntry> Entries(IQueryable<Medication> medications) =>
         from medication in medications.AsNoTracking()
         join loggedBy in db.Set<User>() on medication.LoggedByUserId equals loggedBy.Id

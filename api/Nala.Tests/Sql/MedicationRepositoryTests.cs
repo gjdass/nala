@@ -57,14 +57,17 @@ public class MedicationRepositoryTests
         UpdatedAt = Now,
     };
 
-    private async Task<Medication> AddAsync(Baby? baby = null, DateTimeOffset? time = null, User? by = null)
+    private async Task<Medication> AddAsync(
+        Baby? baby = null, DateTimeOffset? time = null, User? by = null, string name = "Paracetamol", decimal? amount = null, MedicationUnit? unit = null)
     {
         var medication = new Medication
         {
             Id = Guid.NewGuid(),
             BabyId = (baby ?? _lea).Id,
             Time = time ?? Now.AddHours(-1),
-            Name = "Paracetamol",
+            Name = name,
+            Amount = amount,
+            Unit = unit,
             LoggedByUserId = (by ?? _anna).Id,
             UpdatedByUserId = (by ?? _anna).Id,
             CreatedAt = Now,
@@ -201,5 +204,50 @@ public class MedicationRepositoryTests
         }
 
         Assert.That((await ListAsync()).Select(e => e.Medication.Id), Is.EqualTo(new[] { kept.Id }));
+    }
+
+    private async Task<IReadOnlyList<RecentMedication>> RecentAsync(Baby? baby = null, int limit = 5)
+    {
+        await using var db = _db();
+        return await new MedicationRepository(db).ListRecentAsync((baby ?? _lea).Id, limit);
+    }
+
+    [Test]
+    public async Task Recent_names_are_distinct_whatever_the_case_with_the_latest_spelling_and_dose()
+    {
+        await AddAsync(time: Now.AddHours(-5), name: "paracetamol", amount: 5m, unit: MedicationUnit.Mg);
+        await AddAsync(time: Now.AddHours(-2), name: "Paracetamol", amount: 2.5m, unit: MedicationUnit.Ml);
+        await AddAsync(time: Now.AddHours(-3), name: "PARACETAMOL", amount: 1m, unit: MedicationUnit.Dose);
+
+        Assert.That(await RecentAsync(), Is.EqualTo(new[] { new RecentMedication("Paracetamol", 2.5m, MedicationUnit.Ml) }));
+    }
+
+    [Test]
+    public async Task Recent_names_are_most_recent_first_up_to_the_limit()
+    {
+        for (var i = 1; i <= 7; i++)
+        {
+            await AddAsync(time: Now.AddHours(-i), name: $"Medicine {i}");
+        }
+
+        Assert.That((await RecentAsync()).Select(r => r.Name), Is.EqualTo(new[] { "Medicine 1", "Medicine 2", "Medicine 3", "Medicine 4", "Medicine 5" }));
+    }
+
+    [Test]
+    public async Task Recent_names_are_only_of_that_baby()
+    {
+        await AddAsync(name: "Vitamin D");
+        await AddAsync(_tom, name: "Ibuprofen");
+
+        Assert.That((await RecentAsync()).Select(r => r.Name), Is.EqualTo(new[] { "Vitamin D" }));
+    }
+
+    [Test]
+    public async Task A_recent_name_has_no_dose_when_its_latest_entry_has_none()
+    {
+        await AddAsync(time: Now.AddHours(-3), name: "Vitamin D", amount: 4m, unit: MedicationUnit.Drops);
+        await AddAsync(time: Now.AddHours(-1), name: "Vitamin D");
+
+        Assert.That(await RecentAsync(), Is.EqualTo(new[] { new RecentMedication("Vitamin D", null, null) }));
     }
 }

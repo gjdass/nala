@@ -44,6 +44,13 @@ public abstract record ListMedicationsResult
     public sealed record InvalidCursor : ListMedicationsResult;
 }
 
+public abstract record RecentMedicationsResult
+{
+    public sealed record Found(IReadOnlyList<RecentMedication> Medications) : RecentMedicationsResult;
+
+    public sealed record BabyNotFound : RecentMedicationsResult;
+}
+
 /// <summary>A baby's medication doses (spec 09). Any member can add, edit and delete any dose.</summary>
 public class MedicationService(IMedicationRepository medications, IBabyRepository babies, TimeProvider time)
 {
@@ -132,6 +139,15 @@ public class MedicationService(IMedicationRepository medications, IBabyRepositor
             await medications.ListAsync(babyId, after, size + 1, cancellationToken), size, e => new EntryCursor(e.Medication.Time, e.Medication.Id));
         return new ListMedicationsResult.Page(page, next);
     }
+
+    /// <summary>How many recent names the Medication sheet offers.</summary>
+    public const int RecentLimit = 5;
+
+    /// <summary>The baby's recently given names, most recent first, each with its latest dose.</summary>
+    public async Task<RecentMedicationsResult> RecentAsync(Guid babyId, CancellationToken cancellationToken = default) =>
+        await babies.GetAsync(babyId, cancellationToken) is null
+            ? new RecentMedicationsResult.BabyNotFound()
+            : new RecentMedicationsResult.Found(await medications.ListRecentAsync(babyId, RecentLimit, cancellationToken));
 
     /// <summary>Call only on validated input.</summary>
     private static void Apply(Medication medication, MedicationInput input, User actor, DateTimeOffset now)

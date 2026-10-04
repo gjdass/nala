@@ -13,11 +13,13 @@ import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { map, startWith } from 'rxjs';
 import { SelectedBabyService } from '../../../core/babies/selected-baby.service';
 import { applyServerErrors } from '../../../core/http/apply-server-errors';
+import { MedicationDosePipe } from '../../../core/medications/medication-dose';
 import {
   MEDICATION_UNITS,
   Medication,
   MedicationFields,
   MedicationUnit,
+  RecentMedication,
 } from '../../../core/medications/medication.models';
 import { MedicationService } from '../../../core/medications/medication.service';
 import { notInFuture } from '../../../core/time/not-in-future';
@@ -31,6 +33,7 @@ import {
 import { FormRowComponent } from '../../../shared/ui/form-row/form-row.component';
 import { NotesRowComponent, notesControl } from '../../../shared/ui/notes-row/notes-row.component';
 import { SHEET_DATA, SheetRef } from '../../../shared/ui/sheet/sheet-ref';
+import { SuggestionRowComponent } from '../../../shared/ui/suggestion-row/suggestion-row.component';
 import { TimeRowComponent } from '../../../shared/ui/time-row/time-row.component';
 
 export const NAME_MAX_LENGTH = 100;
@@ -64,10 +67,14 @@ const unitWithAmount: ValidatorFn = (group) => {
 /** Form-level codes with their own message; anything else is "unknown". */
 const FORM_ERRORS = ['medicationNotFound', 'babyNotFound'];
 
+/** Names are matched trimmed and whatever their case (spec 09). */
+const nameKey = (name: string) => name.trim().toLowerCase();
+
 /**
  * The Medication sheet (spec 09), adding a dose for the selected baby or editing the one it was
- * opened with: time (now by default), name (required), dose (an optional amount, 0.01 to 1000 with
- * at most 2 decimals, and its unit chips, required with an amount), and notes. No timer: Save is the
+ * opened with: time (now by default), name (required) with the baby's recent names as chips, dose (an
+ * optional amount, 0.01 to 1000 with at most 2 decimals, and its unit chips, required with an amount)
+ * with "Use last dose" while the amount is empty and the name is a recent one, and notes. No timer: Save is the
  * only action, and × discards the form. Without an amount the unit is saved as null. Closes with the
  * saved dose, or the id of the deleted one; offline, with `queued` once the change is kept on the
  * device. Never suggests or warns about a dose (spec 09).
@@ -81,8 +88,10 @@ const FORM_ERRORS = ['medicationNotFound', 'babyNotFound'];
     FormRowComponent,
     MatFormFieldModule,
     MatInputModule,
+    MedicationDosePipe,
     NotesRowComponent,
     ReactiveFormsModule,
+    SuggestionRowComponent,
     TimeRowComponent,
     TranslocoPipe,
   ],
@@ -126,11 +135,22 @@ export class MedicationSheetComponent {
   protected readonly saving = signal(false);
   protected readonly formError = signal<string | null>(null);
 
-  /** The errors shown under the fields, following every change. */
-  private readonly errors = toSignal(
+  /** The baby's recently given names with their last dose; none until loaded, offline or on error. */
+  private readonly recent = signal<RecentMedication[]>([]);
+  protected readonly recentNames = computed(() => this.recent().map((r) => r.name));
+  /**
+   * The recent-name chips: the chip matching the name is selected; tapping another one fills the name.
+   * Outside the form, so it is never saved.
+   */
+  protected readonly recentName = new FormControl<string | null>(null);
+
+  /** The name and amount, and the errors shown under the fields, following every change. */
+  private readonly state = toSignal(
     this.form.events.pipe(
       startWith(null),
       map(() => ({
+        nameValue: this.form.controls.name.value,
+        amountValue: this.form.controls.amount.value,
         name: this.form.controls.name.errors,
         amount: this.form.controls.amount.errors,
         unitRequired: this.form.hasError('unitRequired'),
@@ -139,15 +159,48 @@ export class MedicationSheetComponent {
     { requireSync: true },
   );
 
+  /** The last dose of the recent name typed, offered while the amount is empty; none without an amount. */
+  protected readonly suggestion = computed(() => {
+    const { nameValue, amountValue } = this.state();
+    const last = amountValue === null ? this.match(nameValue) : null;
+    return last?.amount != null && last.unit !== null ? last : null;
+  });
+
   protected readonly nameError = computed(() =>
-    this.errors().name?.['maxlength'] ? 'nameTooLong' : 'nameRequired',
+    this.state().name?.['maxlength'] ? 'nameTooLong' : 'nameRequired',
   );
   protected readonly amountError = computed(() =>
-    this.errors().amount?.['decimals'] ? 'amountDecimals' : 'amountRange',
+    this.state().amount?.['decimals'] ? 'amountDecimals' : 'amountRange',
   );
   protected readonly unitError = computed(() =>
-    this.errors().unitRequired ? this.transloco.translate('medication.errors.unitRequired') : null,
+    this.state().unitRequired ? this.transloco.translate('medication.errors.unitRequired') : null,
   );
+
+  constructor() {
+    const babyId = this.medication?.babyId ?? this.store.selected()?.id;
+    if (babyId) {
+      this.medications.recent(babyId).subscribe((recent) => {
+        this.recent.set(recent);
+        this.syncRecentName();
+      });
+    }
+    this.form.controls.name.valueChanges.subscribe(() => this.syncRecentName());
+    this.recentName.valueChanges.subscribe((chosen) => {
+      if (chosen !== null && chosen !== this.match(this.form.controls.name.value)?.name) {
+        const name = this.form.controls.name;
+        name.setValue(chosen);
+        name.markAsDirty();
+        name.markAsTouched();
+      }
+    });
+  }
+
+  protected useLast({ amount, unit }: RecentMedication): void {
+    this.form.controls.amount.setValue(amount);
+    this.form.controls.unit.setValue(unit);
+    this.form.controls.amount.markAsDirty();
+    this.form.controls.unit.markAsDirty();
+  }
 
   protected save(): void {
     if (this.form.invalid || this.saving()) {
@@ -185,6 +238,19 @@ export class MedicationSheetComponent {
 
   private showFormError(code: string | null): void {
     this.formError.set(code === null ? null : FORM_ERRORS.includes(code) ? code : 'unknown');
+  }
+
+  private match(name: string): RecentMedication | undefined {
+    const key = nameKey(name);
+    return key ? this.recent().find((r) => nameKey(r.name) === key) : undefined;
+  }
+
+  /** Selects the chip of the recent name typed, if any. */
+  private syncRecentName(): void {
+    const matched = this.match(this.form.controls.name.value)?.name ?? null;
+    if (this.recentName.value !== matched) {
+      this.recentName.setValue(matched);
+    }
   }
 
   /** Call only on a valid form. */

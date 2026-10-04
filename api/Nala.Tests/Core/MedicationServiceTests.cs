@@ -224,4 +224,22 @@ public class MedicationServiceTests
     [Test]
     public async Task Listing_an_unknown_baby_is_refused() =>
         Assert.That(await _service.ListAsync(Guid.NewGuid(), null, null), Is.TypeOf<ListMedicationsResult.BabyNotFound>());
+
+    [Test]
+    public async Task Recent_doses_of_an_unknown_baby_are_refused() =>
+        Assert.That(await _service.RecentAsync(Guid.NewGuid()), Is.TypeOf<RecentMedicationsResult.BabyNotFound>());
+
+    [Test]
+    public async Task Recent_doses_are_the_5_latest_names_of_the_baby()
+    {
+        await CreateAsync(_anna, Medication(name: "Paracetamol", amount: 2.5m, unit: "ml"));
+
+        var found = (RecentMedicationsResult.Found)await _service.RecentAsync(_lea.Id);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(_medications.LastRecentLimit, Is.EqualTo(5));
+            Assert.That(found.Medications, Is.EqualTo(new[] { new RecentMedication("Paracetamol", 2.5m, MedicationUnit.Ml) }));
+        });
+    }
 }

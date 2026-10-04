@@ -648,7 +648,9 @@
     "sheet": {
       "name": "Name",
       "dose": "Dose",
-      "unit": "Unit"
+      "unit": "Unit",
+      "recent": "Recent",
+      "lastDose": "Use last dose: {{dose}}?"
     },
     "unit": {
       "ml": "ml",

@@ -10,6 +10,9 @@ public class FakeMedicationRepository : IMedicationRepository
     /// <summary>Display names by user id, as the users table would give them.</summary>
     public Dictionary<Guid, string> Names { get; } = [];
 
+    /// <summary>The limit of the last <see cref="ListRecentAsync"/> call.</summary>
+    public int? LastRecentLimit { get; private set; }
+
     public Task AddAsync(Medication medication, CancellationToken cancellationToken = default)
     {
         Medications.Add(medication);
@@ -39,6 +42,19 @@ public class FakeMedicationRepository : IMedicationRepository
             .Take(limit)
             .Select(ToEntry)
             .ToList());
+
+    public Task<IReadOnlyList<RecentMedication>> ListRecentAsync(Guid babyId, int limit, CancellationToken cancellationToken = default)
+    {
+        LastRecentLimit = limit;
+        return Task.FromResult<IReadOnlyList<RecentMedication>>(Medications
+            .Where(m => m.BabyId == babyId)
+            .OrderByDescending(m => m.Time)
+            .ThenByDescending(m => m.Id)
+            .DistinctBy(m => m.Name.ToLowerInvariant())
+            .Take(limit)
+            .Select(m => new RecentMedication(m.Name, m.Amount, m.Unit))
+            .ToList());
+    }
 
     private MedicationEntry ToEntry(Medication medication) =>
         new(medication, new UserName(medication.LoggedByUserId, Names[medication.LoggedByUserId]), new UserName(medication.UpdatedByUserId, Names[medication.UpdatedByUserId]));
