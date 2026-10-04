@@ -13,6 +13,7 @@ import { FieldErrors } from '../../../core/auth/auth.models';
 import { SelectedBabyService } from '../../../core/babies/selected-baby.service';
 import { decimals } from '../../../core/forms/decimals';
 import { GrowthEntry, MeasurementFields } from '../../../core/growth-entries/growth-entry.models';
+import { notBeforeBirth, today } from '../../../core/growth-entries/growth-date';
 import { GrowthEntryService } from '../../../core/growth-entries/growth-entry.service';
 import { gramsToKg, isoDate, kgToGrams, localDate } from '../../../core/growth-entries/measurement';
 import { applyServerErrors } from '../../../core/http/apply-server-errors';
@@ -32,20 +33,6 @@ import { TimeRowComponent } from '../../../shared/ui/time-row/time-row.component
 export const WEIGHT_KG = { min: 0.3, max: 30, step: 0.001 };
 export const LENGTH_CM = { min: 20, max: 130, step: 0.1 };
 export const HEAD_CM = { min: 15, max: 60, step: 0.1 };
-
-const today = () => {
-  const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
-};
-
-/** Not before the `yyyy-MM-dd` birth date `birthDate()` (none known: no check). */
-const notBeforeBirth =
-  (birthDate: () => string | null): ValidatorFn =>
-  (control) => {
-    const value = control.value as Date | null;
-    const birth = birthDate();
-    return value && birth && value < localDate(birth) ? { beforeBirth: true } : null;
-  };
 
 /** At least one value (`measurementRequired` on the form otherwise). */
 const measurementRequired: ValidatorFn = (group) => {

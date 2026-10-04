@@ -277,4 +277,91 @@ public class GrowthEntryServiceTests
     [Test]
     public async Task Latest_of_an_unknown_baby_is_refused() =>
         Assert.That(await _service.LatestAsync(Guid.NewGuid()), Is.TypeOf<LatestGrowthResult.BabyNotFound>());
+
+    private static GrowthEntryInput Milestone(string milestone = "firstTooth", string? title = null, int day = 28, string? notes = null) =>
+        new(new DateOnly(2026, 9, day), null, null, null, notes, milestone, title);
+
+    private async Task<GrowthEntryDetails> CreateMilestoneAsync(GrowthEntryInput input) =>
+        ((CreateGrowthEntryResult.Created)await _service.CreateAsync(_anna, Guid.NewGuid(), _lea.Id, "milestone", input)).Entry;
+
+    [Test]
+    public async Task Creating_a_preset_milestone_stores_it_without_a_title_nor_values()
+    {
+        var entry = (await CreateMilestoneAsync(Milestone("firstTooth", "ignored") with { WeightG = 4000m, LengthCm = 50m, HeadCircumferenceCm = 35m })).GrowthEntry;
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(entry.Kind, Is.EqualTo(GrowthKind.Milestone));
+            Assert.That(entry.Milestone, Is.EqualTo(GrowthMilestone.FirstTooth));
+            Assert.That(entry.Title, Is.Null);
+            Assert.That(entry.WeightG, Is.Null);
+            Assert.That(entry.LengthCm, Is.Null);
+            Assert.That(entry.HeadCircumferenceCm, Is.Null);
+        });
+    }
+
+    [Test]
+    public async Task Creating_a_custom_milestone_stores_its_trimmed_title()
+    {
+        var entry = (await CreateMilestoneAsync(Milestone("custom", "  First swim  "))).GrowthEntry;
+
+        Assert.That(entry.Milestone, Is.EqualTo(GrowthMilestone.Custom));
+        Assert.That(entry.Title, Is.EqualTo("First swim"));
+    }
+
+    [Test]
+    public async Task A_measurement_stores_no_milestone_fields()
+    {
+        var entry = (await CreateAsync(_anna, Measurement() with { Milestone = "custom", Title = "nope" })).GrowthEntry;
+
+        Assert.That(entry.Milestone, Is.Null);
+        Assert.That(entry.Title, Is.Null);
+    }
+
+    [Test]
+    public async Task Creating_refuses_a_custom_milestone_without_a_title()
+    {
+        var result = await _service.CreateAsync(_anna, Guid.NewGuid(), _lea.Id, "milestone", Milestone("custom"));
+
+        Assert.That(((CreateGrowthEntryResult.Invalid)result).Errors, Is.EqualTo(new Dictionary<string, string> { ["title"] = "required" }));
+    }
+
+    [Test]
+    public async Task Updating_a_milestone_replaces_its_fields_and_a_preset_clears_the_title()
+    {
+        var created = await CreateMilestoneAsync(Milestone("custom", "First swim"));
+
+        var result = await _service.UpdateAsync(_ben, created.GrowthEntry.Id, Milestone("firstSteps", "still sent", day: 30, notes: "park"));
+
+        var updated = ((UpdateGrowthEntryResult.Updated)result).Entry.GrowthEntry;
+        Assert.Multiple(() =>
+        {
+            Assert.That(updated.Kind, Is.EqualTo(GrowthKind.Milestone));
+            Assert.That(updated.Milestone, Is.EqualTo(GrowthMilestone.FirstSteps));
+            Assert.That(updated.Title, Is.Null);
+            Assert.That(updated.Date, Is.EqualTo(new DateOnly(2026, 9, 30)));
+            Assert.That(updated.Notes, Is.EqualTo("park"));
+        });
+    }
+
+    [Test]
+    public async Task Updating_a_milestone_validates_it_as_a_milestone()
+    {
+        var created = await CreateMilestoneAsync(Milestone());
+
+        var result = await _service.UpdateAsync(_ben, created.GrowthEntry.Id, Milestone("nope"));
+
+        Assert.That(((UpdateGrowthEntryResult.Invalid)result).Errors, Is.EqualTo(new Dictionary<string, string> { ["milestone"] = "invalid" }));
+    }
+
+    [Test]
+    public async Task Latest_ignores_milestones()
+    {
+        await CreateAsync(_anna, Measurement(day: 10, weightG: 3800m, lengthCm: null, headCircumferenceCm: null));
+        await CreateMilestoneAsync(Milestone(day: 20));
+
+        var latest = ((LatestGrowthResult.Found)await _service.LatestAsync(_lea.Id)).Latest;
+
+        Assert.That(latest, Is.EqualTo(new GrowthLatest(new LatestMeasure(3800m, new DateOnly(2026, 9, 10), false), null, null)));
+    }
 }

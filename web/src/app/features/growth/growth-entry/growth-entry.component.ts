@@ -6,9 +6,10 @@ import { MeasurementPipe, localDate } from '../../../core/growth-entries/measure
 import { EntryListItemComponent } from '../../../shared/ui/entry-list-item/entry-list-item.component';
 
 /**
- * A growth entry as an entry list item (spec 10), in the Growth card and history: the measurement
- * icon, its date and the baby's age on that date ("Sep 28 · 6 weeks 2 days", no age without
- * `birthDate`), then its filled values ("4.250 kg · 55.5 cm · Head 38.0 cm"). Tapping it emits `open`.
+ * A growth entry as an entry list item (spec 10), in the Growth card and history: its kind's icon,
+ * its date and the baby's age on that date ("Sep 28 · 6 weeks 2 days", no age without `birthDate`),
+ * then a measurement's filled values ("4.250 kg · 55.5 cm · Head 38.0 cm") or a milestone's preset
+ * label or custom title. Tapping it emits `open`.
  */
 @Component({
   selector: 'nala-growth-entry',
@@ -18,7 +19,7 @@ import { EntryListItemComponent } from '../../../shared/ui/entry-list-item/entry
   template: `
     @let birth = birthDate();
     <nala-entry-list-item
-      icon="monitor_weight"
+      [icon]="growthEntry().kind === 'milestone' ? 'celebration' : 'monitor_weight'"
       dateOnly
       [time]="day().toISOString()"
       [label]="birth ? (birth | babyAge: day()) : ''"
@@ -39,9 +40,14 @@ export class GrowthEntryComponent {
   /** The entry's date at local midnight. */
   protected readonly day = computed(() => localDate(this.growthEntry().date));
 
-  /** The filled values, joined; re-read on every check to follow the language. */
+  /** A measurement's filled values, joined, or the milestone; re-read on every check to follow the language. */
   protected summary(): string {
-    const { weightG, lengthCm, headCircumferenceCm } = this.growthEntry();
+    const { weightG, lengthCm, headCircumferenceCm, milestone, title } = this.growthEntry();
+    if (milestone) {
+      return milestone === 'custom'
+        ? (title ?? '')
+        : this.transloco.translate(`growth.milestone.${milestone}`);
+    }
     const head = this.measurement.transform(headCircumferenceCm, 'cm');
     return [
       this.measurement.transform(weightG, 'g'),

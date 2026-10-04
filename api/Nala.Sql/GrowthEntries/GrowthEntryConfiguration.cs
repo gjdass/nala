@@ -21,6 +21,9 @@ public class GrowthEntryConfiguration : IEntityTypeConfiguration<GrowthEntry>
         growthEntry.Property(g => g.WeightG).HasColumnName("weight_g");
         growthEntry.Property(g => g.LengthCm).HasColumnName("length_cm").HasPrecision(4, 1);
         growthEntry.Property(g => g.HeadCircumferenceCm).HasColumnName("head_circumference_cm").HasPrecision(4, 1);
+        growthEntry.Property(g => g.Milestone).HasColumnName("milestone").HasMaxLength(16)
+            .HasConversion(m => m == null ? null : GrowthEntryFields.FormatMilestone(m.Value), m => m == null ? null : GrowthEntryFields.ParseMilestone(m));
+        growthEntry.Property(g => g.Title).HasColumnName("title").HasMaxLength(GrowthEntryFields.TitleMaxLength);
         growthEntry.Property(g => g.Notes).HasColumnName("notes").HasMaxLength(EntryFields.NotesMaxLength);
         growthEntry.Property(g => g.LoggedByUserId).HasColumnName("logged_by_user_id");
         growthEntry.Property(g => g.CreatedAt).HasColumnName("created_at");

@@ -3,6 +3,7 @@ import fr from '../../../../public/i18n/fr.json';
 import { GrowthCardComponent } from './growth-card/growth-card.component';
 import { GrowthHistoryComponent } from './growth-history/growth-history.component';
 import { MeasurementSheetComponent } from './measurement-sheet/measurement-sheet.component';
+import { MilestoneSheetComponent } from './milestone-sheet/milestone-sheet.component';
 import { GROWTH_SECTION } from './growth.section';
 
 describe('GROWTH_SECTION', () => {
@@ -18,12 +19,16 @@ describe('GROWTH_SECTION', () => {
     expect(await GROWTH_SECTION.loadHistory()).toBe(GrowthHistoryComponent);
   });
 
-  it('has the Measurement kind only for now, so + opens its sheet directly', async () => {
+  it('has two kinds, Measurement and Milestone, so + opens the kind picker', async () => {
     expect(GROWTH_SECTION.kinds.map(({ key, icon, label }) => ({ key, icon, label }))).toEqual([
       { key: 'measurement', icon: 'monitor_weight', label: 'growth.kinds.measurement' },
+      { key: 'milestone', icon: 'celebration', label: 'growth.kinds.milestone' },
     ]);
     expect(await GROWTH_SECTION.kinds[0].loadSheet()).toBe(MeasurementSheetComponent);
+    expect(await GROWTH_SECTION.kinds[1].loadSheet()).toBe(MilestoneSheetComponent);
     expect(en.growth.kinds.measurement).toBe('Measurement');
     expect(fr.growth.kinds.measurement).toBe('Mesure');
+    expect(en.growth.kinds.milestone).toBe('Milestone');
+    expect(fr.growth.kinds.milestone).toBe('Étape');
   });
 });

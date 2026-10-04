@@ -139,6 +139,39 @@ public class GrowthEntryRepositoryTests
     }
 
     [Test]
+    public async Task A_milestone_is_read_back_with_its_milestone_and_title()
+    {
+        var growthEntry = new GrowthEntry
+        {
+            Id = Guid.NewGuid(),
+            BabyId = _lea.Id,
+            Kind = GrowthKind.Milestone,
+            Date = new DateOnly(2026, 9, 28),
+            Milestone = GrowthMilestone.Custom,
+            Title = "First swim",
+            LoggedByUserId = _anna.Id,
+            UpdatedByUserId = _anna.Id,
+            CreatedAt = Now,
+            UpdatedAt = Now,
+        };
+        await using (var db = _db())
+        {
+            await new GrowthEntryRepository(db).AddAsync(growthEntry);
+        }
+
+        await using var read = _db();
+        var entry = (await new GrowthEntryRepository(read).GetEntryAsync(growthEntry.Id))!.GrowthEntry;
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(entry.Kind, Is.EqualTo(GrowthKind.Milestone));
+            Assert.That(entry.Milestone, Is.EqualTo(GrowthMilestone.Custom));
+            Assert.That(entry.Title, Is.EqualTo("First swim"));
+            Assert.That(entry.WeightG, Is.Null);
+        });
+    }
+
+    [Test]
     public async Task Unknown_growth_entry_is_null()
     {
         await using var db = _db();

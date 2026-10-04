@@ -9,6 +9,8 @@ export const aGrowthEntry = (overrides: Partial<GrowthEntry> = {}): GrowthEntry 
   weightG: 4250,
   lengthCm: 55.5,
   headCircumferenceCm: 38,
+  milestone: null,
+  title: null,
   notes: null,
   loggedBy: { id: 'u1', displayName: 'Anna' },
   updatedBy: { id: 'u1', displayName: 'Anna' },
@@ -16,3 +18,15 @@ export const aGrowthEntry = (overrides: Partial<GrowthEntry> = {}): GrowthEntry 
   updatedAt: '2026-09-28T10:00:00Z',
   ...overrides,
 });
+
+/** A First tooth milestone of baby b1 on Sep 28, 2026, logged by Anna and never edited. */
+export const aMilestone = (overrides: Partial<GrowthEntry> = {}): GrowthEntry =>
+  aGrowthEntry({
+    id: 'm1',
+    kind: 'milestone',
+    weightG: null,
+    lengthCm: null,
+    headCircumferenceCm: null,
+    milestone: 'firstTooth',
+    ...overrides,
+  });

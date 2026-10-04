@@ -26,7 +26,7 @@ Two kinds, so + opens the kind picker (Measurement, Milestone). Section icon: `m
   - **Length** in cm, one decimal, 20–130 cm.
   - **Head circumference** in cm, one decimal, 15–60 cm.
   - The API takes and returns `weightG`, `lengthCm`, `headCircumferenceCm` (same names and precision as the baby's birth fields); the web converts kg ↔ g.
-- **Milestones:** a single choice among presets, as chips (shared `nala-chip-choice-row`): `firstSmile`, `firstLaugh`, `holdsHead`, `rollsOver`, `sitsUp`, `crawls`, `firstTooth`, `standsUp`, `firstSteps`, `firstWord`, and `custom`. With `custom`, a Title field shows (required, 1–100 characters once trimmed); with a preset, the title is ignored and stored null. A preset can be logged more than once (each tooth, say).
+- **Milestones:** a single choice among presets, as chips (shared `nala-chip-choice-row`): `firstSmile`, `firstLaugh`, `holdsHead`, `rollsOver`, `sitsUp`, `crawls`, `firstTooth`, `standsUp`, `firstSteps`, `firstWord`, and `custom`. With `custom`, a Title field shows (required, 1–100 characters once trimmed; "Enter a title" / "100 characters at most"); with a preset, the title is ignored and stored null. A preset can be logged more than once (each tooth, say). The chips are not clearable (tapping the chosen one keeps it). A title typed under Other stays while the sheet is open, so switching to a preset and back brings it back; it is only sent with Other.
 - **Birth is the first point.** The birth weight / length / head circumference stay on the baby profile (03), never copied into entries. They show as:
   - the fallback of the card highlight for any measure that has no entry yet;
   - a **Birth** item at the end of the history list (after the last page), when the baby has at least one birth measurement: headline the birth date · "Birth", supporting text as a measurement. Tapping it opens the baby's profile form (03's baby sheet); it can't be deleted from here.
@@ -53,7 +53,7 @@ Two kinds, so + opens the kind picker (Measurement, Milestone). Section icon: `m
 Each item becomes at least one test, written failing first.
 
 ### Growth card
-- [ ] + opens the kind picker (Measurement, Milestone).
+- [x] + opens the kind picker (Measurement, Milestone).
 - [x] Highlight: Weight, Length and Head side by side, each the latest value from a measurement or, without one, from the birth profile, with its date ("Birth" for the profile); "—" for a measure with no value.
 - [x] With no measurement and no birth measurement, the empty state is shown, milestones or not.
 - [x] The highlight is refreshed after an entry is saved or deleted.
@@ -65,21 +65,21 @@ Each item becomes at least one test, written failing first.
 - [x] An existing measurement opens with its values; Save replaces them; × discards the form edits; Delete deletes it after confirmation.
 
 ### Milestone sheet
-- [ ] Rows: Milestone (preset chips + Other), Title (only while Other is chosen), Date (today when adding), Notes.
-- [ ] Save is disabled until a milestone is chosen, and with Other until the title is filled (1–100 characters); same date rules as a measurement.
-- [ ] Choosing a preset after Other hides the title and saves it as null.
-- [ ] An existing milestone opens with its values; Save replaces them; × discards; Delete deletes it after confirmation.
+- [x] Rows: Milestone (preset chips + Other), Title (only while Other is chosen), Date (today when adding), Notes.
+- [x] Save is disabled until a milestone is chosen, and with Other until the title is filled (1–100 characters); same date rules as a measurement.
+- [x] Choosing a preset after Other hides the title and saves it as null.
+- [x] An existing milestone opens with its values; Save replaces them; × discards; Delete deletes it after confirmation.
 
 ### Entry list item
 - [x] Headline: the entry date and the baby's age on that date ("Sep 28 · 6 weeks 2 days", shared `BabyAgePipe` from 03).
 - [x] Measurement: `monitor_weight` icon; supporting text: the filled values ("4.250 kg · 55.5 cm · Head 38.0 cm", empty ones left out).
-- [ ] Milestone: `celebration` icon; supporting text: the preset's label or the custom title.
+- [x] Milestone: `celebration` icon; supporting text: the preset's label or the custom title.
 - [ ] History ends with the Birth item when the baby has a birth measurement: birth date · "Birth", the birth values as a measurement; tapping it opens the baby's profile form.
 - [x] Entries logged by a deleted account still show that person's display name.
 
 ### API and validation
-- [ ] Create, idempotent re-send, update, delete, get, paged list (date, then creation, newest first; cursor; limit 1–50) with the codes above. *(Measurement codes done in slice 1; `milestone` / `title` codes come with slice 2.)*
-- [ ] Fields of the other kind are ignored and returned null; a preset milestone's title is returned null.
+- [x] Create, idempotent re-send, update, delete, get, paged list (date, then creation, newest first; cursor; limit 1–50) with the codes above.
+- [x] Fields of the other kind are ignored and returned null; a preset milestone's title is returned null.
 - [x] Latest: each measure from its most recent measurement, else from the birth fields with `birth: true`, else null; only that baby's entries.
 - [x] Any member can edit or delete any entry; changes are saved with who edited it and when.
 - [x] Growth entries are deleted with their baby (03).
@@ -92,7 +92,7 @@ Each item becomes at least one test, written failing first.
 Each slice goes red → green → commit on `master`, in this order.
 
 - [x] **Slice 1 — Measurements, card and history.** `GrowthEntry` entity + migration (client UUID, baby FK with cascade, kind, date, weight g, length cm, head circumference cm, notes, logged by, created at, updated at/by; nullable milestone columns come with slice 2). Core `GrowthEntryService` (validation incl. `beforeBirth`, create idempotent, update, delete, paged list, latest with birth fallback) reusing `Nala.Core/Entries` and the baby's measurement rules (`BabyFields`) where they match. Endpoints `POST/PUT/DELETE/GET /api/growth-entries…`, `GET /api/babies/{babyId}/growth-entries` and `…/latest`. Web: `growth` section registered (Measurement kind only for now, so + opens its sheet), `GrowthService`, date-only `nala-time-row`, Measurement sheet, card highlight (three measures, birth fallback, empty state), entry list item with the age, history; add / edit / delete through the shared offline queue. Covers: card (except the kind picker), Measurement sheet, measurement list item, API and validation (measurement part), offline.
-- [ ] **Slice 2 — Milestones.** Milestone and title columns + migration, Core validation. Web: Milestone kind registered (+ now opens the kind picker), Milestone sheet (preset chips, Other + title), milestone list item. Covers: the kind picker, Milestone sheet, milestone list item, the milestone API criteria.
+- [x] **Slice 2 — Milestones.** Milestone and title columns + migration, Core validation. Web: Milestone kind registered (+ now opens the kind picker), Milestone sheet (preset chips, Other + title), milestone list item. Covers: the kind picker, Milestone sheet, milestone list item, the milestone API criteria.
 - [ ] **Slice 3 — Birth in the history.** Web: the Birth item appended after the last history page when the baby has a birth measurement, opening the baby's profile form. Covers: the Birth item criterion.
 
 ## Data

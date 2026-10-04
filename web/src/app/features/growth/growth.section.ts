@@ -1,9 +1,8 @@
 import { SectionDefinition } from '../../core/sections/section.models';
 
 /**
- * The Growth section (spec 10): the Measurement kind only for now (milestones come with slice 2), so
- * + opens the Measurement sheet directly. Its components are loaded on demand, keeping them out of
- * the initial bundle.
+ * The Growth section (spec 10): two kinds, Measurement and Milestone, so + opens the kind picker. Its
+ * components are loaded on demand, keeping them out of the initial bundle.
  */
 export const GROWTH_SECTION: SectionDefinition = {
   key: 'growth',
@@ -17,6 +16,15 @@ export const GROWTH_SECTION: SectionDefinition = {
       loadSheet: () =>
         import('./measurement-sheet/measurement-sheet.component').then(
           (m) => m.MeasurementSheetComponent,
+        ),
+    },
+    {
+      key: 'milestone',
+      icon: 'celebration',
+      label: 'growth.kinds.milestone',
+      loadSheet: () =>
+        import('./milestone-sheet/milestone-sheet.component').then(
+          (m) => m.MilestoneSheetComponent,
         ),
     },
   ],

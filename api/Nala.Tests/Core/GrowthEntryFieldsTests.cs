@@ -116,9 +116,13 @@ public class GrowthEntryFieldsTests
     public void Kind_is_required() =>
         Assert.That(GrowthEntryFields.ValidateKind(null), Is.EqualTo(Error("kind", "required")));
 
+    [Test]
+    public void The_milestone_kind_is_valid() =>
+        Assert.That(GrowthEntryFields.ValidateKind("milestone"), Is.Empty);
+
     [TestCase("weight")]
     [TestCase("Measurement")]
-    [TestCase("milestone")]
+    [TestCase("Milestone")]
     public void An_unknown_kind_is_invalid(string kind) =>
         Assert.That(GrowthEntryFields.ValidateKind(kind), Is.EqualTo(Error("kind", "invalid")));
 
@@ -127,5 +131,77 @@ public class GrowthEntryFieldsTests
     {
         Assert.That(GrowthEntryFields.ParseKind("measurement"), Is.EqualTo(GrowthKind.Measurement));
         Assert.That(GrowthEntryFields.Format(GrowthKind.Measurement), Is.EqualTo("measurement"));
+        Assert.That(GrowthEntryFields.ParseKind("milestone"), Is.EqualTo(GrowthKind.Milestone));
+        Assert.That(GrowthEntryFields.Format(GrowthKind.Milestone), Is.EqualTo("milestone"));
     }
+
+    private static GrowthEntryInput Milestone(string? milestone = "firstTooth", string? title = null, DateOnly? date = null) =>
+        new(date ?? new DateOnly(2026, 10, 1), null, null, null, null, milestone, title);
+
+    private static Dictionary<string, string> ValidateMilestone(GrowthEntryInput input) =>
+        GrowthEntryFields.Validate(GrowthKind.Milestone, input, Now, BirthDate);
+
+    [TestCase("firstSmile")]
+    [TestCase("firstLaugh")]
+    [TestCase("holdsHead")]
+    [TestCase("rollsOver")]
+    [TestCase("sitsUp")]
+    [TestCase("crawls")]
+    [TestCase("firstTooth")]
+    [TestCase("standsUp")]
+    [TestCase("firstSteps")]
+    [TestCase("firstWord")]
+    public void Every_preset_milestone_is_valid_without_a_title(string milestone)
+    {
+        Assert.That(ValidateMilestone(Milestone(milestone)), Is.Empty);
+        Assert.That(GrowthEntryFields.FormatMilestone(GrowthEntryFields.ParseMilestone(milestone)), Is.EqualTo(milestone));
+    }
+
+    [Test]
+    public void A_milestone_is_required() =>
+        Assert.That(ValidateMilestone(Milestone(null)), Is.EqualTo(Error("milestone", "required")));
+
+    [TestCase("firstTeeth")]
+    [TestCase("FirstTooth")]
+    public void An_unknown_milestone_is_invalid(string milestone) =>
+        Assert.That(ValidateMilestone(Milestone(milestone)), Is.EqualTo(Error("milestone", "invalid")));
+
+    [TestCase(null)]
+    [TestCase("   ")]
+    public void A_custom_milestone_needs_a_title(string? title) =>
+        Assert.That(ValidateMilestone(Milestone("custom", title)), Is.EqualTo(Error("title", "required")));
+
+    [Test]
+    public void A_custom_title_is_at_most_100_characters_once_trimmed()
+    {
+        Assert.That(ValidateMilestone(Milestone("custom", " " + new string('a', 100) + " ")), Is.Empty);
+        Assert.That(ValidateMilestone(Milestone("custom", new string('a', 101))), Is.EqualTo(Error("title", "tooLong")));
+    }
+
+    [Test]
+    public void A_preset_ignores_the_title() =>
+        Assert.That(ValidateMilestone(Milestone("firstSmile", new string('a', 500))), Is.Empty);
+
+    [Test]
+    public void A_milestone_ignores_the_measurement_values() =>
+        Assert.That(ValidateMilestone(Milestone() with { WeightG = 1m, LengthCm = 500.55m }), Is.Empty);
+
+    [Test]
+    public void A_measurement_ignores_the_milestone_fields() =>
+        Assert.That(Validate(Measurement() with { Milestone = "nope", Title = new string('a', 500) }), Is.Empty);
+
+    [Test]
+    public void A_milestone_has_the_same_date_rules()
+    {
+        Assert.Multiple(() =>
+        {
+            Assert.That(ValidateMilestone(Milestone() with { Date = null }), Is.EqualTo(Error("date", "required")));
+            Assert.That(ValidateMilestone(Milestone(date: new DateOnly(2026, 10, 5))), Is.EqualTo(Error("date", "inFuture")));
+            Assert.That(ValidateMilestone(Milestone(date: BirthDate.AddDays(-1))), Is.EqualTo(Error("date", "beforeBirth")));
+        });
+    }
+
+    [Test]
+    public void A_milestone_notes_are_at_most_1000_characters() =>
+        Assert.That(ValidateMilestone(Milestone() with { Notes = new string('a', 1001) }), Is.EqualTo(Error("notes", "tooLong")));
 }

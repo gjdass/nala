@@ -1,7 +1,27 @@
 import { UserName } from '../entries/entry.models';
 
-/** The kinds of growth entry (spec 10); milestones come with slice 2. */
-export type GrowthKind = 'measurement';
+/** The kinds of growth entry (spec 10). */
+export type GrowthKind = 'measurement' | 'milestone';
+
+/** The milestone presets in display order, then `custom` (shown as Other, with its own title). */
+export const MILESTONES = [
+  'firstSmile',
+  'firstLaugh',
+  'holdsHead',
+  'rollsOver',
+  'sitsUp',
+  'crawls',
+  'firstTooth',
+  'standsUp',
+  'firstSteps',
+  'firstWord',
+  'custom',
+] as const;
+
+export type Milestone = (typeof MILESTONES)[number];
+
+/** A custom milestone's title, once trimmed. */
+export const TITLE_MAX_LENGTH = 100;
 
 /** A growth entry as the API returns it (spec 10). */
 export interface GrowthEntry {
@@ -16,6 +36,10 @@ export interface GrowthEntry {
   lengthCm: number | null;
   /** At most 1 decimal; null when not given. */
   headCircumferenceCm: number | null;
+  /** Null for a measurement. */
+  milestone: Milestone | null;
+  /** A custom milestone's title; null otherwise. */
+  title: string | null;
   notes: string | null;
   loggedBy: UserName;
   updatedBy: UserName;
@@ -30,6 +54,15 @@ export interface MeasurementFields {
   weightG: number | null;
   lengthCm: number | null;
   headCircumferenceCm: number | null;
+  notes: string | null;
+}
+
+/** What the Milestone sheet sends, to add or to edit; `title` only with `custom`, null otherwise. */
+export interface MilestoneFields {
+  /** `yyyy-MM-dd`. */
+  date: string;
+  milestone: Milestone;
+  title: string | null;
   notes: string | null;
 }
 

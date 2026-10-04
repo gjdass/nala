@@ -379,6 +379,137 @@ public class GrowthEntryEndpointTests
         });
     }
 
+    private object Milestone(Guid? id = null, int daysAgo = 2, string? milestone = "firstTooth", string? title = null) => new
+    {
+        id = id ?? Guid.NewGuid(),
+        babyId = _leaId,
+        kind = "milestone",
+        date = DaysAgo(daysAgo),
+        milestone,
+        title,
+        weightG = 4250,
+        lengthCm = 55.5m,
+        headCircumferenceCm = 38m,
+        notes = (string?)null,
+    };
+
+    [Test]
+    public async Task A_milestone_is_created_with_its_preset_a_null_title_and_no_values()
+    {
+        var response = await _admin.PostAsJsonAsync("/api/growth-entries", Milestone(title: "ignored"));
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Created));
+        var entry = await JsonAsync(response);
+        Assert.Multiple(() =>
+        {
+            Assert.That(entry.GetProperty("kind").GetString(), Is.EqualTo("milestone"));
+            Assert.That(entry.GetProperty("milestone").GetString(), Is.EqualTo("firstTooth"));
+            Assert.That(entry.GetProperty("title").ValueKind, Is.EqualTo(JsonValueKind.Null));
+            Assert.That(entry.GetProperty("weightG").ValueKind, Is.EqualTo(JsonValueKind.Null));
+            Assert.That(entry.GetProperty("lengthCm").ValueKind, Is.EqualTo(JsonValueKind.Null));
+            Assert.That(entry.GetProperty("headCircumferenceCm").ValueKind, Is.EqualTo(JsonValueKind.Null));
+        });
+    }
+
+    [Test]
+    public async Task A_custom_milestone_keeps_its_trimmed_title()
+    {
+        var entry = await JsonAsync(await _admin.PostAsJsonAsync("/api/growth-entries", Milestone(milestone: "custom", title: " First swim ")));
+
+        Assert.That(entry.GetProperty("milestone").GetString(), Is.EqualTo("custom"));
+        Assert.That(entry.GetProperty("title").GetString(), Is.EqualTo("First swim"));
+    }
+
+    [Test]
+    public async Task A_measurement_ignores_and_returns_null_milestone_fields()
+    {
+        var body = new
+        {
+            id = Guid.NewGuid(),
+            babyId = _leaId,
+            kind = "measurement",
+            date = DaysAgo(2),
+            weightG = 4250,
+            milestone = "custom",
+            title = "nope",
+        };
+
+        var entry = await JsonAsync(await _admin.PostAsJsonAsync("/api/growth-entries", body));
+
+        Assert.That(entry.GetProperty("milestone").ValueKind, Is.EqualTo(JsonValueKind.Null));
+        Assert.That(entry.GetProperty("title").ValueKind, Is.EqualTo(JsonValueKind.Null));
+    }
+
+    [TestCase(null, null, "milestone", "required")]
+    [TestCase("firstTeeth", null, "milestone", "invalid")]
+    [TestCase("custom", "  ", "title", "required")]
+    public async Task Milestone_fields_answer_validation_codes(string? milestone, string? title, string field, string code)
+    {
+        var response = await _admin.PostAsJsonAsync("/api/growth-entries", Milestone(milestone: milestone, title: title));
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
+        Assert.That((await JsonAsync(response)).GetProperty("errors").GetProperty(field)[0].GetString(), Is.EqualTo(code));
+    }
+
+    [Test]
+    public async Task A_custom_title_over_100_characters_is_too_long()
+    {
+        var response = await _admin.PostAsJsonAsync("/api/growth-entries", Milestone(milestone: "custom", title: new string('a', 101)));
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
+        Assert.That((await JsonAsync(response)).GetProperty("errors").GetProperty("title")[0].GetString(), Is.EqualTo("tooLong"));
+    }
+
+    [Test]
+    public async Task Editing_a_milestone_replaces_its_fields_and_a_preset_clears_the_title()
+    {
+        var id = Guid.NewGuid();
+        await _admin.PostAsJsonAsync("/api/growth-entries", Milestone(id, milestone: "custom", title: "First swim"));
+
+        var response = await _admin.PutAsJsonAsync($"/api/growth-entries/{id}", new
+        {
+            date = DaysAgo(1),
+            milestone = "firstSteps",
+            title = "still sent",
+            notes = "park",
+        });
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        var entry = await JsonAsync(response);
+        Assert.Multiple(() =>
+        {
+            Assert.That(entry.GetProperty("kind").GetString(), Is.EqualTo("milestone"));
+            Assert.That(entry.GetProperty("milestone").GetString(), Is.EqualTo("firstSteps"));
+            Assert.That(entry.GetProperty("title").ValueKind, Is.EqualTo(JsonValueKind.Null));
+            Assert.That(entry.GetProperty("date").GetString(), Is.EqualTo(DaysAgo(1)));
+            Assert.That(entry.GetProperty("notes").GetString(), Is.EqualTo("park"));
+        });
+    }
+
+    [Test]
+    public async Task Milestones_and_measurements_are_listed_together_newest_date_first()
+    {
+        await _admin.PostAsJsonAsync("/api/growth-entries", Measurement(daysAgo: 5));
+        await _admin.PostAsJsonAsync("/api/growth-entries", Milestone(daysAgo: 3));
+
+        var entries = (await PageAsync(_admin)).GetProperty("entries");
+
+        Assert.That(entries[0].GetProperty("kind").GetString(), Is.EqualTo("milestone"));
+        Assert.That(entries[1].GetProperty("kind").GetString(), Is.EqualTo("measurement"));
+    }
+
+    [Test]
+    public async Task Latest_ignores_milestones()
+    {
+        await _admin.PostAsJsonAsync("/api/growth-entries", Measurement(daysAgo: 10, weightG: 3800));
+        await _admin.PostAsJsonAsync("/api/growth-entries", Milestone(daysAgo: 1));
+
+        var latest = await JsonAsync(await _admin.GetAsync($"/api/babies/{_leaId}/growth-entries/latest"));
+
+        Assert.That(latest.GetProperty("weight").GetProperty("value").GetDecimal(), Is.EqualTo(3800m));
+        Assert.That(latest.GetProperty("weight").GetProperty("date").GetString(), Is.EqualTo(DaysAgo(10)));
+    }
+
     [Test]
     public async Task Latest_without_any_value_is_null_for_each_measure()
     {

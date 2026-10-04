@@ -1,0 +1,47 @@
+<nala-entry-sheet [form]="form" [saving]="saving()" (save)="save()" (delete)="delete()">
+  <nala-chip-choice-row
+    name="milestone"
+    optionLabel="growth.milestone."
+    [clearable]="false"
+    [label]="'growth.sheet.milestone' | transloco"
+    [options]="milestones"
+    [control]="form.controls.milestone"
+  />
+
+  @if (custom()) {
+    <nala-form-row [label]="'growth.sheet.title' | transloco" [interactive]="false">
+      <mat-form-field rowEditor appearance="outline">
+        <input
+          matInput
+          type="text"
+          autocomplete="off"
+          [maxlength]="titleMaxLength"
+          [formControl]="form.controls.title"
+          [attr.aria-label]="'growth.sheet.title' | transloco"
+          data-testid="title"
+        />
+        <mat-error data-testid="title-error">{{
+          'growth.errors.' + titleError() | transloco
+        }}</mat-error>
+      </mat-form-field>
+    </nala-form-row>
+  }
+
+  <nala-time-row dateOnly [label]="'entrySheet.date' | transloco" [control]="form.controls.date" />
+
+  <nala-notes-row [control]="form.controls.notes" />
+
+  @if (formError(); as code) {
+    <p class="form-error" role="alert" data-testid="form-error">
+      {{ 'growth.errors.' + code | transloco }}
+    </p>
+  }
+
+  @if (growthEntry; as growthEntry) {
+    <nala-entry-audit
+      [loggedBy]="growthEntry.loggedBy.displayName"
+      [editedBy]="edited ? growthEntry.updatedBy.displayName : null"
+      [editedAt]="edited ? growthEntry.updatedAt : null"
+    />
+  }
+</nala-entry-sheet>

@@ -11,7 +11,7 @@ import { OfflineQueueService } from '../../../core/offline/offline-queue.service
 import { HistoryPage } from '../../../core/sections/section.models';
 import { EntrySheetResult } from '../../../shared/ui/entry-sheet/entry-sheet.models';
 import { EntrySheetService } from '../../../shared/ui/entry-sheet/entry-sheet.service';
-import { aGrowthEntry } from '../../../testing/growth-entries';
+import { aGrowthEntry, aMilestone } from '../../../testing/growth-entries';
 import { fakeOfflineQueue } from '../../../testing/offline-queue';
 import { translocoTesting } from '../../../testing/transloco-testing';
 import { GrowthCardComponent } from './growth-card.component';
@@ -198,6 +198,15 @@ describe('GrowthCardComponent', () => {
     expect(growthEntries.latest).toHaveBeenCalledTimes(2);
   });
 
+  it('opens a tapped milestone in the Milestone sheet', async () => {
+    const tapped = aMilestone();
+    await respond([tapped]);
+
+    host().querySelector<HTMLButtonElement>('nala-growth-entry button')!.click();
+
+    expect(entrySheets.edit).toHaveBeenCalledWith('growth', 'milestone', tapped);
+  });
+
   it('does not reload when the sheet closes without saving', async () => {
     await respond([aGrowthEntry()]);
 
@@ -210,7 +219,7 @@ describe('GrowthCardComponent', () => {
     expect(growthEntries.latest).toHaveBeenCalledTimes(1);
   });
 
-  it('opens the Measurement sheet directly on +, then reloads the entries and the highlight', async () => {
+  it('adds an entry on + (the kind picker comes from the section), then reloads the entries and the highlight', async () => {
     await respond([]);
 
     find('section-add')!.click();

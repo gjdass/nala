@@ -9,7 +9,13 @@ import {
 } from '../entries/entry-result';
 import { OfflineQueueService } from '../offline/offline-queue.service';
 import { HistoryPage } from '../sections/section.models';
-import { GrowthEntry, GrowthKind, GrowthLatest, MeasurementFields } from './growth-entry.models';
+import {
+  GrowthEntry,
+  GrowthKind,
+  GrowthLatest,
+  MeasurementFields,
+  MilestoneFields,
+} from './growth-entry.models';
 
 /**
  * A baby's growth entries (spec 10); any member can add, edit and delete any entry. Adding, editing
@@ -56,7 +62,7 @@ export class GrowthEntryService {
   create(
     babyId: string,
     kind: GrowthKind,
-    fields: MeasurementFields,
+    fields: MeasurementFields | MilestoneFields,
     id: string = crypto.randomUUID(),
   ): Observable<EntryResult<GrowthEntry>> {
     return this.queue
@@ -65,7 +71,10 @@ export class GrowthEntryService {
   }
 
   /** Replaces every field of the entry's kind; the kind never changes. */
-  update(id: string, fields: MeasurementFields): Observable<EntryResult<GrowthEntry>> {
+  update(
+    id: string,
+    fields: MeasurementFields | MilestoneFields,
+  ): Observable<EntryResult<GrowthEntry>> {
     return this.queue
       .send<GrowthEntry>('PUT', `/api/growth-entries/${id}`, fields)
       .pipe(map(toEntryResult));

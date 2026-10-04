@@ -174,13 +174,17 @@ public class GrowthEntryService(IGrowthEntryRepository growthEntries, IBabyRepos
     private static LatestMeasure? AtBirth(Baby baby, decimal? value) =>
         value is { } v ? new LatestMeasure(v, baby.BirthDate, Birth: true) : null;
 
-    /// <summary>Call only on validated input.</summary>
+    /// <summary>Call only on validated input. The other kind's fields stay null, as does a preset milestone's title.</summary>
     private static void Apply(GrowthEntry growthEntry, GrowthEntryInput input, User actor, DateTimeOffset now)
     {
+        var measurement = growthEntry.Kind == GrowthKind.Measurement;
+        GrowthMilestone? milestone = measurement ? null : GrowthEntryFields.ParseMilestone(input.Milestone!);
         growthEntry.Date = input.Date!.Value;
-        growthEntry.WeightG = input.WeightG is { } weight ? (int)weight : null;
-        growthEntry.LengthCm = input.LengthCm;
-        growthEntry.HeadCircumferenceCm = input.HeadCircumferenceCm;
+        growthEntry.WeightG = measurement && input.WeightG is { } weight ? (int)weight : null;
+        growthEntry.LengthCm = measurement ? input.LengthCm : null;
+        growthEntry.HeadCircumferenceCm = measurement ? input.HeadCircumferenceCm : null;
+        growthEntry.Milestone = milestone;
+        growthEntry.Title = milestone == GrowthMilestone.Custom ? EntryFields.NormalizeText(input.Title) : null;
         growthEntry.Notes = EntryFields.NormalizeText(input.Notes);
         growthEntry.UpdatedByUserId = actor.Id;
         growthEntry.UpdatedAt = now;

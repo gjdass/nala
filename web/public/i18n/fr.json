@@ -639,7 +639,8 @@
   },
   "growth": {
     "kinds": {
-      "measurement": "Mesure"
+      "measurement": "Mesure",
+      "milestone": "Étape"
     },
     "card": {
       "weight": "Poids",
@@ -655,7 +656,22 @@
     "sheet": {
       "weight": "Poids",
       "length": "Taille",
-      "head": "Périmètre crânien"
+      "head": "Périmètre crânien",
+      "milestone": "Étape",
+      "title": "Titre"
+    },
+    "milestone": {
+      "firstSmile": "Premier sourire",
+      "firstLaugh": "Premier rire",
+      "holdsHead": "Tient sa tête",
+      "rollsOver": "Se retourne",
+      "sitsUp": "Tient assis",
+      "crawls": "Marche à quatre pattes",
+      "firstTooth": "Première dent",
+      "standsUp": "Se met debout",
+      "firstSteps": "Premiers pas",
+      "firstWord": "Premier mot",
+      "custom": "Autre"
     },
     "unit": {
       "kg": "{{value}} kg",
@@ -673,7 +689,9 @@
       "head": "De 15 à 60 cm, 1 décimale au plus",
       "unknown": "Une erreur s'est produite. Vérifiez votre connexion et réessayez.",
       "growthEntryNotFound": "Cette entrée n'existe plus.",
-      "babyNotFound": "Ce bébé n'existe plus."
+      "babyNotFound": "Ce bébé n'existe plus.",
+      "titleRequired": "Saisissez un titre",
+      "titleTooLong": "100 caractères maximum"
     }
   },
   "health": {

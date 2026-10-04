@@ -3,7 +3,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatListModule } from '@angular/material/list';
 import { TranslocoService } from '@jsverse/transloco';
 import { GrowthEntry } from '../../../core/growth-entries/growth-entry.models';
-import { aGrowthEntry } from '../../../testing/growth-entries';
+import { aGrowthEntry, aMilestone } from '../../../testing/growth-entries';
 import { translocoTesting } from '../../../testing/transloco-testing';
 import { GrowthEntryComponent } from './growth-entry.component';
 
@@ -85,6 +85,35 @@ describe('GrowthEntryComponent', () => {
     await show({});
 
     expect(text('entry-summary')).toBe('4,250 kg · 55,5 cm · PC 38,0 cm');
+  });
+
+  describe('a milestone', () => {
+    const showMilestone = async (overrides: Partial<GrowthEntry> = {}) => {
+      fixture.componentInstance.entry.set(aMilestone(overrides));
+      await fixture.whenStable();
+    };
+
+    it("shows the celebration icon, the date and the baby's age, then the preset's label", async () => {
+      await showMilestone();
+
+      expect(text('entry-icon')).toBe('celebration');
+      expect(text('entry-time')).toBe('Sep 28');
+      expect(text('entry-label')).toBe('6 weeks 2 days');
+      expect(text('entry-summary')).toBe('First tooth');
+    });
+
+    it("writes the preset's label in French", async () => {
+      TestBed.inject(TranslocoService).setActiveLang('fr');
+      await showMilestone({ milestone: 'firstSteps' });
+
+      expect(text('entry-summary')).toBe('Premiers pas');
+    });
+
+    it('shows the title of a custom milestone', async () => {
+      await showMilestone({ milestone: 'custom', title: 'First swim' });
+
+      expect(text('entry-summary')).toBe('First swim');
+    });
   });
 
   it('shows no age without the birth date', async () => {

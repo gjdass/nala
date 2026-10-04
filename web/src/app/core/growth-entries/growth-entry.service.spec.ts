@@ -4,12 +4,17 @@ import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { firstValueFrom } from 'rxjs';
-import { aGrowthEntry } from '../../testing/growth-entries';
+import { aGrowthEntry, aMilestone } from '../../testing/growth-entries';
 import { translocoTesting } from '../../testing/transloco-testing';
 import { AuthService } from '../auth/auth.service';
 import { EntryDeleteResult, EntryResult } from '../entries/entry-result';
 import { QUEUE_STORAGE_KEY } from '../offline/offline-queue.service';
-import { GrowthEntry, GrowthLatest, MeasurementFields } from './growth-entry.models';
+import {
+  GrowthEntry,
+  GrowthLatest,
+  MeasurementFields,
+  MilestoneFields,
+} from './growth-entry.models';
 import { GrowthEntryService } from './growth-entry.service';
 
 describe('GrowthEntryService', () => {
@@ -21,6 +26,12 @@ describe('GrowthEntryService', () => {
     weightG: 4250,
     lengthCm: 55.5,
     headCircumferenceCm: null,
+    notes: null,
+  };
+  const milestoneFields: MilestoneFields = {
+    date: '2026-09-28',
+    milestone: 'custom',
+    title: 'First swim',
     notes: null,
   };
   const networkError = { status: 0, statusText: 'Unknown Error' };
@@ -104,6 +115,20 @@ describe('GrowthEntryService', () => {
       expect(await result).toEqual<EntryResult<GrowthEntry>>({ ok: true, entry: aGrowthEntry() });
     });
 
+    it('posts a milestone with its kind', async () => {
+      const result = firstValueFrom(service.create('b1', 'milestone', milestoneFields, 'm1'));
+      const req = http.expectOne('/api/growth-entries');
+      expect(req.request.body).toEqual({
+        id: 'm1',
+        babyId: 'b1',
+        kind: 'milestone',
+        ...milestoneFields,
+      });
+      req.flush(aMilestone(), { status: 201, statusText: 'Created' });
+
+      expect(await result).toEqual<EntryResult<GrowthEntry>>({ ok: true, entry: aMilestone() });
+    });
+
     it('generates a client id when none is given', () => {
       service.create('b1', 'measurement', fields).subscribe();
       const req = http.expectOne('/api/growth-entries');
@@ -141,6 +166,13 @@ describe('GrowthEntryService', () => {
       req.flush(aGrowthEntry());
 
       expect(await result).toEqual<EntryResult<GrowthEntry>>({ ok: true, entry: aGrowthEntry() });
+    });
+
+    it("puts a milestone's fields", () => {
+      service.update('m1', milestoneFields).subscribe();
+      const req = http.expectOne('/api/growth-entries/m1');
+      expect(req.request.body).toEqual(milestoneFields);
+      req.flush(aMilestone());
     });
 
     it('maps a missing entry to its code', async () => {

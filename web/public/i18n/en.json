@@ -639,7 +639,8 @@
   },
   "growth": {
     "kinds": {
-      "measurement": "Measurement"
+      "measurement": "Measurement",
+      "milestone": "Milestone"
     },
     "card": {
       "weight": "Weight",
@@ -655,7 +656,22 @@
     "sheet": {
       "weight": "Weight",
       "length": "Length",
-      "head": "Head"
+      "head": "Head",
+      "milestone": "Milestone",
+      "title": "Title"
+    },
+    "milestone": {
+      "firstSmile": "First smile",
+      "firstLaugh": "First laugh",
+      "holdsHead": "Holds head up",
+      "rollsOver": "Rolls over",
+      "sitsUp": "Sits up",
+      "crawls": "Crawls",
+      "firstTooth": "First tooth",
+      "standsUp": "Stands up",
+      "firstSteps": "First steps",
+      "firstWord": "First word",
+      "custom": "Other"
     },
     "unit": {
       "kg": "{{value}} kg",
@@ -673,7 +689,9 @@
       "head": "15 to 60 cm, 1 decimal at most",
       "unknown": "Something went wrong. Check your connection and try again.",
       "growthEntryNotFound": "This entry no longer exists.",
-      "babyNotFound": "This baby no longer exists."
+      "babyNotFound": "This baby no longer exists.",
+      "titleRequired": "Enter a title",
+      "titleTooLong": "100 characters at most"
     }
   },
   "health": {
