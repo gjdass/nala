@@ -19,6 +19,7 @@ import { provideOfflineQueue } from './core/offline/offline-queue.service';
 import { SECTIONS } from './core/sections/section.models';
 import { ThemeService } from './core/theme/theme.service';
 import { DIAPER_SECTION } from './features/diaper/diaper.section';
+import { MEDICATION_SECTION } from './features/medication/medication.section';
 import { FEED_SECTION } from './features/feed/feed.section';
 import { PUMP_SECTION } from './features/pump/pump.section';
 import { SLEEP_SECTION } from './features/sleep/sleep.section';
@@ -35,7 +36,10 @@ export const appConfig: ApplicationConfig = {
     provideUserLanguage(),
     provideNalaDates(),
     provideNalaIcons(),
-    { provide: SECTIONS, useValue: [FEED_SECTION, SLEEP_SECTION, DIAPER_SECTION, PUMP_SECTION] },
+    {
+      provide: SECTIONS,
+      useValue: [FEED_SECTION, SLEEP_SECTION, DIAPER_SECTION, PUMP_SECTION, MEDICATION_SECTION],
+    },
     provideFeedTimers(),
     provideSleepTimers(),
     providePumpTimers(),

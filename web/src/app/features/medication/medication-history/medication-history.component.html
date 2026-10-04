@@ -1,0 +1,7 @@
+@if (loader(); as loader) {
+  <nala-history-list key="medication" [loader]="loader">
+    <ng-template nalaSectionEntry let-medication>
+      <nala-medication-entry [medication]="medication" (open)="edit(medication)" />
+    </ng-template>
+  </nala-history-list>
+}

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { FormControl } from '@angular/forms';
 import en from '../../../../../public/i18n/en.json';
@@ -14,9 +14,11 @@ import { ChipChoiceRowComponent } from './chip-choice-row.component';
     optionLabel="feed.mealType."
     [options]="options"
     [control]="control"
+    [error]="error()"
   />`,
 })
 class Host {
+  readonly error = signal<string | null>(null);
   readonly options = ['breakfast', 'lunch', 'dinner', 'snack'];
   readonly control = new FormControl<string | null>('dinner');
 }
@@ -84,6 +86,15 @@ describe('ChipChoiceRowComponent', () => {
 
     expect(fixture.componentInstance.control.value).toBeNull();
     expect(selected('dinner')).toBe(false);
+  });
+
+  it('shows an error under the chips only when there is one', async () => {
+    expect(host().querySelector('[role="alert"]')).toBeNull();
+
+    fixture.componentInstance.error.set('Choose a meal type');
+    await fixture.whenStable();
+
+    expect(host().querySelector('[role="alert"]')?.textContent?.trim()).toBe('Choose a meal type');
   });
 
   it('shows no dot without a dot token', () => {

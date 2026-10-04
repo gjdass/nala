@@ -634,6 +634,47 @@
       "review": "Review"
     }
   },
+  "medication": {
+    "kinds": {
+      "medication": "Medication"
+    },
+    "card": {
+      "lastDose": "Last dose",
+      "empty": {
+        "title": "No dose logged yet",
+        "text": "Tap + to log the first one."
+      }
+    },
+    "sheet": {
+      "name": "Name",
+      "dose": "Dose",
+      "unit": "Unit"
+    },
+    "unit": {
+      "ml": "ml",
+      "mg": "mg",
+      "drops": "drops",
+      "dose": "dose"
+    },
+    "dose": {
+      "ml": "{{amount}} ml",
+      "mg": "{{amount}} mg",
+      "drops": "{{amount}} drops",
+      "drops_one": "{{amount}} drop",
+      "dose": "{{amount}} doses",
+      "dose_one": "{{amount}} dose"
+    },
+    "errors": {
+      "nameRequired": "Enter a name",
+      "nameTooLong": "100 characters at most",
+      "amountRange": "0.01 to 1000",
+      "amountDecimals": "2 decimals at most",
+      "unitRequired": "Choose a unit for the amount",
+      "unknown": "Something went wrong. Check your connection and try again.",
+      "medicationNotFound": "This dose no longer exists.",
+      "babyNotFound": "This baby no longer exists."
+    }
+  },
   "offline": {
     "queued": "Saved on this device. It will be sent when you're back online.",
     "refused": "A change made offline couldn't be applied."

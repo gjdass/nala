@@ -634,6 +634,47 @@
       "review": "Vérifier"
     }
   },
+  "medication": {
+    "kinds": {
+      "medication": "Médicament"
+    },
+    "card": {
+      "lastDose": "Dernière prise",
+      "empty": {
+        "title": "Aucune prise enregistrée",
+        "text": "Touchez + pour enregistrer la première."
+      }
+    },
+    "sheet": {
+      "name": "Nom",
+      "dose": "Dose",
+      "unit": "Unité"
+    },
+    "unit": {
+      "ml": "ml",
+      "mg": "mg",
+      "drops": "gouttes",
+      "dose": "dose"
+    },
+    "dose": {
+      "ml": "{{amount}} ml",
+      "mg": "{{amount}} mg",
+      "drops": "{{amount}} gouttes",
+      "drops_one": "{{amount}} goutte",
+      "dose": "{{amount}} doses",
+      "dose_one": "{{amount}} dose"
+    },
+    "errors": {
+      "nameRequired": "Saisissez un nom",
+      "nameTooLong": "100 caractères maximum",
+      "amountRange": "De 0,01 à 1000",
+      "amountDecimals": "2 décimales maximum",
+      "unitRequired": "Choisissez une unité pour la quantité",
+      "unknown": "Une erreur s'est produite. Vérifiez votre connexion et réessayez.",
+      "medicationNotFound": "Cette prise n'existe plus.",
+      "babyNotFound": "Ce bébé n'existe plus."
+    }
+  },
   "offline": {
     "queued": "Enregistré sur cet appareil. Ce sera envoyé dès le retour du réseau.",
     "refused": "Une modification faite hors ligne n'a pas pu être appliquée."

@@ -12,7 +12,7 @@ import { FormRowComponent } from '../form-row/form-row.component';
  * one clears the choice, and the control gets null. Each chip's text is `optionLabel + option`
  * translated, and its test id `name-option`. With a `dotToken` (a CSS custom-property prefix, e.g.
  * `--nala-stool-`), each chip also shows a small dot in the colour `var(<dotToken><option>)`, kept in
- * the label so it stays visible next to the selected chip's checkmark.
+ * the label so it stays visible next to the selected chip's checkmark. An `error` shows under the chips.
  */
 @Component({
   selector: 'nala-chip-choice-row',
@@ -31,6 +31,8 @@ export class ChipChoiceRowComponent<T extends string = string> {
   readonly control = input.required<FormControl<T | null>>();
   /** CSS custom-property prefix of a colour dot per option; no dots when null. */
   readonly dotToken = input<string | null>(null);
+  /** Shown under the chips when set (e.g. a unit required by an amount). */
+  readonly error = input<string | null>(null);
 
   protected readonly value = toSignal(
     toObservable(this.control).pipe(
