@@ -341,7 +341,9 @@
       "over24h": ">24 h"
     },
     "yesterday": "Hier {{time}}",
-    "today": "Aujourd'hui {{time}}"
+    "today": "Aujourd'hui {{time}}",
+    "todayDate": "Aujourd'hui",
+    "yesterdayDate": "Hier"
   },
   "kindPicker": {
     "label": "Choisir quoi ajouter"
@@ -373,7 +375,8 @@
       "logged": "Enregistré par {{name}}",
       "edited": "Modifié par {{name}}, {{time}}"
     },
-    "beforeStart": "Ne peut pas être avant le début."
+    "beforeStart": "Ne peut pas être avant le début.",
+    "beforeBirth": "Ne peut pas être avant la date de naissance."
   },
   "suggestion": {
     "yes": "Oui"
@@ -632,6 +635,45 @@
       "card": "Commencé {{since}}.",
       "sheet": "Commencé {{since}}. Corrigez les heures, puis enregistrez.",
       "review": "Vérifier"
+    }
+  },
+  "growth": {
+    "kinds": {
+      "measurement": "Mesure"
+    },
+    "card": {
+      "weight": "Poids",
+      "length": "Taille",
+      "head": "Périmètre crânien",
+      "birth": "Naissance",
+      "none": "—",
+      "empty": {
+        "title": "Aucune mesure pour le moment",
+        "text": "Touchez + pour noter un poids, une taille ou un périmètre crânien."
+      }
+    },
+    "sheet": {
+      "weight": "Poids",
+      "length": "Taille",
+      "head": "Périmètre crânien"
+    },
+    "unit": {
+      "kg": "{{value}} kg",
+      "cm": "{{value}} cm",
+      "kgSuffix": "kg",
+      "cmSuffix": "cm"
+    },
+    "summary": {
+      "head": "PC {{value}}"
+    },
+    "errors": {
+      "measurementRequired": "Saisissez un poids, une taille ou un périmètre crânien",
+      "weight": "De 0,3 à 30 kg, 3 décimales au plus",
+      "length": "De 20 à 130 cm, 1 décimale au plus",
+      "head": "De 15 à 60 cm, 1 décimale au plus",
+      "unknown": "Une erreur s'est produite. Vérifiez votre connexion et réessayez.",
+      "growthEntryNotFound": "Cette entrée n'existe plus.",
+      "babyNotFound": "Ce bébé n'existe plus."
     }
   },
   "health": {

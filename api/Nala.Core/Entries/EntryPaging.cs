@@ -14,7 +14,11 @@ public static class EntryPaging
     /// The page out of <paramref name="entries"/>, read with one more than <paramref name="size"/> to tell whether
     /// another page follows, and the cursor of that page (null after the last one).
     /// </summary>
-    public static (IReadOnlyList<T> Page, string? Next) Split<T>(IReadOnlyList<T> entries, int size, Func<T, EntryCursor> cursorOf)
+    public static (IReadOnlyList<T> Page, string? Next) Split<T>(IReadOnlyList<T> entries, int size, Func<T, EntryCursor> cursorOf) =>
+        Split(entries, size, e => cursorOf(e).Encode());
+
+    /// <summary>As above, for a section whose cursor isn't an <see cref="EntryCursor"/>: <paramref name="encodedCursorOf"/> encodes it.</summary>
+    public static (IReadOnlyList<T> Page, string? Next) Split<T>(IReadOnlyList<T> entries, int size, Func<T, string> encodedCursorOf)
     {
         if (entries.Count <= size)
         {
@@ -22,6 +26,6 @@ public static class EntryPaging
         }
 
         var page = entries.Take(size).ToList();
-        return (page, cursorOf(page[^1]).Encode());
+        return (page, encodedCursorOf(page[^1]));
     }
 }

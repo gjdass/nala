@@ -1,21 +1,22 @@
 <div class="fields">
   @for (field of fields(); track field.name) {
+    @let suffix = field.suffix ?? this.suffix();
     <mat-form-field appearance="outline">
       <mat-label>{{ field.label }}</mat-label>
       <input
         matInput
         type="number"
-        inputmode="numeric"
-        step="1"
-        [attr.min]="min()"
-        [attr.max]="max()"
+        [attr.inputmode]="inputMode(field)"
+        [attr.step]="field.step ?? 1"
+        [attr.min]="field.min ?? min()"
+        [attr.max]="field.max ?? max()"
         [formControl]="field.control"
         [attr.data-testid]="field.name"
       />
-      @if (suffix()) {
-        <span matTextSuffix>{{ suffix() }}</span>
+      @if (suffix) {
+        <span matTextSuffix>{{ suffix }}</span>
       }
-      <mat-error>{{ error() }}</mat-error>
+      <mat-error>{{ field.error ?? error() }}</mat-error>
     </mat-form-field>
   }
 </div>

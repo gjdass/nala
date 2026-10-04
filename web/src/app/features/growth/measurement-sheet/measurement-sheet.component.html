@@ -1,0 +1,59 @@
+<nala-entry-sheet [form]="form" [saving]="saving()" (save)="save()" (delete)="delete()">
+  <nala-time-row dateOnly [label]="'entrySheet.date' | transloco" [control]="form.controls.date" />
+
+  <nala-number-fields-row
+    [fields]="[
+      {
+        name: 'weight',
+        label: 'growth.sheet.weight' | transloco,
+        control: form.controls.weight,
+        suffix: 'growth.unit.kgSuffix' | transloco,
+        min: weightKg.min,
+        max: weightKg.max,
+        step: weightKg.step,
+        error: 'growth.errors.weight' | transloco,
+      },
+      {
+        name: 'length',
+        label: 'growth.sheet.length' | transloco,
+        control: form.controls.length,
+        suffix: 'growth.unit.cmSuffix' | transloco,
+        min: lengthCm.min,
+        max: lengthCm.max,
+        step: lengthCm.step,
+        error: 'growth.errors.length' | transloco,
+      },
+      {
+        name: 'head',
+        label: 'growth.sheet.head' | transloco,
+        control: form.controls.head,
+        suffix: 'growth.unit.cmSuffix' | transloco,
+        min: headCm.min,
+        max: headCm.max,
+        step: headCm.step,
+        error: 'growth.errors.head' | transloco,
+      },
+    ]"
+  />
+  @if (measurementsError()) {
+    <p class="field-error" role="alert" data-testid="measurements-error">
+      {{ 'growth.errors.measurementRequired' | transloco }}
+    </p>
+  }
+
+  <nala-notes-row [control]="form.controls.notes" />
+
+  @if (formError(); as code) {
+    <p class="form-error" role="alert" data-testid="form-error">
+      {{ 'growth.errors.' + code | transloco }}
+    </p>
+  }
+
+  @if (growthEntry; as growthEntry) {
+    <nala-entry-audit
+      [loggedBy]="growthEntry.loggedBy.displayName"
+      [editedBy]="edited ? growthEntry.updatedBy.displayName : null"
+      [editedAt]="edited ? growthEntry.updatedAt : null"
+    />
+  }
+</nala-entry-sheet>

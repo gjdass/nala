@@ -341,7 +341,9 @@
       "over24h": ">24h"
     },
     "yesterday": "Yesterday {{time}}",
-    "today": "Today {{time}}"
+    "today": "Today {{time}}",
+    "todayDate": "Today",
+    "yesterdayDate": "Yesterday"
   },
   "kindPicker": {
     "label": "Choose what to add"
@@ -373,7 +375,8 @@
       "logged": "Logged by {{name}}",
       "edited": "Edited by {{name}}, {{time}}"
     },
-    "beforeStart": "Can't be before the start."
+    "beforeStart": "Can't be before the start.",
+    "beforeBirth": "Can't be before the birth date."
   },
   "suggestion": {
     "yes": "Yes"
@@ -632,6 +635,45 @@
       "card": "Started {{since}}.",
       "sheet": "Started {{since}}. Correct the times, then save.",
       "review": "Review"
+    }
+  },
+  "growth": {
+    "kinds": {
+      "measurement": "Measurement"
+    },
+    "card": {
+      "weight": "Weight",
+      "length": "Length",
+      "head": "Head",
+      "birth": "Birth",
+      "none": "—",
+      "empty": {
+        "title": "No measurement yet",
+        "text": "Tap + to log a weight, a length or a head circumference."
+      }
+    },
+    "sheet": {
+      "weight": "Weight",
+      "length": "Length",
+      "head": "Head"
+    },
+    "unit": {
+      "kg": "{{value}} kg",
+      "cm": "{{value}} cm",
+      "kgSuffix": "kg",
+      "cmSuffix": "cm"
+    },
+    "summary": {
+      "head": "Head {{value}}"
+    },
+    "errors": {
+      "measurementRequired": "Enter a weight, a length or a head circumference",
+      "weight": "0.3 to 30 kg, 3 decimals at most",
+      "length": "20 to 130 cm, 1 decimal at most",
+      "head": "15 to 60 cm, 1 decimal at most",
+      "unknown": "Something went wrong. Check your connection and try again.",
+      "growthEntryNotFound": "This entry no longer exists.",
+      "babyNotFound": "This baby no longer exists."
     }
   },
   "health": {

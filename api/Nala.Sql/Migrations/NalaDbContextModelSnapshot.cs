@@ -334,6 +334,74 @@ namespace Nala.Sql.Migrations
                     b.ToTable("feeds", (string)null);
                 });
 
+            modelBuilder.Entity("Nala.Core.GrowthEntries.GrowthEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("BabyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("baby_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date")
+                        .HasColumnName("date");
+
+                    b.Property<decimal?>("HeadCircumferenceCm")
+                        .HasPrecision(4, 1)
+                        .HasColumnType("numeric(4,1)")
+                        .HasColumnName("head_circumference_cm");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("kind");
+
+                    b.Property<decimal?>("LengthCm")
+                        .HasPrecision(4, 1)
+                        .HasColumnType("numeric(4,1)")
+                        .HasColumnName("length_cm");
+
+                    b.Property<Guid>("LoggedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("logged_by_user_id");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("notes");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UpdatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by_user_id");
+
+                    b.Property<int?>("WeightG")
+                        .HasColumnType("integer")
+                        .HasColumnName("weight_g");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LoggedByUserId");
+
+                    b.HasIndex("UpdatedByUserId");
+
+                    b.HasIndex("BabyId", "Date", "CreatedAt", "Id")
+                        .IsDescending(false, true, true, true)
+                        .HasDatabaseName("ix_growth_entries_baby_id_date_created_at_id");
+
+                    b.ToTable("growth_entries", (string)null);
+                });
+
             modelBuilder.Entity("Nala.Core.HealthEntries.HealthEntry", b =>
                 {
                     b.Property<Guid>("Id")
@@ -733,6 +801,27 @@ namespace Nala.Sql.Migrations
                 });
 
             modelBuilder.Entity("Nala.Core.Feeds.Feed", b =>
+                {
+                    b.HasOne("Nala.Core.Babies.Baby", null)
+                        .WithMany()
+                        .HasForeignKey("BabyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Nala.Core.Users.User", null)
+                        .WithMany()
+                        .HasForeignKey("LoggedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Nala.Core.Users.User", null)
+                        .WithMany()
+                        .HasForeignKey("UpdatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Nala.Core.GrowthEntries.GrowthEntry", b =>
                 {
                     b.HasOne("Nala.Core.Babies.Baby", null)
                         .WithMany()

@@ -37,3 +37,33 @@ export class EntryTimePipe implements PipeTransform {
     }).format(date);
   }
 }
+
+/**
+ * The day an entry is dated, without a time (spec 10, entries dated with a calendar date): "Today",
+ * "Yesterday", then the date ("Sep 28"), with the year when it isn't this one. Takes an ISO date-time
+ * or a `Date` (a date-only entry as its local midnight). Impure, like `EntryTimePipe`.
+ */
+@Pipe({ name: 'nalaEntryDate', pure: false })
+export class EntryDatePipe implements PipeTransform {
+  private readonly transloco = inject(TranslocoService);
+  private readonly clock = inject(NowService);
+
+  transform(value: string | Date): string {
+    const lang = this.transloco.getActiveLang();
+    const date = new Date(value);
+    const now = new Date(this.clock.now());
+    const today = dayStart(now);
+    const day = dayStart(date);
+    if (day === today) {
+      return this.transloco.translate('time.todayDate', {}, lang);
+    }
+    if (day === dayStart(new Date(today - 1))) {
+      return this.transloco.translate('time.yesterdayDate', {}, lang);
+    }
+    return new Intl.DateTimeFormat(lang, {
+      year: date.getFullYear() === now.getFullYear() ? undefined : 'numeric',
+      month: 'short',
+      day: 'numeric',
+    }).format(date);
+  }
+}

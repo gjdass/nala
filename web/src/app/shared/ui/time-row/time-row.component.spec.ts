@@ -149,3 +149,96 @@ describe('TimeRowComponent', () => {
     });
   });
 });
+
+@Component({
+  imports: [TimeRowComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `<nala-time-row label="Date" dateOnly [control]="control" />`,
+})
+class DateOnlyHost {
+  readonly control = new FormControl<Date | null>(new Date(2026, 8, 30), [Validators.required]);
+}
+
+describe('TimeRowComponent, date only (spec 10)', () => {
+  let fixture: ComponentFixture<DateOnlyHost>;
+
+  const host = () => fixture.nativeElement as HTMLElement;
+  const find = <T extends HTMLElement = HTMLElement>(selector: string) =>
+    host().querySelector<T>(selector);
+  const open = async () => {
+    find<HTMLButtonElement>('nala-form-row button')!.click();
+    await fixture.whenStable();
+  };
+
+  beforeEach(async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(NOW);
+    await TestBed.configureTestingModule({
+      imports: [DateOnlyHost, translocoTesting()],
+      providers: [provideNativeDateAdapter()],
+    }).compileComponents();
+    fixture = TestBed.createComponent(DateOnlyHost);
+    await fixture.whenStable();
+  });
+
+  afterEach(() => vi.useRealTimers());
+
+  it('shows the date without a time: "Today", "Yesterday", then the date', async () => {
+    expect(find('nala-form-row')?.textContent).toContain('Today');
+    expect(find('nala-form-row')?.textContent).not.toContain(':');
+
+    fixture.componentInstance.control.setValue(new Date(2026, 8, 29));
+    await fixture.whenStable();
+    expect(find('nala-form-row')?.textContent).toContain('Yesterday');
+
+    fixture.componentInstance.control.setValue(new Date(2026, 8, 20));
+    await fixture.whenStable();
+    expect(find('nala-form-row')?.textContent).toContain('Sep 20');
+  });
+
+  it('offers a datepicker only', async () => {
+    await open();
+
+    expect(find('[data-testid="time-row-date"]')).toBeTruthy();
+    expect(find('[data-testid="time-row-time"]')).toBeNull();
+    expect(find('mat-timepicker-toggle')).toBeNull();
+  });
+
+  it('sets the picked date at local midnight', async () => {
+    await open();
+    const input = find<HTMLInputElement>('[data-testid="time-row-date"]')!;
+    input.value = '9/28/2026';
+    input.dispatchEvent(new Event('input'));
+    input.dispatchEvent(new Event('change'));
+    await fixture.whenStable();
+
+    expect(fixture.componentInstance.control.value).toEqual(new Date(2026, 8, 28));
+    expect(fixture.componentInstance.control.dirty).toBe(true);
+  });
+
+  it('is set to today at midnight when tapped without a value', async () => {
+    fixture.componentInstance.control.setValue(null);
+    await fixture.whenStable();
+
+    await open();
+
+    expect(fixture.componentInstance.control.value).toEqual(new Date(2026, 8, 30));
+  });
+
+  it('shows a date before the birth', async () => {
+    fixture.componentInstance.control.setErrors({ beforeBirth: true });
+    fixture.componentInstance.control.markAsTouched();
+    await fixture.whenStable();
+
+    expect(en.entrySheet.beforeBirth).toBe("Can't be before the birth date.");
+    expect(find('[role="alert"]')?.textContent?.trim()).toBe(en.entrySheet.beforeBirth);
+  });
+
+  it('shows a date before the birth sent back by the server', async () => {
+    fixture.componentInstance.control.setErrors({ server: 'beforeBirth' });
+    fixture.componentInstance.control.markAsTouched();
+    await fixture.whenStable();
+
+    expect(find('[role="alert"]')?.textContent?.trim()).toBe(en.entrySheet.beforeBirth);
+  });
+});

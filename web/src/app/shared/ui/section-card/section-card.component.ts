@@ -63,6 +63,11 @@ export class SectionCardComponent<T = unknown> {
   readonly key = input.required<SectionKey>();
   /** The section's entries of the last 24 hours, at least the 3 most recent (`loadRecentEntries`), newest first; null while loading. */
   readonly entries = input<readonly T[] | null>(null);
+  /**
+   * Whether the section has nothing to highlight, so the empty state shows instead of the highlight;
+   * by default (null), when it has no entries. Growth (spec 10) decides from its latest values.
+   */
+  readonly empty = input<boolean | null>(null);
   /** An entry was added through +: the section reloads its entries. */
   readonly changed = output<EntrySheetResult>();
 

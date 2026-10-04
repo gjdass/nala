@@ -1,0 +1,40 @@
+<nala-section-card key="growth" [entries]="loaded()" [empty]="empty()" (changed)="reload()">
+  @if (measures(); as measures) {
+    <div sectionHighlight class="highlight" data-testid="growth-highlight">
+      @for (measure of measures; track measure.key) {
+        <div class="measure">
+          <span class="label" [attr.data-testid]="'growth-' + measure.key + '-label'">{{
+            measure.label | transloco
+          }}</span>
+          <span class="value" [attr.data-testid]="'growth-' + measure.key + '-value'">{{
+            measure.latest
+              ? (measure.latest.value | nalaMeasurement: measure.unit)
+              : ('growth.card.none' | transloco)
+          }}</span>
+          <span class="date" [attr.data-testid]="'growth-' + measure.key + '-date'">
+            @if (measure.latest; as latest) {
+              {{
+                latest.birth
+                  ? ('growth.card.birth' | transloco)
+                  : (localDate(latest.date) | nalaEntryDate)
+              }}
+            }
+          </span>
+        </div>
+      }
+    </div>
+  }
+  <nala-empty-state
+    sectionEmpty
+    icon="monitor_weight"
+    [title]="'growth.card.empty.title' | transloco"
+    [text]="'growth.card.empty.text' | transloco"
+  />
+  <ng-template nalaSectionEntry let-growthEntry>
+    <nala-growth-entry
+      [growthEntry]="growthEntry"
+      [birthDate]="birthDate()"
+      (open)="edit(growthEntry)"
+    />
+  </ng-template>
+</nala-section-card>

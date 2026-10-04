@@ -1,0 +1,11 @@
+@if (loader(); as loader) {
+  <nala-history-list key="growth" [loader]="loader">
+    <ng-template nalaSectionEntry let-growthEntry>
+      <nala-growth-entry
+        [growthEntry]="growthEntry"
+        [birthDate]="birthDate()"
+        (open)="edit(growthEntry)"
+      />
+    </ng-template>
+  </nala-history-list>
+}

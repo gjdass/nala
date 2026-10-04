@@ -1,5 +1,6 @@
 import {
   ChangeDetectionStrategy,
+  booleanAttribute,
   Component,
   DestroyRef,
   computed,
@@ -16,7 +17,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatTimepickerModule } from '@angular/material/timepicker';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { map, startWith, switchMap } from 'rxjs';
-import { EntryTimePipe } from '../../../core/time/entry-time';
+import { EntryDatePipe, EntryTimePipe } from '../../../core/time/entry-time';
 import { FormRowComponent } from '../form-row/form-row.component';
 
 /** Translation keys of the errors a time row shows, by code (also as `{ server: code }` from the API). */
@@ -25,6 +26,7 @@ const ERRORS: Record<string, string> = {
   inFuture: 'entrySheet.inFuture',
   afterEnd: 'entrySheet.afterEnd',
   beforeStart: 'entrySheet.beforeStart',
+  beforeBirth: 'entrySheet.beforeBirth',
 };
 
 /**
@@ -32,11 +34,16 @@ const ERRORS: Record<string, string> = {
  * "Yesterday …" or a date, and, once tapped, a datepicker and a timepicker that edit the date and the
  * time of `control` separately. Without a value it offers "Add", and tapping it sets the value to now
  * (e.g. End time). Shows the control's errors once touched (`required`, `inFuture`, `afterEnd`,
- * `beforeStart`).
+ * `beforeStart`, `beforeBirth`).
+ *
+ * With `dateOnly` (entries dated without a time, spec 10), the value reads "Today", "Yesterday" or a
+ * date, only the datepicker is offered, and the value is the picked day at local midnight ("Add" sets
+ * today).
  */
 @Component({
   selector: 'nala-time-row',
   imports: [
+    EntryDatePipe,
     EntryTimePipe,
     FormRowComponent,
     MatDatepickerModule,
@@ -53,6 +60,7 @@ const ERRORS: Record<string, string> = {
 export class TimeRowComponent {
   readonly label = input.required<string>();
   readonly control = input.required<FormControl<Date | null>>();
+  readonly dateOnly = input(false, { transform: booleanAttribute });
 
   protected readonly open = signal(false);
   protected readonly date = new FormControl<Date | null>(null);
@@ -88,7 +96,9 @@ export class TimeRowComponent {
     const destroyed = inject(DestroyRef);
     this.date.valueChanges.pipe(takeUntilDestroyed(destroyed)).subscribe((date) => {
       const current = this.control().value;
-      if (date && current) {
+      if (date && this.dateOnly()) {
+        this.change(new Date(date.getFullYear(), date.getMonth(), date.getDate()));
+      } else if (date && current) {
         this.change(
           new Date(
             date.getFullYear(),
@@ -116,10 +126,13 @@ export class TimeRowComponent {
     });
   }
 
-  /** Opens or closes the pickers; a row without a value starts from now. */
+  /** Opens or closes the pickers; a row without a value starts from now (today with `dateOnly`). */
   protected toggle(): void {
     if (this.control().value === null) {
-      this.change(new Date());
+      const now = new Date();
+      this.change(
+        this.dateOnly() ? new Date(now.getFullYear(), now.getMonth(), now.getDate()) : now,
+      );
     }
     this.open.set(!this.open());
   }

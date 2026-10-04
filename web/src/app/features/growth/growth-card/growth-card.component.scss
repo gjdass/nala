@@ -1,0 +1,38 @@
+:host {
+  display: block;
+}
+
+.highlight {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding: 16px;
+}
+
+.measure {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.label,
+.date {
+  overflow: hidden;
+  color: var(--mat-sys-on-surface-variant);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.label {
+  font: var(--mat-sys-label-large);
+}
+
+.value {
+  color: var(--mat-sys-on-surface);
+  font: var(--mat-sys-headline-small);
+  white-space: nowrap;
+}
+
+.date {
+  font: var(--mat-sys-body-small);
+}

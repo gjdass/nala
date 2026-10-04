@@ -44,7 +44,7 @@ public static class BabyFields
         {
             errors["birthDate"] = "required";
         }
-        else if (birthDate > DateOnly.FromDateTime(now.ToOffset(LatestOffset).DateTime))
+        else if (birthDate > LatestDate(now))
         {
             errors["birthDate"] = "inFuture";
         }
@@ -60,6 +60,9 @@ public static class BabyFields
         return errors;
     }
 
+    /// <summary>The latest calendar date anywhere on Earth at <paramref name="now"/>: a later date is in the future for every time zone.</summary>
+    public static DateOnly LatestDate(DateTimeOffset now) => DateOnly.FromDateTime(now.ToOffset(LatestOffset).DateTime);
+
     public static string NormalizeName(string? input) => (input ?? string.Empty).Trim();
 
     /// <summary>Null means unspecified; call only on validated input.</summary>
@@ -67,7 +70,11 @@ public static class BabyFields
 
     public static string Format(Sex sex) => Sexes.Single(s => s.Value == sex).Key;
 
-    private static void CheckMeasurement(
+    /// <summary>
+    /// Adds <c>invalid</c> (more than <paramref name="decimals"/> decimals) or <c>outOfRange</c> for <paramref name="field"/>
+    /// to <paramref name="errors"/>; nothing when the value is absent. Shared with Growth's measurements (spec 10).
+    /// </summary>
+    public static void CheckMeasurement(
         Dictionary<string, string> errors, string field, decimal? value, int decimals, decimal min, decimal max)
     {
         if (value is not { } v)

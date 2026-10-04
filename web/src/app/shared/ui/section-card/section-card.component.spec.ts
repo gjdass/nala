@@ -20,6 +20,7 @@ import { SectionEntryDirective } from './section-entry.directive';
   template: `<nala-section-card
     [key]="key()"
     [entries]="entries()"
+    [empty]="empty()"
     (changed)="changes.push($event)"
   >
     <p sectionBanner data-testid="banner">Still feeding?</p>
@@ -34,6 +35,7 @@ import { SectionEntryDirective } from './section-entry.directive';
 class Host {
   readonly key = signal<SectionKey>('feed');
   readonly entries = signal<readonly string[] | null>(null);
+  readonly empty = signal<boolean | null>(null);
   readonly changes: EntrySheetResult[] = [];
 }
 
@@ -149,6 +151,25 @@ describe('SectionCardComponent', () => {
     expect(text('empty')).toBe('No feed yet');
     expect(find('highlight')).toBeNull();
     expect(find('section-toggle')).toBeNull();
+  });
+
+  it('shows the empty state when the section says it has nothing to highlight, even with entries', async () => {
+    await create(['e1']);
+    fixture.componentInstance.empty.set(true);
+    await fixture.whenStable();
+
+    expect(text('empty')).toBe('No feed yet');
+    expect(find('highlight')).toBeNull();
+    expect(entries()).toEqual(['e1']);
+  });
+
+  it('shows the highlight when the section says it has one, even without entries', async () => {
+    await create([]);
+    fixture.componentInstance.empty.set(false);
+    await fixture.whenStable();
+
+    expect(text('highlight')).toBe('Last feeding');
+    expect(find('empty')).toBeNull();
   });
 
   it('shows the highlight once there are entries', async () => {

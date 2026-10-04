@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { TranslocoService } from '@jsverse/transloco';
 import { translocoTesting } from '../../testing/transloco-testing';
-import { EntryTimePipe } from './entry-time';
+import { EntryDatePipe, EntryTimePipe } from './entry-time';
 
 const NOW = new Date(2026, 8, 28, 12, 0, 0);
 const at = (y: number, m: number, d: number, h: number, min: number) =>
@@ -59,5 +59,50 @@ describe('EntryTimePipe', () => {
     const iso = at(2026, 8, 27, 9, 30);
 
     expect(pipe.transform(iso)).toBe(`Hier ${time('fr', iso)}`);
+  });
+});
+
+describe('EntryDatePipe', () => {
+  let transloco: TranslocoService;
+  let pipe: EntryDatePipe;
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date', 'setInterval', 'clearInterval'] });
+    vi.setSystemTime(NOW);
+    TestBed.configureTestingModule({ imports: [translocoTesting()] });
+    transloco = TestBed.inject(TranslocoService);
+    pipe = TestBed.runInInjectionContext(() => new EntryDatePipe());
+  });
+
+  afterEach(() => vi.useRealTimers());
+
+  it('says today for any time today, without the time', () => {
+    expect(pipe.transform(new Date(2026, 8, 28))).toBe('Today');
+    expect(pipe.transform(at(2026, 8, 28, 23, 59))).toBe('Today');
+  });
+
+  it('says yesterday for the day before', () => {
+    expect(pipe.transform(new Date(2026, 8, 27))).toBe('Yesterday');
+  });
+
+  it('shows the date of older days of this year, without the time', () => {
+    expect(pipe.transform(new Date(2026, 8, 20))).toBe(
+      new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric' }).format(
+        new Date(2026, 8, 20),
+      ),
+    );
+    expect(pipe.transform(new Date(2026, 8, 20))).toBe('Sep 20');
+  });
+
+  it('adds the year for another year', () => {
+    expect(pipe.transform(new Date(2025, 11, 31))).toBe('Dec 31, 2025');
+  });
+
+  it('formats in French', () => {
+    transloco.setActiveLang('fr');
+
+    expect(pipe.transform(new Date(2026, 8, 28))).toBe("Aujourd'hui");
+    expect(pipe.transform(new Date(2026, 8, 27))).toBe('Hier');
+    expect(pipe.transform(new Date(2026, 8, 20))).toBe('20 sept.');
   });
 });

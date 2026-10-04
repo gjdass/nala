@@ -1,7 +1,9 @@
 <button mat-list-item type="button" (click)="open.emit()">
   <mat-icon matListItemIcon data-testid="entry-icon">{{ icon() }}</mat-icon>
   <span matListItemTitle
-    ><span data-testid="entry-time">{{ time() | nalaEntryTime }}</span>
+    ><span data-testid="entry-time">{{
+      dateOnly() ? (time() | nalaEntryDate) : (time() | nalaEntryTime)
+    }}</span>
     @if (label()) {
       <span aria-hidden="true"> · </span><span data-testid="entry-label">{{ label() }}</span>
     }

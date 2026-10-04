@@ -4,6 +4,7 @@ using Nala.Core.Auth;
 using Nala.Core.Babies;
 using Nala.Core.Diapers;
 using Nala.Core.Feeds;
+using Nala.Core.GrowthEntries;
 using Nala.Core.Invitations;
 using Nala.Core.HealthEntries;
 using Nala.Core.Pumps;
@@ -14,6 +15,7 @@ using Nala.Sql.Auth;
 using Nala.Sql.Babies;
 using Nala.Sql.Diapers;
 using Nala.Sql.Feeds;
+using Nala.Sql.GrowthEntries;
 using Nala.Sql.Invitations;
 using Nala.Sql.HealthEntries;
 using Nala.Sql.Pumps;
@@ -39,5 +41,6 @@ public static class SqlServiceCollectionExtensions
             .AddScoped<IDiaperRepository, DiaperRepository>()
             .AddScoped<IPumpRepository, PumpRepository>()
             .AddScoped<IHealthEntryRepository, HealthEntryRepository>()
+            .AddScoped<IGrowthEntryRepository, GrowthEntryRepository>()
             .AddScoped<ISectionPreferenceRepository, SectionPreferenceRepository>();
 }

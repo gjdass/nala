@@ -12,6 +12,7 @@ import { MatInputModule } from '@angular/material/input';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { map, startWith } from 'rxjs';
 import { SelectedBabyService } from '../../../core/babies/selected-baby.service';
+import { decimals } from '../../../core/forms/decimals';
 import { applyServerErrors } from '../../../core/http/apply-server-errors';
 import { DosePipe } from '../../../core/health-entries/dose';
 import {
@@ -61,17 +62,6 @@ const nameForAmount: ValidatorFn = (control) =>
   control.value !== null && isBlank(control.parent?.get('name')?.value)
     ? { nameRequired: true }
     : null;
-
-/** At most `digits` decimals. */
-const decimals =
-  (digits: number): ValidatorFn =>
-  (control) => {
-    const value = control.value as number | null;
-    const factor = 10 ** digits;
-    return value === null || Math.round(value * factor) / factor === value
-      ? null
-      : { decimals: true };
-  };
 
 /** An amount needs a unit. */
 const unitWithAmount: ValidatorFn = (group) => {

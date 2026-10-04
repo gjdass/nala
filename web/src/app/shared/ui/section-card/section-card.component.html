@@ -42,7 +42,7 @@
 
   @if (entries(); as list) {
     <div class="body">
-      @if (list.length === 0) {
+      @if (empty() ?? list.length === 0) {
         <ng-content select="[sectionEmpty]" />
       } @else {
         <ng-content select="[sectionHighlight]" />

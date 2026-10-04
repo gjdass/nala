@@ -13,6 +13,7 @@ const TIME = new Date(2026, 8, 28, 14, 10).toISOString();
     <nala-entry-list-item
       icon="baby_changing_station"
       [time]="time"
+      [dateOnly]="dateOnly()"
       [label]="label()"
       [summary]="summary()"
       (open)="opened = opened + 1"
@@ -21,6 +22,7 @@ const TIME = new Date(2026, 8, 28, 14, 10).toISOString();
 })
 class Host {
   readonly time = TIME;
+  readonly dateOnly = signal(false);
   readonly label = signal('');
   readonly summary = signal('L 5m · R 3m 30s');
   opened = 0;
@@ -54,6 +56,13 @@ describe('EntryListItemComponent', () => {
     expect(text('entry-chevron')).toBe('chevron_right');
   });
 
+  it('shows the date instead of the time for an entry dated without a time (spec 10)', async () => {
+    fixture.componentInstance.dateOnly.set(true);
+    await fixture.whenStable();
+
+    expect(text('entry-time')).toBe('Today');
+  });
+
   const item = () => host().querySelector('button[mat-list-item]')!;
 
   it("wraps the chevron in the trailing meta, so the two-line item's baseline strut doesn't clip it", () => {
@@ -61,7 +70,8 @@ describe('EntryListItemComponent', () => {
     expect(chevron.hasAttribute('matListItemMeta')).toBe(false);
     expect(chevron.parentElement!.hasAttribute('matListItemMeta')).toBe(true);
   });
-  const headline = () => item().querySelector('[matListItemTitle]')!.textContent!.replace(/\s+/g, ' ').trim();
+  const headline = () =>
+    item().querySelector('[matListItemTitle]')!.textContent!.replace(/\s+/g, ' ').trim();
 
   it('shows no duration bar', () => {
     expect(find('entry-bar')).toBeNull();
