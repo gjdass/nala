@@ -6,6 +6,25 @@ html {
   --nala-safe-top: calc(env(safe-area-inset-top) + min(env(safe-area-inset-top), 8px));
 }
 
+// iOS only: at least 12 px, so the edge guard below is tall enough (> 10 px) for iOS to take it.
+@supports (-webkit-touch-callout: none) {
+  html {
+    --nala-safe-top: max(calc(env(safe-area-inset-top) + min(env(safe-area-inset-top), 8px)), 12px);
+  }
+}
+
+// iOS 26 blurs the top edge of a home screen app (its "scroll edge effect") unless a fixed box with a
+// solid background covers it, even without a top inset. This strip over the body's top padding is that
+// box: iOS tints the edge with the page colour instead. 0 px tall, so invisible, off iOS.
+.nala-edge-guard {
+  position: fixed;
+  top: 0;
+  inset-inline: 0;
+  z-index: 2;
+  height: var(--nala-safe-top);
+  background: var(--mat-sys-surface);
+}
+
 // No rubber-band: pulling past the end would drag the page and the bottom navigation bar with it.
 html,
 body {

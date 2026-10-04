@@ -85,6 +85,22 @@ describe('global theme', () => {
     assert.match(css, /body\s*\{[^}]*padding-top:\s*var\(--nala-safe-top\)/);
   });
 
+  it('makes the top offset at least 12 px on iOS, so the edge guard is tall enough for iOS to take it', () => {
+    assert.match(
+      css,
+      /@supports \(-webkit-touch-callout: none\)\s*\{\s*html\s*\{[^}]*--nala-safe-top:\s*max\(calc\(env\(safe-area-inset-top\) \+ min\(env\(safe-area-inset-top\), 8px\)\), 12px\)/,
+    );
+  });
+
+  it('pins a solid edge guard across the top edge, as tall as the top offset, so iOS 26 tints it instead of blurring', () => {
+    const rule = css.match(/\.nala-edge-guard\s*\{([^}]*)\}/)?.[1] ?? '';
+    assert.match(rule, /position:\s*fixed/);
+    assert.match(rule, /top:\s*0/);
+    assert.match(rule, /inset-inline:\s*0/);
+    assert.match(rule, /height:\s*var\(--nala-safe-top\)/);
+    assert.match(rule, /background:\s*var\(--mat-sys-surface\)/);
+  });
+
   it("never rubber-bands the document, so the bottom navigation bar can't be dragged", () => {
     assert.match(css, /html,\s*body\s*\{[^}]*overscroll-behavior-y:\s*none/);
   });

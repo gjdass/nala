@@ -11,7 +11,9 @@ import { RunningTimersBarComponent } from './shared/ui/running-timers-bar/runnin
   changeDetection: ChangeDetectionStrategy.OnPush,
   // The mini-bar (and the sheets it opens) loads only once a timer runs, keeping it out of the initial bundle.
   // It shows inside the navigation bar's pill, above the destinations, in a dock pinned at the bottom.
+  // The edge guard keeps iOS from blurring the top of the screen (spec 04, `_layout.scss`).
   template: `
+    <div class="nala-edge-guard" aria-hidden="true"></div>
     <router-outlet />
     <div class="dock">
       @if (signedIn()) {

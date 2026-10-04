@@ -43,6 +43,15 @@ describe('App', () => {
     expect(host.querySelector('router-outlet')).not.toBeNull();
   });
 
+  it('holds the edge guard on every screen, signed in or not, hidden from assistive technology', async () => {
+    for (const auth of [signedIn, signedOut]) {
+      TestBed.resetTestingModule();
+      const guard = (await setup(false, auth)).querySelector('.nala-edge-guard');
+      expect(guard).not.toBeNull();
+      expect(guard!.getAttribute('aria-hidden')).toBe('true');
+    }
+  });
+
   it('shows the running timers bar on every screen while a timer runs', async () => {
     const host = await setup(true);
     expect(host.querySelector('router-outlet ~ .dock nala-running-timers-bar')).not.toBeNull();

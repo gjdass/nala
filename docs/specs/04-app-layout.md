@@ -51,6 +51,7 @@ Give every activity section (Feed, Diaper, Sleep, Health, Growth, Pump…) the s
 
 ### Safe areas
 - The app draws edge to edge (`viewport-fit=cover`) and keeps clear of the iPhone's status bar, notch / Dynamic Island and home indicator itself: every screen starts below the top safe area plus 8 px (so iOS's blur under the status bar never touches the content), the bottom navigation bar and the bottom sheets end above the bottom safe area. Off iOS (no safe area) nothing changes. The top offset is the global `--nala-safe-top` (`_layout.scss`).
+- iOS 26 lays its own blur (the "scroll edge effect") over the top of a home screen web app unless a fixed box with a solid background covers the top edge, even when it reports no top safe area (`default` status bar style). So the app shell holds an edge guard: a fixed strip across the top edge, as tall as the top offset, in the page background colour (`--mat-sys-surface`); iOS then tints the edge with that colour instead of blurring. On iOS the top offset is at least 12 px so the guard is tall enough for iOS to take it (more than 10 px); elsewhere the guard is 0 px tall and nothing changes. Content scrolls under the guard, never over it.
 - The page never rubber-bands (`overscroll-behavior-y: none` on the document): pulling past the top or bottom doesn't drag the page, so the bottom navigation bar never moves.
 
 ### Top app bar
@@ -176,6 +177,7 @@ Each item becomes at least one test, written failing first.
 ### Safe areas & brand
 - [x] `index.html` sets `viewport-fit=cover`.
 - [x] Every screen starts below the top safe area plus 8 px, nothing when there is no safe area; the bottom sheets end above the bottom safe area.
+- [x] The app shell has a fixed edge guard across the top edge, as tall as the top offset, in the page background colour; on iOS the top offset is at least 12 px. *(Tests check the markup and CSS; the missing blur is checked by hand on an iPhone.)*
 - [x] The document doesn't rubber-band when pulled past its top or bottom (`overscroll-behavior-y: none`), so the bottom navigation bar stays in place.
 - [x] The top app bar shows the Nala brand (lion's head + "Nala") on the right, with one baby, several babies or none.
 
@@ -224,6 +226,7 @@ Fewer live API calls (one endpoint for every section, slower when nothing runs):
 iPhone home screen app (after the PWA install work):
 
 - [x] **Slice 14 — Safe areas, no rubber-band, brand in the top bar.** `viewport-fit=cover` in `index.html`; global `_layout.scss` with `--nala-safe-top` (top inset + 8 px, 0 without inset), the body padded by it, `overscroll-behavior-y: none` on `html` and `body`, the bottom sheet container padded by the bottom inset; the app shell and the auth card take `100dvh` minus the top offset. `branding/generate.py` writes `icons/brand-mark.png` (the favicon's lion head, 72 px); `nala-top-app-bar` shows it with "Nala" on the right of the name row. Covers: every Safe areas & brand criterion.
+- [x] **Slice 15 — No iOS edge blur.** `nala-root` renders a `.nala-edge-guard` (fixed, top 0, full width, `--nala-safe-top` tall, `--mat-sys-surface` background, `aria-hidden`); on iOS (`@supports (-webkit-touch-callout: none)`) `--nala-safe-top` is at least 12 px. Covers: the edge guard criterion.
 
 ## Material 3 mapping
 
