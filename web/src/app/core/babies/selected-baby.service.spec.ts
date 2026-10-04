@@ -94,6 +94,34 @@ describe('SelectedBabyService', () => {
     expect(store.selected()).toEqual(lea);
   });
 
+  it('update() replaces a baby, kept in birth order', () => {
+    const store = loaded({ ok: true, babies: [tom, lea] });
+    const older = { ...lea, name: 'Léa', birthDate: '2026-01-02' };
+
+    store.update(older);
+
+    expect(store.babies()).toEqual([older, tom]);
+  });
+
+  it('update() of the selected baby updates the selection', () => {
+    const store = loaded({ ok: true, babies: [tom, lea] });
+    const heavier = { ...tom, birthWeightG: 3400 };
+
+    store.update(heavier);
+
+    expect(store.selected()).toEqual(heavier);
+  });
+
+  it('remove() drops a baby, the first one left is then selected', () => {
+    localStorage.setItem(KEY, lea.id);
+    const store = loaded({ ok: true, babies: [tom, lea] });
+
+    store.remove(lea.id);
+
+    expect(store.babies()).toEqual([tom]);
+    expect(store.selected()).toEqual(tom);
+  });
+
   it('reports a load error', () => {
     const store = loaded({ ok: false, errors: { form: 'unknown' } });
 

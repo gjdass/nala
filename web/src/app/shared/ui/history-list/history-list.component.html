@@ -1,9 +1,10 @@
 <div class="body" data-testid="history-body">
-  @if (entries().length > 0) {
+  @if (entries().length > 0 || end()) {
     <mat-action-list>
       @for (entry of entries(); track entry.id) {
         <ng-container *ngTemplateOutlet="entryTemplate() ?? null; context: { $implicit: entry }" />
       }
+      <ng-container *ngTemplateOutlet="end()" />
     </mat-action-list>
   } @else if (empty()) {
     <nala-empty-state

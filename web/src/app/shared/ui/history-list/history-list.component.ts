@@ -23,11 +23,13 @@ import { HistoryPageLoader, SectionKey } from '../../../core/sections/section.mo
 import { EmptyStateComponent } from '../empty-state/empty-state.component';
 import { EntrySheetResult } from '../entry-sheet/entry-sheet.models';
 import { SectionEntryDirective } from '../section-card/section-entry.directive';
+import { HistoryEndDirective } from './history-end.directive';
 
 /**
  * A section's full history (spec 04): the entries `loader` returns, page by page as the end of the
- * list scrolls into view, each rendered through the `nalaSectionEntry` template, with a progress
- * indicator, an empty state, and an error with Try again that keeps the pages already loaded. A new
+ * list scrolls into view, each rendered through the `nalaSectionEntry` template, then the optional
+ * `nalaHistoryEnd` template once the last page is loaded, with a progress indicator, an empty state
+ * (none with an end template), and an error with Try again that keeps the pages already loaded. A new
  * `loader` (e.g. another baby) starts again from the first page. `apply()` patches an entry edited
  * or deleted from the list in place.
  */
@@ -50,11 +52,16 @@ export class HistoryListComponent<T extends { id: string } = { id: string }> {
   readonly loader = input.required<HistoryPageLoader<T>>();
 
   protected readonly entryTemplate = contentChild(SectionEntryDirective, { read: TemplateRef });
+  protected readonly endTemplate = contentChild(HistoryEndDirective, { read: TemplateRef });
   protected readonly entries = signal<readonly T[]>([]);
   protected readonly loading = signal(false);
   protected readonly failed = signal(false);
   private readonly done = signal(false);
-  protected readonly empty = computed(() => this.done() && this.entries().length === 0);
+  /** The end template, once the last page is loaded. */
+  protected readonly end = computed(() => (this.done() ? (this.endTemplate() ?? null) : null));
+  protected readonly empty = computed(
+    () => this.done() && this.entries().length === 0 && !this.endTemplate(),
+  );
 
   private readonly sentinel = viewChild.required<ElementRef<HTMLElement>>('sentinel');
   private cursor: string | null = null;

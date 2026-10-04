@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, input, output } f
 import { TranslocoService } from '@jsverse/transloco';
 import { BabyAgePipe } from '../../../core/babies/baby-age.pipe';
 import { GrowthEntry } from '../../../core/growth-entries/growth-entry.models';
-import { MeasurementPipe, localDate } from '../../../core/growth-entries/measurement';
+import { MeasurementSummaryPipe, localDate } from '../../../core/growth-entries/measurement';
 import { EntryListItemComponent } from '../../../shared/ui/entry-list-item/entry-list-item.component';
 
 /**
@@ -14,7 +14,7 @@ import { EntryListItemComponent } from '../../../shared/ui/entry-list-item/entry
 @Component({
   selector: 'nala-growth-entry',
   imports: [BabyAgePipe, EntryListItemComponent],
-  providers: [MeasurementPipe],
+  providers: [MeasurementSummaryPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @let birth = birthDate();
@@ -29,7 +29,7 @@ import { EntryListItemComponent } from '../../../shared/ui/entry-list-item/entry
   `,
 })
 export class GrowthEntryComponent {
-  private readonly measurement = inject(MeasurementPipe);
+  private readonly measures = inject(MeasurementSummaryPipe);
   private readonly transloco = inject(TranslocoService);
 
   readonly growthEntry = input.required<GrowthEntry>();
@@ -42,19 +42,12 @@ export class GrowthEntryComponent {
 
   /** A measurement's filled values, joined, or the milestone; re-read on every check to follow the language. */
   protected summary(): string {
-    const { weightG, lengthCm, headCircumferenceCm, milestone, title } = this.growthEntry();
-    if (milestone) {
-      return milestone === 'custom'
-        ? (title ?? '')
-        : this.transloco.translate(`growth.milestone.${milestone}`);
+    const entry = this.growthEntry();
+    if (entry.milestone) {
+      return entry.milestone === 'custom'
+        ? (entry.title ?? '')
+        : this.transloco.translate(`growth.milestone.${entry.milestone}`);
     }
-    const head = this.measurement.transform(headCircumferenceCm, 'cm');
-    return [
-      this.measurement.transform(weightG, 'g'),
-      this.measurement.transform(lengthCm, 'cm'),
-      head ? this.transloco.translate('growth.summary.head', { value: head }) : '',
-    ]
-      .filter((part) => part !== '')
-      .join(' · ');
+    return this.measures.transform(entry);
   }
 }

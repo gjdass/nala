@@ -1,7 +1,7 @@
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Observable, Subject } from 'rxjs';
-import { Baby } from '../../../core/babies/baby.models';
+import { Baby, BabySheetResult } from '../../../core/babies/baby.models';
 import { SelectedBabyService } from '../../../core/babies/selected-baby.service';
 import { GrowthEntry } from '../../../core/growth-entries/growth-entry.models';
 import { GrowthEntryService } from '../../../core/growth-entries/growth-entry.service';
@@ -9,9 +9,11 @@ import { OfflineQueueService } from '../../../core/offline/offline-queue.service
 import { HistoryPage } from '../../../core/sections/section.models';
 import { EntrySheetResult } from '../../../shared/ui/entry-sheet/entry-sheet.models';
 import { EntrySheetService } from '../../../shared/ui/entry-sheet/entry-sheet.service';
+import { SheetService } from '../../../shared/ui/sheet/sheet.service';
 import { aGrowthEntry } from '../../../testing/growth-entries';
 import { fakeOfflineQueue } from '../../../testing/offline-queue';
 import { translocoTesting } from '../../../testing/transloco-testing';
+import { BabySheetComponent } from '../../babies/baby-sheet/baby-sheet.component';
 import { GrowthHistoryComponent } from './growth-history.component';
 
 /** Reports every observed element as visible straight away, like a short list. */
@@ -30,7 +32,16 @@ class VisibleIntersectionObserver {
   }
 }
 
-const baby = (id: string) => ({ id, name: id, birthDate: '2026-08-15' }) as Baby;
+const baby = (id: string, overrides: Partial<Baby> = {}): Baby => ({
+  id,
+  name: id,
+  birthDate: '2026-08-15',
+  sex: 'unspecified',
+  birthWeightG: null,
+  birthLengthCm: null,
+  birthHeadCircumferenceCm: null,
+  ...overrides,
+});
 /** A head circumference alone, whose value tells it apart. */
 const entryOf = (id: string, head: number) =>
   aGrowthEntry({ id, weightG: null, lengthCm: null, headCircumferenceCm: head });
@@ -43,6 +54,13 @@ describe('GrowthHistoryComponent', () => {
   let edited: Subject<EntrySheetResult | undefined>;
   let entrySheets: { edit: ReturnType<typeof vi.fn> };
   let queue: ReturnType<typeof fakeOfflineQueue>;
+  let babySheet: Subject<BabySheetResult | undefined>;
+  let sheets: { open: ReturnType<typeof vi.fn> };
+  let store: {
+    selected: typeof selected;
+    update: ReturnType<typeof vi.fn>;
+    remove: ReturnType<typeof vi.fn>;
+  };
 
   const host = () => fixture.nativeElement as HTMLElement;
   const summaries = () =>
@@ -64,11 +82,15 @@ describe('GrowthHistoryComponent', () => {
     edited = new Subject();
     entrySheets = { edit: vi.fn(() => edited) };
     queue = fakeOfflineQueue();
+    babySheet = new Subject();
+    sheets = { open: vi.fn(() => babySheet) };
+    store = { selected, update: vi.fn(), remove: vi.fn() };
     await TestBed.configureTestingModule({
       imports: [GrowthHistoryComponent, translocoTesting()],
       providers: [
         { provide: GrowthEntryService, useValue: growthEntries },
-        { provide: SelectedBabyService, useValue: { selected } },
+        { provide: SelectedBabyService, useValue: store },
+        { provide: SheetService, useValue: sheets },
         { provide: EntrySheetService, useValue: entrySheets },
         { provide: OfflineQueueService, useValue: queue },
       ],
@@ -144,5 +166,79 @@ describe('GrowthHistoryComponent', () => {
 
     expect(growthEntries.page).toHaveBeenCalledTimes(2);
     expect(growthEntries.page).toHaveBeenLastCalledWith('b1', null);
+  });
+
+  describe('Birth item', () => {
+    const born = baby('b1', { birthWeightG: 3400, birthLengthCm: 50.5 });
+    const birth = () => host().querySelector<HTMLElement>('nala-growth-birth');
+
+    beforeEach(async () => {
+      selected.set(born);
+      await fixture.whenStable();
+    });
+
+    it('ends the history after the last page when the baby has a birth measurement', async () => {
+      pages.at(-1)!.next({ entries: [entryOf('g2', 39)], next: 'c2' });
+      await fixture.whenStable();
+      expect(birth()).toBeNull();
+
+      pages.at(-1)!.next({ entries: [entryOf('g1', 38)], next: null });
+      await fixture.whenStable();
+
+      expect(summaries()).toEqual(['Head 39.0 cm', 'Head 38.0 cm', '3.400 kg · 50.5 cm']);
+      expect(birth()?.querySelector('[data-testid="entry-label"]')?.textContent?.trim()).toBe(
+        'Birth',
+      );
+    });
+
+    it('is shown alone, without the empty state, when there is no entry', async () => {
+      pages.at(-1)!.next({ entries: [], next: null });
+      await fixture.whenStable();
+
+      expect(birth()).toBeTruthy();
+      expect(host().querySelector('[data-testid="history-empty"]')).toBeNull();
+    });
+
+    it('is not shown without a birth measurement', async () => {
+      selected.set(baby('b1'));
+      await fixture.whenStable();
+      pages.at(-1)!.next({ entries: [], next: null });
+      await fixture.whenStable();
+
+      expect(birth()).toBeNull();
+      expect(host().querySelector('[data-testid="history-empty"]')).toBeTruthy();
+    });
+
+    it("opens the baby's profile form", async () => {
+      pages.at(-1)!.next({ entries: [], next: null });
+      await fixture.whenStable();
+
+      birth()!.querySelector<HTMLButtonElement>('button')!.click();
+
+      expect(sheets.open).toHaveBeenCalledWith(BabySheetComponent, born);
+    });
+
+    it('follows a profile saved from it', async () => {
+      pages.at(-1)!.next({ entries: [], next: null });
+      await fixture.whenStable();
+      birth()!.querySelector<HTMLButtonElement>('button')!.click();
+
+      const saved = { ...born, birthWeightG: 3500 };
+      babySheet.next({ saved });
+
+      expect(store.update).toHaveBeenCalledWith(saved);
+    });
+
+    it('drops a baby deleted from it', async () => {
+      pages.at(-1)!.next({ entries: [], next: null });
+      await fixture.whenStable();
+      birth()!.querySelector<HTMLButtonElement>('button')!.click();
+
+      babySheet.next({ deleted: 'b1' });
+      babySheet.next(undefined);
+
+      expect(store.remove).toHaveBeenCalledWith('b1');
+      expect(store.update).not.toHaveBeenCalled();
+    });
   });
 });

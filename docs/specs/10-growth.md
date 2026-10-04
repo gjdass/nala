@@ -1,6 +1,6 @@
 # 10 — Growth
 
-Status: in progress
+Status: done
 
 Layout vocabulary (section card, kind picker, entry sheet, entry list item…) is defined in [04 — App layout](04-app-layout.md). Growth has no timer, so spec 04's Timers rules, the mini-bar and `GET /api/live` don't apply; this spec only adds what is specific to Growth.
 
@@ -29,7 +29,7 @@ Two kinds, so + opens the kind picker (Measurement, Milestone). Section icon: `m
 - **Milestones:** a single choice among presets, as chips (shared `nala-chip-choice-row`): `firstSmile`, `firstLaugh`, `holdsHead`, `rollsOver`, `sitsUp`, `crawls`, `firstTooth`, `standsUp`, `firstSteps`, `firstWord`, and `custom`. With `custom`, a Title field shows (required, 1–100 characters once trimmed; "Enter a title" / "100 characters at most"); with a preset, the title is ignored and stored null. A preset can be logged more than once (each tooth, say). The chips are not clearable (tapping the chosen one keeps it). A title typed under Other stays while the sheet is open, so switching to a preset and back brings it back; it is only sent with Other.
 - **Birth is the first point.** The birth weight / length / head circumference stay on the baby profile (03), never copied into entries. They show as:
   - the fallback of the card highlight for any measure that has no entry yet;
-  - a **Birth** item at the end of the history list (after the last page), when the baby has at least one birth measurement: headline the birth date · "Birth", supporting text as a measurement. Tapping it opens the baby's profile form (03's baby sheet); it can't be deleted from here.
+  - a **Birth** item at the end of the history list (after the last page, not while loading nor after a load error), when the baby has at least one birth measurement: `monitor_weight` icon, headline the birth date · "Birth", supporting text as a measurement. With no entry, the history shows the Birth item alone, without the empty state. Tapping it opens the baby's profile form (03's baby sheet); it can't be deleted from here. A profile saved there updates the app's babies at once (ages, card highlight, Birth item); a baby the admin deletes there is dropped and the next baby is shown.
 - **Order:** newest date first; entries on the same date by creation time, newest first, then id.
 - **Growth endpoints:** `POST /api/growth-entries` with `{ id, babyId, kind, date, notes, …kind fields }` (measurement: `weightG`, `lengthCm`, `headCircumferenceCm`; milestone: `milestone`, `title`; the fields of the other kind are ignored and returned null) → 201; existing id → 200 with the stored entry unchanged (idempotent re-send). `PUT /api/growth-entries/{id}` replaces every field of the entry's kind (the baby and the kind never change) → 200. `DELETE /api/growth-entries/{id}` → 204; `GET /api/growth-entries/{id}` → 200; unknown → 404 `{ code: "growthEntryNotFound" }`. `GET /api/babies/{babyId}/growth-entries?cursor=&limit=` → `{ entries, next }` in the order above, 20 per page by default, 1–50; malformed cursor → 400 `cursor: invalid`. `GET /api/babies/{babyId}/growth-entries/latest` → `{ weight, length, headCircumference }`, each `{ value, date, birth: bool }` from the most recent measurement that has it (newest date, then creation), or from the birth fields (`date` = birth date, `birth: true`), or null. Unknown baby → 404 `{ code: "babyNotFound" }`. Each entry carries `loggedBy` and `updatedBy` (`{ id, displayName }`).
 - **Validation codes:** `id` / `babyId` `required`, `kind` `required` / `invalid`, `date` `required` / `inFuture` / `beforeBirth`, `weightG` `outOfRange` / `invalid` (not whole), `lengthCm` / `headCircumferenceCm` `outOfRange` / `invalid` (more than one decimal), `measurements` `required` (measurement with no value), `milestone` `required` / `invalid`, `title` `required` (custom, blank) / `tooLong`, `notes` `tooLong` (spec 04, 1000).
@@ -74,7 +74,7 @@ Each item becomes at least one test, written failing first.
 - [x] Headline: the entry date and the baby's age on that date ("Sep 28 · 6 weeks 2 days", shared `BabyAgePipe` from 03).
 - [x] Measurement: `monitor_weight` icon; supporting text: the filled values ("4.250 kg · 55.5 cm · Head 38.0 cm", empty ones left out).
 - [x] Milestone: `celebration` icon; supporting text: the preset's label or the custom title.
-- [ ] History ends with the Birth item when the baby has a birth measurement: birth date · "Birth", the birth values as a measurement; tapping it opens the baby's profile form.
+- [x] History ends with the Birth item when the baby has a birth measurement: birth date · "Birth", the birth values as a measurement; tapping it opens the baby's profile form.
 - [x] Entries logged by a deleted account still show that person's display name.
 
 ### API and validation
@@ -93,7 +93,7 @@ Each slice goes red → green → commit on `master`, in this order.
 
 - [x] **Slice 1 — Measurements, card and history.** `GrowthEntry` entity + migration (client UUID, baby FK with cascade, kind, date, weight g, length cm, head circumference cm, notes, logged by, created at, updated at/by; nullable milestone columns come with slice 2). Core `GrowthEntryService` (validation incl. `beforeBirth`, create idempotent, update, delete, paged list, latest with birth fallback) reusing `Nala.Core/Entries` and the baby's measurement rules (`BabyFields`) where they match. Endpoints `POST/PUT/DELETE/GET /api/growth-entries…`, `GET /api/babies/{babyId}/growth-entries` and `…/latest`. Web: `growth` section registered (Measurement kind only for now, so + opens its sheet), `GrowthService`, date-only `nala-time-row`, Measurement sheet, card highlight (three measures, birth fallback, empty state), entry list item with the age, history; add / edit / delete through the shared offline queue. Covers: card (except the kind picker), Measurement sheet, measurement list item, API and validation (measurement part), offline.
 - [x] **Slice 2 — Milestones.** Milestone and title columns + migration, Core validation. Web: Milestone kind registered (+ now opens the kind picker), Milestone sheet (preset chips, Other + title), milestone list item. Covers: the kind picker, Milestone sheet, milestone list item, the milestone API criteria.
-- [ ] **Slice 3 — Birth in the history.** Web: the Birth item appended after the last history page when the baby has a birth measurement, opening the baby's profile form. Covers: the Birth item criterion.
+- [x] **Slice 3 — Birth in the history.** Web: the Birth item appended after the last history page when the baby has a birth measurement (shared `nala-history-list` end template `nalaHistoryEnd`), opening the baby's profile form. Covers: the Birth item criterion.
 
 ## Data
 
@@ -108,6 +108,7 @@ Each slice goes red → green → commit on `master`, in this order.
 - **`nala-time-row` gets a date-only mode** (`dateOnly` input: datepicker only, value "Today" / "Sep 28", `Date` at local midnight in the form; the service sends `yyyy-MM-dd`). No new row component.
 - **`nala-number-fields-row` gets per-field suffix, bounds, step and error** (each `NumberField` may carry its own `suffix`, `min`, `max`, `step` and `error`; the row-level inputs stay the defaults; a decimal `step` brings the decimal keyboard), for kg / cm / cm in one row with their own range messages. Pump's Left / Right ml keep working unchanged.
 - **`nala-entry-list-item` gets `dateOnly`**: the headline shows the entry's date ("Today", "Sep 28") instead of its time.
+- **`nala-history-list` gets an end template** (`nalaHistoryEnd`, spec 04) for the Birth item; the measurement summary is the shared `nalaMeasurementSummary` pipe, used by entries and the Birth item.
 - **`nala-section-card` gets an `empty` input**: whether the section has nothing to highlight; by default (null) the card decides from its entries as before. Growth sets it from the latest values, so the empty state follows the measurements and the birth profile, not the entries.
 - Entry date format (list item headline, highlight dates): the date part of spec 04's entry time ("Today", "Yesterday", "Sep 28", year when not current), from the shared entry-time code, not a copy (`nalaEntryDate`, next to `nalaEntryTime`).
 - The Growth card highlight is the section's own content inside the shared section card's highlight slot (three columns, label / value / date).

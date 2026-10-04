@@ -7,5 +7,11 @@
         (open)="edit(growthEntry)"
       />
     </ng-template>
+    @if (hasBirth()) {
+      <ng-template nalaHistoryEnd>
+        @let born = baby()!;
+        <nala-growth-birth [baby]="born" (open)="editBaby(born)" />
+      </ng-template>
+    }
   </nala-history-list>
 }

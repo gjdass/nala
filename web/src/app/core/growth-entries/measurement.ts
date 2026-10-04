@@ -47,3 +47,31 @@ export class MeasurementPipe implements PipeTransform {
     );
   }
 }
+
+/** The measures a summary shows: an entry's, or the baby's birth ones. */
+export interface Measures {
+  weightG: number | null;
+  lengthCm: number | null;
+  headCircumferenceCm: number | null;
+}
+
+/**
+ * A measurement's filled values, joined, in the active language (spec 10): "4.250 kg · 55.5 cm ·
+ * Head 38.0 cm", empty ones left out. Impure to follow language changes.
+ */
+@Pipe({ name: 'nalaMeasurementSummary', pure: false })
+export class MeasurementSummaryPipe implements PipeTransform {
+  private readonly measurement = new MeasurementPipe();
+  private readonly transloco = inject(TranslocoService);
+
+  transform({ weightG, lengthCm, headCircumferenceCm }: Measures): string {
+    const head = this.measurement.transform(headCircumferenceCm, 'cm');
+    return [
+      this.measurement.transform(weightG, 'g'),
+      this.measurement.transform(lengthCm, 'cm'),
+      head ? this.transloco.translate('growth.summary.head', { value: head }) : '',
+    ]
+      .filter((part) => part !== '')
+      .join(' · ');
+  }
+}

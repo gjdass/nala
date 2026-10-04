@@ -54,6 +54,18 @@ export class SelectedBabyService {
     this.list.update((babies) => byBirthDate([...(babies ?? []), baby]));
   }
 
+  /** Puts back a baby edited elsewhere (e.g. from the Growth Birth item). */
+  update(baby: Baby): void {
+    this.list.update((babies) =>
+      byBirthDate((babies ?? []).map((b) => (b.id === baby.id ? baby : b))),
+    );
+  }
+
+  /** Drops a deleted baby; when it was the selected one, the first one left is shown. */
+  remove(id: string): void {
+    this.list.update((babies) => (babies ?? []).filter((b) => b.id !== id));
+  }
+
   private readStored(): string | null {
     try {
       return this.storage?.getItem(STORAGE_KEY) ?? null;

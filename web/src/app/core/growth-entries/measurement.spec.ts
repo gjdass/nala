@@ -2,7 +2,14 @@ import { TestBed } from '@angular/core/testing';
 import { TranslocoService } from '@jsverse/transloco';
 import en from '../../../../public/i18n/en.json';
 import { translocoTesting } from '../../testing/transloco-testing';
-import { MeasurementPipe, gramsToKg, isoDate, kgToGrams, localDate } from './measurement';
+import {
+  MeasurementPipe,
+  MeasurementSummaryPipe,
+  gramsToKg,
+  isoDate,
+  kgToGrams,
+  localDate,
+} from './measurement';
 
 describe('measurement helpers', () => {
   it('converts kg typed in the sheet to whole grams, and back', () => {
@@ -53,5 +60,29 @@ describe('MeasurementPipe', () => {
 
     expect(show(4250, 'g')).toBe('4,250 kg');
     expect(show(55.5, 'cm')).toBe('55,5 cm');
+  });
+});
+
+describe('MeasurementSummaryPipe', () => {
+  let pipe: MeasurementSummaryPipe;
+  const show = (
+    weightG: number | null,
+    lengthCm: number | null,
+    headCircumferenceCm: number | null,
+  ) => pipe.transform({ weightG, lengthCm, headCircumferenceCm }).replace(/\s+/g, ' ');
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({ imports: [translocoTesting()], providers: [MeasurementPipe] });
+    pipe = TestBed.runInInjectionContext(() => new MeasurementSummaryPipe());
+  });
+
+  it('joins the filled values', () => {
+    expect(show(4250, 55.5, 38)).toBe('4.250 kg · 55.5 cm · Head 38.0 cm');
+  });
+
+  it('leaves the empty values out', () => {
+    expect(show(null, 55.5, null)).toBe('55.5 cm');
+    expect(show(3400, null, 35)).toBe('3.400 kg · Head 35.0 cm');
+    expect(show(null, null, null)).toBe('');
   });
 });
