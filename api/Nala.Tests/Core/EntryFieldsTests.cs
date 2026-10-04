@@ -2,7 +2,7 @@ using Nala.Core.Entries;
 
 namespace Nala.Tests.Core;
 
-/// <summary>The start / end time rules shared by every section with a start and an end (Sleep, Pump).</summary>
+/// <summary>The start / end time and timer tap rules shared by every section with a start and an end (Sleep, Pump).</summary>
 public class EntryFieldsTests
 {
     private static readonly DateTimeOffset Now = new(2026, 10, 3, 12, 0, 0, TimeSpan.Zero);
@@ -48,5 +48,16 @@ public class EntryFieldsTests
         Assert.That(
             Validate(Now.AddHours(-1), Now.AddMinutes(-1), live: true),
             Is.EqualTo(new Dictionary<string, string> { ["endTime"] = "notAllowed" }));
+    }
+
+    [Test]
+    public void A_timer_tap_needs_its_time() =>
+        Assert.That(EntryFields.ValidateTimerAt(null, Now), Is.EqualTo(new Dictionary<string, string> { ["at"] = "required" }));
+
+    [Test]
+    public void A_timer_tap_may_be_up_to_one_minute_ahead()
+    {
+        Assert.That(EntryFields.ValidateTimerAt(Now.AddSeconds(60), Now), Is.Empty);
+        Assert.That(EntryFields.ValidateTimerAt(Now.AddSeconds(61), Now), Is.EqualTo(new Dictionary<string, string> { ["at"] = "inFuture" }));
     }
 }

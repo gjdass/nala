@@ -1,5 +1,6 @@
 using Nala.Api.Auth;
 using Nala.Api.Entries;
+using Nala.Core.Entries;
 using Nala.Core.Pumps;
 
 namespace Nala.Api.Pumps;
@@ -13,6 +14,15 @@ public sealed record CreatePumpRequest(
 
 /// <summary>Replaces the start time, end time, volumes and notes; the baby can't change. A live session takes no end time.</summary>
 public sealed record UpdatePumpRequest(DateTimeOffset? StartTime, DateTimeOffset? EndTime, decimal? LeftMl, decimal? RightMl, string? Notes);
+
+/// <summary>
+/// Starts the session's timer at <c>At</c>: creates it live for <c>BabyId</c> when unknown. <c>Queued</c>: sent from a
+/// device's offline queue, kept even while another session of the baby is live.
+/// </summary>
+public sealed record StartPumpRequest(Guid? BabyId, DateTimeOffset? At, bool? Queued = null);
+
+/// <summary>Stops the session's timer at <c>At</c>, its end time.</summary>
+public sealed record StopPumpRequest(DateTimeOffset? At);
 
 /// <summary>A pumping session; <c>EndTime</c> is null while it is live, a null volume wasn't recorded.</summary>
 public sealed record PumpResponse(
@@ -41,6 +51,8 @@ public static class PumpEndpoints
     {
         var pumps = endpoints.MapGroup("/api/pumps");
         pumps.MapPost("", CreateAsync);
+        pumps.MapPost("/{id:guid}/start", StartAsync);
+        pumps.MapPost("/{id:guid}/stop", StopAsync);
         pumps.MapGet("/{id:guid}", GetAsync);
         pumps.MapPut("/{id:guid}", UpdateAsync);
         pumps.MapDelete("/{id:guid}", DeleteAsync);
@@ -106,6 +118,34 @@ public static class PumpEndpoints
             ListPumpsResult.InvalidCursor => AuthEndpoints.ValidationProblem(new Dictionary<string, string> { ["cursor"] = "invalid" }),
             _ => BabyNotFound(),
         };
+
+    /// <summary>201 when it created the live session, 200 otherwise; 409 while another one is live (unless queued).</summary>
+    private static async Task<IResult> StartAsync(
+        Guid id, StartPumpRequest request, PumpService pumps, HttpContext context, CancellationToken cancellationToken)
+    {
+        if (request.BabyId is null)
+        {
+            return AuthEndpoints.ValidationProblem(new Dictionary<string, string> { ["babyId"] = "required" });
+        }
+
+        return TimerResponse(await pumps.StartAsync(
+            AuthEndpoints.CurrentUser(context)!, id, request.BabyId.Value, request.At, request.Queued ?? false, cancellationToken));
+    }
+
+    private static async Task<IResult> StopAsync(
+        Guid id, StopPumpRequest request, PumpService pumps, HttpContext context, CancellationToken cancellationToken) =>
+        TimerResponse(await pumps.StopAsync(AuthEndpoints.CurrentUser(context)!, id, request.At, cancellationToken));
+
+    private static IResult TimerResponse(TimerResult<PumpEntry> result) => result switch
+    {
+        TimerResult<PumpEntry>.Created created => Results.Created($"/api/pumps/{created.Entry.Pump.Id}", ToResponse(created.Entry)),
+        TimerResult<PumpEntry>.Updated updated => Results.Ok(ToResponse(updated.Entry)),
+        TimerResult<PumpEntry>.Invalid invalid => AuthEndpoints.ValidationProblem(invalid.Errors),
+        TimerResult<PumpEntry>.InProgressExists =>
+            Results.Json(new ErrorResponse("pumpInProgress"), statusCode: StatusCodes.Status409Conflict),
+        TimerResult<PumpEntry>.BabyNotFound => BabyNotFound(),
+        _ => PumpNotFound(),
+    };
 
     private static IResult BabyNotFound() =>
         Results.Json(new ErrorResponse("babyNotFound"), statusCode: StatusCodes.Status404NotFound);

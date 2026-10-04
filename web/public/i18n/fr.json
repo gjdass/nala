@@ -606,7 +606,9 @@
       "right": "Droite",
       "mlUnit": "ml",
       "volumeRange": "De 0 à 500 ml, nombre entier",
-      "total": "Total"
+      "total": "Total",
+      "pumping": "Tirage…",
+      "deletedElsewhere": "Cette séance de tirage a été supprimée sur un autre appareil."
     },
     "volume": "{{ml}} ml",
     "summary": {
@@ -615,10 +617,21 @@
       "right": "D {{right}} ml · {{duration}}",
       "none": "{{duration}}"
     },
+    "summaryLive": "Tirage · {{duration}}",
     "errors": {
       "unknown": "Une erreur s'est produite. Vérifiez votre connexion et réessayez.",
       "pumpNotFound": "Cette séance de tirage n'existe plus.",
-      "babyNotFound": "Ce bébé n'existe plus."
+      "babyNotFound": "Ce bébé n'existe plus.",
+      "pumpInProgress": "Un tirage est déjà en cours pour ce bébé."
+    },
+    "timer": {
+      "pumping": "Tirage"
+    },
+    "stillPumping": {
+      "title": "Toujours en train de tirer ?",
+      "card": "Commencé {{since}}.",
+      "sheet": "Commencé {{since}}. Corrigez les heures, puis enregistrez.",
+      "review": "Vérifier"
     }
   },
   "offline": {

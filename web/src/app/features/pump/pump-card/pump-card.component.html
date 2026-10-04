@@ -1,4 +1,14 @@
 <nala-section-card key="pump" [entries]="entries()" (changed)="reload()">
+  @if (stillPumping(); as pump) {
+    <nala-banner
+      sectionBanner
+      icon="schedule"
+      [title]="'pump.stillPumping.title' | transloco"
+      [text]="'pump.stillPumping.card' | transloco: { since: pump.startTime | nalaTimeSince }"
+      [actionLabel]="'pump.stillPumping.review' | transloco"
+      (action)="edit(pump)"
+    />
+  }
   @if (last()) {
     <div sectionHighlight class="highlight" data-testid="pump-highlight">
       <mat-icon class="icon" aria-hidden="true">schedule</mat-icon>

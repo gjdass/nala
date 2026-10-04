@@ -38,9 +38,9 @@ Give every activity section (Feed, Diaper, Sleep, Medication, Growth, Pump…) t
   - The end time is the end of the last timed segment, empty while live.
   - Warnings about an entry live for too long ("Still feeding?") are defined per feature.
 - **Live sync (every section with timers).** Devices learn about other devices' timers by polling one endpoint for every section, not one per section.
-  - `GET /api/live` → `{ feeds: [...], sleeps: [...] }`: every baby's live entries per section, oldest start first, each in the section's usual JSON. Any signed-in member. A new timer section (Pump) adds its own list there. The per-section `GET /api/feeds/in-progress` and `GET /api/sleeps/in-progress` are removed.
+  - `GET /api/live` → `{ feeds: [...], sleeps: [...], pumps: [...] }`: every baby's live entries per section, oldest start first, each in the section's usual JSON. Any signed-in member. A new timer section adds its own list there. The per-section `GET /api/feeds/in-progress` and `GET /api/sleeps/in-progress` are removed.
   - The web app has **one shared poller** (`LiveSyncService`, `core/timers/`) that calls `/api/live` and hands each section's sync its list. The rest of the live sync stays as it is: own actions applied at once, a response started before an own change ignored, changes waiting on the device applied on top by the section's overlay, a failed call keeping the last lists, paused while the app is hidden and called again as soon as it is shown, called at once after sign-in and once the offline queue has been sent, cleared on sign-out.
-  - Each section's sync (`LiveEntriesSync`) registers with the poller under its list's name in `/api/live` (`feeds`, `sleeps`); the version guard and the overlay stay per section. A section registering while the poller runs gets a poll at once (sections registering together share it).
+  - Each section's sync (`LiveEntriesSync`) registers with the poller under its list's name in `/api/live` (`feeds`, `sleeps`, `pumps`); the version guard and the overlay stay per section. A section registering while the poller runs gets a poll at once (sections registering together share it).
   - A screen that needs the server's live entries now (the Sleep sheet opening to add, or after a 409 on Start) asks the shared poller to poll at once (`refresh()` on the section's sync) and reads the section's list once it answers; no section calls an endpoint of its own.
   - **Polling speed:** every **5 s** while any section has a live entry (any baby, waiting changes included), every **30 s** otherwise. It switches to 5 s as soon as a live entry appears (a Start on this device, or one seen from another device), and back to 30 s once none is left.
   - No `ETag` / `304`: the answers are small, so they are always sent in full.
@@ -177,7 +177,7 @@ Each item becomes at least one test, written failing first.
 - [x] Each row's section icon sits in a circle in its section's container colours.
 
 ### Live sync
-- [x] `GET /api/live` returns every baby's live feeds and live sleeps, per section, oldest start first; stopped entries are left out; signed-out → 401.
+- [x] `GET /api/live` returns every baby's live feeds, live sleeps and live pumps, per section, oldest start first; stopped entries are left out; signed-out → 401.
 - [x] The app makes one live request per tick, whatever the number of sections with timers; `/api/feeds/in-progress` and `/api/sleeps/in-progress` no longer exist.
 - [x] It polls every 5 s while any section has a live entry and every 30 s otherwise, switching as soon as a live entry appears or the last one is gone.
 - [x] Polling pauses while the app is hidden and runs at once when it is shown again, after sign-in, and once the offline queue has been sent.

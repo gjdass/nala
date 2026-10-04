@@ -63,6 +63,12 @@ public class LiveEndpointTests
         Assert.That(response.IsSuccessStatusCode, Is.True);
     }
 
+    private async Task StartPumpAsync(Guid id, Guid babyId, int minutesAgo)
+    {
+        var response = await _admin.PostAsJsonAsync($"/api/pumps/{id}/start", new { babyId, at = _now.AddMinutes(-minutesAgo) });
+        Assert.That(response.IsSuccessStatusCode, Is.True);
+    }
+
     private async Task<JsonElement> LiveAsync()
     {
         var response = await _admin.GetAsync("/api/live");
@@ -80,6 +86,7 @@ public class LiveEndpointTests
 
         Assert.That(live.GetProperty("feeds").GetArrayLength(), Is.Zero);
         Assert.That(live.GetProperty("sleeps").GetArrayLength(), Is.Zero);
+        Assert.That(live.GetProperty("pumps").GetArrayLength(), Is.Zero);
     }
 
     [Test]
@@ -105,6 +112,32 @@ public class LiveEndpointTests
         var sleep = live.GetProperty("sleeps")[1];
         Assert.That(sleep.GetProperty("babyId").GetGuid(), Is.EqualTo(tomId));
         Assert.That(sleep.GetProperty("endTime").ValueKind, Is.EqualTo(JsonValueKind.Null));
+    }
+
+    [Test]
+    public async Task Live_pumps_of_every_baby_are_listed_oldest_first_without_stopped_ones()
+    {
+        var tomId = await AddBabyAsync("Tom");
+        var leaPump = Guid.NewGuid();
+        var tomPump = Guid.NewGuid();
+        var stopped = Guid.NewGuid();
+        await StartPumpAsync(leaPump, _leaId, minutesAgo: 5);
+        await StartPumpAsync(tomPump, tomId, minutesAgo: 20);
+        await _admin.PostAsJsonAsync("/api/pumps", new
+        {
+            id = stopped,
+            babyId = _leaId,
+            startTime = _now.AddMinutes(-90),
+            endTime = _now.AddMinutes(-70),
+            leftMl = 60,
+        });
+
+        var live = await LiveAsync();
+
+        Assert.That(Ids(live, "pumps"), Is.EqualTo(new[] { tomPump, leaPump }));
+        var pump = live.GetProperty("pumps")[0];
+        Assert.That(pump.GetProperty("babyId").GetGuid(), Is.EqualTo(tomId));
+        Assert.That(pump.GetProperty("endTime").ValueKind, Is.EqualTo(JsonValueKind.Null));
     }
 
     [Test]

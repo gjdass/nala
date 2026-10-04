@@ -24,20 +24,4 @@ public static class SleepFields
 
         return errors;
     }
-
-    /// <summary>Validation of a timer tap's time (<c>at</c>): <c>required</c>, <c>inFuture</c>; empty when valid.</summary>
-    public static Dictionary<string, string> ValidateTimerAt(DateTimeOffset? at, DateTimeOffset now)
-    {
-        var errors = new Dictionary<string, string>();
-        if (at is not { } time)
-        {
-            errors["at"] = "required";
-        }
-        else if (EntryFields.IsInFuture(time, now))
-        {
-            errors["at"] = "inFuture";
-        }
-
-        return errors;
-    }
 }

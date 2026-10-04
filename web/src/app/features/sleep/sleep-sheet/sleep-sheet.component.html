@@ -1,31 +1,31 @@
 <nala-entry-sheet
   [form]="form"
-  [saving]="saving()"
-  [deletable]="!!sleep()"
-  [discard]="discard()"
+  [saving]="sheet.saving()"
+  [deletable]="!!sheet.entry()"
+  [discard]="sheet.discard()"
   (save)="save()"
-  (delete)="delete()"
+  (delete)="sheet.delete()"
 >
-  @if (stillSleeping()) {
+  @if (sheet.stillLive()) {
     <nala-banner
       icon="schedule"
       [title]="'sleep.stillSleeping.title' | transloco"
       [text]="
-        'sleep.stillSleeping.sheet' | transloco: { since: sleep()!.startTime | nalaTimeSince }
+        'sleep.stillSleeping.sheet' | transloco: { since: sheet.entry()!.startTime | nalaTimeSince }
       "
     />
   }
 
   <nala-timer
-    [seconds]="timerSeconds()"
-    [running]="live()"
-    [disabled]="saving() || manual()"
-    (start)="start()"
-    (stop)="stop()"
+    [seconds]="sheet.timerSeconds()"
+    [running]="sheet.live()"
+    [disabled]="sheet.saving() || sheet.manual()"
+    (start)="sheet.start()"
+    (stop)="sheet.stop()"
   />
 
   <nala-time-row [label]="'entrySheet.startTime' | transloco" [control]="form.controls.startTime" />
-  @if (live()) {
+  @if (sheet.live()) {
     <nala-form-row
       [label]="'sleep.sheet.endTime' | transloco"
       [interactive]="false"
@@ -39,23 +39,23 @@
 
   <nala-form-row [label]="'sleep.sheet.duration' | transloco" [interactive]="false">
     <span rowTrailing data-testid="sleep-duration">{{
-      seconds() === null ? '' : (seconds()! | nalaDuration)
+      sheet.seconds() === null ? '' : (sheet.seconds()! | nalaDuration)
     }}</span>
   </nala-form-row>
 
   <nala-notes-row [control]="form.controls.notes" />
 
-  @if (formError(); as code) {
+  @if (sheet.formError(); as code) {
     <p class="form-error" role="alert" data-testid="form-error">
       {{ 'sleep.errors.' + code | transloco }}
     </p>
   }
 
-  @if (sleep(); as sleep) {
+  @if (sheet.entry(); as sleep) {
     <nala-entry-audit
       [loggedBy]="sleep.loggedBy.displayName"
-      [editedBy]="edited() ? sleep.updatedBy.displayName : null"
-      [editedAt]="edited() ? sleep.updatedAt : null"
+      [editedBy]="sheet.edited() ? sleep.updatedBy.displayName : null"
+      [editedAt]="sheet.edited() ? sleep.updatedAt : null"
     />
   }
 </nala-entry-sheet>

@@ -44,9 +44,19 @@ public abstract record ListPumpsResult
     public sealed record InvalidCursor : ListPumpsResult;
 }
 
-/// <summary>A baby's pumping sessions (spec 08). Any member can add, edit and delete any session.</summary>
+/// <summary>
+/// A baby's pumping sessions (spec 08), each with a single Start / Stop timer (one live session per baby). Any member can add,
+/// edit and delete any session.
+/// </summary>
 public class PumpService(IPumpRepository pumps, IBabyRepository babies, TimeProvider time)
 {
+    private readonly EntryTimer<Pump, PumpEntry> _timer = new(
+        pumps,
+        babies,
+        time,
+        e => e.Pump,
+        n => new Pump { Id = n.Id, BabyId = n.BabyId, StartTime = n.StartTime, LoggedByUserId = n.LoggedByUserId, CreatedAt = n.CreatedAt });
+
     /// <summary>
     /// Adds a session under the client's id. Re-sending an id that exists already (e.g. a queued request sent twice)
     /// returns the stored session unchanged, whatever the body.
@@ -135,6 +145,19 @@ public class PumpService(IPumpRepository pumps, IBabyRepository babies, TimeProv
             await pumps.ListAsync(babyId, after, size + 1, cancellationToken), size, e => new EntryCursor(e.Pump.StartTime, e.Pump.Id));
         return new ListPumpsResult.Page(page, next);
     }
+
+    /// <summary>Starts the session's timer (see <see cref="EntryTimer{T, TEntry}.StartAsync"/>).</summary>
+    public Task<TimerResult<PumpEntry>> StartAsync(
+        User actor, Guid id, Guid babyId, DateTimeOffset? at, bool queued = false, CancellationToken cancellationToken = default) =>
+        _timer.StartAsync(actor, id, babyId, at, queued, cancellationToken);
+
+    /// <summary>Stops the session's timer (see <see cref="EntryTimer{T, TEntry}.StopAsync"/>).</summary>
+    public Task<TimerResult<PumpEntry>> StopAsync(User actor, Guid id, DateTimeOffset? at, CancellationToken cancellationToken = default) =>
+        _timer.StopAsync(actor, id, at, cancellationToken);
+
+    /// <summary>Every live session, of every baby (one instance is one family), oldest start first.</summary>
+    public Task<IReadOnlyList<PumpEntry>> ListLiveAsync(CancellationToken cancellationToken = default) =>
+        pumps.ListLiveAsync(cancellationToken);
 
     /// <summary>Call only on validated input.</summary>
     private static void Apply(Pump pump, PumpInput input, User actor, DateTimeOffset now)

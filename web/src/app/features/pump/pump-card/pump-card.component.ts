@@ -15,13 +15,18 @@ import { OfflineQueueService } from '../../../core/offline/offline-queue.service
 import { pumpTotalMl } from '../../../core/pumps/pump';
 import { Pump } from '../../../core/pumps/pump.models';
 import { PumpService } from '../../../core/pumps/pump.service';
+import { PumpSyncService } from '../../../core/pumps/pump-sync.service';
 import { loadRecentEntries } from '../../../core/sections/recent-entries';
 import { HighlightDurationPipe } from '../../../core/time/highlight-duration';
+import { isLiveLongerThan } from '../../../core/time/live-longer-than';
 import { NowService } from '../../../core/time/now.service';
+import { TimeSincePipe } from '../../../core/time/time-since';
+import { BannerComponent } from '../../../shared/ui/banner/banner.component';
 import { EmptyStateComponent } from '../../../shared/ui/empty-state/empty-state.component';
 import { EntrySheetService } from '../../../shared/ui/entry-sheet/entry-sheet.service';
 import { SectionCardComponent } from '../../../shared/ui/section-card/section-card.component';
 import { SectionEntryDirective } from '../../../shared/ui/section-card/section-entry.directive';
+import { STILL_PUMPING_AFTER_MS } from '../pump-duration';
 import { PumpEntryComponent } from '../pump-entry/pump-entry.component';
 
 /**
@@ -29,19 +34,26 @@ import { PumpEntryComponent } from '../pump-entry/pump-entry.component';
  * least the 3 most recent) in the shared section card, with "Last pumped" and the time since the
  * start of the most recent session that isn't live (pumping is scheduled start to start; in hours and
  * minutes only, see `HighlightDurationPipe`), on the right that session's total ("180 ml", "—"
- * without a volume), or an empty state without any session. Reloads after an entry is added, edited
+ * without a volume), or an empty state without any session.
+ *
+ * A live session (on any device, see `PumpSyncService`) changes nothing in the highlight (no timer on
+ * the card, spec 04): the timer button opens it; a session live for more than 1 hour shows "Still
+ * pumping?", whose Review opens it. The live session is listed as the shared state has it now, and the
+ * card reloads when a session becomes live or stops anywhere. Reloads after an entry is added, edited
  * or deleted, when another baby is selected, and once changes kept on the device (offline) have been
  * sent.
  */
 @Component({
   selector: 'nala-pump-card',
   imports: [
+    BannerComponent,
     EmptyStateComponent,
     HighlightDurationPipe,
     MatIconModule,
     PumpEntryComponent,
     SectionCardComponent,
     SectionEntryDirective,
+    TimeSincePipe,
     TranslocoPipe,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -54,9 +66,25 @@ export class PumpCardComponent {
   private readonly store = inject(SelectedBabyService);
   private readonly now = inject(NowService).now;
   private readonly queue = inject(OfflineQueueService);
+  private readonly sync = inject(PumpSyncService);
 
   /** Newest first; null while loading. */
-  protected readonly entries = signal<readonly Pump[] | null>(null);
+  private readonly loaded = signal<readonly Pump[] | null>(null);
+  /** The loaded sessions, a live one as the shared state has it now (edited on any device). */
+  protected readonly entries = computed(
+    () =>
+      this.loaded()?.map((pump) => this.sync.inProgress().find((p) => p.id === pump.id) ?? pump) ??
+      null,
+  );
+  /** The selected baby's live session (the oldest with two). */
+  protected readonly inProgress = computed(() => {
+    const baby = this.store.selected();
+    return baby ? this.sync.forBaby(baby.id) : null;
+  });
+  protected readonly stillPumping = computed(() => {
+    const pump = this.inProgress();
+    return pump && isLiveLongerThan(pump, STILL_PUMPING_AFTER_MS, this.now()) ? pump : null;
+  });
   /** The session that isn't live with the latest start; null without one. */
   protected readonly last = computed(() =>
     (this.entries() ?? [])
@@ -82,7 +110,7 @@ export class PumpCardComponent {
     effect(() => {
       const baby = this.store.selected();
       untracked(() => {
-        this.entries.set(null);
+        this.loaded.set(null);
         if (baby) {
           this.load(baby.id);
         }
@@ -97,6 +125,19 @@ export class PumpCardComponent {
           sent = now;
           this.reload();
         }
+      });
+    });
+    // A session became live or stopped on any device: listed from its first Start, then the
+    // highlight follows its end.
+    let shown: { babyId: string; id: string | null } | null = null;
+    effect(() => {
+      const babyId = this.store.selected()?.id ?? null;
+      const id = this.inProgress()?.id ?? null;
+      untracked(() => {
+        if (babyId && shown?.babyId === babyId && shown.id !== id) {
+          this.load(babyId);
+        }
+        shown = babyId ? { babyId, id } : null;
       });
     });
   }
@@ -121,6 +162,6 @@ export class PumpCardComponent {
       (cursor) => this.pumps.page(babyId, cursor),
       (pump) => pump.startTime,
       new Date(),
-    ).subscribe({ next: (entries) => this.entries.set(entries) });
+    ).subscribe({ next: (entries) => this.loaded.set(entries) });
   }
 }

@@ -10,8 +10,8 @@ import { EntryListItemComponent } from '../../../shared/ui/entry-list-item/entry
 /**
  * A pumping session as an entry list item (spec 08), in the pump card and history: the water drop
  * icon, its start time and total ("2:30 PM · 180 ml", the time alone without a volume), then each
- * side and the duration ("L 90 ml · R 90 ml · 20m", a side without a volume left out). Tapping it
- * emits `open`.
+ * side and the duration ("L 90 ml · R 90 ml · 20m", a side without a volume left out), or, while
+ * it is live, "Pumping · 12m" with its live duration. Tapping it emits `open`.
  */
 @Component({
   selector: 'nala-pump-entry',

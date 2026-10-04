@@ -1,5 +1,6 @@
 import { UserName } from '../entries/entry.models';
 import { QueuedRequest } from '../offline/offline-queue.models';
+import { stoppedEntry } from '../timers/stopped-entry';
 import { Sleep } from './sleep.models';
 
 const TIMER_URL = /^\/api\/sleeps\/([^/]+)\/(start|stop)$/;
@@ -47,7 +48,7 @@ export function applyQueuedSleeps(
       if (action === 'start') {
         replace(started(sleep, id, request.body as StartBody, user));
       } else if (sleep) {
-        replace(stoppedSleep(sleep, (request.body as StopBody).at, user));
+        replace(stoppedEntry(sleep, (request.body as StopBody).at, user));
       }
       continue;
     }
@@ -95,15 +96,4 @@ function started(sleep: Sleep | undefined, id: string, body: StartBody, user: Us
     return sleep;
   }
   return { ...sleep, endTime: null, updatedBy: user, updatedAt: body.at };
-}
-
-/**
- * `sleep` once stopped at `at` (ISO date-time): ended then, no longer live. A stopped sleep, or a
- * time before its start, changes nothing.
- */
-export function stoppedSleep(sleep: Sleep, at: string, user: UserName = sleep.updatedBy): Sleep {
-  if (sleep.endTime !== null || Date.parse(at) < Date.parse(sleep.startTime)) {
-    return sleep;
-  }
-  return { ...sleep, endTime: at, updatedBy: user, updatedAt: at };
 }

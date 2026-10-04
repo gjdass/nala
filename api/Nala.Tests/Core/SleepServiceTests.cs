@@ -3,6 +3,7 @@ using Nala.Core.Entries;
 using Nala.Core.Sleeps;
 using Nala.Core.Users;
 using Nala.Tests.Support;
+using SleepTimerResult = Nala.Core.Entries.TimerResult<Nala.Core.Sleeps.SleepEntry>;
 
 namespace Nala.Tests.Core;
 

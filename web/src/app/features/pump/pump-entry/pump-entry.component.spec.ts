@@ -60,6 +60,15 @@ describe('PumpEntryComponent', () => {
     expect(find('entry-summary')?.textContent?.trim()).toBe('20m');
   });
 
+  it('shows a live session as "Pumping" with its live duration, keeping the time and total', async () => {
+    const start = new Date(2026, 9, 3, 15, 48);
+    await show({ startTime: start.toISOString(), endTime: null, leftMl: 40, rightMl: null });
+
+    expect(find('entry-time')?.textContent?.trim()).toBe(shortTime(start));
+    expect(find('entry-label')?.textContent?.trim()).toBe('40 ml');
+    expect(find('entry-summary')?.textContent?.trim()).toBe('Pumping · 12m');
+  });
+
   it('emits open when tapped', async () => {
     await show({});
     const open = vi.fn();

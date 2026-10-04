@@ -2,14 +2,18 @@ import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideNativeDateAdapter } from '@angular/material/core';
 import { MatDialog } from '@angular/material/dialog';
-import { Subject } from 'rxjs';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { Subject, of } from 'rxjs';
 import en from '../../../../../public/i18n/en.json';
 import { SelectedBabyService } from '../../../core/babies/selected-baby.service';
 import { EntryDeleteResult, EntryResult } from '../../../core/entries/entry-result';
 import { Pump } from '../../../core/pumps/pump.models';
 import { PumpService } from '../../../core/pumps/pump.service';
+import { PumpSyncService } from '../../../core/pumps/pump-sync.service';
+import { NowService } from '../../../core/time/now.service';
 import { EntrySheetData } from '../../../shared/ui/entry-sheet/entry-sheet.models';
 import { SHEET_DATA, SheetRef } from '../../../shared/ui/sheet/sheet-ref';
+import { fakePumpSync } from '../../../testing/pump-sync';
 import { aPump } from '../../../testing/pumps';
 import { translocoTesting } from '../../../testing/transloco-testing';
 import { PUMP_SECTION } from '../pump.section';
@@ -23,15 +27,40 @@ describe('PumpSheetComponent', () => {
   let fixture: ComponentFixture<PumpSheetComponent>;
   let saved: Subject<EntryResult<Pump>>;
   let deleted: Subject<EntryDeleteResult>;
-  let pumps: Record<'create' | 'update' | 'delete', ReturnType<typeof vi.fn>>;
+  let tapped: Subject<EntryResult<Pump>>;
+  let now: ReturnType<typeof signal<number>>;
+  let pumps: Record<
+    'create' | 'update' | 'delete' | 'start' | 'stop' | 'get',
+    ReturnType<typeof vi.fn>
+  >;
   let sheetRef: { close: ReturnType<typeof vi.fn> };
   let confirmed: Subject<boolean | undefined>;
+  let sync: ReturnType<typeof fakePumpSync>;
+  let snackBar: { open: ReturnType<typeof vi.fn> };
 
   const host = () => fixture.nativeElement as HTMLElement;
   const find = <T extends HTMLElement = HTMLElement>(testId: string) =>
     host().querySelector<T>(`[data-testid="${testId}"]`);
   const text = (testId: string) => find(testId)?.textContent?.replace(/\s+/g, ' ').trim();
   const save = () => find<HTMLButtonElement>('sheet-save')!;
+  const toggle = () => find<HTMLButtonElement>('timer-toggle')!;
+  const click = async (testId: string) => {
+    find<HTMLButtonElement>(testId)!.click();
+    await settle();
+  };
+  const respondTimer = async (result: EntryResult<Pump>) => {
+    tapped.next(result);
+    await settle();
+  };
+  /** A live session of b1 started `minutes` before NOW, without volumes. */
+  const livePump = (minutes: number, overrides: Partial<Pump> = {}) =>
+    aPump({
+      startTime: new Date(NOW.getTime() - minutes * 60_000).toISOString(),
+      endTime: null,
+      leftMl: null,
+      rightMl: null,
+      ...overrides,
+    });
   const settle = () => fixture.whenStable();
   const form = () => fixture.componentInstance.form;
   const rows = () => [...host().querySelectorAll('nala-time-row')];
@@ -68,11 +97,18 @@ describe('PumpSheetComponent', () => {
     vi.setSystemTime(NOW);
     saved = new Subject();
     deleted = new Subject();
+    tapped = new Subject();
+    now = signal(NOW.getTime());
     pumps = {
       create: vi.fn(() => saved),
       update: vi.fn(() => saved),
       delete: vi.fn(() => deleted),
+      start: vi.fn(() => tapped),
+      stop: vi.fn(() => tapped),
+      get: vi.fn(() => of(null)),
     };
+    sync = fakePumpSync();
+    snackBar = { open: vi.fn() };
     sheetRef = { close: vi.fn() };
     confirmed = new Subject();
     await TestBed.configureTestingModule({
@@ -83,6 +119,9 @@ describe('PumpSheetComponent', () => {
         { provide: SelectedBabyService, useValue: { selected: signal({ id: 'b1' }) } },
         { provide: SheetRef, useValue: sheetRef },
         { provide: SHEET_DATA, useValue: null },
+        { provide: NowService, useValue: { now } },
+        { provide: PumpSyncService, useValue: sync },
+        { provide: MatSnackBar, useValue: snackBar },
         { provide: MatDialog, useValue: { open: vi.fn(() => ({ afterClosed: () => confirmed })) } },
       ],
     }).compileComponents();
@@ -370,6 +409,370 @@ describe('PumpSheetComponent', () => {
 
       expect(sheetRef.close).not.toHaveBeenCalled();
       expect(text('form-error')).toBe(en.pump.errors.unknown);
+    });
+  });
+
+  describe('timer', () => {
+    describe('adding', () => {
+      beforeEach(() => render());
+
+      it('shows the timer at 0 with Start', () => {
+        expect(text('timer-duration')).toBe('0s');
+        expect(toggle().textContent?.trim()).toBe(en.timer.start);
+        expect(toggle().disabled).toBe(false);
+      });
+
+      it('looks for a live session of the baby through the shared live poll', () => {
+        expect(sync.refreshes()).toBe(1);
+      });
+
+      it('creates the live session for the selected baby on Start, now', async () => {
+        await click('timer-toggle');
+
+        expect(pumps.start).toHaveBeenCalledWith(
+          expect.stringMatching(/^[0-9a-f-]{36}$/),
+          'b1',
+          NOW.toISOString(),
+        );
+        const id = pumps.start.mock.calls[0][0];
+        await respondTimer({ ok: true, entry: livePump(0, { id }) });
+
+        expect(toggle().textContent?.trim()).toBe(en.timer.stop);
+        expect(form().controls.startTime.value).toEqual(NOW);
+        expect(text('pump-end-time')).toContain(en.pump.sheet.pumping);
+        expect(rows()).toHaveLength(1);
+        expect(find('entry-delete')).not.toBeNull();
+      });
+
+      it('ticks from the stored start time while live, and saves volumes keeping it live', async () => {
+        await click('timer-toggle');
+        const id = pumps.start.mock.calls[0][0];
+        await respondTimer({ ok: true, entry: livePump(15, { id }) });
+
+        expect(text('timer-duration')).toBe('15m');
+        expect(text('pump-duration')).toBe('15m');
+        now.set(NOW.getTime() + 10_000);
+        await settle();
+        expect(text('timer-duration')).toBe('15m 10s');
+
+        await typeMl('left', '60');
+        await typeMl('right', '0');
+        expect(text('pump-total')).toBe('60 ml');
+        expect(save().disabled).toBe(false);
+        save().click();
+        await settle();
+        expect(pumps.update).toHaveBeenCalledWith(id, {
+          startTime: new Date(NOW.getTime() - 15 * 60_000).toISOString(),
+          endTime: null,
+          leftMl: 60,
+          rightMl: 0,
+          notes: null,
+        });
+        expect(pumps.stop).not.toHaveBeenCalled();
+      });
+
+      it('opens the live session when Start is refused because one is live', async () => {
+        await click('timer-toggle');
+        await respondTimer({ ok: false, errors: { form: 'pumpInProgress' } });
+
+        expect(sync.refreshes()).toBe(2);
+        sync.inProgress.set([livePump(30, { id: 'other', babyId: 'b2' }), livePump(20, { id: 'p9' })]);
+        sync.refreshed.next();
+        await settle();
+
+        expect(toggle().textContent?.trim()).toBe(en.timer.stop);
+        expect(text('timer-duration')).toBe('20m');
+      });
+
+      it('keeps the same id when Start is tried again after a failure', async () => {
+        await click('timer-toggle');
+        await respondTimer({ ok: false, errors: { form: 'unknown' } });
+        expect(text('form-error')).toBe(en.pump.errors.unknown);
+
+        await click('timer-toggle');
+        const ids = pumps.start.mock.calls.map((call) => call[0]);
+        expect(ids[0]).toBe(ids[1]);
+      });
+
+      it('turns Start off once an end time is typed', async () => {
+        form().controls.endTime.setValue(at(11));
+        form().controls.endTime.markAsDirty();
+        await settle();
+
+        expect(toggle().disabled).toBe(true);
+      });
+
+      describe('× once Start created the session', () => {
+        let id: string;
+
+        beforeEach(async () => {
+          await click('timer-toggle');
+          id = pumps.start.mock.calls[0][0];
+          await respondTimer({ ok: true, entry: livePump(0, { id }) });
+          await click('sheet-close');
+        });
+
+        it('asks first, then deletes it and closes with its id', async () => {
+          expect(pumps.delete).not.toHaveBeenCalled();
+
+          confirmed.next(true);
+          await settle();
+          expect(pumps.delete).toHaveBeenCalledWith(id);
+
+          deleted.next({ ok: true });
+          await settle();
+          expect(sheetRef.close).toHaveBeenCalledWith({ deleted: id });
+        });
+
+        it('stays open, the session live, when cancelled', async () => {
+          confirmed.next(false);
+          await settle();
+
+          expect(pumps.delete).not.toHaveBeenCalled();
+          expect(sheetRef.close).not.toHaveBeenCalled();
+        });
+      });
+    });
+
+    describe('opened to add while the baby has a live session', () => {
+      beforeEach(async () => {
+        await render();
+        sync.inProgress.set([
+          livePump(90, { id: 'tom', babyId: 'b2' }),
+          livePump(30, { id: 'p8', leftMl: 40, notes: 'evening' }),
+          livePump(10, { id: 'p9' }),
+        ]);
+        sync.refreshed.next();
+        await settle();
+      });
+
+      it('opens the oldest live session of the baby, with its volumes and notes', () => {
+        expect(text('timer-duration')).toBe('30m');
+        expect(toggle().textContent?.trim()).toBe(en.timer.stop);
+        expect(ml('left').value).toBe('40');
+        expect(ml('right').value).toBe('');
+        expect(find<HTMLTextAreaElement>('notes-input')!.value).toBe('evening');
+      });
+
+      it('closes on × without deleting it (it was not started here)', async () => {
+        await click('sheet-close');
+
+        expect(pumps.delete).not.toHaveBeenCalled();
+        expect(sheetRef.close).toHaveBeenCalledWith();
+      });
+    });
+
+    describe('editing a live session', () => {
+      const pump = livePump(20, { id: 'p7' });
+
+      beforeEach(() => render(pump));
+
+      it('does not look for another live session', () => {
+        expect(sync.refreshes()).toBe(0);
+      });
+
+      it('stops it on Stop: ended now, no longer live, the sheet still open', async () => {
+        await click('timer-toggle');
+
+        expect(pumps.stop).toHaveBeenCalledWith('p7', NOW.toISOString());
+        await respondTimer({ ok: true, entry: { ...pump, endTime: NOW.toISOString() } });
+
+        expect(toggle().textContent?.trim()).toBe(en.timer.start);
+        expect(form().controls.endTime.value).toEqual(NOW);
+        expect(rows()).toHaveLength(2);
+        expect(text('pump-duration')).toBe('20m');
+        expect(text('timer-duration')).toBe('20m');
+        expect(toggle().disabled).toBe(false);
+        expect(sheetRef.close).not.toHaveBeenCalled();
+      });
+
+      it('keeps the volumes typed while live when Stop is tapped', async () => {
+        await typeMl('left', '80');
+        await click('timer-toggle');
+        await respondTimer({ ok: true, entry: { ...pump, endTime: NOW.toISOString() } });
+
+        expect(ml('left').value).toBe('80');
+      });
+
+      it('closes on × with the session as the taps left it, discarding the form edits', async () => {
+        await click('timer-toggle');
+        const stopped = { ...pump, endTime: NOW.toISOString() };
+        await respondTimer({ ok: true, entry: stopped });
+
+        await click('sheet-close');
+
+        expect(pumps.update).not.toHaveBeenCalled();
+        expect(sheetRef.close).toHaveBeenCalledWith({ saved: stopped });
+      });
+
+      it('closes on × without a result when no timer was tapped, leaving it running', async () => {
+        await click('sheet-close');
+
+        expect(pumps.stop).not.toHaveBeenCalled();
+        expect(sheetRef.close).toHaveBeenCalledWith();
+      });
+
+      it('deletes it after confirmation', async () => {
+        await click('entry-delete');
+        confirmed.next(true);
+        await settle();
+
+        expect(pumps.delete).toHaveBeenCalledWith('p7');
+        deleted.next({ ok: true });
+        await settle();
+        expect(sheetRef.close).toHaveBeenCalledWith({ deleted: 'p7' });
+        expect(sync.removed).toEqual(['p7']);
+      });
+    });
+
+    describe('editing a stopped session', () => {
+      const pump = aPump({
+        id: 'p7',
+        startTime: at(8).toISOString(),
+        endTime: at(8, 25).toISOString(),
+      });
+
+      beforeEach(() => render(pump));
+
+      it('shows its duration on the timer, with Start', () => {
+        expect(text('timer-duration')).toBe('25m');
+        expect(toggle().textContent?.trim()).toBe(en.timer.start);
+        expect(toggle().disabled).toBe(false);
+      });
+
+      it('makes it live again on Start, running from its start time', async () => {
+        await click('timer-toggle');
+
+        expect(pumps.start).toHaveBeenCalledWith('p7', 'b1', NOW.toISOString());
+        await respondTimer({ ok: true, entry: { ...pump, endTime: null } });
+
+        expect(toggle().textContent?.trim()).toBe(en.timer.stop);
+        expect(text('timer-duration')).toBe('4h');
+        expect(form().controls.endTime.value).toBeNull();
+        expect(text('pump-end-time')).toContain(en.pump.sheet.pumping);
+      });
+
+      it('turns Start off once its end time is changed', async () => {
+        form().controls.endTime.setValue(at(9));
+        form().controls.endTime.markAsDirty();
+        await settle();
+
+        expect(toggle().disabled).toBe(true);
+      });
+    });
+  });
+
+  describe('shared live state', () => {
+    it('opens the live session the shared state already has, at once', async () => {
+      sync.inProgress.set([livePump(25, { id: 'p9' })]);
+      await render();
+
+      expect(toggle().textContent?.trim()).toBe(en.timer.stop);
+      expect(text('timer-duration')).toBe('25m');
+    });
+
+    it('applies Start and Stop to the shared state at once', async () => {
+      await render();
+      await click('timer-toggle');
+      const id = pumps.start.mock.calls[0][0];
+      const started = livePump(0, { id });
+      await respondTimer({ ok: true, entry: started });
+      expect(sync.puts).toEqual([started]);
+
+      tapped = new Subject();
+      await click('timer-toggle');
+      const ended = { ...started, endTime: NOW.toISOString() };
+      await respondTimer({ ok: true, entry: ended });
+      expect(sync.puts).toEqual([started, ended]);
+    });
+
+    it('applies a saved session to the shared state', async () => {
+      const pump = livePump(20, { id: 'p7' });
+      await render(pump);
+      form().markAsDirty();
+      await settle();
+
+      await click('sheet-save');
+      saved.next({ ok: true, entry: pump });
+      await settle();
+
+      expect(sync.puts).toEqual([pump]);
+    });
+
+    describe('changed on another device', () => {
+      const pump = livePump(20, { id: 'p7', updatedAt: NOW.toISOString() });
+      const later = new Date(NOW.getTime() + 1000).toISOString();
+
+      beforeEach(async () => {
+        sync.inProgress.set([pump]);
+        await render(pump);
+      });
+
+      it('follows its start time, volumes and notes', async () => {
+        sync.inProgress.set([
+          {
+            ...pump,
+            startTime: at(11).toISOString(),
+            leftMl: 50,
+            rightMl: 30,
+            notes: 'evening',
+            updatedAt: later,
+          },
+        ]);
+        await settle();
+
+        expect(form().controls.startTime.value).toEqual(at(11));
+        expect(ml('left').value).toBe('50');
+        expect(ml('right').value).toBe('30');
+        expect(find<HTMLTextAreaElement>('notes-input')!.value).toBe('evening');
+        expect(text('timer-duration')).toBe('1h');
+      });
+
+      it('keeps a volume typed in the sheet', async () => {
+        await typeMl('left', '70');
+        sync.inProgress.set([{ ...pump, leftMl: 50, updatedAt: later }]);
+        await settle();
+
+        expect(ml('left').value).toBe('70');
+      });
+
+      it('shows it stopped once it leaves the live list stopped', async () => {
+        const stopped = { ...pump, endTime: NOW.toISOString(), updatedAt: later };
+        pumps.get.mockReturnValue(of(stopped));
+
+        sync.inProgress.set([]);
+        await settle();
+
+        expect(pumps.get).toHaveBeenCalledWith('p7');
+        expect(toggle().textContent?.trim()).toBe(en.timer.start);
+        expect(form().controls.endTime.value).toEqual(NOW);
+        expect(sheetRef.close).not.toHaveBeenCalled();
+      });
+
+      it('closes with a message once it was deleted', async () => {
+        sync.inProgress.set([]);
+        await settle();
+
+        expect(snackBar.open).toHaveBeenCalledWith(
+          en.pump.sheet.deletedElsewhere,
+          undefined,
+          expect.anything(),
+        );
+        expect(sheetRef.close).toHaveBeenCalledWith();
+      });
+    });
+
+    it('warns "Still pumping?" on a session live for more than 1 hour', async () => {
+      await render(livePump(65));
+
+      expect(text('banner-title')).toBe(en.pump.stillPumping.title);
+      expect(text('banner-text')).toContain('1h 5m ago');
+    });
+
+    it('does not warn on a live session under 1 hour', async () => {
+      await render(livePump(59));
+
+      expect(find('banner-title')).toBeNull();
     });
   });
 });

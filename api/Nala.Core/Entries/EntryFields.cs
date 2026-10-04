@@ -1,6 +1,6 @@
 namespace Nala.Core.Entries;
 
-/// <summary>Field rules shared by every kind of entry (spec 04): notes, times not in the future, text normalisation.</summary>
+/// <summary>Field rules shared by every kind of entry (spec 04): notes, times not in the future, text normalisation, timer taps.</summary>
 public static class EntryFields
 {
     public const int NotesMaxLength = 1000;
@@ -51,5 +51,21 @@ public static class EntryFields
         {
             errors["endTime"] = "beforeStart";
         }
+    }
+
+    /// <summary>Validation of a timer tap's time (<c>at</c>): <c>required</c>, <c>inFuture</c>; empty when valid.</summary>
+    public static Dictionary<string, string> ValidateTimerAt(DateTimeOffset? at, DateTimeOffset now)
+    {
+        var errors = new Dictionary<string, string>();
+        if (at is not { } time)
+        {
+            errors["at"] = "required";
+        }
+        else if (IsInFuture(time, now))
+        {
+            errors["at"] = "inFuture";
+        }
+
+        return errors;
     }
 }

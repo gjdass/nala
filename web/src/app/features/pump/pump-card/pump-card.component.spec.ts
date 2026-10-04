@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { signal } from '@angular/core';
+import { inject, signal } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { Observable, Subject, of } from 'rxjs';
 import en from '../../../../../public/i18n/en.json';
@@ -8,12 +8,16 @@ import { SelectedBabyService } from '../../../core/babies/selected-baby.service'
 import { OfflineQueueService } from '../../../core/offline/offline-queue.service';
 import { Pump } from '../../../core/pumps/pump.models';
 import { PumpService } from '../../../core/pumps/pump.service';
+import { PumpSyncService } from '../../../core/pumps/pump-sync.service';
 import { HistoryPage } from '../../../core/sections/section.models';
+import { RUNNING_TIMER_SOURCES } from '../../../core/timers/running-timer.models';
 import { EntrySheetResult } from '../../../shared/ui/entry-sheet/entry-sheet.models';
 import { EntrySheetService } from '../../../shared/ui/entry-sheet/entry-sheet.service';
 import { fakeOfflineQueue } from '../../../testing/offline-queue';
+import { fakePumpSync } from '../../../testing/pump-sync';
 import { aPump } from '../../../testing/pumps';
 import { translocoTesting } from '../../../testing/transloco-testing';
+import { PumpTimerSource } from '../pump-timers';
 import { PumpCardComponent } from './pump-card.component';
 
 const NOW = new Date(2026, 9, 3, 12, 0, 0);
@@ -31,6 +35,7 @@ describe('PumpCardComponent', () => {
   let edited: Subject<EntrySheetResult | undefined>;
   let entrySheets: { add: ReturnType<typeof vi.fn>; edit: ReturnType<typeof vi.fn> };
   let queue: ReturnType<typeof fakeOfflineQueue>;
+  let sync: ReturnType<typeof fakePumpSync>;
 
   const host = () => fixture.nativeElement as HTMLElement;
   const find = (testId: string) => host().querySelector<HTMLElement>(`[data-testid="${testId}"]`);
@@ -56,6 +61,7 @@ describe('PumpCardComponent', () => {
     edited = new Subject();
     entrySheets = { add: vi.fn(() => of({ saved: aPump() })), edit: vi.fn(() => edited) };
     queue = fakeOfflineQueue();
+    sync = fakePumpSync();
     await TestBed.configureTestingModule({
       imports: [PumpCardComponent, translocoTesting()],
       providers: [
@@ -64,6 +70,8 @@ describe('PumpCardComponent', () => {
         { provide: SelectedBabyService, useValue: { selected } },
         { provide: EntrySheetService, useValue: entrySheets },
         { provide: OfflineQueueService, useValue: queue },
+        { provide: PumpSyncService, useValue: sync },
+        { provide: RUNNING_TIMER_SOURCES, useFactory: () => [inject(PumpTimerSource)] },
       ],
     }).compileComponents();
     fixture = TestBed.createComponent(PumpCardComponent);
@@ -201,5 +209,84 @@ describe('PumpCardComponent', () => {
     await fixture.whenStable();
 
     expect(pumps.page).toHaveBeenLastCalledWith('b2', null);
+  });
+
+  describe('while a session is live', () => {
+    const live = (startMinutesAgo: number, overrides: Partial<Pump> = {}) =>
+      aPump({ id: 'p3', startTime: minutesAgo(startMinutesAgo), endTime: null, ...overrides });
+
+    const noTimer = () => {
+      expect(host().querySelector('nala-timer')).toBeNull();
+      expect(find('timer-toggle')).toBeNull();
+    };
+
+    it('keeps the normal highlight and shows no timer or Stop', async () => {
+      sync.inProgress.set([live(10)]);
+      await respond([live(10), pump('p2', 90)]);
+
+      expect(find('pump-highlight')).not.toBeNull();
+      expect(text('pump-since')).toBe('1h 30m');
+      noTimer();
+    });
+
+    it('keeps the empty state without any stopped session', async () => {
+      sync.inProgress.set([live(10)]);
+      await respond([]);
+
+      expect(find('empty-title')).not.toBeNull();
+      noTimer();
+    });
+
+    it('replaces + by the timer button, which opens the live session', async () => {
+      const current = live(10);
+      sync.inProgress.set([current]);
+      await respond([current]);
+
+      expect(find('section-add')).toBeNull();
+      find('section-live')!.click();
+
+      expect(entrySheets.edit).toHaveBeenCalledWith('pump', 'pump', current);
+    });
+
+    it('lists the live session as the shared state has it now', async () => {
+      await respond([live(10)]);
+      sync.inProgress.set([live(12)]);
+      await fixture.whenStable();
+
+      const summary = host().querySelector('[data-testid="entry-summary"]')?.textContent?.trim();
+      expect(summary).toBe('Pumping · 12m');
+    });
+
+    it('reloads when a session becomes live or stops on any device', async () => {
+      await respond([]);
+
+      sync.inProgress.set([live(1)]);
+      await fixture.whenStable();
+      expect(pumps.page).toHaveBeenCalledTimes(2);
+
+      sync.inProgress.set([]);
+      await fixture.whenStable();
+      expect(pumps.page).toHaveBeenCalledTimes(3);
+    });
+
+    it('warns "Still pumping?" after 1 hour, and Review opens the sheet', async () => {
+      const long = live(65);
+      sync.inProgress.set([long]);
+      await respond([long]);
+
+      expect(text('banner-title')).toBe(en.pump.stillPumping.title);
+      expect(text('banner-text')).toContain('1h 5m ago');
+      expect(text('banner-action')).toBe(en.pump.stillPumping.review);
+
+      find('banner-action')!.click();
+      expect(entrySheets.edit).toHaveBeenCalledWith('pump', 'pump', long);
+    });
+
+    it('does not warn before 1 hour', async () => {
+      sync.inProgress.set([live(59)]);
+      await respond([]);
+
+      expect(find('banner-title')).toBeNull();
+    });
   });
 });

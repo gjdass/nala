@@ -40,35 +40,35 @@ Each item becomes at least one test, written failing first.
 ### Pump card
 - [x] Highlight: "Last pumped" with the time since the start of the most recent session that isn't live, updating live, in hours and minutes only ("<1m", ">24h" at the ends), and on the right that session's total in ml, or "—" without volume.
 - [x] With no session at all, an empty state is shown.
-- [ ] + opens the Pump sheet directly (one kind); while a session is live, + is the timer button opening it, and the card keeps its normal highlight with no timer.
+- [x] + opens the Pump sheet directly (one kind); while a session is live, + is the timer button opening it, and the card keeps its normal highlight with no timer.
 
 ### Pump sheet
-- [ ] A single timer (shared `nala-timer`): the live duration (or the duration of a stopped session) and Start / Stop.
-- [ ] Start when no session is live creates a live session for the selected baby with start time = now; Stop ends it; Start on it again makes it live again from its original start time.
-- [ ] Rows: Start time, End time ("Pumping…" while live), Duration (read-only), Left ml, Right ml, Total (read-only, shown when a side has a volume), Notes.
+- [x] A single timer (shared `nala-timer`): the live duration (or the duration of a stopped session) and Start / Stop.
+- [x] Start when no session is live creates a live session for the selected baby with start time = now; Stop ends it; Start on it again makes it live again from its original start time.
+- [x] Rows: Start time, End time ("Pumping…" while live), Duration (read-only), Left ml, Right ml, Total (read-only, shown when a side has a volume), Notes.
 - [x] Left and Right are optional whole numbers 0–500; Save is disabled outside that range.
-- [ ] Volumes can be typed and saved while the session is live; Save never starts or stops the timer.
-- [ ] A past session can be logged entirely by hand: times, volumes, then Save. Typing an end time disables Start until Save or ×.
+- [x] Volumes can be typed and saved while the session is live; Save never starts or stops the timer.
+- [x] A past session can be logged entirely by hand: times, volumes, then Save. Typing an end time disables Start until Save or ×.
 - [x] Save is disabled when the end time is missing (not live) or not after the start time, and when a time is in the future (1 min tolerance).
-- [ ] × on a sheet opened to add, once Start created the session, asks to discard and deletes it; × on an existing session discards the form edits and leaves a running timer running.
-- [ ] Delete (live or stopped) deletes it after confirmation.
-- [ ] At most one live session per baby: opening the sheet while one is live opens that one; Start refused with 409 opens the live one.
-- [ ] A live session older than 1 hour shows a "Still pumping?" warning on the card and in the sheet.
+- [x] × on a sheet opened to add, once Start created the session, asks to discard and deletes it; × on an existing session discards the form edits and leaves a running timer running.
+- [x] Delete (live or stopped) deletes it after confirmation.
+- [x] At most one live session per baby: opening the sheet while one is live opens that one; Start refused with 409 opens the live one.
+- [x] A live session older than 1 hour shows a "Still pumping?" warning on the card and in the sheet.
 
 ### Entry list item
-- [ ] `water_drop` icon, headline: the start time and total ("2:30 PM · 180 ml", or the time alone without volume); supporting text: "L 90 ml · R 90 ml · 20m" (empty sides left out); a live session shows "Pumping · 12m" with its live duration.
-- [ ] A live session is listed in the card and history from its first Start.
+- [x] `water_drop` icon, headline: the start time and total ("2:30 PM · 180 ml", or the time alone without volume); supporting text: "L 90 ml · R 90 ml · 20m" (empty sides left out); a live session shows "Pumping · 12m" with its live duration.
+- [x] A live session is listed in the card and history from its first Start.
 - [x] Entries logged by a deleted account still show that person's display name.
 
 ### API and validation
-- [ ] Create, idempotent re-send, update (stopped and live), delete, get, paged list, start / stop, with the codes above.
+- [x] Create, idempotent re-send, update (stopped and live), delete, get, paged list, start / stop, with the codes above.
 - [x] Any member can edit or delete any session; changes are saved with who edited it and when.
 - [x] Pump sessions are deleted with their baby (03).
 
 ### Shared timer state
-- [ ] The live session is stored on the server; reloading or opening the app on another member's device shows the same state and duration.
-- [ ] Other devices see Start, Stop and edits within a few seconds (spec 04's `GET /api/live`, `pumps` list).
-- [ ] While a session is live it appears in the mini-bar ("Pumping 12m 10s"); a stopped one doesn't.
+- [x] The live session is stored on the server; reloading or opening the app on another member's device shows the same state and duration.
+- [x] Other devices see Start, Stop and edits within a few seconds (spec 04's `GET /api/live`, `pumps` list).
+- [x] While a session is live it appears in the mini-bar ("Pumping 12m 10s"); a stopped one doesn't.
 
 ### Offline
 - [ ] With no network, every action that creates or changes a session (Start, Stop, Save, manual entry, edit, delete) is queued on the device with its own time and applied when back online; re-sending is idempotent.
@@ -80,8 +80,8 @@ Each item becomes at least one test, written failing first.
 Each slice goes red → green → commit on `master`, in this order.
 
 - [x] **Slice 1 — Pump entity, manual entry, card and history.** `Pump` entity + migration (client UUID, baby FK with cascade, start time, end time nullable, left ml, right ml, notes, logged by, created at, updated at/by). Core `PumpService` (validation, create idempotent, update, delete, paged list) reusing `Nala.Core/Entries`. Endpoints `POST/PUT/DELETE/GET /api/pumps…` and `GET /api/babies/{babyId}/pumps`. Web: `pump` section registered (one kind, + opens the sheet), `PumpService`, Pump sheet without the timer (times, duration, Left / Right ml, total, notes, delete), card highlight + empty state, entry list item, history; add / edit / delete through the shared offline queue. Covers: card highlight and empty state, manual entry, volumes, validation, list item, API, editing, cascade, offline add / edit / delete.
-- [ ] **Slice 2 — Timer, live sync and mini-bar.** Start / stop endpoints (one live per baby, 409 `pumpInProgress`, `queued` exception), `PUT` on a live session, `pumps` in `GET /api/live`. Web: `nala-timer` in the Pump sheet, End time "Pumping…", manual mode, Save / × per spec 04, opening the live session, `PumpSyncService` on `LiveEntriesSync`, running timer source ("Pumping"), timer button, "Still pumping?" banner, sheet following changes / deletion elsewhere. Covers: the timer sheet criteria, live list item, Shared timer state.
-- [ ] **Slice 3 — Offline timers.** Start / Stop through the device queue (`queued: true` on Start), the queued-changes overlay for pumps, a queued session kept as a separate one. Covers: Offline criteria 2 and 3, and the timer part of criterion 1.
+- [x] **Slice 2 — Timer, live sync and mini-bar.** Start / stop endpoints (one live per baby, 409 `pumpInProgress`, `queued` exception), `PUT` on a live session, `pumps` in `GET /api/live`. Web: `nala-timer` in the Pump sheet, End time "Pumping…", manual mode, Save / × per spec 04, opening the live session, `PumpSyncService` on `LiveEntriesSync`, running timer source ("Pumping"), timer button, "Still pumping?" banner, sheet following changes / deletion elsewhere. Start / Stop already go through the device queue (`queued: true` on a Start kept offline), as Sleep's. Covers: the timer sheet criteria, live list item, Shared timer state.
+- [ ] **Slice 3 — Offline timers.** The queued-changes overlay for pumps (`applyQueuedPumps` on `PumpSyncService`): a session started, stopped or edited offline shows at once on the device, also after the app is reopened, and a queued session reaching the server while another is live is kept as a separate one. Covers: Offline criteria 2 and 3, and the timer part of criterion 1.
 
 ## Data
 
@@ -95,6 +95,7 @@ Each slice goes red → green → commit on `master`, in this order.
 - Left ml / Right ml: two number fields side by side in one row (one-handed, numeric keyboard), "ml" suffix. Labels: Left / Gauche, Right / Droite, Total / Total.
 - Reused: section card, timer button, entry sheet, `nala-timer`, `nala-time-row`, notes row, banner, entry list item, history list, mini-bar, `LiveEntriesSync`, device queue.
 - New shared component (slice 1): **`nala-number-fields-row`** (`shared/ui/number-fields-row/`), number fields side by side in one sheet row (outlined M3 text fields, label, numeric keyboard, unit suffix, one error message), for Left / Right ml and later Growth.
+- Shared with Sleep since slice 2 (moved, not copied): API `Nala.Core/Entries/EntryTimer` (the Start / Stop rules, on `ITimedEntry` / `ITimedEntryRepository`, results `TimerResult<TEntry>`) and `EntryFields.ValidateTimerAt`; web `shared/ui/entry-sheet/live-entry-sheet.ts` (`LiveEntrySheet`: the start / end time and notes controls, timer, Save, Delete, ×, opening the live entry and following other devices; Pump adds its volumes through its hooks), `core/timers/stopped-entry.ts` and `core/time/live-longer-than.ts`.
 - Shared with Sleep since slice 1 (moved, not copied): API `EntryFields.ValidateStartEnd` (the start / end time rules); web `core/time/span-seconds.ts` (`spanSeconds`, start to end or to now) and `core/time/after-start.ts` (the `beforeStart` validator).
 - Kind label: Pump / Tire-lait (as the section's name).
 - All text through i18n (EN/FR).

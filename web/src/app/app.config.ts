@@ -23,6 +23,7 @@ import { FEED_SECTION } from './features/feed/feed.section';
 import { PUMP_SECTION } from './features/pump/pump.section';
 import { SLEEP_SECTION } from './features/sleep/sleep.section';
 import { provideFeedTimers } from './features/feed/feed-timers';
+import { providePumpTimers } from './features/pump/pump-timers';
 import { provideSleepTimers } from './features/sleep/sleep-timers';
 
 export const appConfig: ApplicationConfig = {
@@ -37,6 +38,7 @@ export const appConfig: ApplicationConfig = {
     { provide: SECTIONS, useValue: [FEED_SECTION, SLEEP_SECTION, DIAPER_SECTION, PUMP_SECTION] },
     provideFeedTimers(),
     provideSleepTimers(),
+    providePumpTimers(),
     provideOfflineQueue(),
     provideAppInitializer(() => void inject(ThemeService)),
     provideServiceWorker('ngsw-worker.js', {

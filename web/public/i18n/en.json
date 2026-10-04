@@ -606,7 +606,9 @@
       "right": "Right",
       "mlUnit": "ml",
       "volumeRange": "0 to 500 ml, whole numbers",
-      "total": "Total"
+      "total": "Total",
+      "pumping": "Pumping…",
+      "deletedElsewhere": "This pumping session was deleted on another device."
     },
     "volume": "{{ml}} ml",
     "summary": {
@@ -615,10 +617,21 @@
       "right": "R {{right}} ml · {{duration}}",
       "none": "{{duration}}"
     },
+    "summaryLive": "Pumping · {{duration}}",
     "errors": {
       "unknown": "Something went wrong. Check your connection and try again.",
       "pumpNotFound": "This pumping session no longer exists.",
-      "babyNotFound": "This baby no longer exists."
+      "babyNotFound": "This baby no longer exists.",
+      "pumpInProgress": "A pumping session is already running for this baby."
+    },
+    "timer": {
+      "pumping": "Pumping"
+    },
+    "stillPumping": {
+      "title": "Still pumping?",
+      "card": "Started {{since}}.",
+      "sheet": "Started {{since}}. Correct the times, then save.",
+      "review": "Review"
     }
   },
   "offline": {

@@ -1,10 +1,45 @@
-<nala-entry-sheet [form]="form" [saving]="saving()" (save)="save()" (delete)="delete()">
+<nala-entry-sheet
+  [form]="form"
+  [saving]="sheet.saving()"
+  [deletable]="!!sheet.entry()"
+  [discard]="sheet.discard()"
+  (save)="save()"
+  (delete)="sheet.delete()"
+>
+  @if (sheet.stillLive()) {
+    <nala-banner
+      icon="schedule"
+      [title]="'pump.stillPumping.title' | transloco"
+      [text]="
+        'pump.stillPumping.sheet' | transloco: { since: sheet.entry()!.startTime | nalaTimeSince }
+      "
+    />
+  }
+
+  <nala-timer
+    [seconds]="sheet.timerSeconds()"
+    [running]="sheet.live()"
+    [disabled]="sheet.saving() || sheet.manual()"
+    (start)="sheet.start()"
+    (stop)="sheet.stop()"
+  />
+
   <nala-time-row [label]="'entrySheet.startTime' | transloco" [control]="form.controls.startTime" />
-  <nala-time-row [label]="'pump.sheet.endTime' | transloco" [control]="form.controls.endTime" />
+  @if (sheet.live()) {
+    <nala-form-row
+      [label]="'pump.sheet.endTime' | transloco"
+      [interactive]="false"
+      data-testid="pump-end-time"
+    >
+      <span rowTrailing>{{ 'pump.sheet.pumping' | transloco }}</span>
+    </nala-form-row>
+  } @else {
+    <nala-time-row [label]="'pump.sheet.endTime' | transloco" [control]="form.controls.endTime" />
+  }
 
   <nala-form-row [label]="'pump.sheet.duration' | transloco" [interactive]="false">
     <span rowTrailing data-testid="pump-duration">{{
-      seconds() === null ? '' : (seconds()! | nalaDuration)
+      sheet.seconds() === null ? '' : (sheet.seconds()! | nalaDuration)
     }}</span>
   </nala-form-row>
 
@@ -29,17 +64,17 @@
 
   <nala-notes-row [control]="form.controls.notes" />
 
-  @if (formError(); as code) {
+  @if (sheet.formError(); as code) {
     <p class="form-error" role="alert" data-testid="form-error">
       {{ 'pump.errors.' + code | transloco }}
     </p>
   }
 
-  @if (pump; as pump) {
+  @if (sheet.entry(); as pump) {
     <nala-entry-audit
       [loggedBy]="pump.loggedBy.displayName"
-      [editedBy]="edited ? pump.updatedBy.displayName : null"
-      [editedAt]="edited ? pump.updatedAt : null"
+      [editedBy]="sheet.edited() ? pump.updatedBy.displayName : null"
+      [editedAt]="sheet.edited() ? pump.updatedAt : null"
     />
   }
 </nala-entry-sheet>

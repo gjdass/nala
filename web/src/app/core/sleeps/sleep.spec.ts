@@ -1,6 +1,6 @@
 import { aSleep } from '../../testing/sleeps';
 import { QueuedRequest } from '../offline/offline-queue.models';
-import { applyQueuedSleeps, stoppedSleep } from './sleep';
+import { applyQueuedSleeps } from './sleep';
 import { Sleep } from './sleep.models';
 
 const ben = { id: 'u2', displayName: 'Ben' };
@@ -150,24 +150,5 @@ describe('applyQueuedSleeps', () => {
     const once = applyQueuedSleeps([live], waiting, ben);
 
     expect(applyQueuedSleeps(once, waiting, ben)).toEqual(once);
-  });
-});
-
-describe('stoppedSleep', () => {
-  const live = aSleep({ endTime: null, startTime: '2026-09-30T11:00:00Z' });
-
-  it('ends a live sleep at the given time', () => {
-    expect(stoppedSleep(live, '2026-09-30T12:00:00.000Z', ben)).toMatchObject({
-      endTime: '2026-09-30T12:00:00.000Z',
-      updatedBy: ben,
-      updatedAt: '2026-09-30T12:00:00.000Z',
-    });
-  });
-
-  it('leaves a stopped sleep, or a time before the start, alone', () => {
-    const stopped = aSleep();
-
-    expect(stoppedSleep(stopped, '2026-09-30T12:00:00.000Z', ben)).toBe(stopped);
-    expect(stoppedSleep(live, '2026-09-30T10:00:00.000Z', ben)).toBe(live);
   });
 });

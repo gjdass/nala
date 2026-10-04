@@ -40,6 +40,14 @@ public class FakePumpRepository : IPumpRepository
             .Select(ToEntry)
             .ToList());
 
+    public Task<PumpEntry?> GetLiveAsync(Guid babyId, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Live().Where(p => p.BabyId == babyId).Select(ToEntry).FirstOrDefault());
+
+    public Task<IReadOnlyList<PumpEntry>> ListLiveAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<PumpEntry>>(Live().Select(ToEntry).ToList());
+
+    private IEnumerable<Pump> Live() => Pumps.Where(p => p.EndTime is null).OrderBy(p => p.StartTime).ThenBy(p => p.Id);
+
     private PumpEntry ToEntry(Pump pump) =>
         new(pump, new UserName(pump.LoggedByUserId, Names[pump.LoggedByUserId]), new UserName(pump.UpdatedByUserId, Names[pump.UpdatedByUserId]));
 }

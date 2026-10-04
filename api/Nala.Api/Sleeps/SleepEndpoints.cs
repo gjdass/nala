@@ -1,5 +1,6 @@
 using Nala.Api.Auth;
 using Nala.Api.Entries;
+using Nala.Core.Entries;
 using Nala.Core.Sleeps;
 
 namespace Nala.Api.Sleeps;
@@ -126,14 +127,14 @@ public static class SleepEndpoints
         Guid id, StopSleepRequest request, SleepService sleeps, HttpContext context, CancellationToken cancellationToken) =>
         TimerResponse(await sleeps.StopAsync(AuthEndpoints.CurrentUser(context)!, id, request.At, cancellationToken));
 
-    private static IResult TimerResponse(SleepTimerResult result) => result switch
+    private static IResult TimerResponse(TimerResult<SleepEntry> result) => result switch
     {
-        SleepTimerResult.Created created => Results.Created($"/api/sleeps/{created.Entry.Sleep.Id}", ToResponse(created.Entry)),
-        SleepTimerResult.Updated updated => Results.Ok(ToResponse(updated.Entry)),
-        SleepTimerResult.Invalid invalid => AuthEndpoints.ValidationProblem(invalid.Errors),
-        SleepTimerResult.InProgressExists =>
+        TimerResult<SleepEntry>.Created created => Results.Created($"/api/sleeps/{created.Entry.Sleep.Id}", ToResponse(created.Entry)),
+        TimerResult<SleepEntry>.Updated updated => Results.Ok(ToResponse(updated.Entry)),
+        TimerResult<SleepEntry>.Invalid invalid => AuthEndpoints.ValidationProblem(invalid.Errors),
+        TimerResult<SleepEntry>.InProgressExists =>
             Results.Json(new ErrorResponse("sleepInProgress"), statusCode: StatusCodes.Status409Conflict),
-        SleepTimerResult.BabyNotFound => BabyNotFound(),
+        TimerResult<SleepEntry>.BabyNotFound => BabyNotFound(),
         _ => SleepNotFound(),
     };
 

@@ -4,8 +4,10 @@
   [time]="entry.startTime"
   [label]="total() === null ? '' : ('pump.volume' | transloco: { ml: total() })"
   [summary]="
-    'pump.summary.' + sides()
-      | transloco: { left: entry.leftMl, right: entry.rightMl, duration: seconds() | nalaDuration }
+    entry.endTime
+      ? ('pump.summary.' + sides()
+        | transloco: { left: entry.leftMl, right: entry.rightMl, duration: seconds() | nalaDuration })
+      : ('pump.summaryLive' | transloco: { duration: seconds() | nalaDuration })
   "
   (open)="open.emit()"
 />

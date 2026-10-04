@@ -57,14 +57,14 @@ public class PumpRepositoryTests
         UpdatedAt = Now,
     };
 
-    private async Task<Pump> AddAsync(Baby? baby = null, DateTimeOffset? time = null, User? by = null)
+    private async Task<Pump> AddAsync(Baby? baby = null, DateTimeOffset? time = null, User? by = null, bool live = false)
     {
         var pump = new Pump
         {
             Id = Guid.NewGuid(),
             BabyId = (baby ?? _lea).Id,
             StartTime = time ?? Now.AddHours(-1),
-            EndTime = (time ?? Now.AddHours(-1)).AddMinutes(20),
+            EndTime = live ? null : (time ?? Now.AddHours(-1)).AddMinutes(20),
             LeftMl = 90,
             LoggedByUserId = (by ?? _anna).Id,
             UpdatedByUserId = (by ?? _anna).Id,
@@ -203,5 +203,44 @@ public class PumpRepositoryTests
         }
 
         Assert.That((await ListAsync()).Select(e => e.Pump.Id), Is.EqualTo(new[] { kept.Id }));
+    }
+
+    [Test]
+    public async Task The_live_session_of_a_baby_is_its_oldest_one_without_an_end()
+    {
+        await AddAsync(time: Now.AddHours(-3));
+        await AddAsync(_tom, Now.AddHours(-4), live: true);
+        var newer = await AddAsync(time: Now.AddMinutes(-10), live: true);
+        var older = await AddAsync(time: Now.AddMinutes(-40), by: _ben, live: true);
+
+        await using var db = _db();
+        var repository = new PumpRepository(db);
+        var live = (await repository.GetLiveAsync(_lea.Id))!;
+        var none = await repository.GetLiveAsync(Guid.NewGuid());
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(live.Pump.Id, Is.EqualTo(older.Id));
+            Assert.That(live.LoggedBy, Is.EqualTo(new UserName(_ben.Id, "Ben")));
+            Assert.That(newer.EndTime, Is.Null);
+            Assert.That(none, Is.Null);
+        });
+    }
+
+    [Test]
+    public async Task Live_sessions_of_every_baby_are_listed_oldest_start_first()
+    {
+        await AddAsync(time: Now.AddHours(-5));
+        var lea = await AddAsync(time: Now.AddMinutes(-10), live: true);
+        var tom = await AddAsync(_tom, Now.AddMinutes(-50), live: true);
+
+        await using var db = _db();
+        var live = await new PumpRepository(db).ListLiveAsync();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(live.Select(e => e.Pump.Id), Is.EqualTo(new[] { tom.Id, lea.Id }));
+            Assert.That(live.Select(e => e.LoggedBy.DisplayName), Is.All.EqualTo("Anna"));
+        });
     }
 }

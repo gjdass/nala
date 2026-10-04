@@ -22,7 +22,7 @@ export type LiveOverlay<T> = (
 
 /**
  * The live entries of a section with timers, of every baby, shared by every device (spec 04 Timers,
- * used by Feed's breastfeeds and Sleep). They come from the shared poller (`LiveSyncService`): the
+ * used by Feed's breastfeeds, Sleep and Pump). They come from the shared poller (`LiveSyncService`): the
  * section's list in `/api/live` is named by its `liveKey`. This device's own actions apply at once
  * through `put` / `remove`; an answer to a request that started before one is ignored, so it can't
  * bring back an older state. Cleared on sign-out.
