@@ -111,7 +111,7 @@ Shared by the card's expanded list and the history page:
 ### Entry sheet (add / edit form)
 - A Material **bottom sheet** sliding up over the dimmed page, expanded to most of the screen height (a standard dialog on wide screens).
 - Header in the section's colour, laid out like an M3 top app bar: close icon button on the left, the entry kind as title, **Save** text button on the right. Save saves the form only; × discards it (see Timers for entries with timers).
-- Body as a list of **form rows** (M3 list items): label as headline, current value or action as trailing text ("Today 2:37pm", "Add") or a trailing switch. Tapping a row edits it with the standard Material control (timepicker/datepicker, text field, …).
+- Body as a list of **form rows** (M3 list items): label as headline, current value or action as trailing text ("Today 2:37pm", "Add") or a trailing switch. Every trailing text uses the same type style, whether the row is tappable or read-only (e.g. "Sleeping…", a duration, a total); only tappable values take the primary colour. Tapping a row edits it with the standard Material control (timepicker/datepicker, text field, …).
 - Optional **suggestion row** under a field (e.g. "Use last breast milk amount: 90 ml? [Yes]").
 - A **Notes** row on every kind.
 - In edit mode, who logged the entry and who edited it last, and when (shared `nala-entry-audit`: "Logged by Anna · Edited by Ben, 2:40 PM").
@@ -151,6 +151,7 @@ Each item becomes at least one test, written failing first.
 - [x] × closes the sheet without saving changes; if there are unsaved changes, it asks for confirmation first.
 - [x] Save is disabled while required fields are missing or invalid, and shows field errors.
 - [x] Tapping an entry list item opens the same sheet pre-filled, with a Delete action.
+- [x] A read-only row's trailing text (e.g. "Sleeping…", Duration, Total) has the same type style as a tappable row's value, in every section.
 
 ### Entry list item
 - [x] Every entry list item has the same height: two lines, whatever the section or kind.
@@ -231,6 +232,7 @@ iPhone home screen app (after the PWA install work):
 - [x] **Slice 14 — Safe areas, no rubber-band, brand in the top bar.** `viewport-fit=cover` in `index.html`; global `_layout.scss` with `--nala-safe-top` (top inset + 8 px, 0 without inset), the body padded by it, `overscroll-behavior-y: none` on `html` and `body`, the bottom sheet container padded by the bottom inset; the app shell and the auth card take `100dvh` minus the top offset. `branding/generate.py` writes `icons/brand-mark.png` (the favicon's lion head, 72 px); `nala-top-app-bar` shows it with "Nala" on the right of the name row. Covers: every Safe areas & brand criterion.
 - [x] **Slice 15 — No iOS edge blur.** `nala-root` renders a `.nala-edge-guard` (fixed, top 0, full width, `--nala-safe-top` tall, `--mat-sys-surface` background, `aria-hidden`); on iOS (`@supports (-webkit-touch-callout: none)`) `--nala-safe-top` is at least 12 px. Covers: the edge guard criterion.
 - [x] **Slice 16 — Section colour scheme.** `.nala-scheme-<key>` classes in `_sections.scss` (`mat.theme` colours from each section palette, `theme-type: color-scheme`) and `sectionScheme(key)`. Set on the section card, the history page host, the kind picker and entry sheet panels (`SheetService.open` takes a `panelClass`), the entry sheet's confirmation dialog and Feed's duration dialog; `nala-entry-sheet` provides `SECTION_SCHEME`, used by the time row for its date and time picker panels. Covers: the section colour scheme criterion.
+- [x] **Slice 17 — Same text size on every form row.** `nala-form-row` gives its read-only trailing slot the same `label-large` style as a tappable value (shared `value` class; only tappable values are primary). Fixes Sleep (end time, duration), Pump (end time, duration, total) and Breastfeed (total time). Covers: the read-only row text criterion.
 
 ## Material 3 mapping
 

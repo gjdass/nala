@@ -3,7 +3,7 @@
     <button mat-list-item type="button" (click)="activate.emit()">
       <span matListItemTitle>{{ label() }}</span>
       @if (value()) {
-        <span matListItemMeta class="value">{{ value() }}</span>
+        <span matListItemMeta class="value value--tappable">{{ value() }}</span>
       }
     </button>
   </mat-action-list>
@@ -11,7 +11,7 @@
   <mat-list>
     <mat-list-item>
       <span matListItemTitle>{{ label() }}</span>
-      <span matListItemMeta><ng-content select="[rowTrailing]" /></span>
+      <span matListItemMeta class="value"><ng-content select="[rowTrailing]" /></span>
     </mat-list-item>
   </mat-list>
 }

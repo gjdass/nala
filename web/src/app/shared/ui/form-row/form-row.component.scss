@@ -7,9 +7,13 @@ mat-list {
   padding: 0;
 }
 
+// Tappable values and read-only trailing text share one type style; only tappable ones are primary.
 .value {
-  color: var(--mat-sys-primary);
   font: var(--mat-sys-label-large);
+}
+
+.value--tappable {
+  color: var(--mat-sys-primary);
 }
 
 .editor:empty {

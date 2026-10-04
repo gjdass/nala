@@ -70,4 +70,14 @@ describe('FormRowComponent', () => {
     expect(item('rash').tagName).not.toBe('BUTTON');
     expect(row('rash').querySelector('[matListItemMeta] [data-testid="switch"]')).not.toBeNull();
   });
+
+  it('gives read-only trailing text the same type style as a tappable value, without its colour', () => {
+    const tappable = row('time').querySelector('[matListItemMeta]')!;
+    const readOnly = row('rash').querySelector('[matListItemMeta]')!;
+
+    expect(tappable.classList).toContain('value');
+    expect(tappable.classList).toContain('value--tappable');
+    expect(readOnly.classList).toContain('value');
+    expect(readOnly.classList).not.toContain('value--tappable');
+  });
 });
