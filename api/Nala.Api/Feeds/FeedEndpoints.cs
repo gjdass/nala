@@ -236,7 +236,7 @@ public static class FeedEndpoints
     private static IResult FeedNotFound() =>
         Results.Json(new ErrorResponse("feedNotFound"), statusCode: StatusCodes.Status404NotFound);
 
-    private static FeedResponse ToResponse(FeedEntry entry)
+    internal static FeedResponse ToResponse(FeedEntry entry)
     {
         var feed = entry.Feed;
         return new FeedResponse(

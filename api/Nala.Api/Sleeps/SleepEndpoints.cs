@@ -148,7 +148,7 @@ public static class SleepEndpoints
     private static IResult SleepNotFound() =>
         Results.Json(new ErrorResponse("sleepNotFound"), statusCode: StatusCodes.Status404NotFound);
 
-    private static SleepResponse ToResponse(SleepEntry entry)
+    internal static SleepResponse ToResponse(SleepEntry entry)
     {
         var sleep = entry.Sleep;
         return new SleepResponse(

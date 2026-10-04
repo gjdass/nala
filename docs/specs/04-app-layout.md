@@ -175,7 +175,7 @@ Each item becomes at least one test, written failing first.
 - [x] Each row's section icon sits in a circle in its section's container colours.
 
 ### Live sync
-- [ ] `GET /api/live` returns every baby's live feeds and live sleeps, per section, oldest start first; stopped entries are left out; signed-out → 401.
+- [x] `GET /api/live` returns every baby's live feeds and live sleeps, per section, oldest start first; stopped entries are left out; signed-out → 401.
 - [ ] The app makes one live request per tick, whatever the number of sections with timers; `/api/feeds/in-progress` and `/api/sleeps/in-progress` no longer exist.
 - [ ] It polls every 5 s while any section has a live entry and every 30 s otherwise, switching as soon as a live entry appears or the last one is gone.
 - [ ] Polling pauses while the app is hidden and runs at once when it is shown again, after sign-in, and once the offline queue has been sent.
@@ -205,7 +205,7 @@ Changes after the first review of the Feed section (built in this order, with 05
 
 Fewer live API calls (one endpoint for every section, slower when nothing runs):
 
-- [ ] **Slice 12 — `GET /api/live`.** `Nala.Api/Live/LiveEndpoints.cs`, reusing the live queries of `FeedService` and `SleepService`: `{ feeds, sleeps }`, oldest start first, signed-in members only. The old in-progress endpoints stay until slice 13. Covers: the `/api/live` Live sync criterion.
+- [x] **Slice 12 — `GET /api/live`.** `Nala.Api/Live/LiveEndpoints.cs`, reusing the live queries of `FeedService` and `SleepService`: `{ feeds, sleeps }`, oldest start first, signed-in members only. The old in-progress endpoints stay until slice 13. Covers: the `/api/live` Live sync criterion.
 - [ ] **Slice 13 — One shared poller, 5 s / 30 s.** Root `LiveSyncService` in `core/timers/` takes over the timing and triggers (sign-in, visibility, queue sent) from `LiveEntriesSync`; each section's sync registers under its key and receives its list (the version guard and overlay stay per section). The public API of `BreastfeedSyncService` and `SleepSyncService` is unchanged. 5 s while any section has a live entry, 30 s otherwise. `FeedService` / `SleepService` in-progress calls and `GET /api/feeds/in-progress` / `GET /api/sleeps/in-progress` removed with their tests. Covers: the other Live sync criteria and both Mini-bar criteria about other devices.
 
 ## Material 3 mapping
