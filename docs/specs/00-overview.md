@@ -29,7 +29,7 @@ Status: `idea` → `specified` → `in progress` → `done`. A feature moves to 
 | 01 | Project skeleton (solution, Angular PWA, Docker Compose, test setups) | [01-project-skeleton.md](01-project-skeleton.md) | done | |
 | 02 | Authentication (login, register, sessions) | [02-auth.md](02-auth.md) | done | |
 | 03 | Family & baby profile | [03-family-baby.md](03-family-baby.md) | done | |
-| 04 | App layout & section pattern (home cards, entry sheet, mini-bar, bottom navigation, timers) | [04-app-layout.md](04-app-layout.md) | done | Shared by every section, including the timer rules (live or not, Save never stops a timer, no timer on cards) for every section with timers. Slice 11: no timer on cards, mini-bar inside the nav pill. |
+| 04 | App layout & section pattern (home cards, entry sheet, mini-bar, bottom navigation, timers) | [04-app-layout.md](04-app-layout.md) | in progress | Shared by every section, including the timer rules (live or not, Save never stops a timer, no timer on cards) for every section with timers. Slice 11: no timer on cards, mini-bar inside the nav pill. Slices 12–13: one `/api/live` call for every section, 5 s while a timer runs / 30 s otherwise. |
 | 05 | Feed | [05-feed.md](05-feed.md) | done | **Hard requirement:** breast feeding has two independent per-side timers (left/right), side by side in the Breastfeed sheet. A single timer with a "side" field is not acceptable. |
 | 06 | Sleep | [06-sleep.md](06-sleep.md) | done | One kind, single Start/Stop timer, start/end times, notes. |
 | 07 | Diaper | — | idea | From the reference screenshots: time, wet / dirty / dry selector, diaper-rash toggle, notes. |
