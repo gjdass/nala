@@ -1,0 +1,15 @@
+<nala-form-row [label]="label()" [interactive]="false">
+  <mat-chip-listbox
+    rowEditor
+    multiple
+    [value]="value()"
+    [attr.aria-label]="label()"
+    (change)="choose($event)"
+  >
+    @for (key of keys(); track key) {
+      <mat-chip-option [value]="key" [attr.data-testid]="name() + '-' + key">
+        {{ optionLabel() + key | transloco }}
+      </mat-chip-option>
+    }
+  </mat-chip-listbox>
+</nala-form-row>

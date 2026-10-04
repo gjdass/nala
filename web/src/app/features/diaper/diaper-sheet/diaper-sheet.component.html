@@ -1,0 +1,32 @@
+<nala-entry-sheet [form]="form" [saving]="saving()" (save)="save()" (delete)="delete()">
+  <nala-time-row [label]="'entrySheet.time' | transloco" [control]="form.controls.time" />
+
+  <nala-chip-toggles-row
+    name="diaper"
+    optionLabel="diaper.toggle."
+    [label]="'diaper.sheet.type' | transloco"
+    [controls]="type"
+  />
+
+  <nala-switch-row
+    name="diaper-rash"
+    [label]="'diaper.sheet.rash' | transloco"
+    [control]="form.controls.rash"
+  />
+
+  <nala-notes-row [control]="form.controls.notes" />
+
+  @if (formError(); as code) {
+    <p class="form-error" role="alert" data-testid="form-error">
+      {{ 'diaper.errors.' + code | transloco }}
+    </p>
+  }
+
+  @if (diaper; as diaper) {
+    <nala-entry-audit
+      [loggedBy]="diaper.loggedBy.displayName"
+      [editedBy]="edited ? diaper.updatedBy.displayName : null"
+      [editedAt]="edited ? diaper.updatedAt : null"
+    />
+  }
+</nala-entry-sheet>

@@ -18,6 +18,7 @@ import { provideUserLanguage } from './core/i18n/user-language';
 import { provideOfflineQueue } from './core/offline/offline-queue.service';
 import { SECTIONS } from './core/sections/section.models';
 import { ThemeService } from './core/theme/theme.service';
+import { DIAPER_SECTION } from './features/diaper/diaper.section';
 import { FEED_SECTION } from './features/feed/feed.section';
 import { SLEEP_SECTION } from './features/sleep/sleep.section';
 import { provideFeedTimers } from './features/feed/feed-timers';
@@ -32,7 +33,7 @@ export const appConfig: ApplicationConfig = {
     provideUserLanguage(),
     provideNalaDates(),
     provideNalaIcons(),
-    { provide: SECTIONS, useValue: [FEED_SECTION, SLEEP_SECTION] },
+    { provide: SECTIONS, useValue: [FEED_SECTION, SLEEP_SECTION, DIAPER_SECTION] },
     provideFeedTimers(),
     provideSleepTimers(),
     provideOfflineQueue(),

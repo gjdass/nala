@@ -539,6 +539,38 @@
       "review": "Vérifier"
     }
   },
+  "diaper": {
+    "kinds": {
+      "diaper": "Couche"
+    },
+    "card": {
+      "lastChange": "Dernier change",
+      "rash": "Érythème",
+      "empty": {
+        "title": "Aucune couche enregistrée",
+        "text": "Touchez + pour enregistrer la première."
+      }
+    },
+    "sheet": {
+      "type": "Type",
+      "rash": "Érythème fessier"
+    },
+    "toggle": {
+      "wet": "Mouillée",
+      "dirty": "Selles"
+    },
+    "type": {
+      "wet": "Mouillée",
+      "dirty": "Selles",
+      "wetDirty": "Mouillée + selles",
+      "dry": "Sèche"
+    },
+    "errors": {
+      "unknown": "Une erreur s'est produite. Vérifiez votre connexion et réessayez.",
+      "diaperNotFound": "Cette couche n'existe plus.",
+      "babyNotFound": "Ce bébé n'existe plus."
+    }
+  },
   "offline": {
     "queued": "Enregistré sur cet appareil. Ce sera envoyé dès le retour du réseau.",
     "refused": "Une modification faite hors ligne n'a pas pu être appliquée."

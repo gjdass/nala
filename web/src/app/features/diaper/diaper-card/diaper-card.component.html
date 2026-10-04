@@ -1,0 +1,34 @@
+<nala-section-card key="diaper" [entries]="entries()" (changed)="reload()">
+  @if (last(); as last) {
+    <div sectionHighlight class="highlight" data-testid="diaper-highlight">
+      <mat-icon class="icon" aria-hidden="true">schedule</mat-icon>
+      <div class="since">
+        <span class="label" data-testid="diaper-last-label">{{
+          'diaper.card.lastChange' | transloco
+        }}</span>
+        <span class="since-value" data-testid="diaper-since">{{
+          sinceSeconds() | nalaHighlightDuration
+        }}</span>
+      </div>
+      <div class="last">
+        <span class="last-value" data-testid="diaper-last-type">{{
+          'diaper.type.' + lastType() | transloco
+        }}</span>
+        @if (last.rash) {
+          <span class="label" data-testid="diaper-last-rash">{{
+            'diaper.card.rash' | transloco
+          }}</span>
+        }
+      </div>
+    </div>
+  }
+  <nala-empty-state
+    sectionEmpty
+    icon="baby_changing_station"
+    [title]="'diaper.card.empty.title' | transloco"
+    [text]="'diaper.card.empty.text' | transloco"
+  />
+  <ng-template nalaSectionEntry let-diaper>
+    <nala-diaper-entry [diaper]="diaper" (open)="edit(diaper)" />
+  </ng-template>
+</nala-section-card>

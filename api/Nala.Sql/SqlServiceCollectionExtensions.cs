@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Nala.Core.Auth;
 using Nala.Core.Babies;
+using Nala.Core.Diapers;
 using Nala.Core.Feeds;
 using Nala.Core.Invitations;
 using Nala.Core.Sections;
@@ -9,6 +10,7 @@ using Nala.Core.Sleeps;
 using Nala.Core.Users;
 using Nala.Sql.Auth;
 using Nala.Sql.Babies;
+using Nala.Sql.Diapers;
 using Nala.Sql.Feeds;
 using Nala.Sql.Invitations;
 using Nala.Sql.Sections;
@@ -30,5 +32,6 @@ public static class SqlServiceCollectionExtensions
             .AddScoped<IBabyRepository, BabyRepository>()
             .AddScoped<IFeedRepository, FeedRepository>()
             .AddScoped<ISleepRepository, SleepRepository>()
+            .AddScoped<IDiaperRepository, DiaperRepository>()
             .AddScoped<ISectionPreferenceRepository, SectionPreferenceRepository>();
 }

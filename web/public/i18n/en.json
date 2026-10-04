@@ -539,6 +539,38 @@
       "review": "Review"
     }
   },
+  "diaper": {
+    "kinds": {
+      "diaper": "Diaper"
+    },
+    "card": {
+      "lastChange": "Last change",
+      "rash": "Rash",
+      "empty": {
+        "title": "No diaper logged yet",
+        "text": "Tap + to log the first one."
+      }
+    },
+    "sheet": {
+      "type": "Type",
+      "rash": "Diaper rash"
+    },
+    "toggle": {
+      "wet": "Wet",
+      "dirty": "Dirty"
+    },
+    "type": {
+      "wet": "Wet",
+      "dirty": "Dirty",
+      "wetDirty": "Wet + dirty",
+      "dry": "Dry"
+    },
+    "errors": {
+      "unknown": "Something went wrong. Check your connection and try again.",
+      "diaperNotFound": "This diaper no longer exists.",
+      "babyNotFound": "This baby no longer exists."
+    }
+  },
   "offline": {
     "queued": "Saved on this device. It will be sent when you're back online.",
     "refused": "A change made offline couldn't be applied."

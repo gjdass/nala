@@ -1,0 +1,41 @@
+:host {
+  display: block;
+}
+
+.highlight {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+}
+
+.icon {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.since {
+  display: flex;
+  flex-direction: column;
+}
+
+.label {
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-label-large);
+}
+
+.since-value {
+  color: var(--mat-sys-on-surface);
+  font: var(--mat-sys-title-large);
+}
+
+.last {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  margin-inline-start: auto;
+}
+
+.last-value {
+  color: var(--mat-sys-on-surface);
+  font: var(--mat-sys-headline-medium);
+}
