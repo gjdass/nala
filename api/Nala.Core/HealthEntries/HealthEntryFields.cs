@@ -2,10 +2,10 @@ using Nala.Core.Entries;
 
 namespace Nala.Core.HealthEntries;
 
-/// <summary>A dose's fields as sent by a client. The unit is ignored without an amount.</summary>
-public sealed record HealthEntryInput(DateTimeOffset? Time, string? Name, decimal? Amount, string? Unit, string? Notes);
+/// <summary>A health entry's fields as sent by a client. The unit is ignored without an amount.</summary>
+public sealed record HealthEntryInput(DateTimeOffset? Time, string? Name, decimal? Amount, string? Unit, decimal? Temperature, string? Notes);
 
-/// <summary>Validation of a dose's fields, for adding and editing (spec 09).</summary>
+/// <summary>Validation of a health entry's fields, for adding and editing (spec 09).</summary>
 public static class HealthEntryFields
 {
     public const int NameMaxLength = 100;
@@ -13,6 +13,10 @@ public static class HealthEntryFields
     public const decimal MinAmount = 0.01m;
 
     public const decimal MaxAmount = 1000m;
+
+    public const decimal MinTemperature = 30m;
+
+    public const decimal MaxTemperature = 45m;
 
     private static readonly Dictionary<string, DoseUnit> Units = new()
     {
@@ -23,8 +27,8 @@ public static class HealthEntryFields
     };
 
     /// <summary>
-    /// Field name → error code (<c>required</c>, <c>inFuture</c>, <c>tooLong</c>, <c>outOfRange</c>, <c>invalid</c>); empty
-    /// when valid. The unit is only checked with an amount.
+    /// Field name → error code (<c>required</c>, <c>inFuture</c>, <c>tooLong</c>, <c>outOfRange</c>, <c>invalid</c>,
+    /// <c>nameRequired</c>); empty when valid. A name or a temperature is required; an amount needs a name and a unit.
     /// </summary>
     public static Dictionary<string, string> Validate(HealthEntryInput input, DateTimeOffset now)
     {
@@ -41,7 +45,10 @@ public static class HealthEntryFields
         var name = EntryFields.NormalizeText(input.Name);
         if (name is null)
         {
-            errors["name"] = "required";
+            if (input.Temperature is null)
+            {
+                errors["name"] = "required";
+            }
         }
         else if (name.Length > NameMaxLength)
         {
@@ -58,6 +65,10 @@ public static class HealthEntryFields
             {
                 errors["amount"] = "invalid";
             }
+            else if (name is null)
+            {
+                errors["amount"] = "nameRequired";
+            }
 
             if (input.Unit is null)
             {
@@ -66,6 +77,18 @@ public static class HealthEntryFields
             else if (!Units.ContainsKey(input.Unit))
             {
                 errors["unit"] = "invalid";
+            }
+        }
+
+        if (input.Temperature is { } temperature)
+        {
+            if (temperature < MinTemperature || temperature > MaxTemperature)
+            {
+                errors["temperature"] = "outOfRange";
+            }
+            else if (decimal.Round(temperature, 1) != temperature)
+            {
+                errors["temperature"] = "invalid";
             }
         }
 

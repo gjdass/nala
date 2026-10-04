@@ -82,9 +82,10 @@ describe('HealthCardComponent', () => {
     expect(healthEntries.page).toHaveBeenCalledWith('b1', null);
   });
 
-  it('shows the empty state without any dose', async () => {
+  it('shows the empty state without any entry', async () => {
     await respond([]);
 
+    expect(en.health.card.empty.title).toBe('No entry logged yet');
     expect(text('empty-title')).toBe(en.health.card.empty.title);
     expect(find('health-highlight')).toBeNull();
   });
@@ -92,7 +93,7 @@ describe('HealthCardComponent', () => {
   it('highlights the time since the most recent dose, live', async () => {
     await respond([healthEntry('m2', 26.5), healthEntry('m1', 200)]);
 
-    expect(text('health-last-label')).toBe(en.health.card.lastDose);
+    expect(text('health-last-label')).toBe(en.health.card.lastEntry);
     expect(text('health-since')).toBe('26m');
 
     await vi.advanceTimersByTimeAsync(60_000);
@@ -124,12 +125,11 @@ describe('HealthCardComponent', () => {
       healthEntry('m1', 200),
     ]);
 
-    expect(text('health-last-name')).toBe('Vitamin D');
-    expect(text('health-last-dose')).toBe('1 drop');
+    expect(text('health-last-value')).toBe('Vitamin D');
+    expect(text('health-last-detail')).toBe('1 drop');
     const since = find('health-since')!;
     expect(
-      since.compareDocumentPosition(find('health-last-name')!) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
+      since.compareDocumentPosition(find('health-last-value')!) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
   });
 
@@ -139,8 +139,32 @@ describe('HealthCardComponent', () => {
       healthEntry('m1', 30, { amount: 5, unit: 'ml' }),
     ]);
 
-    expect(text('health-last-name')).toBe('Paracetamol');
-    expect(find('health-last-dose')).toBeNull();
+    expect(text('health-last-value')).toBe('Paracetamol');
+    expect(find('health-last-detail')).toBeNull();
+  });
+
+  // `text()` folds the no-break space before °C; the pipe's own spec checks it.
+  it('highlights the last entry, with its dose and temperature under the name', async () => {
+    await respond([healthEntry('m2', 10, { temperature: 38.5 })]);
+
+    expect(en.health.card.lastEntry).toBe('Last entry');
+    expect(text('health-last-value')).toBe('Paracetamol');
+    expect(text('health-last-detail')).toBe('2.5 ml · 38.5 °C');
+  });
+
+  it('shows the temperature alone under a name without a dose', async () => {
+    await respond([healthEntry('m2', 10, { amount: null, unit: null, temperature: 38.5 })]);
+
+    expect(text('health-last-detail')).toBe('38.5 °C');
+  });
+
+  it('shows the temperature on the right, with nothing under it, for an entry without a name', async () => {
+    await respond([
+      healthEntry('m2', 10, { name: null, amount: null, unit: null, temperature: 38.5 }),
+    ]);
+
+    expect(text('health-last-value')).toBe('38.5 °C');
+    expect(find('health-last-detail')).toBeNull();
   });
 
   it('lists the recent doses as entry items', async () => {

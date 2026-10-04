@@ -21,7 +21,7 @@ public interface IHealthEntryRepository
 
     /// <summary>
     /// The baby's <paramref name="limit"/> most recently given names, distinct whatever their case, most recent first
-    /// (time, then id), each with the spelling and dose of its latest entry.
+    /// (time, then id), each with the spelling and dose of its latest entry. Entries without a name are ignored.
     /// </summary>
     Task<IReadOnlyList<RecentMedicine>> ListRecentAsync(Guid babyId, int limit, CancellationToken cancellationToken = default);
 }

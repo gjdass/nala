@@ -49,6 +49,34 @@ describe('HealthEntryComponent', () => {
     expect(await summary({ amount: null, unit: null, notes: null })).toBe('');
   });
 
+  it('shows the temperature after the dose when the entry has a name', async () => {
+    expect(await summary({ amount: 2.5, unit: 'ml', temperature: 38.5, notes: 'fever' })).toBe(
+      '2.5 ml · 38.5\u00a0°C · fever',
+    );
+    expect(await summary({ amount: null, unit: null, temperature: 38.5, notes: null })).toBe(
+      '38.5\u00a0°C',
+    );
+  });
+
+  it('shows the time and the temperature without a name, and no temperature under it', async () => {
+    const time = new Date(2026, 9, 3, 14, 30);
+    fixture.componentRef.setInput(
+      'healthEntry',
+      aHealthEntry({
+        time: time.toISOString(),
+        name: null,
+        amount: null,
+        unit: null,
+        temperature: 38.5,
+        notes: 'after bath',
+      }),
+    );
+    await fixture.whenStable();
+
+    expect(find('entry-label')?.textContent?.trim()).toBe('38.5\u00a0°C');
+    expect(find('entry-summary')?.textContent?.trim()).toBe('after bath');
+  });
+
   it('writes the dose in the active language', async () => {
     TestBed.inject(TranslocoService).setActiveLang('fr');
 

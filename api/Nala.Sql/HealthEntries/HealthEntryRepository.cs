@@ -45,15 +45,15 @@ public class HealthEntryRepository(NalaDbContext db) : IHealthEntryRepository
 
     public async Task<IReadOnlyList<RecentMedicine>> ListRecentAsync(Guid babyId, int limit, CancellationToken cancellationToken = default)
     {
-        var ofBaby = db.Set<HealthEntry>().AsNoTracking().Where(m => m.BabyId == babyId);
+        var ofBaby = db.Set<HealthEntry>().AsNoTracking().Where(m => m.BabyId == babyId && m.Name != null);
         // The latest dose of each name: no later one (time, then id) with the same name whatever its case.
         return await ofBaby
-            .Where(m => !ofBaby.Any(later => later.Name.ToLower() == m.Name.ToLower()
+            .Where(m => !ofBaby.Any(later => later.Name!.ToLower() == m.Name!.ToLower()
                 && EF.Functions.GreaterThan(ValueTuple.Create(later.Time, later.Id), ValueTuple.Create(m.Time, m.Id))))
             .OrderByDescending(m => m.Time)
             .ThenByDescending(m => m.Id)
             .Take(limit)
-            .Select(m => new RecentMedicine(m.Name, m.Amount, m.Unit))
+            .Select(m => new RecentMedicine(m.Name!, m.Amount, m.Unit))
             .ToListAsync(cancellationToken);
     }
 

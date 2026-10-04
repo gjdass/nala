@@ -6,8 +6,8 @@ public class HealthEntryFieldsTests
 {
     private static readonly DateTimeOffset Now = new(2026, 10, 3, 12, 0, 0, TimeSpan.Zero);
 
-    private static HealthEntryInput HealthEntry(DateTimeOffset? time = null, string? name = "Paracetamol", decimal? amount = 2.5m, string? unit = "ml", string? notes = null) =>
-        new(time ?? Now.AddMinutes(-10), name, amount, unit, notes);
+    private static HealthEntryInput HealthEntry(DateTimeOffset? time = null, string? name = "Paracetamol", decimal? amount = 2.5m, string? unit = "ml", decimal? temperature = null, string? notes = null) =>
+        new(time ?? Now.AddMinutes(-10), name, amount, unit, temperature, notes);
 
     private static Dictionary<string, string> Validate(HealthEntryInput input) => HealthEntryFields.Validate(input, Now);
 
@@ -36,8 +36,40 @@ public class HealthEntryFieldsTests
     [TestCase(null)]
     [TestCase("")]
     [TestCase("   ")]
-    public void Name_is_required(string? name) =>
-        Assert.That(Validate(HealthEntry(name: name)), Is.EqualTo(Error("name", "required")));
+    public void A_name_or_a_temperature_is_required(string? name) =>
+        Assert.That(Validate(HealthEntry(name: name, amount: null, unit: null)), Is.EqualTo(Error("name", "required")));
+
+    [Test]
+    public void A_temperature_alone_is_valid() =>
+        Assert.That(Validate(HealthEntry(name: null, amount: null, unit: null, temperature: 38.5m)), Is.Empty);
+
+    [Test]
+    public void A_name_and_a_temperature_together_are_valid() =>
+        Assert.That(Validate(HealthEntry(temperature: 38.5m)), Is.Empty);
+
+    [TestCase(30)]
+    [TestCase(45)]
+    [TestCase(38.5)]
+    public void Temperature_from_30_to_45_with_1_decimal_is_valid(double temperature) =>
+        Assert.That(Validate(HealthEntry(temperature: (decimal)temperature)), Is.Empty);
+
+    [TestCase(29.9)]
+    [TestCase(45.1)]
+    public void Temperature_outside_30_to_45_is_out_of_range(double temperature) =>
+        Assert.That(Validate(HealthEntry(temperature: (decimal)temperature)), Is.EqualTo(Error("temperature", "outOfRange")));
+
+    [Test]
+    public void Temperature_with_more_than_1_decimal_is_invalid() =>
+        Assert.That(Validate(HealthEntry(temperature: 38.55m)), Is.EqualTo(Error("temperature", "invalid")));
+
+    [Test]
+    public void An_amount_needs_a_name()
+    {
+        Assert.That(Validate(HealthEntry(name: " ", temperature: 38.5m)), Is.EqualTo(Error("amount", "nameRequired")));
+        Assert.That(
+            Validate(HealthEntry(name: null)),
+            Is.EqualTo(new Dictionary<string, string> { ["name"] = "required", ["amount"] = "nameRequired" }));
+    }
 
     [Test]
     public void Name_is_at_most_100_characters_once_trimmed()

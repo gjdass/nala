@@ -639,9 +639,9 @@
       "health": "Health"
     },
     "card": {
-      "lastDose": "Last dose",
+      "lastEntry": "Last entry",
       "empty": {
-        "title": "No dose logged yet",
+        "title": "No entry logged yet",
         "text": "Tap + to log the first one."
       }
     },
@@ -650,7 +650,9 @@
       "dose": "Dose",
       "unit": "Unit",
       "recent": "Recent",
-      "lastDose": "Use last dose: {{dose}}?"
+      "lastDose": "Use last dose: {{dose}}?",
+      "temperature": "Temperature",
+      "celsius": "°C"
     },
     "unit": {
       "ml": "ml",
@@ -666,12 +668,16 @@
       "dose": "{{amount}} doses",
       "dose_one": "{{amount}} dose"
     },
+    "temperature": "{{value}} °C",
     "errors": {
-      "nameRequired": "Enter a name",
+      "nameOrTemperature": "Enter a name or a temperature",
       "nameTooLong": "100 characters at most",
       "amountRange": "0.01 to 1000",
       "amountDecimals": "2 decimals at most",
+      "amountNameRequired": "Enter a name for this dose",
       "unitRequired": "Choose a unit for the amount",
+      "temperatureRange": "30 to 45 °C",
+      "temperatureDecimals": "1 decimal at most",
       "unknown": "Something went wrong. Check your connection and try again.",
       "healthEntryNotFound": "This entry no longer exists.",
       "babyNotFound": "This baby no longer exists."

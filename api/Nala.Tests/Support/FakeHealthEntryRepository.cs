@@ -47,12 +47,12 @@ public class FakeHealthEntryRepository : IHealthEntryRepository
     {
         LastRecentLimit = limit;
         return Task.FromResult<IReadOnlyList<RecentMedicine>>(HealthEntries
-            .Where(m => m.BabyId == babyId)
+            .Where(m => m.BabyId == babyId && m.Name != null)
             .OrderByDescending(m => m.Time)
             .ThenByDescending(m => m.Id)
-            .DistinctBy(m => m.Name.ToLowerInvariant())
+            .DistinctBy(m => m.Name!.ToLowerInvariant())
             .Take(limit)
-            .Select(m => new RecentMedicine(m.Name, m.Amount, m.Unit))
+            .Select(m => new RecentMedicine(m.Name!, m.Amount, m.Unit))
             .ToList());
     }
 

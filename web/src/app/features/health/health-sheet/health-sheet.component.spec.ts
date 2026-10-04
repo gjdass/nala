@@ -33,7 +33,7 @@ describe('HealthSheetComponent', () => {
   const text = (testId: string) => find(testId)?.textContent?.replace(/\s+/g, ' ').trim();
   const save = () => find<HTMLButtonElement>('sheet-save')!;
   const settle = () => fixture.whenStable();
-  const type = async (testId: 'name' | 'amount', value: string) => {
+  const type = async (testId: 'name' | 'amount' | 'temperature', value: string) => {
     const input = find<HTMLInputElement>(testId)!;
     input.value = value;
     input.dispatchEvent(new Event('input'));
@@ -121,6 +121,27 @@ describe('HealthSheetComponent', () => {
       ]);
     });
 
+    it('has a °C Temperature row after the unit and before the notes', () => {
+      expect(host().textContent).toContain(en.health.sheet.temperature);
+      const temperature = find<HTMLInputElement>('temperature')!;
+      expect(temperature.getAttribute('inputmode')).toBe('decimal');
+      expect(temperature.closest('mat-form-field')!.textContent).toContain('°C');
+      const order = [
+        find('name')!,
+        find('amount')!,
+        unit('ml'),
+        temperature,
+        host().querySelector<HTMLElement>('nala-notes-row')!,
+      ];
+      order
+        .slice(1)
+        .forEach((element, i) =>
+          expect(
+            order[i].compareDocumentPosition(element) & Node.DOCUMENT_POSITION_FOLLOWING,
+          ).toBeTruthy(),
+        );
+    });
+
     it('opens at now with an empty name, no amount and no unit', () => {
       expect(host().querySelector('nala-time-row')?.textContent).toContain(
         `Today ${shortTime(NOW)}`,
@@ -128,17 +149,78 @@ describe('HealthSheetComponent', () => {
       expect(find<HTMLInputElement>('name')!.value).toBe('');
       expect(find<HTMLInputElement>('amount')!.value).toBe('');
       expect(['ml', 'mg', 'drops', 'dose'].some(unitOn)).toBe(false);
+      expect(find<HTMLInputElement>('temperature')!.value).toBe('');
     });
 
-    it('keeps Save disabled while the name is blank', async () => {
+    it('keeps Save disabled while both the name and the temperature are blank', async () => {
       expect(save().disabled).toBe(true);
 
       await type('name', '   ');
       expect(save().disabled).toBe(true);
-      expect(text('name-error')).toBe(en.health.errors.nameRequired);
+      expect(text('name-error')).toBe('Enter a name or a temperature');
 
       await type('name', 'Paracetamol');
       expect(save().disabled).toBe(false);
+    });
+
+    it('saves a temperature alone, without a name', async () => {
+      await type('temperature', '38.5');
+      expect(save().disabled).toBe(false);
+      save().click();
+      await settle();
+
+      expect(fieldsSent()).toEqual({
+        time: NOW.toISOString(),
+        name: null,
+        amount: null,
+        unit: null,
+        temperature: 38.5,
+        notes: null,
+      });
+    });
+
+    it('saves a name with a temperature', async () => {
+      await type('name', 'Paracetamol');
+      await type('temperature', '38.2');
+      save().click();
+      await settle();
+
+      expect(fieldsSent()).toMatchObject({ name: 'Paracetamol', temperature: 38.2 });
+    });
+
+    it('refuses an amount without a name', async () => {
+      await type('temperature', '38.5');
+      await type('amount', '2.5');
+      await tapUnit('ml');
+
+      expect(save().disabled).toBe(true);
+      expect(text('amount-error')).toBe('Enter a name for this dose');
+
+      await type('name', 'Paracetamol');
+      expect(save().disabled).toBe(false);
+    });
+
+    for (const temperature of ['29.9', '45.1']) {
+      it(`refuses a temperature of ${temperature}`, async () => {
+        await type('temperature', temperature);
+
+        expect(save().disabled).toBe(true);
+        expect(text('temperature-error')).toBe('30 to 45 °C');
+      });
+    }
+
+    it('refuses a temperature with more than 1 decimal', async () => {
+      await type('temperature', '38.55');
+
+      expect(save().disabled).toBe(true);
+      expect(text('temperature-error')).toBe('1 decimal at most');
+    });
+
+    it('accepts temperatures from 30 to 45', async () => {
+      for (const temperature of ['30', '45']) {
+        await type('temperature', temperature);
+        expect(save().disabled).toBe(false);
+      }
     });
 
     it('saves a dose without an amount, the name trimmed', async () => {
@@ -148,7 +230,14 @@ describe('HealthSheetComponent', () => {
 
       expect(healthEntries.create).toHaveBeenCalledWith(
         'b1',
-        { time: NOW.toISOString(), name: 'Vitamin D', amount: null, unit: null, notes: null },
+        {
+          time: NOW.toISOString(),
+          name: 'Vitamin D',
+          amount: null,
+          unit: null,
+          temperature: null,
+          notes: null,
+        },
         expect.stringMatching(/^[0-9a-f-]{36}$/),
       );
     });
@@ -284,6 +373,7 @@ describe('HealthSheetComponent', () => {
       name: 'Vitamin D',
       amount: 4,
       unit: 'drops',
+      temperature: 37.8,
       notes: 'morning',
     });
 
@@ -294,6 +384,7 @@ describe('HealthSheetComponent', () => {
       expect(find<HTMLInputElement>('name')!.value).toBe('Vitamin D');
       expect(find<HTMLInputElement>('amount')!.value).toBe('4');
       expect(unitOn('drops')).toBe(true);
+      expect(find<HTMLInputElement>('temperature')!.value).toBe('37.8');
       expect(find<HTMLTextAreaElement>('notes-input')!.value).toBe('morning');
     });
 
@@ -302,6 +393,7 @@ describe('HealthSheetComponent', () => {
       await type('name', 'Ibuprofen');
       await type('amount', '50');
       await tapUnit('mg');
+      await type('temperature', '38.4');
       save().click();
       await settle();
 
@@ -310,6 +402,7 @@ describe('HealthSheetComponent', () => {
         name: 'Ibuprofen',
         amount: 50,
         unit: 'mg',
+        temperature: 38.4,
         notes: 'morning',
       });
       const updated = aHealthEntry({ ...healthEntry, name: 'Ibuprofen', amount: 50, unit: 'mg' });

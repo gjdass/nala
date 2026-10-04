@@ -4,16 +4,19 @@
       <mat-icon class="icon" aria-hidden="true">schedule</mat-icon>
       <div class="since">
         <span class="label" data-testid="health-last-label">{{
-          'health.card.lastDose' | transloco
+          'health.card.lastEntry' | transloco
         }}</span>
         <span class="since-value" data-testid="health-since">{{
           sinceSeconds() | nalaHighlightDuration
         }}</span>
       </div>
       <div class="last">
-        <span class="last-value" data-testid="health-last-name">{{ last.name }}</span>
-        @if (last | nalaDose; as dose) {
-          <span class="label" data-testid="health-last-dose">{{ dose }}</span>
+        @let temperature = last.temperature | nalaTemperature;
+        <span class="last-value" data-testid="health-last-value">{{
+          last.name ?? temperature
+        }}</span>
+        @if (last.name !== null && detail(last | nalaDose, temperature); as detail) {
+          <span class="label" data-testid="health-last-detail">{{ detail }}</span>
         }
       </div>
     </div>

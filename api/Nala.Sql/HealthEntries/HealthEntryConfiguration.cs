@@ -20,6 +20,7 @@ public class HealthEntryConfiguration : IEntityTypeConfiguration<HealthEntry>
         healthEntry.Property(m => m.Amount).HasColumnName("amount").HasPrecision(6, 2);
         healthEntry.Property(m => m.Unit).HasColumnName("unit").HasMaxLength(8)
             .HasConversion(u => HealthEntryFields.Format(u!.Value), u => HealthEntryFields.ParseUnit(u));
+        healthEntry.Property(m => m.Temperature).HasColumnName("temperature").HasPrecision(3, 1);
         healthEntry.Property(m => m.Notes).HasColumnName("notes").HasMaxLength(EntryFields.NotesMaxLength);
         healthEntry.Property(m => m.LoggedByUserId).HasColumnName("logged_by_user_id");
         healthEntry.Property(m => m.CreatedAt).HasColumnName("created_at");

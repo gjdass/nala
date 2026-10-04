@@ -39,21 +39,39 @@ import { TimeRowComponent } from '../../../shared/ui/time-row/time-row.component
 export const NAME_MAX_LENGTH = 100;
 const AMOUNT_MIN = 0.01;
 const AMOUNT_MAX = 1000;
+const TEMPERATURE_MIN = 30;
+const TEMPERATURE_MAX = 45;
 
-/** The name is required and at most 100 characters, both once trimmed (as the API counts them). */
+const isBlank = (value: string | null | undefined) => !value?.trim();
+
+/**
+ * The name is at most 100 characters once trimmed (as the API counts them), and required without a
+ * temperature.
+ */
 const name: ValidatorFn = (control) => {
   const length = (control.value as string).trim().length;
   if (length === 0) {
-    return { required: true };
+    return control.parent?.get('temperature')?.value == null ? { required: true } : null;
   }
   return length > NAME_MAX_LENGTH ? { maxlength: true } : null;
 };
 
-/** At most 2 decimals. */
-const twoDecimals: ValidatorFn = (control) => {
-  const value = control.value as number | null;
-  return value === null || Math.round(value * 100) / 100 === value ? null : { decimals: true };
-};
+/** An amount needs a name. */
+const nameForAmount: ValidatorFn = (control) =>
+  control.value !== null && isBlank(control.parent?.get('name')?.value)
+    ? { nameRequired: true }
+    : null;
+
+/** At most `digits` decimals. */
+const decimals =
+  (digits: number): ValidatorFn =>
+  (control) => {
+    const value = control.value as number | null;
+    const factor = 10 ** digits;
+    return value === null || Math.round(value * factor) / factor === value
+      ? null
+      : { decimals: true };
+  };
 
 /** An amount needs a unit. */
 const unitWithAmount: ValidatorFn = (group) => {
@@ -71,13 +89,15 @@ const FORM_ERRORS = ['healthEntryNotFound', 'babyNotFound'];
 const nameKey = (name: string) => name.trim().toLowerCase();
 
 /**
- * The Health sheet (spec 09), adding a dose for the selected baby or editing the one it was
- * opened with: time (now by default), name (required) with the baby's recent names as chips, dose (an
- * optional amount, 0.01 to 1000 with at most 2 decimals, and its unit chips, required with an amount)
- * with "Use last dose" while the amount is empty and the name is a recent one, and notes. No timer: Save is the
- * only action, and × discards the form. Without an amount the unit is saved as null. Closes with the
- * saved dose, or the id of the deleted one; offline, with `queued` once the change is kept on the
- * device. Never suggests or warns about a dose (spec 09).
+ * The Health sheet (spec 09), adding an entry for the selected baby or editing the one it was
+ * opened with: time (now by default), name with the baby's recent names as chips, dose (an optional
+ * amount, 0.01 to 1000 with at most 2 decimals, only with a name, and its unit chips, required with an
+ * amount) with "Use last dose" while the amount is empty and the name is a recent one, temperature
+ * (optional, 30 to 45 °C with at most 1 decimal), and notes; a name or a temperature is required. No
+ * timer: Save is the only action, and × discards the form. Without an amount the unit is saved as
+ * null, and a blank name as null. Closes with the saved entry, or the id of the deleted one; offline,
+ * with `queued` once the change is kept on the device. Never suggests or warns about a dose nor
+ * interprets a temperature (spec 09).
  */
 @Component({
   selector: 'nala-health-sheet',
@@ -119,9 +139,15 @@ export class HealthSheetComponent {
       amount: new FormControl<number | null>(this.healthEntry?.amount ?? null, [
         Validators.min(AMOUNT_MIN),
         Validators.max(AMOUNT_MAX),
-        twoDecimals,
+        decimals(2),
+        nameForAmount,
       ]),
       unit: new FormControl<DoseUnit | null>(this.healthEntry?.unit ?? null),
+      temperature: new FormControl<number | null>(this.healthEntry?.temperature ?? null, [
+        Validators.min(TEMPERATURE_MIN),
+        Validators.max(TEMPERATURE_MAX),
+        decimals(1),
+      ]),
       notes: notesControl(this.healthEntry?.notes ?? ''),
     },
     { validators: unitWithAmount },
@@ -129,6 +155,8 @@ export class HealthSheetComponent {
 
   protected readonly nameMaxLength = NAME_MAX_LENGTH;
   protected readonly units = DOSE_UNITS;
+  protected readonly temperatureMin = TEMPERATURE_MIN;
+  protected readonly temperatureMax = TEMPERATURE_MAX;
   protected readonly edited =
     !!this.healthEntry && this.healthEntry.updatedAt !== this.healthEntry.createdAt;
   /** Saving or deleting. */
@@ -153,6 +181,7 @@ export class HealthSheetComponent {
         amountValue: this.form.controls.amount.value,
         name: this.form.controls.name.errors,
         amount: this.form.controls.amount.errors,
+        temperature: this.form.controls.temperature.errors,
         unitRequired: this.form.hasError('unitRequired'),
       })),
     ),
@@ -167,16 +196,31 @@ export class HealthSheetComponent {
   });
 
   protected readonly nameError = computed(() =>
-    this.state().name?.['maxlength'] ? 'nameTooLong' : 'nameRequired',
+    this.state().name?.['maxlength'] ? 'nameTooLong' : 'nameOrTemperature',
   );
-  protected readonly amountError = computed(() =>
-    this.state().amount?.['decimals'] ? 'amountDecimals' : 'amountRange',
+  protected readonly amountError = computed(() => {
+    const errors = this.state().amount;
+    if (errors?.['decimals']) {
+      return 'amountDecimals';
+    }
+    return errors?.['nameRequired'] && !errors['min'] && !errors['max']
+      ? 'amountNameRequired'
+      : 'amountRange';
+  });
+  protected readonly temperatureError = computed(() =>
+    this.state().temperature?.['decimals'] ? 'temperatureDecimals' : 'temperatureRange',
   );
   protected readonly unitError = computed(() =>
     this.state().unitRequired ? this.transloco.translate('health.errors.unitRequired') : null,
   );
 
   constructor() {
+    // The name and the amount depend on each other and on the temperature (validated once the form
+    // exists, then on every change of the field they depend on).
+    const controls = this.form.controls;
+    controls.temperature.valueChanges.subscribe(() => controls.name.updateValueAndValidity());
+    controls.name.valueChanges.subscribe(() => controls.amount.updateValueAndValidity());
+    controls.name.updateValueAndValidity();
     const babyId = this.healthEntry?.babyId ?? this.store.selected()?.id;
     if (babyId) {
       this.healthEntries.recent(babyId).subscribe((recent) => {
@@ -258,9 +302,10 @@ export class HealthSheetComponent {
     const value = this.form.getRawValue();
     return {
       time: value.time!.toISOString(),
-      name: value.name.trim(),
+      name: value.name.trim() || null,
       amount: value.amount,
       unit: value.amount === null ? null : value.unit,
+      temperature: value.temperature,
       notes: value.notes.trim() || null,
     };
   }

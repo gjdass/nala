@@ -58,7 +58,7 @@ public class HealthEntryRepositoryTests
     };
 
     private async Task<HealthEntry> AddAsync(
-        Baby? baby = null, DateTimeOffset? time = null, User? by = null, string name = "Paracetamol", decimal? amount = null, DoseUnit? unit = null)
+        Baby? baby = null, DateTimeOffset? time = null, User? by = null, string? name = "Paracetamol", decimal? amount = null, DoseUnit? unit = null)
     {
         var healthEntry = new HealthEntry
         {
@@ -95,6 +95,7 @@ public class HealthEntryRepositoryTests
             healthEntry.Name = "Vitamin D";
             healthEntry.Amount = 2.5m;
             healthEntry.Unit = DoseUnit.Drops;
+            healthEntry.Temperature = 38.5m;
             healthEntry.Notes = "morning";
             healthEntry.UpdatedByUserId = _ben.Id;
             healthEntry.UpdatedAt = Now.AddMinutes(1);
@@ -110,12 +111,23 @@ public class HealthEntryRepositoryTests
             Assert.That(entry.HealthEntry.Name, Is.EqualTo("Vitamin D"));
             Assert.That(entry.HealthEntry.Amount, Is.EqualTo(2.5m));
             Assert.That(entry.HealthEntry.Unit, Is.EqualTo(DoseUnit.Drops));
+            Assert.That(entry.HealthEntry.Temperature, Is.EqualTo(38.5m));
             Assert.That(entry.HealthEntry.Notes, Is.EqualTo("morning"));
             Assert.That(entry.HealthEntry.CreatedAt, Is.EqualTo(Now));
             Assert.That(entry.HealthEntry.UpdatedAt, Is.EqualTo(Now.AddMinutes(1)));
             Assert.That(entry.LoggedBy, Is.EqualTo(new UserName(_anna.Id, "Anna")));
             Assert.That(entry.UpdatedBy, Is.EqualTo(new UserName(_ben.Id, "Ben")));
         });
+    }
+
+    [Test]
+    public async Task A_health_entry_without_a_name_is_read_back()
+    {
+        var added = await AddAsync(name: null);
+
+        await using var db = _db();
+        var entry = (await new HealthEntryRepository(db).GetEntryAsync(added.Id))!;
+        Assert.That(entry.HealthEntry.Name, Is.Null);
     }
 
     [Test]
@@ -249,5 +261,14 @@ public class HealthEntryRepositoryTests
         await AddAsync(time: Now.AddHours(-1), name: "Vitamin D");
 
         Assert.That(await RecentAsync(), Is.EqualTo(new[] { new RecentMedicine("Vitamin D", null, null) }));
+    }
+
+    [Test]
+    public async Task Recent_names_ignore_entries_without_a_name()
+    {
+        await AddAsync(time: Now.AddHours(-3), name: "Vitamin D");
+        await AddAsync(time: Now.AddHours(-1), name: null);
+
+        Assert.That((await RecentAsync()).Select(r => r.Name), Is.EqualTo(new[] { "Vitamin D" }));
     }
 }

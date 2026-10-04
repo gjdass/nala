@@ -153,9 +153,10 @@ public class HealthEntryService(IHealthEntryRepository healthEntries, IBabyRepos
     private static void Apply(HealthEntry healthEntry, HealthEntryInput input, User actor, DateTimeOffset now)
     {
         healthEntry.Time = input.Time!.Value;
-        healthEntry.Name = input.Name!.Trim();
+        healthEntry.Name = EntryFields.NormalizeText(input.Name);
         healthEntry.Amount = input.Amount;
         healthEntry.Unit = input.Amount is null ? null : HealthEntryFields.ParseUnit(input.Unit);
+        healthEntry.Temperature = input.Temperature;
         healthEntry.Notes = EntryFields.NormalizeText(input.Notes);
         healthEntry.UpdatedByUserId = actor.Id;
         healthEntry.UpdatedAt = now;

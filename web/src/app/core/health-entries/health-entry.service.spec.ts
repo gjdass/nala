@@ -21,6 +21,7 @@ describe('HealthEntryService', () => {
     name: 'Paracetamol',
     amount: 2.5,
     unit: 'ml',
+    temperature: 38.5,
     notes: null,
   };
   const networkError = { status: 0, statusText: 'Unknown Error' };
@@ -98,6 +99,20 @@ describe('HealthEntryService', () => {
       req.flush(aHealthEntry(), { status: 201, statusText: 'Created' });
 
       expect(await result).toEqual<EntryResult<HealthEntry>>({ ok: true, entry: aHealthEntry() });
+    });
+
+    it('posts a temperature without a name', () => {
+      const temperatureOnly: HealthEntryFields = {
+        ...fields,
+        name: null,
+        amount: null,
+        unit: null,
+        temperature: 38.5,
+      };
+      service.create('b1', temperatureOnly, 'm1').subscribe();
+      const req = http.expectOne('/api/health-entries');
+      expect(req.request.body).toEqual({ id: 'm1', babyId: 'b1', ...temperatureOnly });
+      req.flush(aHealthEntry());
     });
 
     it('generates a client id when none is given', () => {

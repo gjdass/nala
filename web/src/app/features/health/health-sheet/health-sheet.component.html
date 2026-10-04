@@ -62,6 +62,26 @@
     [error]="unitError()"
   />
 
+  <nala-form-row [label]="'health.sheet.temperature' | transloco" [interactive]="false">
+    <mat-form-field rowEditor appearance="outline">
+      <input
+        matInput
+        type="number"
+        inputmode="decimal"
+        step="0.1"
+        [min]="temperatureMin"
+        [max]="temperatureMax"
+        [formControl]="form.controls.temperature"
+        [attr.aria-label]="'health.sheet.temperature' | transloco"
+        data-testid="temperature"
+      />
+      <span matTextSuffix>{{ 'health.sheet.celsius' | transloco }}</span>
+      <mat-error data-testid="temperature-error">{{
+        'health.errors.' + temperatureError() | transloco
+      }}</mat-error>
+    </mat-form-field>
+  </nala-form-row>
+
   <nala-notes-row [control]="form.controls.notes" />
 
   @if (formError(); as code) {

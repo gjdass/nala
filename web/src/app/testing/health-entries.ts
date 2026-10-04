@@ -8,6 +8,7 @@ export const aHealthEntry = (overrides: Partial<HealthEntry> = {}): HealthEntry 
   name: 'Paracetamol',
   amount: 2.5,
   unit: 'ml',
+  temperature: null,
   notes: null,
   loggedBy: { id: 'u1', displayName: 'Anna' },
   updatedBy: { id: 'u1', displayName: 'Anna' },

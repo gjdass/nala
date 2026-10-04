@@ -10,11 +10,14 @@ export interface HealthEntry {
   babyId: string;
   /** ISO date-time (UTC). */
   time: string;
-  name: string;
+  /** Null when not given; at least a name or a temperature. */
+  name: string | null;
   /** 0.01 to 1000, at most 2 decimals; null when not given. */
   amount: number | null;
   /** Only with an amount; null otherwise. */
   unit: DoseUnit | null;
+  /** °C, 30.0 to 45.0, at most 1 decimal; null when not given. */
+  temperature: number | null;
   notes: string | null;
   loggedBy: UserName;
   updatedBy: UserName;
@@ -25,10 +28,11 @@ export interface HealthEntry {
 /** What the Health sheet sends, to add or to edit. */
 export interface HealthEntryFields {
   time: string;
-  name: string;
+  name: string | null;
   amount: number | null;
   /** Sent as null without an amount. */
   unit: DoseUnit | null;
+  temperature: number | null;
   notes: string | null;
 }
 

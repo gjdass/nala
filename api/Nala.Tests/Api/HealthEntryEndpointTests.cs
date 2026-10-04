@@ -72,7 +72,7 @@ public class HealthEntryEndpointTests
     }
 
     private object HealthEntry(
-        Guid? id = null, Guid? babyId = null, int minutesAgo = 10, string? name = "Paracetamol", decimal? amount = 2.5m, string? unit = "ml", string? notes = null) => new
+        Guid? id = null, Guid? babyId = null, int minutesAgo = 10, string? name = "Paracetamol", decimal? amount = 2.5m, string? unit = "ml", decimal? temperature = null, string? notes = null) => new
         {
             id = id ?? Guid.NewGuid(),
             babyId = babyId ?? _leaId,
@@ -80,6 +80,7 @@ public class HealthEntryEndpointTests
             name,
             amount,
             unit,
+            temperature,
             notes,
         };
 
@@ -120,6 +121,44 @@ public class HealthEntryEndpointTests
             Assert.That(healthEntry.GetProperty("updatedBy").GetProperty("displayName").GetString(), Is.EqualTo("Anna"));
             Assert.That(healthEntry.TryGetProperty("createdAt", out _), Is.True);
             Assert.That(healthEntry.TryGetProperty("updatedAt", out _), Is.True);
+        });
+    }
+
+    [Test]
+    public async Task A_temperature_alone_is_created_without_a_name()
+    {
+        var id = Guid.NewGuid();
+
+        var response = await _admin.PostAsJsonAsync("/api/health-entries", HealthEntry(id, name: null, amount: null, unit: null, temperature: 38.5m));
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Created));
+        var created = await JsonAsync(response);
+        var read = await JsonAsync(await _admin.GetAsync($"/api/health-entries/{id}"));
+        Assert.Multiple(() =>
+        {
+            Assert.That(created.GetProperty("name").ValueKind, Is.EqualTo(JsonValueKind.Null));
+            Assert.That(created.GetProperty("temperature").GetDecimal(), Is.EqualTo(38.5m));
+            Assert.That(read.GetProperty("temperature").GetDecimal(), Is.EqualTo(38.5m));
+        });
+    }
+
+    [Test]
+    public async Task A_name_or_a_temperature_is_required_and_the_temperature_is_validated()
+    {
+        var neither = await _admin.PostAsJsonAsync("/api/health-entries", HealthEntry(name: null, amount: null, unit: null));
+        var noName = await _admin.PostAsJsonAsync("/api/health-entries", HealthEntry(name: null, temperature: 45.1m));
+        var decimals = await _admin.PostAsJsonAsync("/api/health-entries", HealthEntry(temperature: 38.55m));
+
+        var neitherErrors = (await JsonAsync(neither)).GetProperty("errors");
+        var noNameErrors = (await JsonAsync(noName)).GetProperty("errors");
+        var decimalsErrors = (await JsonAsync(decimals)).GetProperty("errors");
+        Assert.Multiple(() =>
+        {
+            Assert.That(neither.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
+            Assert.That(neitherErrors.GetProperty("name")[0].GetString(), Is.EqualTo("required"));
+            Assert.That(noNameErrors.GetProperty("amount")[0].GetString(), Is.EqualTo("nameRequired"));
+            Assert.That(noNameErrors.GetProperty("temperature")[0].GetString(), Is.EqualTo("outOfRange"));
+            Assert.That(decimalsErrors.GetProperty("temperature")[0].GetString(), Is.EqualTo("invalid"));
         });
     }
 
@@ -263,6 +302,7 @@ public class HealthEntryEndpointTests
             name = "Ibuprofen",
             amount = 50,
             unit = "mg",
+            temperature = 38.2m,
             notes = "fever",
         });
 
@@ -274,6 +314,7 @@ public class HealthEntryEndpointTests
             Assert.That(healthEntry.GetProperty("name").GetString(), Is.EqualTo("Ibuprofen"));
             Assert.That(healthEntry.GetProperty("amount").GetDecimal(), Is.EqualTo(50m));
             Assert.That(healthEntry.GetProperty("unit").GetString(), Is.EqualTo("mg"));
+            Assert.That(healthEntry.GetProperty("temperature").GetDecimal(), Is.EqualTo(38.2m));
             Assert.That(healthEntry.GetProperty("notes").GetString(), Is.EqualTo("fever"));
             Assert.That(healthEntry.GetProperty("loggedBy").GetProperty("id").GetGuid(), Is.EqualTo(_annaId));
             Assert.That(healthEntry.GetProperty("updatedBy").GetProperty("id").GetGuid(), Is.EqualTo(benId));

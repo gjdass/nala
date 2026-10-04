@@ -639,9 +639,9 @@
       "health": "Santé"
     },
     "card": {
-      "lastDose": "Dernière prise",
+      "lastEntry": "Dernière entrée",
       "empty": {
-        "title": "Aucune prise enregistrée",
+        "title": "Aucune entrée enregistrée",
         "text": "Touchez + pour enregistrer la première."
       }
     },
@@ -650,7 +650,9 @@
       "dose": "Dose",
       "unit": "Unité",
       "recent": "Récents",
-      "lastDose": "Reprendre la dernière dose : {{dose}} ?"
+      "lastDose": "Reprendre la dernière dose : {{dose}} ?",
+      "temperature": "Température",
+      "celsius": "°C"
     },
     "unit": {
       "ml": "ml",
@@ -666,12 +668,16 @@
       "dose": "{{amount}} doses",
       "dose_one": "{{amount}} dose"
     },
+    "temperature": "{{value}} °C",
     "errors": {
-      "nameRequired": "Saisissez un nom",
+      "nameOrTemperature": "Saisissez un nom ou une température",
       "nameTooLong": "100 caractères maximum",
       "amountRange": "De 0,01 à 1000",
       "amountDecimals": "2 décimales maximum",
+      "amountNameRequired": "Saisissez un nom pour cette dose",
       "unitRequired": "Choisissez une unité pour la quantité",
+      "temperatureRange": "De 30 à 45 °C",
+      "temperatureDecimals": "1 décimale maximum",
       "unknown": "Une erreur s'est produite. Vérifiez votre connexion et réessayez.",
       "healthEntryNotFound": "Cette entrée n'existe plus.",
       "babyNotFound": "Ce bébé n'existe plus."

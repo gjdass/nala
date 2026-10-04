@@ -14,6 +14,7 @@ import { SelectedBabyService } from '../../../core/babies/selected-baby.service'
 import { DosePipe } from '../../../core/health-entries/dose';
 import { HealthEntry } from '../../../core/health-entries/health-entry.models';
 import { HealthEntryService } from '../../../core/health-entries/health-entry.service';
+import { TemperaturePipe } from '../../../core/health-entries/temperature';
 import { OfflineQueueService } from '../../../core/offline/offline-queue.service';
 import { loadRecentEntries } from '../../../core/sections/recent-entries';
 import { HighlightDurationPipe } from '../../../core/time/highlight-duration';
@@ -25,10 +26,11 @@ import { SectionEntryDirective } from '../../../shared/ui/section-card/section-e
 import { HealthEntryComponent } from '../health-entry/health-entry.component';
 
 /**
- * The Health card on home (spec 09): the selected baby's doses of the last 24 hours (at least the
- * 3 most recent) in the shared section card, with "Last dose" and the time since the most recent dose
- * (in hours and minutes only, see `HighlightDurationPipe`), on the right that dose's name with its
- * dose under it when it has one, or an empty state without any dose. Reloads after an entry is added,
+ * The Health card on home (spec 09): the selected baby's entries of the last 24 hours (at least the
+ * 3 most recent) in the shared section card, with "Last entry" and the time since the most recent
+ * entry (in hours and minutes only, see `HighlightDurationPipe`), on the right that entry's name with
+ * its dose and temperature under it when it has them, or its temperature alone when it has no name,
+ * or an empty state without any entry. Reloads after an entry is added,
  * edited or deleted, when another baby is selected, and once changes kept on the device (offline)
  * have been sent.
  */
@@ -42,6 +44,7 @@ import { HealthEntryComponent } from '../health-entry/health-entry.component';
     HealthEntryComponent,
     SectionCardComponent,
     SectionEntryDirective,
+    TemperaturePipe,
     TranslocoPipe,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -100,6 +103,11 @@ export class HealthCardComponent {
     if (baby) {
       this.load(baby.id);
     }
+  }
+
+  /** The dose and the temperature, those present, joined. */
+  protected detail(dose: string, temperature: string): string {
+    return [dose, temperature].filter((part) => part !== '').join(' · ');
   }
 
   protected edit(healthEntry: HealthEntry): void {

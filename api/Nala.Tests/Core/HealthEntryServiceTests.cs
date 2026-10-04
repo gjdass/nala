@@ -39,8 +39,8 @@ public class HealthEntryServiceTests
     }
 
     private static HealthEntryInput HealthEntry(
-        int minutesAgo = 10, string? name = "Paracetamol", decimal? amount = 2.5m, string? unit = "ml", string? notes = null) =>
-        new(Now.AddMinutes(-minutesAgo), name, amount, unit, notes);
+        int minutesAgo = 10, string? name = "Paracetamol", decimal? amount = 2.5m, string? unit = "ml", decimal? temperature = null, string? notes = null) =>
+        new(Now.AddMinutes(-minutesAgo), name, amount, unit, temperature, notes);
 
     private async Task<HealthEntryDetails> CreateAsync(User actor, HealthEntryInput input, Guid? id = null) =>
         ((CreateHealthEntryResult.Created)await _service.CreateAsync(actor, id ?? Guid.NewGuid(), _lea.Id, input)).Entry;
@@ -85,6 +85,26 @@ public class HealthEntryServiceTests
     }
 
     [Test]
+    public async Task A_temperature_alone_is_stored_without_a_name()
+    {
+        var entry = await CreateAsync(_anna, HealthEntry(name: "  ", amount: null, unit: null, temperature: 38.5m));
+
+        Assert.That((entry.HealthEntry.Name, entry.HealthEntry.Temperature), Is.EqualTo(((string?)null, (decimal?)38.5m)));
+    }
+
+    [Test]
+    public async Task Updating_replaces_the_temperature()
+    {
+        var created = await CreateAsync(_anna, HealthEntry(temperature: 38.5m));
+
+        var changed = ((UpdateHealthEntryResult.Updated)await _service.UpdateAsync(_ben, created.HealthEntry.Id, HealthEntry(temperature: 37.2m))).Entry;
+        Assert.That(changed.HealthEntry.Temperature, Is.EqualTo(37.2m));
+
+        var cleared = ((UpdateHealthEntryResult.Updated)await _service.UpdateAsync(_ben, created.HealthEntry.Id, HealthEntry())).Entry;
+        Assert.That(cleared.HealthEntry.Temperature, Is.Null);
+    }
+
+    [Test]
     public async Task Blank_notes_are_stored_as_none()
     {
         var entry = await CreateAsync(_anna, HealthEntry(notes: "   "));
@@ -112,7 +132,7 @@ public class HealthEntryServiceTests
 
         Assert.That(
             ((CreateHealthEntryResult.Invalid)result).Errors,
-            Is.EqualTo(new Dictionary<string, string> { ["name"] = "required", ["unit"] = "required" }));
+            Is.EqualTo(new Dictionary<string, string> { ["name"] = "required", ["amount"] = "nameRequired", ["unit"] = "required" }));
         Assert.That(_healthEntries.HealthEntries, Is.Empty);
     }
 

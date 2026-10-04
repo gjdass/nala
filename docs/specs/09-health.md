@@ -1,6 +1,6 @@
 # 09 — Health
 
-Status: in progress (slices 1–2 built as "Medication", slice 3 renamed it Health; slice 4 adds temperature)
+Status: done (slices 1–2 built as "Medication", slice 3 renamed it Health, slice 4 added temperature)
 
 Layout vocabulary (section card, entry sheet, entry list item, suggestion row, highlight duration…) is defined in [04 — App layout](04-app-layout.md). Health has no timer, so spec 04's Timers rules, the mini-bar and `GET /api/live` don't apply; this spec only adds what is specific to Health. It works like Diaper (07): everything not listed here behaves as in Diaper.
 
@@ -17,7 +17,7 @@ Log the baby's health events in a few taps: each dose of medicine or supplement 
 - **The medicine is a free-text name**, not a managed list: no medicine table. Name: optional, 1–100 characters once trimmed, stored as typed (trimmed); blank is stored null.
 - **Dose: amount + unit.** Amount is optional and only with a name: a positive number, at most 2 decimals, 0.01–1000. Unit is one of `ml`, `mg`, `drops`, `dose` (FR ml, mg, gouttes, dose), single choice; required when an amount is given, ignored and stored null without one. An amount without a name is refused (`amount` `nameRequired`). Displayed "2.5 ml", "10 drops", "1 dose".
 - **Dose display:** the amount is formatted in the active language (EN "2.5 ml", FR "2,5 ml"). Drops and doses take the singular for exactly 1 ("1 drop" / "10 drops", "1 dose" / "2 doses"; FR "1 goutte" / "10 gouttes", "1 dose" / "2 doses"); ml and mg never change.
-- **Temperature:** optional, in degrees Celsius only (metric, 00), 30.0–45.0, at most 1 decimal, stored as typed. Displayed in the active language with a no-break space: EN "38.5 °C", FR "38,5 °C". The app never interprets it: no fever threshold, no colour, no warning.
+- **Temperature:** optional, in degrees Celsius only (metric, 00), 30.0–45.0, at most 1 decimal, stored as typed. Displayed in the active language, always with one decimal, with a no-break space: EN "38.5 °C" / "38.0 °C", FR "38,5 °C". The app never interprets it: no fever threshold, no colour, no warning.
 - **Recent names:** the sheet shows the baby's recently used names as one-tap chips under the Name field (shared `nala-chip-choice-row`): up to **5 distinct names** (compared case-insensitively), most recently given first, from entries that have a name. Tapping a chip fills the Name field with its spelling. The row is labelled "Recent" (FR « Récents »). The chip matching the Name field (trimmed, case-insensitive) is shown selected; tapping it again keeps the name (the row is not clearable). Shown when editing an entry too. The chips come from `GET /api/babies/{babyId}/health-entries/recent`; offline or on error the row is simply not shown.
 - **Last dose suggestion:** when the Name field matches a recent name (case-insensitive) and the amount is empty, a suggestion row offers that name's last dose ("Use last dose: 2.5 ml? [Yes]", shared `nala-suggestion-row`, as Feed's bottle amount). Yes fills amount and unit. No suggestion when that name's latest entry had no amount. Shown when editing an entry too.
 - **Health endpoints:** `POST /api/health-entries` with `{ id, babyId, time, name, amount, unit, temperature, notes }` → 201; existing id → 200 with the stored entry unchanged (idempotent re-send). `PUT /api/health-entries/{id}` with `{ time, name, amount, unit, temperature, notes }` replaces every field → 200. `DELETE /api/health-entries/{id}` → 204; `GET /api/health-entries/{id}` → 200; unknown → 404 `{ code: "healthEntryNotFound" }`. `GET /api/babies/{babyId}/health-entries?cursor=&limit=` → `{ entries, next }`, newest first (time, then id), 20 per page by default, 1–50; malformed cursor → 400 `cursor: invalid`. `GET /api/babies/{babyId}/health-entries/recent` → `[{ name, amount, unit }]` (the 5 distinct names above, each with the dose of its latest entry with that name; entries at the same time are ordered by id, as in the list). Unknown baby → 404 `{ code: "babyNotFound" }`. Each entry carries `loggedBy` and `updatedBy` (`{ id, displayName }`); `name` and `temperature` are null when not given.
@@ -25,7 +25,7 @@ Log the baby's health events in a few taps: each dose of medicine or supplement 
 - **Validation codes:** `id` / `babyId` `required`, `time` `required` / `inFuture` (1 min tolerance), `name` `required` (no name and no temperature) / `tooLong`, `amount` `outOfRange` / `invalid` (more than 2 decimals) / `nameRequired` (amount without name), `unit` `required` (amount without unit) / `invalid`, `temperature` `outOfRange` / `invalid` (more than 1 decimal), `notes` `tooLong` (spec 04, 1000).
 - **Section preferences:** the section key changes from `medication` to `health`. Each user's stored row for `medication` becomes `health` with the same position and visibility (a user who hid or moved the section keeps that).
 - **Adding:** the sheet opens with the time at now, an empty name, no amount, no unit, no temperature. Save is disabled until a name or a temperature is filled. × simply discards.
-- **Card highlight:** "Last entry" (FR "Dernière entrée") with the time since the most recent entry (latest time among the card's loaded entries), in spec 04's highlight duration format; on the right, in an M3 display/headline typescale, that entry's name, with a label under it made of its dose and its temperature joined by " · " ("2.5 ml · 38.5 °C") when it has either; an entry without a name shows its temperature in the headline typescale and no label. With no entry at all: an empty state.
+- **Card highlight:** "Last entry" (FR "Dernière entrée") with the time since the most recent entry (latest time among the card's loaded entries), in spec 04's highlight duration format; on the right, in an M3 display/headline typescale, that entry's name, with a label under it made of its dose and its temperature joined by " · " ("2.5 ml · 38.5 °C") when it has either; an entry without a name shows its temperature in the headline typescale and no label. With no entry at all: an empty state, "No entry logged yet" (FR « Aucune entrée enregistrée »).
 - **Offline:** add, edit and delete go through the shared device queue (spec 05 Offline), with the same snackbars.
 - **No medical advice:** the app never suggests a dose, an interval or a maximum, never interprets a temperature, and never warns about either.
 - **No reminders, no notifications, no photos**, ever.
@@ -44,22 +44,22 @@ Log the baby's health events in a few taps: each dose of medicine or supplement 
 Each item becomes at least one test, written failing first. Criteria checked during slices 1–2 stay checked; their tests are renamed in slice 3 and adapted in slice 4 where the wording changed.
 
 ### Health card
-- [ ] Highlight: "Last entry" with the time since the most recent entry, updating live, in hours and minutes only ("<1m", ">24h" at the ends), and on the right that entry's name with its dose and temperature under it when it has them, or its temperature alone when it has no name.
+- [x] Highlight: "Last entry" with the time since the most recent entry, updating live, in hours and minutes only ("<1m", ">24h" at the ends), and on the right that entry's name with its dose and temperature under it when it has them, or its temperature alone when it has no name.
 - [x] With no entry at all, an empty state is shown.
 - [x] + opens the Health sheet directly (one kind).
 
 ### Health sheet
-- [ ] Rows: Time (shared `nala-time-row`, at now when adding), Name (text field), recent-name chips, Dose (amount field), Unit (unit chips), Temperature (°C field), Notes.
-- [ ] Save is disabled while both the name and the temperature are blank, when an amount is given without a name, when an amount is outside 0.01–1000 or has more than 2 decimals, when an amount has no unit, when a temperature is outside 30.0–45.0 or has more than 1 decimal, and when the time is in the future (1 min tolerance).
-- [ ] An entry with only a temperature, only a name, or both can be saved.
+- [x] Rows: Time (shared `nala-time-row`, at now when adding), Name (text field), recent-name chips, Dose (amount field), Unit (unit chips), Temperature (°C field), Notes.
+- [x] Save is disabled while both the name and the temperature are blank, when an amount is given without a name, when an amount is outside 0.01–1000 or has more than 2 decimals, when an amount has no unit, when a temperature is outside 30.0–45.0 or has more than 1 decimal, and when the time is in the future (1 min tolerance).
+- [x] An entry with only a temperature, only a name, or both can be saved.
 - [x] The recent-name chips list up to 5 distinct names, most recent first; tapping one fills the name. Without recent names (none yet, offline, error) the row is hidden.
 - [x] When the name matches a recent name and the amount is empty, a suggestion row offers its last dose; Yes fills amount and unit. No suggestion when that name's latest dose had no amount. Shown when editing an entry too.
 - [x] Clearing the amount saves the unit as null.
-- [ ] An existing entry opens with its values (temperature included); Save replaces them; × discards the form edits.
+- [x] An existing entry opens with its values (temperature included); Save replaces them; × discards the form edits.
 - [x] Delete deletes it after confirmation.
 
 ### Entry list item
-- [ ] `medical_services` icon, headline: the time and the name ("2:30 PM · Paracetamol"), or the time and the temperature when there is no name ("2:30 PM · 38.5 °C"); supporting text: the dose, the temperature (only when the headline shows the name) and the notes, those that exist, joined by " · " (one line, ellipsis).
+- [x] `medical_services` icon, headline: the time and the name ("2:30 PM · Paracetamol"), or the time and the temperature when there is no name ("2:30 PM · 38.5 °C"); supporting text: the dose, the temperature (only when the headline shows the name) and the notes, those that exist, joined by " · " (one line, ellipsis).
 - [x] Entries logged by a deleted account still show that person's display name.
 
 ### Rename
@@ -69,9 +69,9 @@ Each item becomes at least one test, written failing first. Criteria checked dur
 - [x] Stored section preferences for `medication` become `health` with the same position and visibility; the default order is Feed, Sleep, Diaper, Pump, Growth, Health.
 
 ### API and validation
-- [ ] Create, idempotent re-send, update, delete, get, paged list (newest first, cursor, limit 1–50) with the codes above, temperature included.
-- [ ] Name or temperature required; amount without name refused; temperature range and decimals validated.
-- [ ] Recent names: at most 5, distinct case-insensitively (the latest spelling wins), most recently given first, each with the dose of its latest entry with that name; entries without a name are ignored; only that baby's entries.
+- [x] Create, idempotent re-send, update, delete, get, paged list (newest first, cursor, limit 1–50) with the codes above, temperature included.
+- [x] Name or temperature required; amount without name refused; temperature range and decimals validated.
+- [x] Recent names: at most 5, distinct case-insensitively (the latest spelling wins), most recently given first, each with the dose of its latest entry with that name; entries without a name are ignored; only that baby's entries.
 - [x] Unit is ignored and returned null without an amount.
 - [x] Any member can edit or delete any entry; changes are saved with who edited it and when.
 - [x] Entries are deleted with their baby (03).
@@ -86,7 +86,7 @@ Each slice goes red → green → commit on `master`, in this order.
 - [x] **Slice 1 — Medication entity, sheet, card and history.** `Medication` entity + migration (client UUID, baby FK with cascade, time, name, amount, unit, notes, logged by, created at, updated at/by). Core `MedicationService` (validation, create idempotent, update, delete, paged list) reusing `Nala.Core/Entries`. Endpoints `POST/PUT/DELETE/GET /api/medications…` and `GET /api/babies/{babyId}/medications`. Web: `medication` section registered (one kind, + opens the sheet), `MedicationService`, Medication sheet (time, name, amount + unit, notes, delete), card highlight "Last dose" + empty state, entry list item, history; add / edit / delete through the shared offline queue.
 - [x] **Slice 2 — Recent names and last dose.** `GET /api/babies/{babyId}/medications/recent`. Web: recent-name chips under the Name field, last-dose suggestion row.
 - [x] **Slice 3 — Rename Medication to Health (no behaviour change).** API: `Medication` → `HealthEntry` (and `MedicationService`, `MedicationFields`, `IMedicationRepository`, `MedicationRepository`, `MedicationConfiguration`, `MedicationEndpoints`, `MedicationEntry` to their `HealthEntry…` names; `RecentMedication` → `RecentMedicine`, `MedicationUnit` → `DoseUnit`), folders `HealthEntries`, routes `health-entries`, code `healthEntryNotFound`. Migration `RenameMedicationsToHealthEntries`: rename table `medications` → `health_entries` with its primary key, indexes and foreign keys, and update `user_section_preferences` rows with key `medication` to `health`. `SectionKeys`: `medication` → `health`. Web: `core/medications` → `core/health-entries` (`HealthEntryService`, models, dose formatter), `features/medication` → `features/health` (`health-card`, `health-sheet`, `health-entry`, `health-history`, `health.section`), `SECTION_KEYS`, colour token `health` in `_sections.scss`, section/kind icon `medical_services`, i18n ids and labels Health / Santé, test fixtures (`testing/health-entries.ts`). Tests renamed with the code, and new tests for the migration (table renamed, rows kept, preference key moved) and the removed old routes. Covers: the Rename criteria.
-- [ ] **Slice 4 — Temperature, name optional.** `temperature` column (nullable `numeric(3,1)`) by migration, `name` column made nullable. Core: temperature validation, name-or-temperature rule, amount needs a name, recent names skip entries without a name. Web: Temperature row in the sheet, Save rules, card highlight "Last entry" with dose · temperature, list item headline/supporting text, temperature formatter (EN/FR). Covers: the card highlight, sheet rows / Save / name-or-temperature / edit criteria, list item criterion, the API create/validation/recent criteria.
+- [x] **Slice 4 — Temperature, name optional.** `temperature` column (nullable `numeric(3,1)`) by migration, `name` column made nullable. Core: temperature validation, name-or-temperature rule, amount needs a name, recent names skip entries without a name. Web: Temperature row in the sheet, Save rules, card highlight "Last entry" with dose · temperature, list item headline/supporting text, temperature formatter (EN/FR). Covers: the card highlight, sheet rows / Save / name-or-temperature / edit criteria, list item criterion, the API create/validation/recent criteria.
 
 ## Data
 
