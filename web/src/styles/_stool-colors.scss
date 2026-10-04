@@ -1,0 +1,10 @@
+// Colour dots of a dirty diaper's colour chips (spec 07): the real stool colours, not theme accents,
+// so they are the same in light and dark (the dot is outlined to stay visible on any surface).
+html {
+  --nala-stool-yellow: #e8c547;
+  --nala-stool-green: #6b8e23;
+  --nala-stool-brown: #8b5a2b;
+  --nala-stool-black: #212121;
+  --nala-stool-red: #c62828;
+  --nala-stool-white: #fafafa;
+}

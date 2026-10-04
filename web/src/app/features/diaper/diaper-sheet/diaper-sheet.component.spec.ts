@@ -44,6 +44,15 @@ describe('DiaperSheetComponent', () => {
     rash().click();
     await settle();
   };
+  const detail = (name: 'color' | 'consistency', option: string) => find(`${name}-${option}`);
+  const tapDetail = async (name: 'color' | 'consistency', option: string) => {
+    detail(name, option)!
+      .querySelector<HTMLElement>('.mdc-evolution-chip__action--primary')!
+      .click();
+    await settle();
+  };
+  const detailOn = (name: 'color' | 'consistency', option: string) =>
+    detail(name, option)!.classList.contains('mat-mdc-chip-selected');
   const fieldsSent = () => (diapers.create.mock.calls.at(-1) ?? [])[1];
 
   const render = async (entry: Diaper | null = null) => {
@@ -117,7 +126,15 @@ describe('DiaperSheetComponent', () => {
 
       expect(diapers.create).toHaveBeenCalledWith(
         'b1',
-        { time: NOW.toISOString(), wet: false, dirty: false, rash: false, notes: null },
+        {
+          time: NOW.toISOString(),
+          wet: false,
+          dirty: false,
+          rash: false,
+          color: null,
+          consistency: null,
+          notes: null,
+        },
         expect.stringMatching(/^[0-9a-f-]{36}$/),
       );
     });
@@ -147,6 +164,66 @@ describe('DiaperSheetComponent', () => {
       await settle();
 
       expect(fieldsSent()).toMatchObject({ rash: true });
+    });
+
+    it('shows Colour and Consistency only while Dirty is on', async () => {
+      expect(host().querySelectorAll('nala-chip-choice-row')).toHaveLength(0);
+      expect(host().textContent).not.toContain('Colour');
+
+      await tapChip('dirty');
+      expect(host().querySelectorAll('nala-chip-choice-row')).toHaveLength(2);
+      expect(host().textContent).toContain('Colour');
+      expect(host().textContent).toContain('Consistency');
+      for (const color of ['yellow', 'green', 'brown', 'black', 'red', 'white']) {
+        expect(detail('color', color)).toBeTruthy();
+      }
+      for (const consistency of ['liquid', 'runny', 'soft', 'firm', 'hard']) {
+        expect(detail('consistency', consistency)).toBeTruthy();
+      }
+      expect(text('color-yellow')).toBe('Yellow');
+      expect(text('consistency-runny')).toBe('Runny');
+
+      await tapChip('dirty');
+      expect(host().querySelectorAll('nala-chip-choice-row')).toHaveLength(0);
+    });
+
+    it('shows a colour dot on each colour chip', async () => {
+      await tapChip('dirty');
+
+      expect(find('color-red-dot')?.getAttribute('style')).toContain('var(--nala-stool-red)');
+      expect(find('consistency-soft-dot')).toBeNull();
+    });
+
+    it('sends the chosen colour and consistency of a dirty diaper, both optional', async () => {
+      await tapChip('dirty');
+      save().click();
+      await settle();
+      expect(fieldsSent()).toMatchObject({ dirty: true, color: null, consistency: null });
+      saved.next({ ok: false, errors: { form: 'unknown' } });
+      await settle();
+
+      await tapDetail('color', 'green');
+      await tapDetail('consistency', 'runny');
+      save().click();
+      await settle();
+      expect(fieldsSent()).toMatchObject({ dirty: true, color: 'green', consistency: 'runny' });
+    });
+
+    it('clears the details when Dirty is turned off, and saves them as null', async () => {
+      await tapChip('dirty');
+      await tapDetail('color', 'black');
+      await tapDetail('consistency', 'hard');
+
+      await tapChip('dirty');
+      save().click();
+      await settle();
+      expect(fieldsSent()).toMatchObject({ dirty: false, color: null, consistency: null });
+      saved.next({ ok: false, errors: { form: 'unknown' } });
+      await settle();
+
+      await tapChip('dirty');
+      expect(detailOn('color', 'black')).toBe(false);
+      expect(detailOn('consistency', 'hard')).toBe(false);
     });
 
     it('refuses a time in the future (1 minute tolerance)', async () => {
@@ -212,6 +289,8 @@ describe('DiaperSheetComponent', () => {
       wet: false,
       dirty: true,
       rash: true,
+      color: 'yellow',
+      consistency: 'soft',
       notes: 'after the bath',
     });
 
@@ -220,6 +299,7 @@ describe('DiaperSheetComponent', () => {
 
       expect(fixture.componentInstance.form.controls.time.value).toEqual(time);
       expect([chipOn('wet'), chipOn('dirty'), rashOn()]).toEqual([false, true, true]);
+      expect([detailOn('color', 'yellow'), detailOn('consistency', 'soft')]).toEqual([true, true]);
       expect(find<HTMLTextAreaElement>('notes-input')!.value).toBe('after the bath');
     });
 
@@ -235,6 +315,8 @@ describe('DiaperSheetComponent', () => {
         wet: true,
         dirty: true,
         rash: false,
+        color: 'yellow',
+        consistency: 'soft',
         notes: 'after the bath',
       });
       const updated = aDiaper({ ...diaper, wet: true, rash: false });

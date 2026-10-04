@@ -19,6 +19,10 @@ public class DiaperConfiguration : IEntityTypeConfiguration<Diaper>
         diaper.Property(d => d.Wet).HasColumnName("wet");
         diaper.Property(d => d.Dirty).HasColumnName("dirty");
         diaper.Property(d => d.Rash).HasColumnName("rash");
+        diaper.Property(d => d.Color).HasColumnName("color").HasMaxLength(8)
+            .HasConversion(c => DiaperFields.Format(c!.Value), c => DiaperFields.ParseColor(c));
+        diaper.Property(d => d.Consistency).HasColumnName("consistency").HasMaxLength(8)
+            .HasConversion(c => DiaperFields.Format(c!.Value), c => DiaperFields.ParseConsistency(c));
         diaper.Property(d => d.Notes).HasColumnName("notes").HasMaxLength(EntryFields.NotesMaxLength);
         diaper.Property(d => d.LoggedByUserId).HasColumnName("logged_by_user_id");
         diaper.Property(d => d.CreatedAt).HasColumnName("created_at");

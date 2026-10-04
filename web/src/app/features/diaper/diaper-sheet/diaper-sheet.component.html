@@ -8,6 +8,25 @@
     [controls]="type"
   />
 
+  @if (dirty()) {
+    <nala-chip-choice-row
+      name="color"
+      optionLabel="diaper.color."
+      dotToken="--nala-stool-"
+      [label]="'diaper.sheet.color' | transloco"
+      [options]="colors"
+      [control]="form.controls.color"
+    />
+
+    <nala-chip-choice-row
+      name="consistency"
+      optionLabel="diaper.consistency."
+      [label]="'diaper.sheet.consistency' | transloco"
+      [options]="consistencies"
+      [control]="form.controls.consistency"
+    />
+  }
+
   <nala-switch-row
     name="diaper-rash"
     [label]="'diaper.sheet.rash' | transloco"

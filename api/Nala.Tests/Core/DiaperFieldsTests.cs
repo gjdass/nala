@@ -37,4 +37,28 @@ public class DiaperFieldsTests
         Assert.That(Validate(Diaper(notes: $"  {new string('a', 1000)}  ")), Is.Empty);
         Assert.That(Validate(Diaper(notes: new string('a', 1001))), Is.EqualTo(new Dictionary<string, string> { ["notes"] = "tooLong" }));
     }
+
+    [Test]
+    public void Known_colour_and_consistency_of_a_dirty_diaper_are_valid()
+    {
+        foreach (var color in new[] { "yellow", "green", "brown", "black", "red", "white" })
+        {
+            Assert.That(Validate(Diaper() with { Dirty = true, Color = color }), Is.Empty, color);
+        }
+
+        foreach (var consistency in new[] { "liquid", "runny", "soft", "firm", "hard" })
+        {
+            Assert.That(Validate(Diaper() with { Dirty = true, Consistency = consistency }), Is.Empty, consistency);
+        }
+    }
+
+    [Test]
+    public void Unknown_colour_or_consistency_of_a_dirty_diaper_is_invalid() =>
+        Assert.That(
+            Validate(Diaper() with { Dirty = true, Color = "purple", Consistency = "Soft" }),
+            Is.EqualTo(new Dictionary<string, string> { ["color"] = "invalid", ["consistency"] = "invalid" }));
+
+    [Test]
+    public void Colour_and_consistency_are_not_checked_when_not_dirty() =>
+        Assert.That(Validate(Diaper() with { Dirty = false, Color = "purple", Consistency = "gooey" }), Is.Empty);
 }

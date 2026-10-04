@@ -8,6 +8,8 @@ export const aDiaper = (overrides: Partial<Diaper> = {}): Diaper => ({
   wet: true,
   dirty: false,
   rash: false,
+  color: null,
+  consistency: null,
   notes: null,
   loggedBy: { id: 'u1', displayName: 'Anna' },
   updatedBy: { id: 'u1', displayName: 'Anna' },

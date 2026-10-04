@@ -32,7 +32,7 @@ Status: `idea` → `specified` → `in progress` → `done`. A feature moves to 
 | 04 | App layout & section pattern (home cards, entry sheet, mini-bar, bottom navigation, timers) | [04-app-layout.md](04-app-layout.md) | done | Shared by every section, including the timer rules (live or not, Save never stops a timer, no timer on cards) for every section with timers. Slice 11: no timer on cards, mini-bar inside the nav pill. Slices 12–13: one `/api/live` call for every section, 5 s while a timer runs / 30 s otherwise. |
 | 05 | Feed | [05-feed.md](05-feed.md) | done | **Hard requirement:** breast feeding has two independent per-side timers (left/right), side by side in the Breastfeed sheet. A single timer with a "side" field is not acceptable. |
 | 06 | Sleep | [06-sleep.md](06-sleep.md) | done | One kind, single Start/Stop timer, start/end times, notes. |
-| 07 | Diaper | [07-diaper.md](07-diaper.md) | in progress | Time, Wet and Dirty as two independent toggles (neither = dry), diaper-rash toggle, notes; a dirty diaper has optional colour and consistency. No timer. |
+| 07 | Diaper | [07-diaper.md](07-diaper.md) | done | Time, Wet and Dirty as two independent toggles (neither = dry), diaper-rash toggle, notes; a dirty diaper has optional colour and consistency. No timer. |
 | 08 | Medication | — | idea | |
 | 09 | Growth | — | idea | Birth weight/length/head circumference are stored on the baby profile (03) and must appear as the starting point of the growth history. **Hard requirement:** simple measurement entries over time — weight, height, head circumference, milestones. Raw logging only, no percentile/trend charts. |
 | 10 | Pump | — | idea | **Hard requirement:** pumping sessions with volume and history. Timers follow spec 04's Timers rules. |

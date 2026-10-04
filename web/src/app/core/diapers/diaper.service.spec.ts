@@ -21,6 +21,8 @@ describe('DiaperService', () => {
     wet: true,
     dirty: true,
     rash: false,
+    color: 'brown',
+    consistency: 'soft',
     notes: null,
   };
   const networkError = { status: 0, statusText: 'Unknown Error' };

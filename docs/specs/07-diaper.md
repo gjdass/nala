@@ -1,6 +1,6 @@
 # 07 — Diaper
 
-Status: in progress
+Status: done
 
 Layout vocabulary (section card, entry sheet, entry list item, highlight duration…) is defined in [04 — App layout](04-app-layout.md). Diaper has no timer, so spec 04's Timers rules, the mini-bar and `GET /api/live` don't apply; this spec only adds what is specific to Diaper.
 
@@ -16,9 +16,9 @@ Log the selected baby's diaper changes in a few taps (wet, dirty, both or dry, d
 - **Dirty details:** two optional single-choice rows (shared `nala-chip-choice-row`), shown only while Dirty is on:
   - **Colour** (`yellow`, `green`, `brown`, `black`, `red`, `white`), each chip with a small colour dot. Black, red and white are the colours paediatricians flag.
   - **Consistency** (`liquid`, `runny`, `soft`, `firm`, `hard`).
-  - Turning Dirty off hides them; Save then sends them as null. The API ignores them when `dirty` is false and returns them null (like Feed's fields of another kind).
+  - Turning Dirty off hides and clears them; Save then sends them as null. The API ignores them when `dirty` is false (not validated, stored and returned null, like Feed's fields of another kind).
 - **Diaper endpoints:** `POST /api/diapers` with `{ id, babyId, time, wet, dirty, rash, color, consistency, notes }` → 201; sending an existing id again → 200 with the stored diaper unchanged (idempotent re-send). `PUT /api/diapers/{id}` with `{ time, wet, dirty, rash, color, consistency, notes }` replaces every field → 200. `DELETE /api/diapers/{id}` → 204; `GET /api/diapers/{id}` → 200; unknown diaper → 404 `{ code: "diaperNotFound" }`. `GET /api/babies/{babyId}/diapers?cursor=&limit=` → `{ entries, next }`, newest first (time, then id), 20 per page by default, 1–50; malformed cursor → 400 `cursor: invalid`. Unknown baby → 404 `{ code: "babyNotFound" }`. Each diaper carries `loggedBy` and `updatedBy` (`{ id, displayName }`).
-- **Validation codes:** `id` / `babyId` `required`, `time` `required` / `inFuture` (1 min tolerance), `color` `invalid`, `consistency` `invalid`, `notes` `tooLong` (spec 04, 1000). `wet`, `dirty`, `rash` default to false when missing.
+- **Validation codes:** `id` / `babyId` `required`, `time` `required` / `inFuture` (1 min tolerance), `color` `invalid`, `consistency` `invalid` (only checked when `dirty`), `notes` `tooLong` (spec 04, 1000). `wet`, `dirty`, `rash` default to false when missing.
 - **Adding:** the sheet opens with the time at now, every toggle off, no details. Save is the only action (no timer, so × simply discards).
 - **Card highlight:** "Last change" (FR "Dernier change") with the time since the most recent diaper (latest time among the card's loaded entries; no separate endpoint), in spec 04's highlight duration format ("1h 20m", "45m", "<1m", ">24h"); on the right, in an M3 display/headline typescale, that diaper's type ("Wet + dirty"…), with a "Rash" label (FR "Érythème") under it when its rash toggle is on. With no diaper at all: an empty state.
 - **Offline:** add, edit and delete go through the shared device queue (spec 05 Offline), with the same snackbars.
@@ -43,19 +43,19 @@ Each item becomes at least one test, written failing first.
 ### Diaper sheet
 - [x] Rows: Time (shared `nala-time-row`, at now when adding), Type (Wet and Dirty toggle chips), Diaper rash switch, Notes.
 - [x] Wet and Dirty are independent: either, both or neither can be on; with neither, the diaper is saved as dry.
-- [ ] Colour and Consistency chip rows show only while Dirty is on; both are optional, single choice, and colour chips show a colour dot.
-- [ ] Turning Dirty off hides the details and saves them as null.
+- [x] Colour and Consistency chip rows show only while Dirty is on; both are optional, single choice, and colour chips show a colour dot.
+- [x] Turning Dirty off hides the details and saves them as null.
 - [x] Save is disabled when the time is in the future (1 min tolerance).
 - [x] An existing diaper opens with its values; Save replaces them; × discards the form edits.
 - [x] Delete deletes it after confirmation.
 
 ### Entry list item
-- [ ] `baby_changing_station` icon, headline: the time and the type ("2:30 PM · Wet + dirty", "Dry"); supporting text: colour · consistency · "Rash" when present, otherwise the notes (one line, ellipsis).
+- [x] `baby_changing_station` icon, headline: the time and the type ("2:30 PM · Wet + dirty", "Dry"); supporting text: colour · consistency · "Rash" when present, otherwise the notes (one line, ellipsis).
 - [x] Entries logged by a deleted account still show that person's display name.
 
 ### API and validation
 - [x] Create, idempotent re-send, update, delete, get, paged list (newest first, cursor, limit 1–50) with the codes above.
-- [ ] Colour and consistency are ignored and returned null when `dirty` is false; unknown values → `invalid`.
+- [x] Colour and consistency are ignored and returned null when `dirty` is false; unknown values → `invalid`.
 - [x] Any member can edit or delete any diaper; changes are saved with who edited it and when.
 - [x] Diapers are deleted with their baby (03).
 
@@ -67,7 +67,7 @@ Each item becomes at least one test, written failing first.
 Each slice goes red → green → commit on `master`, in this order.
 
 - [x] **Slice 1 — Diaper entity, sheet, card and history.** `Diaper` entity + migration (client UUID, baby FK with cascade, time, wet, dirty, rash, notes, logged by, created at, updated at/by). Core `DiaperService`: validation, create (idempotent), update, delete, paged list, reusing `Nala.Core/Entries`. Endpoints `POST/PUT/DELETE/GET /api/diapers…` and `GET /api/babies/{babyId}/diapers`. Web: `diaper` section registered (card, history, one kind, so + opens the sheet), `DiaperService`, Diaper sheet (time, Wet / Dirty toggle chips, rash toggle, notes, delete), card highlight "Last change" + type + empty state, entry list item (headline with type, notes as supporting text), history; add / edit / delete through the shared offline queue. Covers: card, sheet rows / toggles / validation / edit / delete, list item headline, API and validation (without colour / consistency), offline.
-- [ ] **Slice 2 — Dirty details.** `color` and `consistency` columns + migration, Core validation (`invalid`, nulled when not dirty). Web: Colour (with colour dots) and Consistency `nala-chip-choice-row`s shown while Dirty is on, cleared when it's turned off; list item supporting text (colour · consistency · "Rash", else notes). Covers: the dirty details criteria and the list item supporting text.
+- [x] **Slice 2 — Dirty details.** `color` and `consistency` columns + migration, Core validation (`invalid`, nulled when not dirty). Web: Colour (with colour dots) and Consistency `nala-chip-choice-row`s shown while Dirty is on, cleared when it's turned off; list item supporting text (colour · consistency · "Rash", else notes). Covers: the dirty details criteria and the list item supporting text.
 
 ## Data
 
@@ -80,6 +80,8 @@ Each slice goes red → green → commit on `master`, in this order.
 - Section colour token: `diaper` (cyan palette, already in `_sections.scss`), with its container tokens.
 - Reused: section card, entry sheet, `nala-time-row`, `nala-chip-choice-row`, notes row, entry list item, history list, empty state, confirm dialog.
 - New shared components (slice 1): **`nala-chip-toggles-row`** (a form row of multi-select filter chips, each chip bound to its own boolean control: Wet / Dirty in the "Type" row, FR "Type") and **`nala-switch-row`** (a form row with a trailing switch: Diaper rash).
+- Colour dots (slice 2): `nala-chip-choice-row` takes an optional `dotToken` (a CSS custom-property prefix); with it each chip shows an outlined dot in `var(<dotToken><option>)`, inside the label so it stays visible next to the selected chip's checkmark. The Colour row uses `--nala-stool-<colour>`, defined in `src/styles/_stool-colors.scss` as the real stool colours, the same in light and dark.
+- Labels: Colour / Couleur, Consistency / Consistance; colours Yellow, Green, Brown, Black, Red, White (FR Jaune, Vert, Marron, Noir, Rouge, Blanc); consistencies Liquid, Runny, Soft, Firm, Hard (FR Liquide, Semi-liquide, Molle, Ferme, Dure).
 - All text through i18n (EN/FR).
 
 ## Out of scope

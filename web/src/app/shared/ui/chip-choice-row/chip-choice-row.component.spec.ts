@@ -21,6 +21,23 @@ class Host {
   readonly control = new FormControl<string | null>('dinner');
 }
 
+@Component({
+  imports: [ChipChoiceRowComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `<nala-chip-choice-row
+    label="Colour"
+    name="color"
+    optionLabel="diaper.color."
+    dotToken="--nala-stool-"
+    [options]="options"
+    [control]="control"
+  />`,
+})
+class DotHost {
+  readonly options = ['yellow', 'black'];
+  readonly control = new FormControl<string | null>('black');
+}
+
 describe('ChipChoiceRowComponent', () => {
   let fixture: ComponentFixture<Host>;
 
@@ -67,5 +84,22 @@ describe('ChipChoiceRowComponent', () => {
 
     expect(fixture.componentInstance.control.value).toBeNull();
     expect(selected('dinner')).toBe(false);
+  });
+
+  it('shows no dot without a dot token', () => {
+    expect(host().querySelector('[data-testid="meal-breakfast-dot"]')).toBeNull();
+  });
+
+  it('shows a colour dot per option from the dot token, also on the selected chip', async () => {
+    const dots = TestBed.createComponent(DotHost);
+    await dots.whenStable();
+    const dot = (option: string) =>
+      (dots.nativeElement as HTMLElement).querySelector<HTMLElement>(
+        `[data-testid="color-${option}"] [data-testid="color-${option}-dot"]`,
+      );
+
+    expect(dot('yellow')?.getAttribute('style')).toContain('var(--nala-stool-yellow)');
+    expect(dot('black')?.getAttribute('style')).toContain('var(--nala-stool-black)');
+    expect(dot('black')?.getAttribute('aria-hidden')).toBe('true');
   });
 });

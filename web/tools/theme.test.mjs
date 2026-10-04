@@ -40,6 +40,12 @@ describe('global theme', () => {
     }
   });
 
+  it('defines a dot colour token for every stool colour of a dirty diaper (spec 07)', () => {
+    for (const color of ['yellow', 'green', 'brown', 'black', 'red', 'white']) {
+      assert.match(css, new RegExp(`--nala-stool-${color}:\\s*#[0-9a-fA-F]{3,8}`), color);
+    }
+  });
+
   it('colours the section card small FAB and text button from the section tokens', () => {
     const block = (selector) => css.match(new RegExp(`\\${selector}\\s*\\{([^}]*)\\}`))?.[1] ?? '';
     const fab = block('.nala-section-fab');

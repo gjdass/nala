@@ -138,6 +138,63 @@ public class DiaperEndpointTests
     }
 
     [Test]
+    public async Task A_dirty_diaper_is_created_with_its_colour_and_consistency()
+    {
+        var response = await _admin.PostAsJsonAsync("/api/diapers", new
+        {
+            id = Guid.NewGuid(),
+            babyId = _leaId,
+            time = _now.AddMinutes(-5),
+            dirty = true,
+            color = "yellow",
+            consistency = "soft",
+        });
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Created));
+        var diaper = await JsonAsync(response);
+        Assert.That(diaper.GetProperty("color").GetString(), Is.EqualTo("yellow"));
+        Assert.That(diaper.GetProperty("consistency").GetString(), Is.EqualTo("soft"));
+    }
+
+    [Test]
+    public async Task Colour_and_consistency_are_returned_null_when_not_dirty()
+    {
+        var response = await _admin.PostAsJsonAsync("/api/diapers", new
+        {
+            id = Guid.NewGuid(),
+            babyId = _leaId,
+            time = _now.AddMinutes(-5),
+            wet = true,
+            color = "purple",
+            consistency = "soft",
+        });
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Created));
+        var diaper = await JsonAsync(response);
+        Assert.That(diaper.GetProperty("color").ValueKind, Is.EqualTo(JsonValueKind.Null));
+        Assert.That(diaper.GetProperty("consistency").ValueKind, Is.EqualTo(JsonValueKind.Null));
+    }
+
+    [Test]
+    public async Task Unknown_colour_or_consistency_is_a_validation_problem()
+    {
+        var response = await _admin.PostAsJsonAsync("/api/diapers", new
+        {
+            id = Guid.NewGuid(),
+            babyId = _leaId,
+            time = _now.AddMinutes(-5),
+            dirty = true,
+            color = "purple",
+            consistency = "gooey",
+        });
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
+        var errors = (await JsonAsync(response)).GetProperty("errors");
+        Assert.That(errors.GetProperty("color")[0].GetString(), Is.EqualTo("invalid"));
+        Assert.That(errors.GetProperty("consistency")[0].GetString(), Is.EqualTo("invalid"));
+    }
+
+    [Test]
     public async Task Resending_the_same_diaper_answers_the_stored_one()
     {
         var id = Guid.NewGuid();
@@ -257,6 +314,8 @@ public class DiaperEndpointTests
             wet = false,
             dirty = true,
             rash = true,
+            color = "green",
+            consistency = "firm",
             notes = "oops",
         });
 
@@ -268,6 +327,8 @@ public class DiaperEndpointTests
             Assert.That(diaper.GetProperty("wet").GetBoolean(), Is.False);
             Assert.That(diaper.GetProperty("dirty").GetBoolean(), Is.True);
             Assert.That(diaper.GetProperty("rash").GetBoolean(), Is.True);
+            Assert.That(diaper.GetProperty("color").GetString(), Is.EqualTo("green"));
+            Assert.That(diaper.GetProperty("consistency").GetString(), Is.EqualTo("firm"));
             Assert.That(diaper.GetProperty("notes").GetString(), Is.EqualTo("oops"));
             Assert.That(diaper.GetProperty("loggedBy").GetProperty("id").GetGuid(), Is.EqualTo(_annaId));
             Assert.That(diaper.GetProperty("updatedBy").GetProperty("id").GetGuid(), Is.EqualTo(benId));

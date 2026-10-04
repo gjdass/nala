@@ -553,7 +553,9 @@
     },
     "sheet": {
       "type": "Type",
-      "rash": "Érythème fessier"
+      "rash": "Érythème fessier",
+      "color": "Couleur",
+      "consistency": "Consistance"
     },
     "toggle": {
       "wet": "Mouillée",
@@ -564,6 +566,21 @@
       "dirty": "Selles",
       "wetDirty": "Mouillée + selles",
       "dry": "Sèche"
+    },
+    "color": {
+      "yellow": "Jaune",
+      "green": "Vert",
+      "brown": "Marron",
+      "black": "Noir",
+      "red": "Rouge",
+      "white": "Blanc"
+    },
+    "consistency": {
+      "liquid": "Liquide",
+      "runny": "Semi-liquide",
+      "soft": "Molle",
+      "firm": "Ferme",
+      "hard": "Dure"
     },
     "errors": {
       "unknown": "Une erreur s'est produite. Vérifiez votre connexion et réessayez.",

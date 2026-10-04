@@ -92,6 +92,8 @@ public class DiaperRepositoryTests
             diaper.Wet = false;
             diaper.Dirty = true;
             diaper.Rash = true;
+            diaper.Color = DiaperColor.Yellow;
+            diaper.Consistency = DiaperConsistency.Soft;
             diaper.Notes = "after the bath";
             diaper.UpdatedByUserId = _ben.Id;
             diaper.UpdatedAt = Now.AddMinutes(1);
@@ -107,6 +109,8 @@ public class DiaperRepositoryTests
             Assert.That(entry.Diaper.Wet, Is.False);
             Assert.That(entry.Diaper.Dirty, Is.True);
             Assert.That(entry.Diaper.Rash, Is.True);
+            Assert.That(entry.Diaper.Color, Is.EqualTo(DiaperColor.Yellow));
+            Assert.That(entry.Diaper.Consistency, Is.EqualTo(DiaperConsistency.Soft));
             Assert.That(entry.Diaper.Notes, Is.EqualTo("after the bath"));
             Assert.That(entry.Diaper.CreatedAt, Is.EqualTo(Now));
             Assert.That(entry.Diaper.UpdatedAt, Is.EqualTo(Now.AddMinutes(1)));

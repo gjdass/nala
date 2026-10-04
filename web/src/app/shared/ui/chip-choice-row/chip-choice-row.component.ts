@@ -10,7 +10,9 @@ import { FormRowComponent } from '../form-row/form-row.component';
  * An optional single choice in an entry sheet (spec 04: filter chips, e.g. meal type, reaction): a form
  * row with its label and one filter chip per option. Tapping a chip selects it; tapping the selected
  * one clears the choice, and the control gets null. Each chip's text is `optionLabel + option`
- * translated, and its test id `name-option`.
+ * translated, and its test id `name-option`. With a `dotToken` (a CSS custom-property prefix, e.g.
+ * `--nala-stool-`), each chip also shows a small dot in the colour `var(<dotToken><option>)`, kept in
+ * the label so it stays visible next to the selected chip's checkmark.
  */
 @Component({
   selector: 'nala-chip-choice-row',
@@ -27,6 +29,8 @@ export class ChipChoiceRowComponent<T extends string = string> {
   readonly optionLabel = input.required<string>();
   readonly options = input.required<readonly T[]>();
   readonly control = input.required<FormControl<T | null>>();
+  /** CSS custom-property prefix of a colour dot per option; no dots when null. */
+  readonly dotToken = input<string | null>(null);
 
   protected readonly value = toSignal(
     toObservable(this.control).pipe(

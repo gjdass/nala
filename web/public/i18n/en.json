@@ -553,7 +553,9 @@
     },
     "sheet": {
       "type": "Type",
-      "rash": "Diaper rash"
+      "rash": "Diaper rash",
+      "color": "Colour",
+      "consistency": "Consistency"
     },
     "toggle": {
       "wet": "Wet",
@@ -564,6 +566,21 @@
       "dirty": "Dirty",
       "wetDirty": "Wet + dirty",
       "dry": "Dry"
+    },
+    "color": {
+      "yellow": "Yellow",
+      "green": "Green",
+      "brown": "Brown",
+      "black": "Black",
+      "red": "Red",
+      "white": "White"
+    },
+    "consistency": {
+      "liquid": "Liquid",
+      "runny": "Runny",
+      "soft": "Soft",
+      "firm": "Firm",
+      "hard": "Hard"
     },
     "errors": {
       "unknown": "Something went wrong. Check your connection and try again.",

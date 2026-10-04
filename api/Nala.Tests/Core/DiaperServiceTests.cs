@@ -80,6 +80,27 @@ public class DiaperServiceTests
     }
 
     [Test]
+    public async Task A_dirty_diaper_stores_its_colour_and_consistency()
+    {
+        var entry = await CreateAsync(_anna, Diaper(dirty: true) with { Color = "green", Consistency = "runny" });
+
+        Assert.That((entry.Diaper.Color, entry.Diaper.Consistency), Is.EqualTo(((DiaperColor?)DiaperColor.Green, (DiaperConsistency?)DiaperConsistency.Runny)));
+    }
+
+    [Test]
+    public async Task Colour_and_consistency_are_dropped_when_not_dirty()
+    {
+        var created = await CreateAsync(_anna, Diaper(dirty: false) with { Color = "green", Consistency = "runny" });
+        Assert.That((created.Diaper.Color, created.Diaper.Consistency), Is.EqualTo(((DiaperColor?)null, (DiaperConsistency?)null)));
+
+        var dirty = await CreateAsync(_anna, Diaper(dirty: true) with { Color = "black", Consistency = "hard" });
+        var result = await _service.UpdateAsync(_ben, dirty.Diaper.Id, Diaper(dirty: false) with { Color = "black", Consistency = "hard" });
+
+        var updated = ((UpdateDiaperResult.Updated)result).Entry.Diaper;
+        Assert.That((updated.Color, updated.Consistency), Is.EqualTo(((DiaperColor?)null, (DiaperConsistency?)null)));
+    }
+
+    [Test]
     public async Task Blank_notes_are_stored_as_none()
     {
         var entry = await CreateAsync(_anna, Diaper(notes: "   "));

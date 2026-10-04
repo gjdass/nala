@@ -140,6 +140,8 @@ public class DiaperService(IDiaperRepository diapers, IBabyRepository babies, Ti
         diaper.Wet = input.Wet;
         diaper.Dirty = input.Dirty;
         diaper.Rash = input.Rash;
+        diaper.Color = input.Dirty ? DiaperFields.ParseColor(input.Color) : null;
+        diaper.Consistency = input.Dirty ? DiaperFields.ParseConsistency(input.Consistency) : null;
         diaper.Notes = EntryFields.NormalizeText(input.Notes);
         diaper.UpdatedByUserId = actor.Id;
         diaper.UpdatedAt = now;

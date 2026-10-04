@@ -8,6 +8,14 @@
   >
     @for (option of options(); track option) {
       <mat-chip-option [value]="option" [attr.data-testid]="name() + '-' + option">
+        @if (dotToken(); as token) {
+          <span
+            class="dot"
+            aria-hidden="true"
+            [style.background-color]="'var(' + token + option + ')'"
+            [attr.data-testid]="name() + '-' + option + '-dot'"
+          ></span>
+        }
         {{ optionLabel() + option | transloco }}
       </mat-chip-option>
     }

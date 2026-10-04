@@ -37,6 +37,33 @@ describe('DiaperEntryComponent', () => {
     expect(find('entry-summary')?.textContent?.trim()).toBe('after the bath');
   });
 
+  it('shows colour · consistency · Rash as supporting text instead of the notes', async () => {
+    fixture.componentRef.setInput(
+      'diaper',
+      aDiaper({ dirty: true, color: 'green', consistency: 'soft', rash: true, notes: 'n' }),
+    );
+    await fixture.whenStable();
+    expect(find('entry-summary')?.textContent?.trim()).toBe('Green · Soft · Rash');
+
+    fixture.componentRef.setInput('diaper', aDiaper({ dirty: true, consistency: 'hard' }));
+    await fixture.whenStable();
+    expect(find('entry-summary')?.textContent?.trim()).toBe('Hard');
+
+    fixture.componentRef.setInput('diaper', aDiaper({ rash: true, notes: 'n' }));
+    await fixture.whenStable();
+    expect(find('entry-summary')?.textContent?.trim()).toBe('Rash');
+  });
+
+  it('falls back to the notes when there are no details', async () => {
+    fixture.componentRef.setInput('diaper', aDiaper({ notes: 'after the bath' }));
+    await fixture.whenStable();
+    expect(find('entry-summary')?.textContent?.trim()).toBe('after the bath');
+
+    fixture.componentRef.setInput('diaper', aDiaper());
+    await fixture.whenStable();
+    expect(find('entry-summary')?.textContent?.trim()).toBe('');
+  });
+
   it('names each type, a diaper with neither toggle being dry', async () => {
     const label = async (wet: boolean, dirty: boolean) => {
       fixture.componentRef.setInput('diaper', aDiaper({ wet, dirty }));

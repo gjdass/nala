@@ -1,11 +1,20 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, Validators } from '@angular/forms';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { SelectedBabyService } from '../../../core/babies/selected-baby.service';
-import { Diaper, DiaperFields } from '../../../core/diapers/diaper.models';
+import {
+  DIAPER_COLORS,
+  DIAPER_CONSISTENCIES,
+  Diaper,
+  DiaperColor,
+  DiaperConsistency,
+  DiaperFields,
+} from '../../../core/diapers/diaper.models';
 import { DiaperService } from '../../../core/diapers/diaper.service';
 import { applyServerErrors } from '../../../core/http/apply-server-errors';
 import { notInFuture } from '../../../core/time/not-in-future';
+import { ChipChoiceRowComponent } from '../../../shared/ui/chip-choice-row/chip-choice-row.component';
 import { ChipTogglesRowComponent } from '../../../shared/ui/chip-toggles-row/chip-toggles-row.component';
 import { EntryAuditComponent } from '../../../shared/ui/entry-audit/entry-audit.component';
 import { EntrySheetComponent } from '../../../shared/ui/entry-sheet/entry-sheet.component';
@@ -27,12 +36,14 @@ const toggle = (value: boolean) => new FormControl(value, { nonNullable: true })
  * The Diaper sheet (spec 07), adding a diaper for the selected baby or editing the one it was opened
  * with: time (now by default), Wet and Dirty as two independent toggle chips (neither is a dry
  * diaper), the diaper-rash switch, and notes. No timer: Save is the only action, and × discards the
- * form. Closes with the saved diaper, or the id of the deleted one; offline, with `queued` once the
+ * form. While Dirty is on, optional Colour (with colour dots) and Consistency chip rows; turning Dirty
+ * off clears them, and a diaper that isn't dirty is saved without them. Closes with the saved diaper, or the id of the deleted one; offline, with `queued` once the
  * change is kept on the device.
  */
 @Component({
   selector: 'nala-diaper-sheet',
   imports: [
+    ChipChoiceRowComponent,
     ChipTogglesRowComponent,
     EntryAuditComponent,
     EntrySheetComponent,
@@ -67,13 +78,31 @@ export class DiaperSheetComponent {
     ]),
     ...this.type,
     rash: toggle(this.diaper?.rash ?? false),
+    color: new FormControl<DiaperColor | null>(this.diaper?.color ?? null),
+    consistency: new FormControl<DiaperConsistency | null>(this.diaper?.consistency ?? null),
     notes: notesControl(this.diaper?.notes ?? ''),
+  });
+
+  protected readonly colors = DIAPER_COLORS;
+  protected readonly consistencies = DIAPER_CONSISTENCIES;
+  /** The dirty details show only while Dirty is on. */
+  protected readonly dirty = toSignal(this.type.dirty.valueChanges, {
+    initialValue: this.type.dirty.value,
   });
 
   protected readonly edited = !!this.diaper && this.diaper.updatedAt !== this.diaper.createdAt;
   /** Saving or deleting. */
   protected readonly saving = signal(false);
   protected readonly formError = signal<string | null>(null);
+
+  /** Turning Dirty off clears its details. */
+  constructor() {
+    this.type.dirty.valueChanges.pipe(takeUntilDestroyed()).subscribe((dirty) => {
+      if (!dirty) {
+        this.form.patchValue({ color: null, consistency: null });
+      }
+    });
+  }
 
   protected save(): void {
     if (this.form.invalid || this.saving()) {
@@ -121,6 +150,8 @@ export class DiaperSheetComponent {
       wet: value.wet,
       dirty: value.dirty,
       rash: value.rash,
+      color: value.dirty ? value.color : null,
+      consistency: value.dirty ? value.consistency : null,
       notes: value.notes.trim() || null,
     };
   }
