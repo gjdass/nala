@@ -95,7 +95,6 @@ public static class FeedEndpoints
     {
         var feeds = endpoints.MapGroup("/api/feeds");
         feeds.MapPost("", CreateAsync);
-        feeds.MapGet("/in-progress", InProgressAsync);
         feeds.MapGet("/{id:guid}", GetAsync);
         feeds.MapPut("/{id:guid}", UpdateAsync);
         feeds.MapDelete("/{id:guid}", DeleteAsync);
@@ -140,10 +139,6 @@ public static class FeedEndpoints
             _ => BabyNotFound(),
         };
     }
-
-    /// <summary>Every live breastfeed, of every baby, oldest start first: what other devices poll (spec 05).</summary>
-    private static async Task<IResult> InProgressAsync(FeedService feeds, CancellationToken cancellationToken) =>
-        Results.Ok((await feeds.ListInProgressBreastfeedsAsync(cancellationToken)).Select(ToResponse));
 
     /// <summary>One feed, e.g. for a sheet whose live breastfeed was stopped or deleted on another device.</summary>
     private static async Task<IResult> GetAsync(Guid id, FeedService feeds, CancellationToken cancellationToken) =>

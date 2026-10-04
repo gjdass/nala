@@ -148,4 +148,14 @@ public class LiveEndpointTests
 
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
     }
+
+    [Test]
+    public async Task The_per_section_in_progress_endpoints_are_gone()
+    {
+        var feeds = await _admin.GetAsync("/api/feeds/in-progress");
+        var sleeps = await _admin.GetAsync("/api/sleeps/in-progress");
+
+        Assert.That(feeds.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
+        Assert.That(sleeps.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
+    }
 }

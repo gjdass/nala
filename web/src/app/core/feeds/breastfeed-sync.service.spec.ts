@@ -1,15 +1,16 @@
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { Observable, Subject } from 'rxjs';
 import { aBreastfeed, aSegment } from '../../testing/feeds';
 import { QueuedRequest } from '../offline/offline-queue.models';
 import { OfflineQueueService } from '../offline/offline-queue.service';
 import { AuthState } from '../auth/auth.models';
 import { AuthService } from '../auth/auth.service';
-import { LiveEntriesSync, SYNC_INTERVAL_MS } from '../timers/live-entries-sync';
+import { LiveEntriesSync } from '../timers/live-entries-sync';
+import { LIVE_INTERVAL_MS } from '../timers/live-sync.service';
 import { BreastfeedSyncService } from './breastfeed-sync.service';
 import { Feed } from './feed.models';
-import { FeedService } from './feed.service';
 
 const signedIn: AuthState = {
   setupRequired: false,
@@ -25,8 +26,7 @@ const signedIn: AuthState = {
 
 describe('BreastfeedSyncService', () => {
   let state: ReturnType<typeof signal<AuthState | null>>;
-  let polls: Subject<Feed[]>[];
-  let feeds: { inProgress: ReturnType<typeof vi.fn> };
+  let http: HttpTestingController;
   let visibility: DocumentVisibilityState;
   let service: BreastfeedSyncService;
   let queue: {
@@ -37,33 +37,32 @@ describe('BreastfeedSyncService', () => {
   const leas = aBreastfeed({ id: 'lea', babyId: 'b1', endTime: null });
   const toms = aBreastfeed({ id: 'tom', babyId: 'b2', endTime: null });
 
-  const start = () => {
+  const start = async () => {
     service = TestBed.inject(BreastfeedSyncService);
     TestBed.tick();
+    await Promise.resolve();
   };
-  const answer = (list: Feed[]) => polls.at(-1)!.next(list);
+  /** The server's answer to the shared live poll. */
+  const answer = (list: Feed[]) => {
+    http.expectOne('/api/live').flush({ feeds: list, sleeps: [] });
+    TestBed.tick();
+  };
 
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
     visibility = 'visible';
     vi.spyOn(document, 'visibilityState', 'get').mockImplementation(() => visibility);
     state = signal<AuthState | null>(signedIn);
-    polls = [];
     queue = { waiting: signal<readonly QueuedRequest[]>([]), sent: signal(0) };
-    feeds = {
-      inProgress: vi.fn((): Observable<Feed[]> => {
-        const poll = new Subject<Feed[]>();
-        polls.push(poll);
-        return poll;
-      }),
-    };
     TestBed.configureTestingModule({
       providers: [
-        { provide: FeedService, useValue: feeds },
+        provideHttpClient(),
+        provideHttpClientTesting(),
         { provide: AuthService, useValue: { state } },
         { provide: OfflineQueueService, useValue: queue },
       ],
     });
+    http = TestBed.inject(HttpTestingController);
   });
 
   afterEach(() => {
@@ -71,15 +70,15 @@ describe('BreastfeedSyncService', () => {
     vi.restoreAllMocks();
   });
 
-  it('runs on the shared live sync, loading the live breastfeeds every 5 seconds', () => {
-    start();
+  it('runs on the shared live sync, with the feeds of /api/live', async () => {
+    await start();
     expect(service).toBeInstanceOf(LiveEntriesSync);
-    expect(feeds.inProgress).toHaveBeenCalledTimes(1);
     answer([leas, toms]);
     expect(service.forBaby('b2')).toEqual(toms);
 
-    vi.advanceTimersByTime(SYNC_INTERVAL_MS);
-    expect(feeds.inProgress).toHaveBeenCalledTimes(2);
+    vi.advanceTimersByTime(LIVE_INTERVAL_MS);
+    answer([toms]);
+    expect(service.forBaby('b1')).toBeNull();
   });
 
   describe('taps kept on the device (offline)', () => {
@@ -92,30 +91,30 @@ describe('BreastfeedSyncService', () => {
       queuedAt: at,
     });
 
-    it('shows a breastfeed started offline, also after the app was reopened', () => {
+    it('shows a breastfeed started offline, also after the app was reopened', async () => {
       queue.waiting.set([queuedStart('offline', 'left', '2026-09-30T10:00:00.000Z')]);
-      start();
+      await start();
 
       expect(service.forBaby('b1')).toMatchObject({
         id: 'offline',
         endTime: null,
         loggedBy: { id: 'u1', displayName: 'Anna' },
       });
-      polls.at(-1)!.error(new Error('offline'));
+      http.expectOne('/api/live').error(new ProgressEvent('offline'));
       expect(service.forBaby('b1')?.id).toBe('offline');
     });
 
-    it('applies the waiting taps on top of each poll', () => {
+    it('applies the waiting taps on top of each poll', async () => {
       queue.waiting.set([queuedStart('offline', 'left', '2026-09-30T10:00:00.000Z')]);
-      start();
+      await start();
 
       answer([toms]);
 
       expect(service.inProgress().map((f) => f.id)).toEqual(['tom', 'offline']);
     });
 
-    it('applies a newly queued tap', () => {
-      start();
+    it('applies a newly queued tap', async () => {
+      await start();
       answer([]);
 
       queue.waiting.set([queuedStart('offline', 'right', '2026-09-30T10:00:00.000Z')]);
@@ -124,8 +123,8 @@ describe('BreastfeedSyncService', () => {
       expect(service.forBaby('b1')?.segments.map((s) => s.side)).toEqual(['right']);
     });
 
-    it('applies the waiting taps at once on request, reopening a saved feed it is given', () => {
-      start();
+    it('applies the waiting taps at once on request, reopening a saved feed it is given', async () => {
+      await start();
       answer([]);
       const saved = aBreastfeed({
         id: 'saved',

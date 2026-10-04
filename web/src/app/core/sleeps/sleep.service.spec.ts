@@ -235,18 +235,6 @@ describe('SleepService', () => {
     });
   });
 
-  describe('inProgress()', () => {
-    it('gets every live sleep', async () => {
-      const live = [aSleep({ endTime: null })];
-      const result = firstValueFrom(service.inProgress());
-      const req = http.expectOne('/api/sleeps/in-progress');
-      expect(req.request.method).toBe('GET');
-      req.flush(live);
-
-      expect(await result).toEqual(live);
-    });
-  });
-
   it('puts a live sleep without an end time', () => {
     const live = { startTime: fields.startTime, endTime: null, notes: 'cot' };
     service.update('s1', live).subscribe();

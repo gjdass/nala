@@ -248,16 +248,6 @@ describe('FeedService', () => {
     });
   });
 
-  describe('inProgress()', () => {
-    it('gets every breastfeed in progress', async () => {
-      const feed = aBreastfeed({ endTime: null });
-      const result = firstValueFrom(service.inProgress());
-      http.expectOne('/api/feeds/in-progress').flush([feed]);
-
-      expect(await result).toEqual([feed]);
-    });
-  });
-
   describe('bottleDefaults()', () => {
     it('gets the baby bottle defaults', async () => {
       const defaults: BottleDefaults = {

@@ -78,11 +78,6 @@ export class FeedService {
       );
   }
 
-  /** Every live breastfeed, of every baby; errors when it can't be loaded. */
-  inProgress(): Observable<Feed[]> {
-    return this.http.get<Feed[]>('/api/feeds/in-progress');
-  }
-
   /** What the Bottle sheet pre-fills; none when they can't be loaded (the sheet still works without). */
   bottleDefaults(babyId: string): Observable<BottleDefaults> {
     return this.http

@@ -1,6 +1,6 @@
 # 04 — App layout & section pattern
 
-Status: in progress
+Status: done
 
 ## Goal
 
@@ -40,6 +40,8 @@ Give every activity section (Feed, Diaper, Sleep, Medication, Growth, Pump…) t
 - **Live sync (every section with timers).** Devices learn about other devices' timers by polling one endpoint for every section, not one per section.
   - `GET /api/live` → `{ feeds: [...], sleeps: [...] }`: every baby's live entries per section, oldest start first, each in the section's usual JSON. Any signed-in member. A new timer section (Pump) adds its own list there. The per-section `GET /api/feeds/in-progress` and `GET /api/sleeps/in-progress` are removed.
   - The web app has **one shared poller** (`LiveSyncService`, `core/timers/`) that calls `/api/live` and hands each section's sync its list. The rest of the live sync stays as it is: own actions applied at once, a response started before an own change ignored, changes waiting on the device applied on top by the section's overlay, a failed call keeping the last lists, paused while the app is hidden and called again as soon as it is shown, called at once after sign-in and once the offline queue has been sent, cleared on sign-out.
+  - Each section's sync (`LiveEntriesSync`) registers with the poller under its list's name in `/api/live` (`feeds`, `sleeps`); the version guard and the overlay stay per section. A section registering while the poller runs gets a poll at once (sections registering together share it).
+  - A screen that needs the server's live entries now (the Sleep sheet opening to add, or after a 409 on Start) asks the shared poller to poll at once (`refresh()` on the section's sync) and reads the section's list once it answers; no section calls an endpoint of its own.
   - **Polling speed:** every **5 s** while any section has a live entry (any baby, waiting changes included), every **30 s** otherwise. It switches to 5 s as soon as a live entry appears (a Start on this device, or one seen from another device), and back to 30 s once none is left.
   - No `ETag` / `304`: the answers are small, so they are always sent in full.
 - **Live timer button:** while the section has a live entry for the selected baby, the card's + is replaced by a **timer button** (same small FAB and colours, `timer` icon, labelled "Open live <section>") that opens that entry's sheet (`EntrySheetService.edit`). Other kinds can be added again once the timers are stopped. The card finds the live entry through `RunningTimersService` (section + baby), so a new timer section gets it without its own code.
@@ -169,16 +171,16 @@ Each item becomes at least one test, written failing first.
 ### Mini-bar
 - [x] The mini-bar appears on every screen as soon as a timer runs, and disappears when none runs.
 - [x] It shows each live entry with a live duration and opens the matching entry sheet on tap.
-- [ ] While any timer runs, it reflects timers started, stopped or changed on other devices within 5 seconds.
-- [ ] When no timer runs, a timer started on another device shows within 30 seconds.
+- [x] While any timer runs, it reflects timers started, stopped or changed on other devices within 5 seconds.
+- [x] When no timer runs, a timer started on another device shows within 30 seconds.
 - [x] Its rows show inside the navigation bar's pill, above the destinations with a divider, and the pill takes the large corner only while timers show.
 - [x] Each row's section icon sits in a circle in its section's container colours.
 
 ### Live sync
 - [x] `GET /api/live` returns every baby's live feeds and live sleeps, per section, oldest start first; stopped entries are left out; signed-out → 401.
-- [ ] The app makes one live request per tick, whatever the number of sections with timers; `/api/feeds/in-progress` and `/api/sleeps/in-progress` no longer exist.
-- [ ] It polls every 5 s while any section has a live entry and every 30 s otherwise, switching as soon as a live entry appears or the last one is gone.
-- [ ] Polling pauses while the app is hidden and runs at once when it is shown again, after sign-in, and once the offline queue has been sent.
+- [x] The app makes one live request per tick, whatever the number of sections with timers; `/api/feeds/in-progress` and `/api/sleeps/in-progress` no longer exist.
+- [x] It polls every 5 s while any section has a live entry and every 30 s otherwise, switching as soon as a live entry appears or the last one is gone.
+- [x] Polling pauses while the app is hidden and runs at once when it is shown again, after sign-in, and once the offline queue has been sent.
 
 ### Theming
 - [x] Each section has a colour token (and an "on colour" token for text/icons on it) defined in the global theme, with light and dark values. Components never hard-code these colours. Tokens: `--nala-section-<key>` / `--nala-on-section-<key>` (placeholders created in 01, `web/src/styles/_sections.scss`).
@@ -206,7 +208,7 @@ Changes after the first review of the Feed section (built in this order, with 05
 Fewer live API calls (one endpoint for every section, slower when nothing runs):
 
 - [x] **Slice 12 — `GET /api/live`.** `Nala.Api/Live/LiveEndpoints.cs`, reusing the live queries of `FeedService` and `SleepService`: `{ feeds, sleeps }`, oldest start first, signed-in members only. The old in-progress endpoints stay until slice 13. Covers: the `/api/live` Live sync criterion.
-- [ ] **Slice 13 — One shared poller, 5 s / 30 s.** Root `LiveSyncService` in `core/timers/` takes over the timing and triggers (sign-in, visibility, queue sent) from `LiveEntriesSync`; each section's sync registers under its key and receives its list (the version guard and overlay stay per section). The public API of `BreastfeedSyncService` and `SleepSyncService` is unchanged. 5 s while any section has a live entry, 30 s otherwise. `FeedService` / `SleepService` in-progress calls and `GET /api/feeds/in-progress` / `GET /api/sleeps/in-progress` removed with their tests. Covers: the other Live sync criteria and both Mini-bar criteria about other devices.
+- [x] **Slice 13 — One shared poller, 5 s / 30 s.** Root `LiveSyncService` in `core/timers/` takes over the timing and triggers (sign-in, visibility, queue sent) from `LiveEntriesSync`; each section's sync registers under its key and receives its list (the version guard and overlay stay per section). The public API of `BreastfeedSyncService` and `SleepSyncService` is unchanged, plus `refresh()` (a poll at once through the shared poller), which the Sleep sheet uses instead of its own in-progress call. 5 s while any section has a live entry, 30 s otherwise. `FeedService` / `SleepService` in-progress calls and `GET /api/feeds/in-progress` / `GET /api/sleeps/in-progress` removed with their tests. Covers: the other Live sync criteria and both Mini-bar criteria about other devices.
 
 ## Material 3 mapping
 

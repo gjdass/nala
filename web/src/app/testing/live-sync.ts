@@ -1,10 +1,12 @@
 import { signal } from '@angular/core';
+import { Subject } from 'rxjs';
 import { LiveEntry } from '../core/timers/live-entries-sync';
 
 /**
  * A stand-in for a `LiveEntriesSync`: the test sets the live entries, and what the component
  * applies locally is recorded. `applyWaiting` records its base and runs what the test set with
- * `whenApplied` (e.g. setting the entries as the waiting offline taps would).
+ * `whenApplied` (e.g. setting the entries as the waiting offline taps would). `refresh` is counted
+ * by `refreshes()`; `refreshed.next()` answers it.
  */
 export const fakeLiveSync = <T extends LiveEntry>(initial: readonly T[] = []) => {
   const inProgress = signal<readonly T[]>(initial);
@@ -12,6 +14,8 @@ export const fakeLiveSync = <T extends LiveEntry>(initial: readonly T[] = []) =>
   const removed: string[] = [];
   const applied: (T | undefined)[] = [];
   let onApply: () => void = () => undefined;
+  let refreshes = 0;
+  const refreshed = new Subject<void>();
   return {
     inProgress,
     puts,
@@ -25,5 +29,11 @@ export const fakeLiveSync = <T extends LiveEntry>(initial: readonly T[] = []) =>
       onApply();
     },
     whenApplied: (apply: () => void) => (onApply = apply),
+    refresh: () => {
+      refreshes++;
+      return refreshed.asObservable();
+    },
+    refreshes: () => refreshes,
+    refreshed,
   };
 };

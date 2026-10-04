@@ -28,10 +28,9 @@ describe('SleepSheetComponent', () => {
   let saved: Subject<EntryResult<Sleep>>;
   let deleted: Subject<EntryDeleteResult>;
   let tapped: Subject<EntryResult<Sleep>>;
-  let live: Subject<Sleep[]>;
   let now: ReturnType<typeof signal<number>>;
   let sleeps: Record<
-    'create' | 'update' | 'delete' | 'start' | 'stop' | 'inProgress' | 'get',
+    'create' | 'update' | 'delete' | 'start' | 'stop' | 'get',
     ReturnType<typeof vi.fn>
   >;
   let sheetRef: { close: ReturnType<typeof vi.fn> };
@@ -87,7 +86,6 @@ describe('SleepSheetComponent', () => {
     saved = new Subject();
     deleted = new Subject();
     tapped = new Subject();
-    live = new Subject();
     now = signal(NOW.getTime());
     sleeps = {
       create: vi.fn(() => saved),
@@ -95,7 +93,6 @@ describe('SleepSheetComponent', () => {
       delete: vi.fn(() => deleted),
       start: vi.fn(() => tapped),
       stop: vi.fn(() => tapped),
-      inProgress: vi.fn(() => live),
       get: vi.fn(() => of(null)),
     };
     sync = fakeSleepSync();
@@ -347,8 +344,8 @@ describe('SleepSheetComponent', () => {
         expect(toggle().disabled).toBe(false);
       });
 
-      it('looks for a live sleep of the baby', () => {
-        expect(sleeps.inProgress).toHaveBeenCalled();
+      it('looks for a live sleep of the baby through the shared live poll', () => {
+        expect(sync.refreshes()).toBe(1);
       });
 
       it('creates the live sleep for the selected baby on Start, now', async () => {
@@ -395,8 +392,9 @@ describe('SleepSheetComponent', () => {
         await click('timer-toggle');
         await respondTimer({ ok: false, errors: { form: 'sleepInProgress' } });
 
-        expect(sleeps.inProgress).toHaveBeenCalledTimes(2);
-        live.next([liveSleep(30, { id: 'other', babyId: 'b2' }), liveSleep(20, { id: 's9' })]);
+        expect(sync.refreshes()).toBe(2);
+        sync.inProgress.set([liveSleep(30, { id: 'other', babyId: 'b2' }), liveSleep(20, { id: 's9' })]);
+        sync.refreshed.next();
         await settle();
 
         expect(toggle().textContent?.trim()).toBe(en.timer.stop);
@@ -456,11 +454,12 @@ describe('SleepSheetComponent', () => {
     describe('opened to add while the baby has a live sleep', () => {
       beforeEach(async () => {
         await render();
-        live.next([
+        sync.inProgress.set([
           liveSleep(90, { id: 'tom', babyId: 'b2' }),
           liveSleep(30, { id: 's8', notes: 'cot' }),
           liveSleep(10, { id: 's9' }),
         ]);
+        sync.refreshed.next();
         await settle();
       });
 
@@ -484,7 +483,7 @@ describe('SleepSheetComponent', () => {
       beforeEach(() => render(sleep));
 
       it('does not look for another live sleep', () => {
-        expect(sleeps.inProgress).not.toHaveBeenCalled();
+        expect(sync.refreshes()).toBe(0);
       });
 
       it('stops it on Stop: ended now, no longer live, the sheet still open', async () => {
@@ -564,8 +563,8 @@ describe('SleepSheetComponent', () => {
       sync.whenApplied(() => sync.inProgress.set([sleep(sleeps.start.mock.calls.at(-1)?.[0])]));
 
     it('shows a sleep started offline running, with its start time', async () => {
+      // Offline: the live poll it asked for never answers.
       await render();
-      live.error(new Error('offline'));
       offlineShows((id) => liveSleep(0, { id }));
 
       await click('timer-toggle');
@@ -585,7 +584,7 @@ describe('SleepSheetComponent', () => {
       sync.inProgress.set([liveSleep(10, { notes: 'cot' })]);
       await render();
 
-      expect(sleeps.inProgress).not.toHaveBeenCalled();
+      expect(sync.refreshes()).toBe(0);
       expect(toggle().textContent?.trim()).toBe(en.timer.stop);
       expect(form().controls.notes.value).toBe('cot');
     });

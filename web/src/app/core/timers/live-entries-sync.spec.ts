@@ -1,26 +1,24 @@
-import { Injectable, InjectionToken, inject, signal } from '@angular/core';
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { Injectable, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { Observable, Subject } from 'rxjs';
 import { AuthState } from '../auth/auth.models';
 import { AuthService } from '../auth/auth.service';
 import { UserName } from '../entries/entry.models';
 import { QueuedRequest } from '../offline/offline-queue.models';
 import { OfflineQueueService } from '../offline/offline-queue.service';
-import { LiveEntriesSync, LiveEntry, SYNC_INTERVAL_MS } from './live-entries-sync';
+import { LiveEntriesSync, LiveEntry } from './live-entries-sync';
+import { IDLE_INTERVAL_MS, LIVE_INTERVAL_MS } from './live-sync.service';
 
 interface Entry extends LiveEntry {
   marks?: string[];
 }
 
-const LOAD = new InjectionToken<() => Observable<Entry[]>>('LOAD');
-
-/** A section's sync as a test sees it: what it loads comes from `LOAD`, and each waiting request marks every entry. */
+/** A section's sync as a test sees it: its list is `things` in `/api/live`, and each waiting request marks every entry. */
 @Injectable({ providedIn: 'root' })
 class EntrySync extends LiveEntriesSync<Entry> {
-  private readonly loader = inject(LOAD);
-
-  protected load(): Observable<Entry[]> {
-    return this.loader();
+  constructor() {
+    super('things');
   }
 
   protected override readonly overlay = (
@@ -44,9 +42,7 @@ const signedOut: AuthState = { ...signedIn, user: null };
 
 describe('LiveEntriesSync', () => {
   let state: ReturnType<typeof signal<AuthState | null>>;
-  let polls: Subject<Entry[]>[];
-  let load: ReturnType<typeof vi.fn>;
-  let visibility: DocumentVisibilityState;
+  let http: HttpTestingController;
   let service: EntrySync;
   let queue: {
     waiting: ReturnType<typeof signal<readonly QueuedRequest[]>>;
@@ -64,35 +60,33 @@ describe('LiveEntriesSync', () => {
     queuedAt: '2026-09-30T10:00:00.000Z',
   });
 
-  const start = () => {
+  const start = async () => {
     service = TestBed.inject(EntrySync);
     TestBed.tick();
+    await Promise.resolve();
   };
-  const answer = (list: Entry[]) => polls.at(-1)!.next(list);
-  const setVisibility = (next: DocumentVisibilityState) => {
-    visibility = next;
-    document.dispatchEvent(new Event('visibilitychange'));
+  const polls = () => http.match('/api/live');
+  const answer = (list: Entry[]) => {
+    const pending = polls();
+    expect(pending).toHaveLength(1);
+    pending[0].flush({ things: list, others: [] });
+    TestBed.tick();
   };
 
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
-    visibility = 'visible';
-    vi.spyOn(document, 'visibilityState', 'get').mockImplementation(() => visibility);
+    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
     state = signal<AuthState | null>(signedIn);
-    polls = [];
     queue = { waiting: signal<readonly QueuedRequest[]>([]), sent: signal(0) };
-    load = vi.fn((): Observable<Entry[]> => {
-      const poll = new Subject<Entry[]>();
-      polls.push(poll);
-      return poll;
-    });
     TestBed.configureTestingModule({
       providers: [
-        { provide: LOAD, useValue: load },
+        provideHttpClient(),
+        provideHttpClientTesting(),
         { provide: AuthService, useValue: { state } },
         { provide: OfflineQueueService, useValue: queue },
       ],
     });
+    http = TestBed.inject(HttpTestingController);
   });
 
   afterEach(() => {
@@ -100,62 +94,64 @@ describe('LiveEntriesSync', () => {
     vi.restoreAllMocks();
   });
 
-  it('loads the live entries once signed in, then every 5 seconds', () => {
-    start();
-    expect(load).toHaveBeenCalledTimes(1);
+  it('receives its list from the shared live poll, under its key', async () => {
+    await start();
     answer([leas, toms]);
     expect(service.inProgress()).toEqual([leas, toms]);
 
-    vi.advanceTimersByTime(SYNC_INTERVAL_MS);
-    expect(load).toHaveBeenCalledTimes(2);
+    vi.advanceTimersByTime(LIVE_INTERVAL_MS);
     answer([toms]);
     expect(service.inProgress()).toEqual([toms]);
-    expect(SYNC_INTERVAL_MS).toBe(5000);
   });
 
-  it('does nothing while signed out, and clears the list on sign-out', () => {
-    state.set(signedOut);
-    start();
-    vi.advanceTimersByTime(3 * SYNC_INTERVAL_MS);
-    expect(load).not.toHaveBeenCalled();
+  it('lets the shared poll slow down once nothing is live, and speed up as soon as an entry is', async () => {
+    await start();
+    answer([]);
+    vi.advanceTimersByTime(LIVE_INTERVAL_MS);
+    expect(polls()).toHaveLength(0);
 
-    state.set(signedIn);
+    service.put(leas);
     TestBed.tick();
+    vi.advanceTimersByTime(LIVE_INTERVAL_MS);
+    expect(polls()).toHaveLength(1);
+  });
+
+  it('clears the list on sign-out', async () => {
+    await start();
     answer([leas]);
+
     state.set(signedOut);
     TestBed.tick();
 
     expect(service.inProgress()).toEqual([]);
-    vi.advanceTimersByTime(3 * SYNC_INTERVAL_MS);
-    expect(load).toHaveBeenCalledTimes(1);
+    vi.advanceTimersByTime(3 * IDLE_INTERVAL_MS);
+    expect(polls()).toHaveLength(0);
   });
 
-  it('stops while the app is hidden and loads again as soon as it is shown', () => {
-    start();
-    setVisibility('hidden');
-    vi.advanceTimersByTime(3 * SYNC_INTERVAL_MS);
-    expect(load).toHaveBeenCalledTimes(1);
+  it('asks the shared poller for a poll at once on refresh, and says when its list is in', async () => {
+    await start();
+    answer([]);
+    let done = 0;
 
-    setVisibility('visible');
-    expect(load).toHaveBeenCalledTimes(2);
-    vi.advanceTimersByTime(SYNC_INTERVAL_MS);
-    expect(load).toHaveBeenCalledTimes(3);
-  });
-
-  it('keeps the last list when a poll fails', () => {
-    start();
+    service.refresh().subscribe(() => done++);
     answer([leas]);
-    vi.advanceTimersByTime(SYNC_INTERVAL_MS);
 
-    polls.at(-1)!.error(new Error('offline'));
+    expect(done).toBe(1);
+    expect(service.inProgress()).toEqual([leas]);
+  });
+
+  it('keeps the last list when a poll fails', async () => {
+    await start();
+    answer([leas]);
+    vi.advanceTimersByTime(LIVE_INTERVAL_MS);
+
+    polls()[0].error(new ProgressEvent('offline'));
 
     expect(service.inProgress()).toEqual([leas]);
-    vi.advanceTimersByTime(SYNC_INTERVAL_MS);
-    expect(load).toHaveBeenCalledTimes(3);
   });
 
-  it('applies a local action at once: put adds or replaces, a stopped entry is removed', () => {
-    start();
+  it('applies a local action at once: put adds or replaces, a stopped entry is removed', async () => {
+    await start();
     answer([leas]);
 
     const edited = { ...leas, marks: ['edited'] };
@@ -170,20 +166,20 @@ describe('LiveEntriesSync', () => {
     expect(service.inProgress()).toEqual([]);
   });
 
-  it('ignores a poll that started before a local action', () => {
-    start();
+  it('ignores a poll that started before a local action', async () => {
+    await start();
     service.put(leas);
 
     answer([]);
 
     expect(service.inProgress()).toEqual([leas]);
-    vi.advanceTimersByTime(SYNC_INTERVAL_MS);
+    vi.advanceTimersByTime(LIVE_INTERVAL_MS);
     answer([]);
     expect(service.inProgress()).toEqual([]);
   });
 
-  it('gives the live entry of a baby', () => {
-    start();
+  it('gives the live entry of a baby', async () => {
+    await start();
     answer([leas, toms]);
 
     expect(service.forBaby('b2')).toEqual(toms);
@@ -191,26 +187,26 @@ describe('LiveEntriesSync', () => {
   });
 
   describe('changes kept on the device (offline)', () => {
-    it('applies the waiting changes as the user, also before the first poll answers', () => {
+    it('applies the waiting changes as the user, also before the first poll answers', async () => {
       queue.waiting.set([waiting('offline')]);
-      start();
+      await start();
 
       expect(service.forBaby('b1')).toMatchObject({ id: 'offline', marks: ['u1'] });
-      polls.at(-1)!.error(new Error('offline'));
+      polls()[0].error(new ProgressEvent('offline'));
       expect(service.forBaby('b1')?.id).toBe('offline');
     });
 
-    it('applies the waiting changes on top of each poll', () => {
+    it('applies the waiting changes on top of each poll', async () => {
       queue.waiting.set([waiting('offline')]);
-      start();
+      await start();
 
       answer([toms]);
 
       expect(service.inProgress().map((e) => e.id)).toEqual(['tom', 'offline']);
     });
 
-    it('applies a newly waiting change', () => {
-      start();
+    it('applies a newly waiting change', async () => {
+      await start();
       answer([]);
 
       queue.waiting.set([waiting('offline')]);
@@ -219,8 +215,8 @@ describe('LiveEntriesSync', () => {
       expect(service.inProgress().map((e) => e.id)).toEqual(['offline']);
     });
 
-    it('applies the waiting changes on request, on top of an entry it is given', () => {
-      start();
+    it('applies the waiting changes on request, on top of an entry it is given', async () => {
+      await start();
       answer([]);
 
       service.applyWaiting({ id: 'reopened', babyId: 'b1', endTime: null });
@@ -228,15 +224,14 @@ describe('LiveEntriesSync', () => {
       expect(service.inProgress().map((e) => e.id)).toEqual(['reopened']);
     });
 
-    it('loads again as soon as the waiting changes were sent', () => {
-      start();
+    it('loads again as soon as the waiting changes were sent', async () => {
+      await start();
       answer([]);
-      expect(load).toHaveBeenCalledTimes(1);
 
       queue.sent.set(1);
       TestBed.tick();
 
-      expect(load).toHaveBeenCalledTimes(2);
+      expect(polls()).toHaveLength(1);
     });
   });
 });

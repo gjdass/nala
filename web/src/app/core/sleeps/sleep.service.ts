@@ -90,9 +90,4 @@ export class SleepService {
       .send<Sleep>('POST', `/api/sleeps/${id}/stop`, { at }, { quiet: true })
       .pipe(map(toEntryResult));
   }
-
-  /** Every live sleep, of every baby, oldest start first. */
-  inProgress(): Observable<Sleep[]> {
-    return this.http.get<Sleep[]>('/api/sleeps/in-progress');
-  }
 }

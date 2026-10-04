@@ -371,7 +371,7 @@ public class SleepEndpointTests
         Assert.That(refused.StatusCode, Is.EqualTo(HttpStatusCode.Conflict));
         AssertCode(await JsonAsync(refused), "sleepInProgress");
         Assert.That(queued.StatusCode, Is.EqualTo(HttpStatusCode.Created));
-        var live = await JsonAsync(await _admin.GetAsync("/api/sleeps/in-progress"));
+        var live = (await JsonAsync(await _admin.GetAsync("/api/live"))).GetProperty("sleeps");
         Assert.That(live.GetArrayLength(), Is.EqualTo(2));
     }
 
@@ -400,7 +400,7 @@ public class SleepEndpointTests
 
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
         Assert.That((await JsonAsync(response)).GetProperty("endTime").GetDateTimeOffset(), Is.EqualTo(_now));
-        Assert.That((await JsonAsync(await _admin.GetAsync("/api/sleeps/in-progress"))).GetArrayLength(), Is.EqualTo(0));
+        Assert.That((await JsonAsync(await _admin.GetAsync("/api/live"))).GetProperty("sleeps").GetArrayLength(), Is.EqualTo(0));
     }
 
     [Test]
@@ -434,22 +434,5 @@ public class SleepEndpointTests
         Assert.That(body.GetProperty("notes").GetString(), Is.EqualTo("cot"));
         Assert.That(withEnd.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
         Assert.That((await JsonAsync(withEnd)).GetProperty("errors").GetProperty("endTime")[0].GetString(), Is.EqualTo("notAllowed"));
-    }
-
-    [Test]
-    public async Task Live_sleeps_of_every_baby_are_listed_oldest_first()
-    {
-        var tomId = await AddBabyAsync("Tom");
-        var lea = Guid.NewGuid();
-        var tom = Guid.NewGuid();
-        await StartAsync(lea, minutesAgo: 10);
-        await StartAsync(tom, minutesAgo: 50, babyId: tomId);
-        await _admin.PostAsJsonAsync("/api/sleeps", Sleep());
-
-        var response = await _admin.GetAsync("/api/sleeps/in-progress");
-
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
-        var live = await JsonAsync(response);
-        Assert.That(live.EnumerateArray().Select(s => s.GetProperty("id").GetGuid()), Is.EqualTo(new[] { tom, lea }));
     }
 }

@@ -44,7 +44,6 @@ public static class SleepEndpoints
     {
         var sleeps = endpoints.MapGroup("/api/sleeps");
         sleeps.MapPost("", CreateAsync);
-        sleeps.MapGet("/in-progress", InProgressAsync);
         sleeps.MapPost("/{id:guid}/start", StartAsync);
         sleeps.MapPost("/{id:guid}/stop", StopAsync);
         sleeps.MapGet("/{id:guid}", GetAsync);
@@ -109,10 +108,6 @@ public static class SleepEndpoints
             ListSleepsResult.InvalidCursor => AuthEndpoints.ValidationProblem(new Dictionary<string, string> { ["cursor"] = "invalid" }),
             _ => BabyNotFound(),
         };
-
-    /// <summary>Every live sleep, of every baby, oldest start first (live sync).</summary>
-    private static async Task<IResult> InProgressAsync(SleepService sleeps, CancellationToken cancellationToken) =>
-        Results.Ok((await sleeps.ListLiveAsync(cancellationToken)).Select(ToResponse));
 
     /// <summary>201 when it created the live sleep, 200 otherwise; 409 while another one is live (unless queued).</summary>
     private static async Task<IResult> StartAsync(

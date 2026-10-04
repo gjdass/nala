@@ -322,17 +322,17 @@ export class SleepSheetComponent {
     });
   }
 
-  /** Opens the baby's live sleep (the oldest), if any, unless this sheet already has one. */
+  /**
+   * Opens the baby's live sleep (the oldest), if any, unless this sheet already has one, once the
+   * shared live poll has answered. Without an answer the sheet still works, and Start would be
+   * refused with the live one.
+   */
   private openLive(): void {
-    this.sleeps.inProgress().subscribe({
-      next: (live) => {
-        const current = live.find((sleep) => sleep.babyId === this.babyId);
-        if (current && !this.sleep()) {
-          this.adopt(current);
-        }
-      },
-      // Can't be loaded: the sheet still works, and Start would be refused with the live one.
-      error: () => undefined,
+    this.sync.refresh().subscribe(() => {
+      const current = this.babyId ? this.sync.forBaby(this.babyId) : null;
+      if (current && !this.sleep()) {
+        this.adopt(current);
+      }
     });
   }
 

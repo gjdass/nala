@@ -474,7 +474,7 @@ public class FeedEndpointTests
             Assert.That(feed.GetProperty("endTime").GetDateTimeOffset(), Is.EqualTo(_now.AddMinutes(-1)).Within(TimeSpan.FromMilliseconds(1)));
             Assert.That(feed.GetProperty("segments").EnumerateArray().Select(s => s.GetProperty("side").GetString()), Is.EqualTo(new[] { "left", "right" }));
         });
-        Assert.That((await JsonAsync(await _admin.GetAsync("/api/feeds/in-progress"))).GetArrayLength(), Is.Zero);
+        Assert.That((await JsonAsync(await _admin.GetAsync("/api/live"))).GetProperty("feeds").GetArrayLength(), Is.Zero);
         ben.Dispose();
     }
 
@@ -515,7 +515,7 @@ public class FeedEndpointTests
         var response = await StartSideAsync(_admin, queued, "right", _now.AddMinutes(-30), queued: true);
 
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Created));
-        var inProgress = await JsonAsync(await _admin.GetAsync("/api/feeds/in-progress"));
+        var inProgress = (await JsonAsync(await _admin.GetAsync("/api/live"))).GetProperty("feeds");
         Assert.That(inProgress.EnumerateArray().Select(f => f.GetProperty("id").GetGuid()), Is.EqualTo(new[] { queued, current }));
         Assert.That((await BreastfeedStateAsync()).GetProperty("inProgress").GetProperty("id").GetGuid(), Is.EqualTo(queued));
     }
@@ -648,30 +648,5 @@ public class FeedEndpointTests
         var errors = (await JsonAsync(future)).GetProperty("errors");
         Assert.That(errors.GetProperty("durations")[0].GetString(), Is.EqualTo("inFuture"));
         Assert.That(errors.GetProperty("endedOn")[0].GetString(), Is.EqualTo("invalid"));
-    }
-
-    [Test]
-    public async Task The_breastfeeds_in_progress_of_every_baby_are_listed()
-    {
-        var response = await _admin.PostAsJsonAsync("/api/babies", new { name = "Tom", birthDate = "2026-09-01" });
-        var tomId = (await JsonAsync(response)).GetProperty("id").GetGuid();
-        var saved = Guid.NewGuid();
-        await StartSideAsync(_admin, saved, "left", _now.AddMinutes(-40));
-        await _admin.PostAsJsonAsync($"/api/feeds/{saved}/breastfeed/stop", new { at = _now.AddMinutes(-30) });
-        var lea = Guid.NewGuid();
-        await StartSideAsync(_admin, lea, "right", _now.AddMinutes(-10));
-        var tom = Guid.NewGuid();
-        await _admin.PostAsJsonAsync(
-            $"/api/feeds/{tom}/breastfeed/start", new { babyId = tomId, segmentId = Guid.NewGuid(), side = "left", at = _now.AddMinutes(-5) });
-        using var anonymous = _factory.CreateClient(new() { BaseAddress = new Uri("https://localhost") });
-
-        var list = await _admin.GetAsync("/api/feeds/in-progress");
-
-        Assert.That(list.StatusCode, Is.EqualTo(HttpStatusCode.OK));
-        var feeds = (await JsonAsync(list)).EnumerateArray().ToList();
-        Assert.That(feeds.Select(f => f.GetProperty("id").GetGuid()), Is.EqualTo(new[] { lea, tom }));
-        Assert.That(feeds[1].GetProperty("babyId").GetGuid(), Is.EqualTo(tomId));
-        Assert.That(feeds[0].GetProperty("segments")[0].GetProperty("side").GetString(), Is.EqualTo("right"));
-        Assert.That((await anonymous.GetAsync("/api/feeds/in-progress")).StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
     }
 }
