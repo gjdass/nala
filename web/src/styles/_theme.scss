@@ -1,16 +1,20 @@
 @use '@angular/material' as mat;
+@use 'theme-colors';
 
 // Material 3 theme. `theme-type: color-scheme` emits every --mat-sys-* token as
 // light-dark(), so the theme follows `color-scheme`: the system preference by
 // default, forced to light or dark by ThemeService on <html>.
-// The palette is not decided yet: Material's default (azure) until it is.
+// Palettes generated from the app icon (_theme-colors.scss, by `ng generate
+// @angular/material:theme-color`): primary #F59E5B (the lion's mane), tertiary
+// #417948 (the grass of the lion artwork).
 html {
   color-scheme: light dark;
 
   @include mat.theme(
     (
       color: (
-        primary: mat.$azure-palette,
+        primary: theme-colors.$primary-palette,
+        tertiary: theme-colors.$tertiary-palette,
         theme-type: color-scheme,
       ),
       typography: Roboto,

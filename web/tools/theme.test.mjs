@@ -18,6 +18,21 @@ describe('global theme', () => {
     assert.match(css, /--mat-sys-primary:\s*light-dark\(/);
   });
 
+  it('takes its colours from the app icon: orange primary, grass-green tertiary', () => {
+    const hue = (token) => {
+      const hex = css.match(new RegExp(`--mat-sys-${token}:\\s*light-dark\\(#([0-9a-f]{6})`, 'i'))[1];
+      const [r, g, b] = [0, 2, 4].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
+      const max = Math.max(r, g, b);
+      const d = max - Math.min(r, g, b);
+      const h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+      return (h * 60 + 360) % 360;
+    };
+    const primary = hue('primary');
+    assert.ok(primary >= 15 && primary <= 45, `primary hue ${primary} is orange`);
+    const tertiary = hue('tertiary');
+    assert.ok(tertiary >= 90 && tertiary <= 160, `tertiary hue ${tertiary} is green`);
+  });
+
   it('follows the system colour scheme by default', () => {
     assert.match(css, /html\s*\{[^}]*color-scheme:\s*light dark/);
   });
