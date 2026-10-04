@@ -662,6 +662,90 @@ describe('PumpSheetComponent', () => {
     });
   });
 
+  describe('offline (taps kept on the device)', () => {
+    /** Makes the shared state show `pump` once the sheet applies the waiting taps. */
+    const offlineShows = (pump: (id: string) => Pump) =>
+      sync.whenApplied(() => sync.inProgress.set([pump(pumps.start.mock.calls.at(-1)?.[0])]));
+
+    it('shows a session started offline running, with its start time', async () => {
+      // Offline: the live poll it asked for never answers.
+      await render();
+      offlineShows((id) => livePump(0, { id }));
+
+      await click('timer-toggle');
+      await respondTimer({ ok: true, queued: true });
+
+      expect(sync.applied).toEqual([undefined]);
+      expect(toggle().textContent?.trim()).toBe(en.timer.stop);
+      expect(form().controls.startTime.value).toEqual(NOW);
+      expect(text('pump-end-time')).toContain(en.pump.sheet.pumping);
+      now.set(NOW.getTime() + 90_000);
+      await settle();
+      expect(text('timer-duration')).toBe('1m 30s');
+      expect(find('entry-delete')).not.toBeNull();
+    });
+
+    it('opens the session started offline when opened to add, without the server', async () => {
+      sync.inProgress.set([livePump(10, { notes: 'evening', leftMl: 60 })]);
+      await render();
+
+      expect(sync.refreshes()).toBe(0);
+      expect(toggle().textContent?.trim()).toBe(en.timer.stop);
+      expect(form().controls.notes.value).toBe('evening');
+      expect(ml('left').value).toBe('60');
+    });
+
+    it('stops offline: the session is shown stopped, no longer live', async () => {
+      const pump = livePump(10);
+      sync.inProgress.set([pump]);
+      await render();
+      // Once the stop is applied, the session is no longer in the live list.
+      sync.whenApplied(() => sync.inProgress.set([]));
+
+      await click('timer-toggle');
+      await respondTimer({ ok: true, queued: true });
+
+      expect(sync.applied).toEqual([pump]);
+      expect(toggle().textContent?.trim()).toBe(en.timer.start);
+      expect(form().controls.endTime.value).toEqual(NOW);
+      now.set(NOW.getTime() + 60_000);
+      await settle();
+      expect(text('timer-duration')).toBe('10m');
+      expect(sheetRef.close).not.toHaveBeenCalled();
+      expect(pumps.get).not.toHaveBeenCalled();
+    });
+
+    it('makes a stopped session live again offline, from its start time', async () => {
+      const pump = aPump({ id: 'p7', startTime: at(8).toISOString(), endTime: at(9).toISOString() });
+      await render(pump);
+      offlineShows(() => ({ ...pump, endTime: null }));
+
+      await click('timer-toggle');
+      await respondTimer({ ok: true, queued: true });
+
+      expect(sync.applied).toEqual([pump]);
+      expect(toggle().textContent?.trim()).toBe(en.timer.stop);
+      expect(text('timer-duration')).toBe('4h');
+    });
+
+    it('deletes on × a session started offline in this sheet, after confirmation', async () => {
+      await render();
+      offlineShows((id) => livePump(0, { id }));
+      await click('timer-toggle');
+      await respondTimer({ ok: true, queued: true });
+      const id = pumps.start.mock.calls[0][0];
+
+      await click('sheet-close');
+      confirmed.next(true);
+      await settle();
+      expect(pumps.delete).toHaveBeenCalledWith(id);
+
+      deleted.next({ ok: true, queued: true });
+      await settle();
+      expect(sheetRef.close).toHaveBeenCalledWith({ queued: true });
+    });
+  });
+
   describe('shared live state', () => {
     it('opens the live session the shared state already has, at once', async () => {
       sync.inProgress.set([livePump(25, { id: 'p9' })]);

@@ -1,6 +1,6 @@
 # 08 — Pump
 
-Status: in progress
+Status: done
 
 Layout vocabulary (section card, entry sheet, timers, mini-bar…) is defined in [04 — App layout](04-app-layout.md). The timer rules (live or not, Save never starts or stops a timer, ×) are spec 04's **Timers** rules; this spec only adds what is specific to Pump. Pump works like Sleep (06) with a volume per side: everything not listed here behaves as in Sleep.
 
@@ -71,9 +71,9 @@ Each item becomes at least one test, written failing first.
 - [x] While a session is live it appears in the mini-bar ("Pumping 12m 10s"); a stopped one doesn't.
 
 ### Offline
-- [ ] With no network, every action that creates or changes a session (Start, Stop, Save, manual entry, edit, delete) is queued on the device with its own time and applied when back online; re-sending is idempotent.
-- [ ] A session started offline keeps running and displaying on that device, also after the app is reopened.
-- [ ] If a queued session reaches the server while another is live for the same baby, both are kept.
+- [x] With no network, every action that creates or changes a session (Start, Stop, Save, manual entry, edit, delete) is queued on the device with its own time and applied when back online; re-sending is idempotent.
+- [x] A session started offline keeps running and displaying on that device, also after the app is reopened.
+- [x] If a queued session reaches the server while another is live for the same baby, both are kept.
 
 ## Build slices
 
@@ -81,7 +81,7 @@ Each slice goes red → green → commit on `master`, in this order.
 
 - [x] **Slice 1 — Pump entity, manual entry, card and history.** `Pump` entity + migration (client UUID, baby FK with cascade, start time, end time nullable, left ml, right ml, notes, logged by, created at, updated at/by). Core `PumpService` (validation, create idempotent, update, delete, paged list) reusing `Nala.Core/Entries`. Endpoints `POST/PUT/DELETE/GET /api/pumps…` and `GET /api/babies/{babyId}/pumps`. Web: `pump` section registered (one kind, + opens the sheet), `PumpService`, Pump sheet without the timer (times, duration, Left / Right ml, total, notes, delete), card highlight + empty state, entry list item, history; add / edit / delete through the shared offline queue. Covers: card highlight and empty state, manual entry, volumes, validation, list item, API, editing, cascade, offline add / edit / delete.
 - [x] **Slice 2 — Timer, live sync and mini-bar.** Start / stop endpoints (one live per baby, 409 `pumpInProgress`, `queued` exception), `PUT` on a live session, `pumps` in `GET /api/live`. Web: `nala-timer` in the Pump sheet, End time "Pumping…", manual mode, Save / × per spec 04, opening the live session, `PumpSyncService` on `LiveEntriesSync`, running timer source ("Pumping"), timer button, "Still pumping?" banner, sheet following changes / deletion elsewhere. Start / Stop already go through the device queue (`queued: true` on a Start kept offline), as Sleep's. Covers: the timer sheet criteria, live list item, Shared timer state.
-- [ ] **Slice 3 — Offline timers.** The queued-changes overlay for pumps (`applyQueuedPumps` on `PumpSyncService`): a session started, stopped or edited offline shows at once on the device, also after the app is reopened, and a queued session reaching the server while another is live is kept as a separate one. Covers: Offline criteria 2 and 3, and the timer part of criterion 1.
+- [x] **Slice 3 — Offline timers.** The queued-changes overlay for pumps (`applyQueuedPumps` on `PumpSyncService`): a session started, stopped or edited offline shows at once on the device, also after the app is reopened, and a queued session reaching the server while another is live is kept as a separate one. Covers: Offline criteria 2 and 3, and the timer part of criterion 1.
 
 ## Data
 
@@ -96,6 +96,7 @@ Each slice goes red → green → commit on `master`, in this order.
 - Reused: section card, timer button, entry sheet, `nala-timer`, `nala-time-row`, notes row, banner, entry list item, history list, mini-bar, `LiveEntriesSync`, device queue.
 - New shared component (slice 1): **`nala-number-fields-row`** (`shared/ui/number-fields-row/`), number fields side by side in one sheet row (outlined M3 text fields, label, numeric keyboard, unit suffix, one error message), for Left / Right ml and later Growth.
 - Shared with Sleep since slice 2 (moved, not copied): API `Nala.Core/Entries/EntryTimer` (the Start / Stop rules, on `ITimedEntry` / `ITimedEntryRepository`, results `TimerResult<TEntry>`) and `EntryFields.ValidateTimerAt`; web `shared/ui/entry-sheet/live-entry-sheet.ts` (`LiveEntrySheet`: the start / end time and notes controls, timer, Save, Delete, ×, opening the live entry and following other devices; Pump adds its volumes through its hooks), `core/timers/stopped-entry.ts` and `core/time/live-longer-than.ts`.
+- Shared with Sleep since slice 3 (moved, not copied): web `core/timers/queued-timed-entries.ts` (`applyQueuedTimedEntries`: the server's start / stop / edit / delete rules applied to the changes waiting on the device, the section giving its path, its fields of a new entry and the fields an edit sets). Pump's overlay is `applyQueuedPumps` (`core/pumps/pump.ts`), on `PumpSyncService`.
 - Shared with Sleep since slice 1 (moved, not copied): API `EntryFields.ValidateStartEnd` (the start / end time rules); web `core/time/span-seconds.ts` (`spanSeconds`, start to end or to now) and `core/time/after-start.ts` (the `beforeStart` validator).
 - Kind label: Pump / Tire-lait (as the section's name).
 - All text through i18n (EN/FR).
