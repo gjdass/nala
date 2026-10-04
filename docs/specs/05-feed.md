@@ -156,4 +156,4 @@ A feed is one entity with a kind (breastfeed / bottle / solids) and kind-specifi
 - Daily totals, statistics and charts.
 - Combined breastfeed + bottle top-up as a single entry (log them as two feeds).
 - A food catalogue or per-food allergy tracking beyond the reaction field.
-- Pumping (feature 10).
+- Pumping (feature 08).

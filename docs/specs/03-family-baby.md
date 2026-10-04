@@ -84,7 +84,7 @@ Each slice goes red → green → commit on `master`, in this order.
 ## Data
 
 - **Baby:** id, name, birth date (date only, no time), sex, birth weight g (nullable), birth length cm (nullable, one decimal), birth head circumference cm (nullable, one decimal), created at, created by user, updated at.
-- Birth measurements live on the baby. The Growth feature (09) will show them as the first point of the growth history rather than duplicating them as entries.
+- Birth measurements live on the baby. The Growth feature (10) will show them as the first point of the growth history rather than duplicating them as entries.
 - **Invitation:** as defined in 02, plus `revoked at`.
 - Deleting a baby cascades to every activity table's entries for that baby.
 
