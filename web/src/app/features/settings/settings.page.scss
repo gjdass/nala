@@ -41,6 +41,13 @@ mat-form-field {
   align-self: flex-start;
 }
 
+.version {
+  margin: 0;
+  text-align: center;
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+}
+
 .delete {
   display: flex;
   flex-direction: column;

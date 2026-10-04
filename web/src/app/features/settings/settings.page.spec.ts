@@ -327,6 +327,13 @@ describe('SettingsPage', () => {
     });
   });
 
+  it('ends with the version: the commit the app was built from (dev outside a Docker build)', () => {
+    const version = host().querySelector('[data-testid="version"]');
+
+    expect(version?.textContent?.trim()).toBe('Version dev');
+    expect(host().querySelector('main')!.lastElementChild).toBe(version);
+  });
+
   describe('delete account', () => {
     const signedInAs = async (isAdmin: boolean) => {
       auth.state.update((state) => ({ ...state!, user: { ...state!.user!, isAdmin } }));

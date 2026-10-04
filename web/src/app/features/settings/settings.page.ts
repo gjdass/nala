@@ -21,6 +21,7 @@ import { AuthService } from '../../core/auth/auth.service';
 import { LANGS, Lang } from '../../core/i18n/initial-lang';
 import { SECTIONS } from '../../core/sections/section.models';
 import { THEME_MODES, ThemeMode, ThemeService } from '../../core/theme/theme.service';
+import { COMMIT } from '../../core/version/version';
 import { SettingsSectionComponent } from '../../shared/ui/settings-section/settings-section.component';
 import { displayName, errorCode, newPassword } from '../auth/auth.validators';
 import { AdminUsersComponent } from './admin-users/admin-users.component';
@@ -32,7 +33,7 @@ import { SettingsSectionsComponent } from './settings-sections/settings-sections
 
 const SNACK_DURATION = 3000;
 
-/** Babies, members & invitations, home sections (once a section is built), account (display name, language, password, deletion), admin (admin only), appearance (theme) and logout. */
+/** Babies, members & invitations, home sections (once a section is built), account (display name, language, password, deletion), admin (admin only), appearance (theme), logout and the version. */
 @Component({
   selector: 'nala-settings',
   imports: [
@@ -69,6 +70,7 @@ export class SettingsPage {
   protected readonly language = computed(() => this.auth.state()?.user?.language);
   protected readonly isAdmin = computed(() => this.auth.state()?.user?.isAdmin ?? false);
   protected readonly themeMode = this.theme.mode;
+  protected readonly commit = COMMIT;
 
   protected readonly profileForm = new FormGroup({
     displayName: new FormControl(this.auth.state()?.user?.displayName ?? '', {

@@ -145,6 +145,7 @@
       "resetLinkText": "Send this link to {{name}}: it lets them set a new password, once, until {{date}}. Any earlier link stops working."
     },
     "logout": "Log out",
+    "version": "Version {{ commit }}",
     "babies": {
       "title": "Babies",
       "add": "Add a baby"

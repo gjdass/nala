@@ -31,7 +31,10 @@
                 "input": "public"
               }
             ],
-            "styles": ["src/styles/styles.scss"]
+            "styles": ["src/styles/styles.scss"],
+            "define": {
+              "NALA_COMMIT": "'dev'"
+            }
           },
           "configurations": {
             "production": {

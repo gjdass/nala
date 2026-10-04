@@ -109,6 +109,11 @@ describe('docker-compose.yml', () => {
     );
   });
 
+  it('web build can read the repository, to stamp the commit it was built from', () => {
+    const { additional_contexts } = composeConfig().services.web.build;
+    assert.equal(additional_contexts?.git, `${root.replace(/\/$/, '')}/.git`);
+  });
+
   it('.env.example covers every variable compose uses', () => {
     const used = new Set([...read('docker-compose.yml').matchAll(/\$\{(\w+)/g)].map((m) => m[1]));
     const defined = envExample();
@@ -130,5 +135,12 @@ describe('Dockerfiles', () => {
     assert.match(build, /^node:24-alpine/);
     assert.match(runtime, /nginx/);
     assert.deepEqual(rest, []);
+  });
+
+  it('web is built with the short hash of the commit, read from the git context', () => {
+    const dockerfile = read('web/Dockerfile');
+    assert.match(dockerfile, /--mount=type=bind,from=git,/);
+    assert.match(dockerfile, /rev-parse --short HEAD/);
+    assert.match(dockerfile, /--define NALA_COMMIT=/);
   });
 });

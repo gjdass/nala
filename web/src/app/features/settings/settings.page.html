@@ -157,4 +157,6 @@
   <button mat-stroked-button type="button" (click)="logout()" data-testid="logout">
     {{ 'settings.logout' | transloco }}
   </button>
+
+  <p class="version" data-testid="version">{{ 'settings.version' | transloco: { commit } }}</p>
 </main>

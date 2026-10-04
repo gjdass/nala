@@ -31,7 +31,10 @@ services:
         condition: service_healthy
 
   web:
-    build: ./web
+    build:
+      context: ./web
+      additional_contexts:
+        git: ./.git
     restart: unless-stopped
     ports:
       - "${NALA_HTTP_PORT}:8080"

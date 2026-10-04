@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # End-to-end deployment check: builds and starts the stack from a simulated clean
-# clone (tracked + unignored files only), then checks nginx, the SPA fallback and
-# the API health through the single published port. Needs Docker.
+# clone (tracked + unignored files and .git), then checks nginx, the SPA fallback,
+# the API health through the single published port and the commit stamped in the
+# web build. Needs Docker.
 set -euo pipefail
 
 repo="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -20,7 +21,9 @@ fail() { echo "FAIL: $*" >&2; exit 1; }
 echo "Copying a clean tree to $work"
 (cd "$repo" && git ls-files -z --cached --others --exclude-standard \
   | while IFS= read -r -d '' f; do [ -e "$f" ] && printf '%s\0' "$f"; done \
-  | rsync -a --from0 --files-from=- ./ "$work/")
+  | rsync -a --from0 --files-from=- ./ "$work/" \
+  && rsync -a .git "$work/")
+commit="$(git -C "$repo" rev-parse --short HEAD)"
 
 cd "$work"
 cp .env.example .env
@@ -50,5 +53,9 @@ echo "ok: SPA fallback"
 
 curl -fsS -o /dev/null "$base/ngsw.json" || fail "GET /ngsw.json failed (no service worker build?)"
 echo "ok: service worker manifest served"
+
+docker compose -p "$project" exec -T web sh -c "grep -lq \"$commit\" /usr/share/nginx/html/*.js" \
+  || fail "the web build is not stamped with commit $commit"
+echo "ok: web build stamped with commit $commit"
 
 echo "Smoke test passed"

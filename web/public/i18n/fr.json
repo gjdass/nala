@@ -145,6 +145,7 @@
       "resetLinkText": "Envoyez ce lien à {{name}} : il permet de choisir un nouveau mot de passe, une seule fois, jusqu'au {{date}}. Les liens précédents ne fonctionnent plus."
     },
     "logout": "Se déconnecter",
+    "version": "Version {{ commit }}",
     "babies": {
       "title": "Bébés",
       "add": "Ajouter un bébé"
