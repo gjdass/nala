@@ -10,7 +10,7 @@ import { Baby } from '../../../core/babies/baby.models';
 
 /**
  * The app's top bar: the selected baby (name + age), a switcher menu when the family has
- * several babies. Settings is a bottom navigation destination.
+ * several babies, and the Nala brand on the right. Settings is a bottom navigation destination.
  */
 @Component({
   selector: 'nala-top-app-bar',

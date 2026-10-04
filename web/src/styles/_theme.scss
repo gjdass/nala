@@ -32,9 +32,10 @@ body {
 
 // Material rounds the bottom sheet only from medium widths up; on phones, where the app uses
 // it, it would be square. No padding: the sheet header spans the whole sheet, and each sheet
-// pads its own rows. Material's bottom sheet styles load after this file, hence the extra class.
+// pads its own rows; only the home indicator's safe area at the bottom (spec 04). Material's
+// bottom sheet styles load after this file, hence the extra class.
 .cdk-overlay-pane .mat-bottom-sheet-container {
-  padding: 0;
+  padding: 0 0 env(safe-area-inset-bottom);
   border-top-left-radius: var(--mat-bottom-sheet-container-shape, 28px);
   border-top-right-radius: var(--mat-bottom-sheet-container-shape, 28px);
 }

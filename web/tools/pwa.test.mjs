@@ -43,6 +43,10 @@ describe('PWA install on iOS (index.html)', () => {
     assert.ok(![4, 6].includes(colorType), 'no alpha channel: iOS fills transparency with black');
   });
 
+  it('draws edge to edge, so the app handles the safe areas itself', () => {
+    assert.match(meta('viewport') ?? '', /(^|,\s*)viewport-fit=cover(,|$)/);
+  });
+
   it('opens standalone, titled Nala, with a theme colour', () => {
     assert.equal(meta('apple-mobile-web-app-capable'), 'yes');
     assert.equal(meta('mobile-web-app-capable'), 'yes');
@@ -77,6 +81,12 @@ describe('browser favicon', () => {
     assert.equal(ico.readUInt16LE(2), 1, 'icon type');
     const sizes = Array.from({ length: ico.readUInt16LE(4) }, (_, i) => ico[6 + i * 16]);
     assert.deepEqual(sizes.sort((a, b) => a - b), [16, 32, 48]);
+  });
+});
+
+describe('brand mark (top app bar)', () => {
+  it("ships the lion's head at 72 px, sharp at 3× for its 24 px display", () => {
+    assert.deepEqual(Object.values(pngSize('icons/brand-mark.png')).slice(0, 2), [72, 72]);
   });
 });
 

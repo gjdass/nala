@@ -3,7 +3,7 @@ main {
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
-  min-height: 100dvh;
+  min-height: calc(100dvh - var(--nala-safe-top));
   padding: 16px;
 }
 

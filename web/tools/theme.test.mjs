@@ -74,6 +74,28 @@ describe('global theme', () => {
     assert.match(css, /--nala-nav-bar-surface:\s*color-mix\([^;]*var\(--mat-sys-surface-container\)[^;]*transparent\)/);
   });
 
+  it('defines the top safe-area offset: the inset plus 8 px, nothing without an inset (spec 04)', () => {
+    assert.match(
+      css,
+      /--nala-safe-top:\s*calc\(env\(safe-area-inset-top\) \+ min\(env\(safe-area-inset-top\), 8px\)\)/,
+    );
+  });
+
+  it('starts every screen below the top safe area', () => {
+    assert.match(css, /body\s*\{[^}]*padding-top:\s*var\(--nala-safe-top\)/);
+  });
+
+  it("never rubber-bands the document, so the bottom navigation bar can't be dragged", () => {
+    assert.match(css, /html,\s*body\s*\{[^}]*overscroll-behavior-y:\s*none/);
+  });
+
+  it('ends the bottom sheets above the bottom safe area', () => {
+    assert.match(
+      css,
+      /\.mat-bottom-sheet-container\s*\{[^}]*padding:\s*0 0 env\(safe-area-inset-bottom\)/,
+    );
+  });
+
   it("keeps Material's default density, so controls keep their 48 dp touch targets", () => {
     assert.doesNotMatch(css, /density/);
     assert.doesNotMatch(css, /touch-target-(display|size)/);

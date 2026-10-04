@@ -1,0 +1,17 @@
+// iPhone safe areas and overscroll (spec 04). The viewport covers the whole screen
+// (`viewport-fit=cover` in index.html), so the app keeps clear of the status bar itself.
+html {
+  // The top inset plus 8 px, so iOS's blur under the status bar never touches the content;
+  // 0 where there is no inset (desktop, Android).
+  --nala-safe-top: calc(env(safe-area-inset-top) + min(env(safe-area-inset-top), 8px));
+}
+
+// No rubber-band: pulling past the end would drag the page and the bottom navigation bar with it.
+html,
+body {
+  overscroll-behavior-y: none;
+}
+
+body {
+  padding-top: var(--nala-safe-top);
+}

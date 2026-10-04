@@ -2,7 +2,12 @@
   display: block;
 }
 
+.baby {
+  min-width: 0;
+}
+
 .name-age {
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -10,7 +15,29 @@
 }
 
 .name {
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
   font: var(--mat-sys-title-medium);
+}
+
+// On the right, level with the baby's name: the name/age block is centred in the bar, its name
+// line 8 px above the centre, hence the bottom margin (twice that) on the centred brand.
+.brand {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-inline-start: auto;
+  margin-bottom: 16px;
+  padding-inline-start: 12px;
+  font: var(--mat-sys-title-small);
+  color: var(--mat-sys-on-surface-variant);
+
+  img {
+    border-radius: var(--mat-sys-corner-full);
+  }
 }
 
 .age {

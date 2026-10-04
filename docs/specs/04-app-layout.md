@@ -49,8 +49,13 @@ Give every activity section (Feed, Diaper, Sleep, Health, Growth, Pump…) the s
 
 ## Structure
 
+### Safe areas
+- The app draws edge to edge (`viewport-fit=cover`) and keeps clear of the iPhone's status bar, notch / Dynamic Island and home indicator itself: every screen starts below the top safe area plus 8 px (so iOS's blur under the status bar never touches the content), the bottom navigation bar and the bottom sheets end above the bottom safe area. Off iOS (no safe area) nothing changes. The top offset is the global `--nala-safe-top` (`_layout.scss`).
+- The page never rubber-bands (`overscroll-behavior-y: none` on the document): pulling past the top or bottom doesn't drag the page, so the bottom navigation bar never moves.
+
 ### Top app bar
 - Selected baby (name + age) with the baby switcher (03). Shared `nala-top-app-bar` (built in 03). Settings is reached from the bottom navigation bar.
+- On the right, on the baby's name row, the Nala brand: the lion's head (`icons/brand-mark.png`, generated from the artwork like the favicon) at 24 px and "Nala" in `title-small`, `on-surface-variant`. Decorative (not a button, not translated), shown with or without a baby. A long baby name ends with an ellipsis before the brand is squeezed. The section history page keeps its own bar (back + title), without the brand.
 
 ### Bottom navigation bar
 - Floating, fixed at the bottom of the screen above the safe area: not full width (70 % of the screen width minus the 16 px side margins, at most 294 px wide, centred), compact (about 60 px tall: 48 dp destinations, no visible labels), fully rounded ends; while it holds timer rows it takes the full width between the side margins, at most 360 px, so a label and its duration fit, and the M3 large corner, a translucent surface with the page blurred behind it (`backdrop-filter`), like the iOS "liquid glass" bars.
@@ -168,6 +173,12 @@ Each item becomes at least one test, written failing first.
 - [x] The last element of a page can scroll above the navigation bar.
 - [x] The sheet is usable one-handed on a phone: touch targets follow M3 minimums (48 × 48 dp). *(Tests check that only default-density Material controls are used; still to be checked by hand on a phone.)*
 
+### Safe areas & brand
+- [x] `index.html` sets `viewport-fit=cover`.
+- [x] Every screen starts below the top safe area plus 8 px, nothing when there is no safe area; the bottom sheets end above the bottom safe area.
+- [x] The document doesn't rubber-band when pulled past its top or bottom (`overscroll-behavior-y: none`), so the bottom navigation bar stays in place.
+- [x] The top app bar shows the Nala brand (lion's head + "Nala") on the right, with one baby, several babies or none.
+
 ### Mini-bar
 - [x] The mini-bar appears on every screen as soon as a timer runs, and disappears when none runs.
 - [x] It shows each live entry with a live duration and opens the matching entry sheet on tap.
@@ -209,6 +220,10 @@ Fewer live API calls (one endpoint for every section, slower when nothing runs):
 
 - [x] **Slice 12 — `GET /api/live`.** `Nala.Api/Live/LiveEndpoints.cs`, reusing the live queries of `FeedService` and `SleepService`: `{ feeds, sleeps }`, oldest start first, signed-in members only. The old in-progress endpoints stay until slice 13. Covers: the `/api/live` Live sync criterion.
 - [x] **Slice 13 — One shared poller, 5 s / 30 s.** Root `LiveSyncService` in `core/timers/` takes over the timing and triggers (sign-in, visibility, queue sent) from `LiveEntriesSync`; each section's sync registers under its key and receives its list (the version guard and overlay stay per section). The public API of `BreastfeedSyncService` and `SleepSyncService` is unchanged, plus `refresh()` (a poll at once through the shared poller), which the Sleep sheet uses instead of its own in-progress call. 5 s while any section has a live entry, 30 s otherwise. `FeedService` / `SleepService` in-progress calls and `GET /api/feeds/in-progress` / `GET /api/sleeps/in-progress` removed with their tests. Covers: the other Live sync criteria and both Mini-bar criteria about other devices.
+
+iPhone home screen app (after the PWA install work):
+
+- [x] **Slice 14 — Safe areas, no rubber-band, brand in the top bar.** `viewport-fit=cover` in `index.html`; global `_layout.scss` with `--nala-safe-top` (top inset + 8 px, 0 without inset), the body padded by it, `overscroll-behavior-y: none` on `html` and `body`, the bottom sheet container padded by the bottom inset; the app shell and the auth card take `100dvh` minus the top offset. `branding/generate.py` writes `icons/brand-mark.png` (the favicon's lion head, 72 px); `nala-top-app-bar` shows it with "Nala" on the right of the name row. Covers: every Safe areas & brand criterion.
 
 ## Material 3 mapping
 

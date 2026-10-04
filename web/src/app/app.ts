@@ -23,13 +23,13 @@ import { RunningTimersBarComponent } from './shared/ui/running-timers-bar/runnin
       }
     </div>
   `,
-  // A column at least a screen tall, so the dock sits at the bottom of a short page; being sticky
+  // A column at least a screen tall (below the body's top safe-area padding), so the dock sits at the bottom of a short page; being sticky
   // and after the page, the page's last element always scrolls above it.
   styles: `
     :host {
       display: flex;
       flex-direction: column;
-      min-height: 100dvh;
+      min-height: calc(100dvh - var(--nala-safe-top));
     }
 
     .dock {
