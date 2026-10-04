@@ -4,7 +4,7 @@ Status: done
 
 ## Goal
 
-Give every activity section (Feed, Diaper, Sleep, Medication, Growth, Pump…) the same structure, so the app is predictable and each new section is mostly built from shared components. Feature specs only describe what is specific to their section, using the vocabulary defined here.
+Give every activity section (Feed, Diaper, Sleep, Health, Growth, Pump…) the same structure, so the app is predictable and each new section is mostly built from shared components. Feature specs only describe what is specific to their section, using the vocabulary defined here.
 
 **Structure vs. styling:** the reference screenshots define the *layout and flow*. Every element itself is a standard **Material 3** component from Angular Material, used as designed, with only theme-level customization. See [Material 3 mapping](#material-3-mapping).
 
@@ -123,7 +123,7 @@ Each item becomes at least one test, written failing first.
 
 ### Home and order
 - [x] Home shows one card per visible section, in a single column, in the user's order.
-- [x] A new user gets the default order: Feed, Sleep, Diaper, Pump, Growth, Medication; all visible.
+- [x] A new user gets the default order: Feed, Sleep, Diaper, Pump, Growth, Health; all visible.
 - [x] In settings, a user can reorder sections (drag handles) and hide or show each one; at least one section must stay visible.
 - [x] Order and visibility are saved per user on the server and apply on all their devices; other users are not affected.
 - [x] Hiding a section only hides its card; its data is kept and still shown in the history of other members who display it.
@@ -190,7 +190,7 @@ Each item becomes at least one test, written failing first.
 
 Each slice goes red → green → commit on `master`, in this order.
 
-- [x] **Slice 1 — Section preferences (server + settings).** `UserSectionPreference` entity + migration (user, key, position, visible; PK user + key; cascade on user delete). Core `SectionPreferences`: default order (feed, sleep, diaper, pump, growth, medication, all visible), stored rows merged with any new keys (appended, visible), validation (every known key exactly once, at least one visible). `GET /api/account/sections` → `[{ key, visible }]` in order; `PUT /api/account/sections` replaces the whole list → 200, 400 validation problem otherwise. Any enabled member, for themselves only. Web: `SectionPreferencesService`, a "Home sections" settings section (CDK drag list with drag handles, a visibility switch per row, the last visible one can't be turned off), limited to registered sections. Covers: default order, reorder/hide in settings, saved per user on the server, hiding keeps the data, theming (tokens from 01).
+- [x] **Slice 1 — Section preferences (server + settings).** `UserSectionPreference` entity + migration (user, key, position, visible; PK user + key; cascade on user delete). Core `SectionPreferences`: default order (feed, sleep, diaper, pump, growth, health, all visible), stored rows merged with any new keys (appended, visible), validation (every known key exactly once, at least one visible). `GET /api/account/sections` → `[{ key, visible }]` in order; `PUT /api/account/sections` replaces the whole list → 200, 400 validation problem otherwise. Any enabled member, for themselves only. Web: `SectionPreferencesService`, a "Home sections" settings section (CDK drag list with drag handles, a visibility switch per row, the last visible one can't be turned off), limited to registered sections. Covers: default order, reorder/hide in settings, saved per user on the server, hiding keeps the data, theming (tokens from 01).
 - [x] **Slice 2 — Home column, section card, entry list item.** Section registry. Home renders one shared `nala-section-card` per visible registered section, in the user's order, in a single column under the top app bar. Card: `mat-card`, header band on the section tokens, `mat-mini-fab` +, highlight slot with an empty-state slot, Show more / Show less (up to 10 entries, expanded state per device in `localStorage`), View all history. Shared `nala-entry-list-item` (kind icon, local time, summary, optional duration bar + duration, chevron). Shared ticking `NowService`, time-since and duration pipes (EN/FR). Covers: home in the user's order, the card criteria (frame, empty state, show more/less, live time-since). The frame criterion is ticked with slice 4, when View all history leads to the history page.
 - [x] **Slice 3 — + button, kind picker, entry sheet frame.** + opens the shared `nala-kind-picker` (`MatBottomSheet`) with several kinds, the entry sheet directly with one. Entry sheet through `SheetService`: `nala-sheet-header` on the section colour, shared form row, suggestion row, notes row and delete action (with confirmation); × asks before discarding changes, Save disabled while invalid with field errors, entry list item opens the sheet pre-filled with Delete; 48 × 48 dp targets. Tested with a fake section. Covers: every "+ and entry sheet" criterion.
 - [x] **Slice 4 — History page.** `/history/:section` (signed in, a baby required, unknown or unregistered key → home), back button, the section's entries for the selected baby newest first as entry list items, loaded page by page on scroll through the section's page loader. No totals or charts. Opened from View all history. Covers: the history part of the section card criterion.
@@ -238,7 +238,7 @@ Use Angular Material's M3 components as-is. Customize only through the global th
 ## Data
 
 - **User section preference:** user, section key, position, visible.
-- Section keys: `feed`, `sleep`, `diaper`, `pump`, `growth`, `medication` (extended as features are added).
+- Section keys: `feed`, `sleep`, `diaper`, `pump`, `growth`, `health` (renamed from `medication` by spec 09; extended as features are added).
 
 ## UI notes — shared components
 

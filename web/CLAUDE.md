@@ -22,7 +22,7 @@ Run from `web/` (Node 24, npm).
 
 - Standalone components, signals, `OnPush` change detection, built-in control flow (`@if`, `@for`).
 - `src/app/shared/ui/` — reusable presentational components (card, button, timer, list item, empty state…). Prefix: `nala-`.
-- `src/app/features/<activity>/` — one folder per activity (feed, sleep, diaper, growth, pump, medication…). Features compose shared UI components; they don't restyle Material directly.
+- `src/app/features/<activity>/` — one folder per activity (feed, sleep, diaper, growth, pump, health…). Features compose shared UI components; they don't restyle Material directly.
 - `src/app/core/` — API client services, models, interceptors, app-wide services (theme, etc.).
 - Talk to the backend through `/api` (same origin, proxied by nginx in prod and by the Angular dev proxy locally).
 
