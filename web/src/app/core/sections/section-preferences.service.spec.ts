@@ -15,7 +15,7 @@ describe('SectionPreferencesService', () => {
     { key: 'diaper', visible: true },
     { key: 'pump', visible: true },
     { key: 'growth', visible: true },
-    { key: 'medication', visible: true },
+    { key: 'health', visible: true },
   ];
   const custom: SectionPreference[] = [
     { key: 'pump', visible: true },
@@ -23,7 +23,7 @@ describe('SectionPreferencesService', () => {
     { key: 'sleep', visible: false },
     { key: 'diaper', visible: true },
     { key: 'growth', visible: true },
-    { key: 'medication', visible: true },
+    { key: 'health', visible: true },
   ];
 
   beforeEach(() => {

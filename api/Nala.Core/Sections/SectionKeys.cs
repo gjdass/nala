@@ -5,5 +5,5 @@ public static class SectionKeys
 {
     public const int MaxLength = 32;
 
-    public static readonly IReadOnlyList<string> Default = ["feed", "sleep", "diaper", "pump", "growth", "medication"];
+    public static readonly IReadOnlyList<string> Default = ["feed", "sleep", "diaper", "pump", "growth", "health"];
 }

@@ -3,7 +3,7 @@ import { Observable } from 'rxjs';
 import { FieldErrors } from '../auth/auth.models';
 
 /** Every home section, in the default order (the API owns the list; spec 04). */
-export const SECTION_KEYS = ['feed', 'sleep', 'diaper', 'pump', 'growth', 'medication'] as const;
+export const SECTION_KEYS = ['feed', 'sleep', 'diaper', 'pump', 'growth', 'health'] as const;
 
 export type SectionKey = (typeof SECTION_KEYS)[number];
 

@@ -304,7 +304,7 @@
     "diaper": "Diaper",
     "pump": "Pump",
     "growth": "Growth",
-    "medication": "Medication"
+    "health": "Health"
   },
   "sectionCard": {
     "add": "Add {{section}}",
@@ -634,9 +634,9 @@
       "review": "Review"
     }
   },
-  "medication": {
+  "health": {
     "kinds": {
-      "medication": "Medication"
+      "health": "Health"
     },
     "card": {
       "lastDose": "Last dose",
@@ -673,7 +673,7 @@
       "amountDecimals": "2 decimals at most",
       "unitRequired": "Choose a unit for the amount",
       "unknown": "Something went wrong. Check your connection and try again.",
-      "medicationNotFound": "This dose no longer exists.",
+      "healthEntryNotFound": "This entry no longer exists.",
       "babyNotFound": "This baby no longer exists."
     }
   },

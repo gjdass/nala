@@ -1,0 +1,30 @@
+<nala-section-card key="health" [entries]="entries()" (changed)="reload()">
+  @if (last(); as last) {
+    <div sectionHighlight class="highlight" data-testid="health-highlight">
+      <mat-icon class="icon" aria-hidden="true">schedule</mat-icon>
+      <div class="since">
+        <span class="label" data-testid="health-last-label">{{
+          'health.card.lastDose' | transloco
+        }}</span>
+        <span class="since-value" data-testid="health-since">{{
+          sinceSeconds() | nalaHighlightDuration
+        }}</span>
+      </div>
+      <div class="last">
+        <span class="last-value" data-testid="health-last-name">{{ last.name }}</span>
+        @if (last | nalaDose; as dose) {
+          <span class="label" data-testid="health-last-dose">{{ dose }}</span>
+        }
+      </div>
+    </div>
+  }
+  <nala-empty-state
+    sectionEmpty
+    icon="medical_services"
+    [title]="'health.card.empty.title' | transloco"
+    [text]="'health.card.empty.text' | transloco"
+  />
+  <ng-template nalaSectionEntry let-healthEntry>
+    <nala-health-entry [healthEntry]="healthEntry" (open)="edit(healthEntry)" />
+  </ng-template>
+</nala-section-card>

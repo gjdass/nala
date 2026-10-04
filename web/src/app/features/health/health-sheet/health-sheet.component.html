@@ -1,0 +1,80 @@
+<nala-entry-sheet [form]="form" [saving]="saving()" (save)="save()" (delete)="delete()">
+  <nala-time-row [label]="'entrySheet.time' | transloco" [control]="form.controls.time" />
+
+  <nala-form-row [label]="'health.sheet.name' | transloco" [interactive]="false">
+    <mat-form-field rowEditor appearance="outline">
+      <input
+        matInput
+        type="text"
+        autocomplete="off"
+        [maxlength]="nameMaxLength"
+        [formControl]="form.controls.name"
+        [attr.aria-label]="'health.sheet.name' | transloco"
+        data-testid="name"
+      />
+      <mat-error data-testid="name-error">{{
+        'health.errors.' + nameError() | transloco
+      }}</mat-error>
+    </mat-form-field>
+  </nala-form-row>
+
+  @if (recentNames().length) {
+    <nala-chip-choice-row
+      name="recent"
+      [clearable]="false"
+      [label]="'health.sheet.recent' | transloco"
+      [options]="recentNames()"
+      [control]="recentName"
+    />
+  }
+
+  <nala-form-row [label]="'health.sheet.dose' | transloco" [interactive]="false">
+    <mat-form-field rowEditor appearance="outline">
+      <input
+        matInput
+        type="number"
+        inputmode="decimal"
+        min="0.01"
+        max="1000"
+        step="0.01"
+        [formControl]="form.controls.amount"
+        [attr.aria-label]="'health.sheet.dose' | transloco"
+        data-testid="amount"
+      />
+      <mat-error data-testid="amount-error">{{
+        'health.errors.' + amountError() | transloco
+      }}</mat-error>
+    </mat-form-field>
+  </nala-form-row>
+  @if (suggestion(); as last) {
+    <nala-suggestion-row
+      [text]="'health.sheet.lastDose' | transloco: { dose: last | nalaDose }"
+      (accept)="useLast(last)"
+    />
+  }
+
+  <nala-chip-choice-row
+    name="unit"
+    optionLabel="health.unit."
+    [label]="'health.sheet.unit' | transloco"
+    [options]="units"
+    [control]="form.controls.unit"
+    [error]="unitError()"
+  />
+
+  <nala-notes-row [control]="form.controls.notes" />
+
+  @if (formError(); as code) {
+    <p class="form-error" role="alert" data-testid="form-error">
+      {{ 'health.errors.' + code | transloco }}
+    </p>
+  }
+
+  @if (healthEntry; as healthEntry) {
+    <nala-entry-audit
+      [loggedBy]="healthEntry.loggedBy.displayName"
+      [editedBy]="edited ? healthEntry.updatedBy.displayName : null"
+      [editedAt]="edited ? healthEntry.updatedAt : null"
+    />
+  }
+</nala-entry-sheet>

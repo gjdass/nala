@@ -82,7 +82,7 @@ describe('HomePage', () => {
     { key: 'sleep', visible: false },
     { key: 'feed', visible: true },
     { key: 'growth', visible: true },
-    { key: 'medication', visible: true },
+    { key: 'health', visible: true },
   ];
   const cards = () =>
     [...host().querySelectorAll('[data-testid="section-column"] [data-testid="card"]')].map((c) =>

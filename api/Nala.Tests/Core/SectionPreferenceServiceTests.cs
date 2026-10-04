@@ -37,7 +37,7 @@ public class SectionPreferenceServiceTests
             new SectionSetting("diaper", true),
             new SectionSetting("pump", true),
             new SectionSetting("growth", true),
-            new SectionSetting("medication", true),
+            new SectionSetting("health", true),
         }));
     }
 
@@ -45,7 +45,7 @@ public class SectionPreferenceServiceTests
     public async Task Stored_preferences_are_returned_in_their_order()
     {
         Store(_anna.Id,
-            ("growth", true), ("feed", false), ("sleep", true), ("diaper", true), ("medication", false), ("pump", true));
+            ("growth", true), ("feed", false), ("sleep", true), ("diaper", true), ("health", false), ("pump", true));
 
         var sections = await _service.GetAsync(_anna);
 
@@ -55,7 +55,7 @@ public class SectionPreferenceServiceTests
             new SectionSetting("feed", false),
             new SectionSetting("sleep", true),
             new SectionSetting("diaper", true),
-            new SectionSetting("medication", false),
+            new SectionSetting("health", false),
             new SectionSetting("pump", true),
         }));
     }
@@ -67,7 +67,7 @@ public class SectionPreferenceServiceTests
 
         var sections = await _service.GetAsync(_anna);
 
-        Assert.That(sections.Select(s => s.Key), Is.EqualTo(new[] { "sleep", "feed", "diaper", "pump", "growth", "medication" }));
+        Assert.That(sections.Select(s => s.Key), Is.EqualTo(new[] { "sleep", "feed", "diaper", "pump", "growth", "health" }));
         Assert.That(sections.Skip(4).Select(s => s.Visible), Is.All.True);
     }
 
@@ -75,7 +75,7 @@ public class SectionPreferenceServiceTests
     public async Task Unknown_stored_keys_are_dropped()
     {
         Store(_anna.Id,
-            ("feed", true), ("bath", true), ("sleep", true), ("diaper", true), ("pump", true), ("growth", true), ("medication", true));
+            ("feed", true), ("bath", true), ("sleep", true), ("diaper", true), ("pump", true), ("growth", true), ("health", true));
 
         var sections = await _service.GetAsync(_anna);
 
@@ -85,7 +85,7 @@ public class SectionPreferenceServiceTests
     [Test]
     public async Task Another_users_preferences_are_not_used()
     {
-        Store(Guid.NewGuid(), ("medication", false));
+        Store(Guid.NewGuid(), ("health", false));
 
         var sections = await _service.GetAsync(_anna);
 
@@ -98,7 +98,7 @@ public class SectionPreferenceServiceTests
         Store(_anna.Id, ("feed", true));
         var ben = Guid.NewGuid();
         Store(ben, ("feed", false));
-        var order = new[] { "pump", "feed", "sleep", "diaper", "growth", "medication" };
+        var order = new[] { "pump", "feed", "sleep", "diaper", "growth", "health" };
         var input = order.Select(k => new SectionSetting(k, k != "sleep")).ToArray();
 
         var result = await _service.SaveAsync(_anna, input);
@@ -117,9 +117,9 @@ public class SectionPreferenceServiceTests
         yield return new TestCaseData((object)null!).SetName("Saving_refuses_a_missing_list");
         yield return new TestCaseData((object)All(order: ["feed", "sleep", "diaper", "pump", "growth"]))
             .SetName("Saving_refuses_a_list_with_a_missing_key");
-        yield return new TestCaseData((object)All(order: ["feed", "feed", "sleep", "diaper", "pump", "growth", "medication"]))
+        yield return new TestCaseData((object)All(order: ["feed", "feed", "sleep", "diaper", "pump", "growth", "health"]))
             .SetName("Saving_refuses_a_list_with_a_duplicate_key");
-        yield return new TestCaseData((object)All(order: ["feed", "bath", "sleep", "diaper", "pump", "growth", "medication"]))
+        yield return new TestCaseData((object)All(order: ["feed", "bath", "sleep", "diaper", "pump", "growth", "health"]))
             .SetName("Saving_refuses_a_list_with_an_unknown_key");
     }
 

@@ -13,7 +13,7 @@ public class SectionPreferenceEndpointTests
     private const string Password = "correct horse battery";
     private const string Url = "/api/account/sections";
 
-    private static readonly string[] DefaultOrder = ["feed", "sleep", "diaper", "pump", "growth", "medication"];
+    private static readonly string[] DefaultOrder = ["feed", "sleep", "diaper", "pump", "growth", "health"];
 
     private NalaApiFactory _factory = null!;
     private HttpClient _admin = null!;
@@ -87,7 +87,7 @@ public class SectionPreferenceEndpointTests
 
     private static readonly (string Key, bool Visible)[] Custom =
     [
-        ("pump", true), ("feed", true), ("sleep", false), ("diaper", true), ("growth", true), ("medication", false),
+        ("pump", true), ("feed", true), ("sleep", false), ("diaper", true), ("growth", true), ("health", false),
     ];
 
     [Test]

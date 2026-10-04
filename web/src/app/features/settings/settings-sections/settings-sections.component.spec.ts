@@ -37,7 +37,7 @@ describe('SettingsSectionsComponent', () => {
     { key: 'growth', visible: true },
     { key: 'pump', visible: false },
     { key: 'feed', visible: true },
-    { key: 'medication', visible: true },
+    { key: 'health', visible: true },
     { key: 'diaper', visible: false },
   ];
 
@@ -109,7 +109,7 @@ describe('SettingsSectionsComponent', () => {
       { key: 'feed', visible: true },
       { key: 'pump', visible: false },
       { key: 'diaper', visible: false },
-      { key: 'medication', visible: true },
+      { key: 'health', visible: true },
       { key: 'growth', visible: true },
     ]);
   });

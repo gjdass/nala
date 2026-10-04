@@ -3,7 +3,7 @@ import { before, describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import * as sass from 'sass';
 
-const SECTIONS = ['feed', 'sleep', 'diaper', 'pump', 'growth', 'medication'];
+const SECTIONS = ['feed', 'sleep', 'diaper', 'pump', 'growth', 'health'];
 const entry = fileURLToPath(new URL('../src/styles/styles.scss', import.meta.url));
 const nodeModules = fileURLToPath(new URL('../node_modules', import.meta.url));
 

@@ -304,7 +304,7 @@
     "diaper": "Couches",
     "pump": "Tire-lait",
     "growth": "Croissance",
-    "medication": "Médicaments"
+    "health": "Santé"
   },
   "sectionCard": {
     "add": "Ajouter {{section}}",
@@ -634,9 +634,9 @@
       "review": "Vérifier"
     }
   },
-  "medication": {
+  "health": {
     "kinds": {
-      "medication": "Médicament"
+      "health": "Santé"
     },
     "card": {
       "lastDose": "Dernière prise",
@@ -673,7 +673,7 @@
       "amountDecimals": "2 décimales maximum",
       "unitRequired": "Choisissez une unité pour la quantité",
       "unknown": "Une erreur s'est produite. Vérifiez votre connexion et réessayez.",
-      "medicationNotFound": "Cette prise n'existe plus.",
+      "healthEntryNotFound": "Cette entrée n'existe plus.",
       "babyNotFound": "Ce bébé n'existe plus."
     }
   },

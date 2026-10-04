@@ -3,7 +3,7 @@ import { SECTIONS } from './core/sections/section.models';
 import { appConfig } from './app.config';
 
 describe('appConfig', () => {
-  it('registers the built sections, Feed, Sleep, Diaper, Pump then Medication', () => {
+  it('registers the built sections, Feed, Sleep, Diaper, Pump then Health', () => {
     const provider = (appConfig.providers as (Provider | EnvironmentProviders)[]).find(
       (p): p is { provide: typeof SECTIONS; useValue: { key: string }[] } =>
         typeof p === 'object' && p !== null && 'provide' in p && p.provide === SECTIONS,
@@ -14,7 +14,7 @@ describe('appConfig', () => {
       'sleep',
       'diaper',
       'pump',
-      'medication',
+      'health',
     ]);
   });
 });
