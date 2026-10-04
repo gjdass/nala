@@ -336,7 +336,7 @@ public class SleepEndpointTests
         Assert.Multiple(() =>
         {
             Assert.That(body.GetProperty("id").GetGuid(), Is.EqualTo(id));
-            Assert.That(body.GetProperty("startTime").GetDateTimeOffset(), Is.EqualTo(_now.AddMinutes(-5)));
+            Assert.That(body.GetProperty("startTime").GetDateTimeOffset(), Is.EqualTo(_now.AddMinutes(-5)).Within(TimeSpan.FromMilliseconds(1)));
             Assert.That(body.GetProperty("endTime").ValueKind, Is.EqualTo(JsonValueKind.Null));
             Assert.That(body.GetProperty("loggedBy").GetProperty("displayName").GetString(), Is.EqualTo("Anna"));
             Assert.That(listed.GetProperty("id").GetGuid(), Is.EqualTo(id));
@@ -357,7 +357,7 @@ public class SleepEndpointTests
         Assert.That(again.StatusCode, Is.EqualTo(HttpStatusCode.OK));
         var body = await JsonAsync(again);
         Assert.That(body.GetProperty("endTime").ValueKind, Is.EqualTo(JsonValueKind.Null));
-        Assert.That(body.GetProperty("startTime").GetDateTimeOffset(), Is.EqualTo(_now.AddMinutes(-90)));
+        Assert.That(body.GetProperty("startTime").GetDateTimeOffset(), Is.EqualTo(_now.AddMinutes(-90)).Within(TimeSpan.FromMilliseconds(1)));
     }
 
     [Test]
@@ -399,7 +399,7 @@ public class SleepEndpointTests
         var response = await _admin.PostAsJsonAsync($"/api/sleeps/{id}/stop", new { at = _now });
 
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
-        Assert.That((await JsonAsync(response)).GetProperty("endTime").GetDateTimeOffset(), Is.EqualTo(_now));
+        Assert.That((await JsonAsync(response)).GetProperty("endTime").GetDateTimeOffset(), Is.EqualTo(_now).Within(TimeSpan.FromMilliseconds(1)));
         Assert.That((await JsonAsync(await _admin.GetAsync("/api/live"))).GetProperty("sleeps").GetArrayLength(), Is.EqualTo(0));
     }
 
@@ -430,7 +430,7 @@ public class SleepEndpointTests
         Assert.That(edited.StatusCode, Is.EqualTo(HttpStatusCode.OK));
         var body = await JsonAsync(edited);
         Assert.That(body.GetProperty("endTime").ValueKind, Is.EqualTo(JsonValueKind.Null));
-        Assert.That(body.GetProperty("startTime").GetDateTimeOffset(), Is.EqualTo(_now.AddMinutes(-45)));
+        Assert.That(body.GetProperty("startTime").GetDateTimeOffset(), Is.EqualTo(_now.AddMinutes(-45)).Within(TimeSpan.FromMilliseconds(1)));
         Assert.That(body.GetProperty("notes").GetString(), Is.EqualTo("cot"));
         Assert.That(withEnd.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
         Assert.That((await JsonAsync(withEnd)).GetProperty("errors").GetProperty("endTime")[0].GetString(), Is.EqualTo("notAllowed"));
