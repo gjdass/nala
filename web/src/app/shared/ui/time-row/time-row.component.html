@@ -21,7 +21,7 @@
           data-testid="time-row-date"
         />
         <mat-datepicker-toggle matIconSuffix [for]="datePicker" />
-        <mat-datepicker #datePicker />
+        <mat-datepicker #datePicker [panelClass]="scheme ?? []" />
       </mat-form-field>
       @if (!dateOnly()) {
         <mat-form-field appearance="outline">
@@ -33,7 +33,7 @@
             data-testid="time-row-time"
           />
           <mat-timepicker-toggle matIconSuffix [for]="timePicker" />
-          <mat-timepicker #timePicker />
+          <mat-timepicker #timePicker [panelClass]="scheme" />
         </mat-form-field>
       }
     </div>

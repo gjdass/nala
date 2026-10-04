@@ -27,6 +27,22 @@ html {
   }
 }
 
+// Section colour schemes (spec 04): .nala-scheme-<key> gives an element and everything in it the
+// section's own Material 3 colour scheme, generated from its palette (light-dark() values like the
+// app theme). Set on the section card, its history page and the overlays the section opens.
+@each $key, $palette in $sections {
+  .nala-scheme-#{$key} {
+    @include mat.theme(
+      (
+        color: (
+          primary: $palette,
+          theme-type: color-scheme,
+        ),
+      )
+    );
+  }
+}
+
 // Section card buttons in the section colours. The card sets --nala-section-container,
 // --nala-on-section-container and --nala-section-accent to its section's tokens.
 // + small FAB (and the live timer button).

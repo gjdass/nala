@@ -67,6 +67,25 @@ describe('SheetService', () => {
     );
   });
 
+  it('gives the bottom sheet the panel class it is opened with', () => {
+    TestBed.inject(SheetService).open(SheetBodyComponent, null, 'nala-scheme-feed');
+
+    expect(bottomSheet.open).toHaveBeenCalledWith(
+      SheetBodyComponent,
+      expect.objectContaining({ panelClass: 'nala-scheme-feed' }),
+    );
+  });
+
+  it('gives the dialog the panel class it is opened with', () => {
+    phone = false;
+    TestBed.inject(SheetService).open(SheetBodyComponent, null, 'nala-scheme-feed');
+
+    expect(dialog.open).toHaveBeenCalledWith(
+      SheetBodyComponent,
+      expect.objectContaining({ panelClass: 'nala-scheme-feed' }),
+    );
+  });
+
   it('lets the bottom sheet close itself with a result', () => {
     const results: (string | undefined)[] = [];
     TestBed.inject(SheetService)

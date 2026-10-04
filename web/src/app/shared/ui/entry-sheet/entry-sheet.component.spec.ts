@@ -3,6 +3,8 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { MatInputModule } from '@angular/material/input';
+import { By } from '@angular/platform-browser';
+import { SECTION_SCHEME } from '../../../core/sections/section-scheme';
 import { Subject } from 'rxjs';
 import en from '../../../../../public/i18n/en.json';
 import { fakeKind } from '../../../testing/fake-section';
@@ -114,6 +116,11 @@ describe('EntrySheetComponent', () => {
       expect(style).toContain('var(--nala-on-section-feed)');
     });
 
+    it("gives its content the section's colour scheme, for the overlays it opens", () => {
+      const row = fixture.debugElement.query(By.directive(FormRowComponent));
+      expect(row.injector.get(SECTION_SCHEME, null)).toBe('nala-scheme-feed');
+    });
+
     it('has ×, the kind title and Save', () => {
       expect(button('sheet-close').getAttribute('aria-label')).toBe(en.sheet.close);
       expect(find('sheet-title')?.textContent?.trim()).toBe(en.sections.feed);
@@ -194,6 +201,7 @@ describe('EntrySheetComponent', () => {
           confirm: en.entrySheet.discard.confirm,
           cancel: en.entrySheet.discard.cancel,
         },
+        panelClass: 'nala-scheme-feed',
       });
       confirmed.next(false);
       expect(sheetRef.close).not.toHaveBeenCalled();
@@ -252,6 +260,7 @@ describe('EntrySheetComponent', () => {
           confirm: en.entrySheet.delete.confirm,
           cancel: en.entrySheet.delete.cancel,
         },
+        panelClass: 'nala-scheme-feed',
       });
       confirmed.next(false);
       expect(fixture.componentInstance.deletes).toBe(0);

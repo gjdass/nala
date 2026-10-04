@@ -18,6 +18,7 @@ import { RouterLink } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { SelectedBabyService } from '../../../core/babies/selected-baby.service';
 import { FOLDED_ENTRIES } from '../../../core/sections/recent-entries';
+import { sectionScheme } from '../../../core/sections/section-scheme';
 import { SectionKey } from '../../../core/sections/section.models';
 import { RunningTimer } from '../../../core/timers/running-timer.models';
 import { RunningTimersService } from '../../../core/timers/running-timers.service';
@@ -72,6 +73,8 @@ export class SectionCardComponent<T = unknown> {
   readonly changed = output<EntrySheetResult>();
 
   /** The section's live entry for the selected baby: + becomes the timer button opening it. */
+  /** The section's colour scheme, for the whole card. */
+  protected readonly scheme = computed(() => sectionScheme(this.key()));
   protected readonly live = computed(() => {
     const babyId = this.selected()?.id;
     return (

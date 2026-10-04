@@ -10,6 +10,7 @@ import { map } from 'rxjs';
 import { SelectedBabyService } from '../../core/babies/selected-baby.service';
 import { SECTIONS } from '../../core/sections/section.models';
 import { LoadComponentPipe } from '../../core/sections/load-component.pipe';
+import { sectionScheme } from '../../core/sections/section-scheme';
 
 /**
  * `/history/:section` (spec 04): a top app bar with back, the section's title and the selected baby,
@@ -31,6 +32,7 @@ import { LoadComponentPipe } from '../../core/sections/load-component.pipe';
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './history.page.html',
   styleUrl: './history.page.scss',
+  host: { '[class]': 'scheme()' },
 })
 export class HistoryPage {
   private readonly sections = inject(SECTIONS);
@@ -40,6 +42,11 @@ export class HistoryPage {
 
   protected readonly store = inject(SelectedBabyService);
   protected readonly section = computed(() => this.sections.find((s) => s.key === this.key()));
+  /** The section's colour scheme, for the whole page. */
+  protected readonly scheme = computed(() => {
+    const section = this.section();
+    return section ? sectionScheme(section.key) : '';
+  });
 
   constructor() {
     const router = inject(Router);

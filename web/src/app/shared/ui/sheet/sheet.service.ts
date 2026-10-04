@@ -29,10 +29,14 @@ export class SheetService {
   private readonly dialog = inject(MatDialog);
   private readonly injector = inject(Injector);
 
-  /** Emits the result the component closed with (undefined when closed without one), then completes. */
+  /**
+   * Emits the result the component closed with (undefined when closed without one), then completes.
+   * `panelClass` goes on the sheet's overlay panel (e.g. a section's colour scheme).
+   */
   open<C, R = unknown>(
     component: ComponentType<C>,
     data: unknown = null,
+    panelClass?: string,
   ): Observable<R | undefined> {
     const ref = new DelegatingSheetRef<R>();
     const injector = Injector.create({
@@ -47,6 +51,7 @@ export class SheetService {
       const sheet = this.bottomSheet.open<C, unknown, R>(component, {
         injector,
         disableClose: true,
+        panelClass,
       });
       ref.closeWith = (result) => sheet.dismiss(result);
       return sheet.afterDismissed();
@@ -55,6 +60,7 @@ export class SheetService {
     const dialog = this.dialog.open<C, unknown, R>(component, {
       injector,
       disableClose: true,
+      panelClass,
       width: '560px',
       maxWidth: '100vw',
     });

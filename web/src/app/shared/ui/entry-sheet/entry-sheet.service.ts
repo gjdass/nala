@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { Observable, from, of, switchMap } from 'rxjs';
+import { sectionScheme } from '../../../core/sections/section-scheme';
 import { SECTIONS, SectionKey, SectionKind } from '../../../core/sections/section.models';
 import { KindPickerComponent, KindPickerData } from '../kind-picker/kind-picker.component';
 import { SheetService } from '../sheet/sheet.service';
@@ -30,6 +31,7 @@ export class EntrySheetService {
     return this.bottomSheet
       .open<KindPickerComponent, KindPickerData, SectionKind>(KindPickerComponent, {
         data: { kinds },
+        panelClass: sectionScheme(key),
       })
       .afterDismissed()
       .pipe(switchMap((kind) => (kind ? this.open(key, kind, null) : of(undefined))));
@@ -44,7 +46,9 @@ export class EntrySheetService {
   private open(section: SectionKey, kind: SectionKind, entry: unknown): Closed {
     const data: EntrySheetData = { section, kind, entry };
     return from(kind.loadSheet()).pipe(
-      switchMap((sheet) => this.sheets.open<unknown, EntrySheetResult>(sheet, data)),
+      switchMap((sheet) =>
+        this.sheets.open<unknown, EntrySheetResult>(sheet, data, sectionScheme(section)),
+      ),
     );
   }
 }

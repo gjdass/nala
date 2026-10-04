@@ -55,6 +55,18 @@ describe('global theme', () => {
     }
   });
 
+  it("gives every section its own full colour scheme, whose primary is the section's colour (spec 04)", () => {
+    for (const key of SECTIONS) {
+      const block = css.match(new RegExp(`\\.nala-scheme-${key}\\s*\\{([^}]*)\\}`))?.[1] ?? '';
+      const section = css.match(new RegExp(`--nala-section-${key}:\\s*(light-dark\\([^;]*\\))`))[1];
+      const token = (name) => block.match(new RegExp(`--mat-sys-${name}:\\s*([^;]*);`))?.[1];
+      assert.equal(token('primary'), section, `${key} primary`);
+      for (const name of ['on-primary', 'primary-container', 'secondary-container', 'tertiary', 'surface', 'surface-container-highest', 'outline']) {
+        assert.match(token(name) ?? '', /^light-dark\(/, `${key} ${name}`);
+      }
+    }
+  });
+
   it('defines a dot colour token for every stool colour of a dirty diaper (spec 07)', () => {
     for (const color of ['yellow', 'green', 'brown', 'black', 'red', 'white']) {
       assert.match(css, new RegExp(`--nala-stool-${color}:\\s*#[0-9a-fA-F]{3,8}`), color);

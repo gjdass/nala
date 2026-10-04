@@ -72,6 +72,10 @@ describe('HistoryPage', () => {
     await harness.navigateByUrl('/history/feed', HistoryPage);
   });
 
+  it("uses the section's colour scheme for the whole page", () => {
+    expect(host().classList).toContain('nala-scheme-feed');
+  });
+
   it('loads the babies', () => {
     expect(list).toHaveBeenCalled();
   });

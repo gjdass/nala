@@ -2,7 +2,11 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { FormControl, Validators } from '@angular/forms';
 import { provideNativeDateAdapter } from '@angular/material/core';
+import { MatDatepicker } from '@angular/material/datepicker';
+import { MatTimepicker } from '@angular/material/timepicker';
+import { By } from '@angular/platform-browser';
 import en from '../../../../../public/i18n/en.json';
+import { SECTION_SCHEME } from '../../../core/sections/section-scheme';
 import { notInFuture } from '../../../core/time/not-in-future';
 import { translocoTesting } from '../../../testing/transloco-testing';
 import { TimeRowComponent } from './time-row.component';
@@ -240,5 +244,42 @@ describe('TimeRowComponent, date only (spec 10)', () => {
     await fixture.whenStable();
 
     expect(find('[role="alert"]')?.textContent?.trim()).toBe(en.entrySheet.beforeBirth);
+  });
+});
+
+describe('TimeRowComponent, in a section (spec 04)', () => {
+  const pickers = async (scheme: string | null) => {
+    TestBed.configureTestingModule({
+      imports: [Host, translocoTesting()],
+      providers: [
+        provideNativeDateAdapter(),
+        ...(scheme ? [{ provide: SECTION_SCHEME, useValue: scheme }] : []),
+      ],
+    });
+    const fixture = TestBed.createComponent(Host);
+    await fixture.whenStable();
+    (fixture.nativeElement as HTMLElement)
+      .querySelector<HTMLButtonElement>('nala-form-row button')!
+      .click();
+    await fixture.whenStable();
+    return {
+      date: fixture.debugElement.query(By.directive(MatDatepicker)).componentInstance
+        .panelClass as string[],
+      time: fixture.debugElement.query(By.directive(MatTimepicker)).componentInstance.panelClass(),
+    };
+  };
+
+  it("opens its date and time pickers in the section's colour scheme", async () => {
+    const { date, time } = await pickers('nala-scheme-sleep');
+
+    expect(date).toEqual(['nala-scheme-sleep']);
+    expect(time).toBe('nala-scheme-sleep');
+  });
+
+  it('keeps the app scheme outside a section', async () => {
+    const { date, time } = await pickers(null);
+
+    expect(date).toEqual([]);
+    expect(time).toBeUndefined();
   });
 });

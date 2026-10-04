@@ -107,6 +107,17 @@ describe('SectionCardComponent', () => {
       expect(style()).toContain('--nala-section-accent: var(--nala-section-sleep)');
     });
 
+    it("uses the section's colour scheme for the whole card", async () => {
+      const classes = () => find('section-card')?.classList;
+      expect(classes()).toContain('nala-scheme-feed');
+
+      fixture.componentInstance.key.set('sleep');
+      await fixture.whenStable();
+
+      expect(classes()).toContain('nala-scheme-sleep');
+      expect(classes()).not.toContain('nala-scheme-feed');
+    });
+
     it('has a labelled + small FAB that opens the section add flow', () => {
       const add = find('section-add') as HTMLButtonElement;
       expect(add.hasAttribute('mat-mini-fab')).toBe(true);

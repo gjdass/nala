@@ -17,6 +17,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatTimepickerModule } from '@angular/material/timepicker';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { map, startWith, switchMap } from 'rxjs';
+import { SECTION_SCHEME } from '../../../core/sections/section-scheme';
 import { EntryDatePipe, EntryTimePipe } from '../../../core/time/entry-time';
 import { FormRowComponent } from '../form-row/form-row.component';
 
@@ -63,6 +64,8 @@ export class TimeRowComponent {
   readonly dateOnly = input(false, { transform: booleanAttribute });
 
   protected readonly open = signal(false);
+  /** The pickers open in the colour scheme of the section the row sits in. */
+  protected readonly scheme = inject(SECTION_SCHEME, { optional: true }) ?? undefined;
   protected readonly date = new FormControl<Date | null>(null);
   protected readonly time = new FormControl<Date | null>(null);
 

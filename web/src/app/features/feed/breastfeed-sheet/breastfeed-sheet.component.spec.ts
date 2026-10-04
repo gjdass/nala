@@ -553,6 +553,7 @@ describe('BreastfeedSheetComponent', () => {
 
       expect(dialog.open).toHaveBeenCalledWith(DurationDialogComponent, {
         data: { title: en.feed.breastfeed.editDuration.left, seconds: 0 },
+        panelClass: 'nala-scheme-feed',
       });
     });
 
@@ -664,6 +665,7 @@ describe('BreastfeedSheetComponent', () => {
 
       expect(dialog.open).toHaveBeenCalledWith(DurationDialogComponent, {
         data: { title: en.feed.breastfeed.editDuration.right, seconds: 300 },
+        panelClass: 'nala-scheme-feed',
       });
     });
 

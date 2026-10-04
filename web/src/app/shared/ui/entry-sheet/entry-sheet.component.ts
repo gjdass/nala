@@ -5,6 +5,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { Observable, filter, map, startWith, switchMap } from 'rxjs';
+import { SECTION_SCHEME, sectionScheme } from '../../../core/sections/section-scheme';
 import {
   ConfirmDialogComponent,
   ConfirmDialogData,
@@ -18,7 +19,7 @@ import { EntrySheetData } from './entry-sheet.models';
  * the section colour with ×, the kind title and Save (disabled while `form` is invalid, saving or
  * `saveDisabled`), and, when editing (or `deletable`), a Delete action. × asks before discarding
  * changes (then closes, or runs `discard`); Delete asks before emitting. The kind's sheet saves or deletes, then closes itself
- * through `SheetRef`.
+ * through `SheetRef`. Provides the section's `SECTION_SCHEME` to its content, for the overlays its rows open.
  */
 @Component({
   selector: 'nala-entry-sheet',
@@ -26,6 +27,12 @@ import { EntrySheetData } from './entry-sheet.models';
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './entry-sheet.component.html',
   styleUrl: './entry-sheet.component.scss',
+  providers: [
+    {
+      provide: SECTION_SCHEME,
+      useFactory: () => sectionScheme(inject<EntrySheetData>(SHEET_DATA).section),
+    },
+  ],
 })
 export class EntrySheetComponent {
   private readonly sheetRef = inject(SheetRef);
@@ -76,6 +83,7 @@ export class EntrySheetComponent {
     return this.dialog
       .open<ConfirmDialogComponent, ConfirmDialogData, boolean>(ConfirmDialogComponent, {
         data: { title: t('title'), text: t('text'), confirm: t('confirm'), cancel: t('cancel') },
+        panelClass: sectionScheme(this.data.section),
       })
       .afterClosed()
       .pipe(filter((confirmed): confirmed is true => confirmed === true));

@@ -25,6 +25,7 @@ import {
 } from '../../../core/feeds/feed.models';
 import { FeedService } from '../../../core/feeds/feed.service';
 import { applyServerErrors } from '../../../core/http/apply-server-errors';
+import { sectionScheme } from '../../../core/sections/section-scheme';
 import { DurationPipe } from '../../../core/time/duration';
 import { NowService } from '../../../core/time/now.service';
 import { notInFuture } from '../../../core/time/not-in-future';
@@ -116,7 +117,8 @@ export class BreastfeedSheetComponent {
   private readonly snackBar = inject(MatSnackBar);
   private readonly sheetRef = inject<SheetRef<EntrySheetResult<Feed>>>(SheetRef);
   private readonly now = inject(NowService).now;
-  private readonly entry = inject<EntrySheetData<Feed>>(SHEET_DATA).entry;
+  private readonly data = inject<EntrySheetData<Feed>>(SHEET_DATA);
+  private readonly entry = this.data.entry;
   private readonly babyId = this.entry?.babyId ?? inject(SelectedBabyService).selected()?.id;
   /** The id a new feed gets, kept across attempts so a retried Start can't create two. */
   private readonly newId = crypto.randomUUID();
@@ -216,6 +218,7 @@ export class BreastfeedSheetComponent {
             title: this.transloco.translate(`feed.breastfeed.editDuration.${side}`),
             seconds: side === 'left' ? this.left() : this.right(),
           },
+          panelClass: sectionScheme(this.data.section),
         },
       )
       .afterClosed()

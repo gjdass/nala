@@ -46,6 +46,7 @@ describe('EntrySheetService', () => {
 
       expect(bottomSheet.open).toHaveBeenCalledWith(KindPickerComponent, {
         data: { kinds: [bottle, solids] },
+        panelClass: 'nala-scheme-feed',
       });
       expect(sheets.open).not.toHaveBeenCalled();
 
@@ -56,7 +57,7 @@ describe('EntrySheetService', () => {
         section: 'feed',
         kind: solids,
         entry: null,
-      });
+      }, 'nala-scheme-feed');
     });
 
     it('opens nothing more when the kind picker is dismissed without a choice', () => {
@@ -82,7 +83,7 @@ describe('EntrySheetService', () => {
         section: 'diaper',
         kind: wet,
         entry: null,
-      });
+      }, 'nala-scheme-diaper');
     });
 
     it('emits what the sheet closed with', async () => {
@@ -123,7 +124,7 @@ describe('EntrySheetService', () => {
         section: 'feed',
         kind: solids,
         entry,
-      });
+      }, 'nala-scheme-feed');
 
       closed.next({ deleted: 'f1' });
       expect(results).toEqual([{ deleted: 'f1' }]);
