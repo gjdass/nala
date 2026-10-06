@@ -1,0 +1,5 @@
+// The dialog content clips its overflow and has no top padding under the title, so the outlined
+// fields' floating labels need room above them.
+nala-duration-field {
+  padding-top: 8px;
+}

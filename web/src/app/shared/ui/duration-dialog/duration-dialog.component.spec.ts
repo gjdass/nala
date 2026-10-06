@@ -41,6 +41,12 @@ describe('DurationDialogComponent', () => {
     expect(find('duration-dialog-cancel').textContent?.trim()).toBe(en.durationDialog.cancel);
   });
 
+  it('leaves room above the fields for their floating labels', () => {
+    const field = host().querySelector<HTMLElement>('nala-duration-field')!;
+
+    expect(getComputedStyle(field).paddingTop).toBe('8px');
+  });
+
   it('closes with the typed duration in seconds on OK', async () => {
     await type('minutes', '7');
     await type('seconds', '30');

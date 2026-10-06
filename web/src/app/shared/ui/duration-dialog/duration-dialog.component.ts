@@ -25,6 +25,7 @@ export interface DurationDialogData {
   imports: [DurationFieldComponent, MatButtonModule, MatDialogModule, TranslocoPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './duration-dialog.component.html',
+  styleUrl: './duration-dialog.component.scss',
 })
 export class DurationDialogComponent {
   private readonly dialogRef =
