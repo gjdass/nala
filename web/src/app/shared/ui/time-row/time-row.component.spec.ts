@@ -104,6 +104,12 @@ describe('TimeRowComponent', () => {
     expect(host().textContent).toContain(en.entrySheet.minute);
   });
 
+  it('lets the hour, minute and AM / PM line shrink to the sheet width', async () => {
+    await open();
+
+    expect(getComputedStyle(find('.time')!).minWidth).toMatch(/^0(px)?$/);
+  });
+
   it('shows minutes on two digits', async () => {
     fixture.componentInstance.control.setValue(new Date(2026, 8, 30, 14, 5));
     await open();

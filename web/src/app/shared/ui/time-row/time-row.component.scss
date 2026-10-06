@@ -12,10 +12,12 @@
   }
 }
 
-// Hour, minute and AM / PM on one line.
+// Hour, minute and AM / PM on one line, shrinking to the sheet width (the fields' default width
+// would otherwise push the line past the edge).
 .time {
   display: flex;
   flex: 1 1 240px;
+  min-width: 0;
   align-items: flex-start;
   gap: 8px;
 
