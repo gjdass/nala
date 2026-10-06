@@ -59,7 +59,7 @@ def main():
     for size in (16, 32):
         head.resize((size, size), Image.LANCZOS).save(icons / f'favicon-{size}.png', optimize=True)
     head.resize((48, 48), Image.LANCZOS).save(PUBLIC / 'favicon.ico', sizes=[(16, 16), (32, 32), (48, 48)])
-    # Brand mark in the top app bar: the same head, shown at 24 px, sharp at 3×.
+    # Brand mark in the top app bar: the same head, shown at 40 px (1.8×).
     head.resize((72, 72), Image.LANCZOS).save(icons / 'brand-mark.png', optimize=True)
 
     splash = Image.open(SRC / 'splash.jpeg').convert('RGB')

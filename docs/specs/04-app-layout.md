@@ -60,7 +60,7 @@ Give every activity section (Feed, Diaper, Sleep, Health, Growth, Pump…) the s
 
 ### Top app bar
 - Selected baby (name + age) with the baby switcher (03). Shared `nala-top-app-bar` (built in 03). Settings is reached from the bottom navigation bar.
-- On the right, on the baby's name row, the Nala brand: the lion's head (`icons/brand-mark.png`, generated from the artwork like the favicon) at 24 px and "Nala" in `title-small`, `on-surface-variant`. Decorative (not a button, not translated), shown with or without a baby. A long baby name ends with an ellipsis before the brand is squeezed. The section history page keeps its own bar (back + title), without the brand.
+- On the right, vertically centred with the baby's name + age block, the Nala brand: "Nala" in `headline-small`, `on-surface-variant`, then the lion's head (`icons/brand-mark.png`, generated from the artwork like the favicon) at 40 px, the height of the name + age block (`title-medium` + `body-small` lines), so the brand fills the same row height. Decorative (not a button, not translated), shown with or without a baby. A long baby name ends with an ellipsis before the brand is squeezed. The section history page keeps its own bar (back + title), without the brand.
 
 ### Bottom navigation bar
 - Floating, fixed at the bottom of the screen above the safe area: not full width (70 % of the screen width minus the 16 px side margins, at most 294 px wide, centred), compact (about 60 px tall: 48 dp destinations, no visible labels), fully rounded ends; while it holds timer rows it takes the full width between the side margins, at most 360 px, so a label and its duration fit, and the M3 large corner, a translucent surface with the page blurred behind it (`backdrop-filter`), like the iOS "liquid glass" bars.
@@ -192,6 +192,7 @@ Each item becomes at least one test, written failing first.
 - [x] The app shell has a fixed edge guard across the top edge, as tall as the top offset, in the page background colour; on iOS the top offset is at least 12 px. *(Tests check the markup and CSS; the missing blur is checked by hand on an iPhone.)*
 - [x] The document doesn't rubber-band when pulled past its top or bottom (`overscroll-behavior-y: none`), so the bottom navigation bar stays in place.
 - [x] The top app bar shows the Nala brand (lion's head + "Nala") on the right, with one baby, several babies or none.
+- [x] The brand shows "Nala" first and the lion's head after it, on the far right; the lion's head is 40 px, as tall as the baby's name + age block, and "Nala" uses `headline-small`.
 
 ### Mini-bar
 - [x] The mini-bar appears on every screen as soon as a timer runs, and disappears when none runs.
@@ -249,6 +250,10 @@ Timer and time editing after use on a phone:
 - [x] **Slice 18 — Times in the future allowed.** API: the `inFuture` checks of every entry go (`EntryFields.FutureTolerance` / `IsInFuture`, start / end times, timer `at`, Breastfeed `durations`, Diaper, Health and Growth times and dates); the birth date check stays. Web: `notInFuture` and its uses removed, with the entry `inFuture` translations (`entrySheet.inFuture`, `feed.breastfeed.errors.durationsInFuture`, Growth's). Covers: the first Times criterion.
 - [x] **Slice 19 — Tap a timer's duration to type it.** `nala-timer` and `nala-split-timer`: the duration is a button (primary colour, "Edit duration" accessible name) emitting `edit`; the split timer's pencil goes. The duration dialog's minutes and seconds fields select their content when focused, so typing replaces it. Breastfeed: same manual mode as before, opened from the duration. `LiveEntrySheet` (Sleep, Pump): `typeDuration(seconds)` sets the end time to start + seconds, the timer shows the typed duration and is disabled until Save or ×; Save on a live entry sends Stop at that end, then the edit. Covers: the three new Timers criteria.
 - [x] **Slice 20 — Hour and minute fields.** `nala-time-row` replaces `mat-timepicker` with hour and minute `mat-form-field`s (`inputmode="numeric"`), AM / PM `mat-button-toggle-group` when the language writes times on 12 hours (English, from `Intl`), 0–23 otherwise (French); a focused field selects its content; invalid numbers show the field error and leave the value as it was. Covers: the last Times criterion.
+
+Brand after use on a phone (issue #2):
+
+- [x] **Slice 21 — Name then logo, as tall as the baby row.** `nala-top-app-bar`: "Nala" before the lion's head, the head at 40 px and "Nala" in `headline-small`, the brand centred with the name + age block (no more bottom margin). `icons/brand-mark.png` stays 72 px (1.8× at 40 px). Covers: the brand order and size criterion.
 
 ## Material 3 mapping
 

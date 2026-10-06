@@ -114,6 +114,18 @@ describe('TopAppBarComponent', () => {
     expect(brand.closest('button, a')).toBeNull();
   });
 
+  it('shows "Nala" first, then the lion\'s head at 40 px, as tall as the name + age block', async () => {
+    await show([lea], lea);
+
+    const brand = find('brand') as HTMLElement;
+    const name = brand.querySelector('[data-testid="brand-name"]') as HTMLElement;
+    const lion = brand.querySelector('img') as HTMLImageElement;
+    expect(name.textContent?.trim()).toBe('Nala');
+    expect(name.nextElementSibling).toBe(lion);
+    expect(lion.nextElementSibling).toBeNull();
+    expect([lion.getAttribute('width'), lion.getAttribute('height')]).toEqual(['40', '40']);
+  });
+
   it('with no baby, shows only the brand', async () => {
     await show([], null);
 
