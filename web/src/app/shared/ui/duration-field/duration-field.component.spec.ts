@@ -44,6 +44,15 @@ describe('DurationFieldComponent', () => {
     expect(host().textContent).toContain(en.durationField.seconds);
   });
 
+  it('selects a part once it gets the focus, so typing replaces it', async () => {
+    await render(305);
+    const select = vi.spyOn(input('minutes'), 'select');
+
+    input('minutes').dispatchEvent(new FocusEvent('focus'));
+
+    expect(select).toHaveBeenCalled();
+  });
+
   it('gives the typed duration in seconds, an empty part counting as 0', async () => {
     await render(0);
 

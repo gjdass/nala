@@ -395,7 +395,9 @@
   },
   "timer": {
     "start": "Start",
-    "stop": "Stop"
+    "stop": "Stop",
+    "edit": "Edit duration",
+    "duration": "Duration"
   },
   "durationField": {
     "minutes": "Minutes",

@@ -14,3 +14,24 @@
   color: var(--mat-sys-on-surface);
   font: var(--mat-sys-display-small);
 }
+
+// The duration doubles as the button that types it (spec 04): primary, like any tappable value.
+.editable {
+  min-width: 48px;
+  min-height: 48px;
+  padding: 0 8px;
+  border: none;
+  border-radius: var(--mat-sys-corner-small);
+  background: none;
+  color: var(--mat-sys-primary);
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.38;
+    cursor: default;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mat-sys-primary);
+  }
+}

@@ -11,6 +11,7 @@ import { Pump } from '../../../core/pumps/pump.models';
 import { PumpService } from '../../../core/pumps/pump.service';
 import { PumpSyncService } from '../../../core/pumps/pump-sync.service';
 import { NowService } from '../../../core/time/now.service';
+import { DurationDialogComponent } from '../../../shared/ui/duration-dialog/duration-dialog.component';
 import { EntrySheetData } from '../../../shared/ui/entry-sheet/entry-sheet.models';
 import { SHEET_DATA, SheetRef } from '../../../shared/ui/sheet/sheet-ref';
 import { fakePumpSync } from '../../../testing/pump-sync';
@@ -35,6 +36,7 @@ describe('PumpSheetComponent', () => {
   >;
   let sheetRef: { close: ReturnType<typeof vi.fn> };
   let confirmed: Subject<boolean | undefined>;
+  let typed: Subject<number | undefined>;
   let sync: ReturnType<typeof fakePumpSync>;
   let snackBar: { open: ReturnType<typeof vi.fn> };
 
@@ -111,6 +113,7 @@ describe('PumpSheetComponent', () => {
     snackBar = { open: vi.fn() };
     sheetRef = { close: vi.fn() };
     confirmed = new Subject();
+    typed = new Subject();
     await TestBed.configureTestingModule({
       imports: [PumpSheetComponent, translocoTesting()],
       providers: [
@@ -122,7 +125,14 @@ describe('PumpSheetComponent', () => {
         { provide: NowService, useValue: { now } },
         { provide: PumpSyncService, useValue: sync },
         { provide: MatSnackBar, useValue: snackBar },
-        { provide: MatDialog, useValue: { open: vi.fn(() => ({ afterClosed: () => confirmed })) } },
+        {
+          provide: MatDialog,
+          useValue: {
+            open: vi.fn((component: unknown) => ({
+              afterClosed: () => (component === DurationDialogComponent ? typed : confirmed),
+            })),
+          },
+        },
       ],
     }).compileComponents();
   });
@@ -662,6 +672,22 @@ describe('PumpSheetComponent', () => {
 
         expect(toggle().disabled).toBe(true);
       });
+    });
+  });
+
+  describe('typing the duration', () => {
+    beforeEach(() => render());
+
+    it('sets the end to the start plus the typed duration from the timer', async () => {
+      form().controls.startTime.setValue(at(9));
+      find<HTMLButtonElement>('timer-edit')!.click();
+      typed.next(20 * 60);
+      await settle();
+
+      expect(form().controls.startTime.value).toEqual(at(9));
+      expect(form().controls.endTime.value).toEqual(at(9, 20));
+      expect(text('timer-duration')).toBe('20m');
+      expect(toggle().disabled).toBe(true);
     });
   });
 

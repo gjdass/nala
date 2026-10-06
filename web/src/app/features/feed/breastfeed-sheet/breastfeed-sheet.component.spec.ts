@@ -76,7 +76,7 @@ describe('BreastfeedSheetComponent', () => {
     timer.next(result);
     await settle();
   };
-  /** Taps the pencil of `side` and answers the duration dialog with `seconds` (undefined: Cancel). */
+  /** Taps the duration of `side` and answers the duration dialog with `seconds` (undefined: Cancel). */
   const typeDuration = async (side: 'left' | 'right', seconds: number | undefined) => {
     await click(`split-${side}-edit`);
     typed.next(seconds);
@@ -548,7 +548,7 @@ describe('BreastfeedSheetComponent', () => {
       await respondState({ inProgress: null, lastSide: 'left' });
     });
 
-    it('opens the duration dialog from a side pencil, with its current duration', async () => {
+    it("opens the duration dialog from a side's duration, with it", async () => {
       await click('split-left-edit');
 
       expect(dialog.open).toHaveBeenCalledWith(DurationDialogComponent, {

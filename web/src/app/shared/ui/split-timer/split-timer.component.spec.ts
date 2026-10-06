@@ -105,22 +105,21 @@ describe('SplitTimerComponent', () => {
     expect(toggle('right').disabled).toBe(true);
   });
 
-  it('has no pencils unless editable', () => {
+  it('shows plain durations unless editable', () => {
     expect(find('split-left-edit')).toBeNull();
     expect(find('split-right-edit')).toBeNull();
   });
 
-  it('offers a pencil under each duration that emits its side', async () => {
+  it('makes each duration a button that emits its side, without a pencil', async () => {
     await set({ editable: true });
 
     const left = find<HTMLButtonElement>('split-left-edit')!;
     const right = find<HTMLButtonElement>('split-right-edit')!;
     expect(left.getAttribute('aria-label')).toBe(en.splitTimer.editLeft);
     expect(right.getAttribute('aria-label')).toBe(en.splitTimer.editRight);
-    expect(left.textContent?.trim()).toBe('edit');
-    expect(
-      find('split-left-duration')!.compareDocumentPosition(left) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
+    expect(left.contains(find('split-left-duration'))).toBe(true);
+    expect(left.textContent?.trim()).toBe('5m 5s');
+    expect(left.querySelector('mat-icon')).toBeNull();
 
     right.click();
     left.click();
@@ -138,10 +137,9 @@ describe('SplitTimerComponent', () => {
     expect(find<HTMLButtonElement>('split-right-edit')!.disabled).toBe(false);
   });
 
-  it('disables the pencils too while disabled', async () => {
+  it('disables the durations too while disabled', async () => {
     await set({ editable: true, disabled: true });
 
     expect(find<HTMLButtonElement>('split-left-edit')!.disabled).toBe(true);
   });
-
 });

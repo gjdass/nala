@@ -49,8 +49,8 @@ export function durationGroup(seconds = 0): DurationGroup {
 }
 
 /**
- * A duration typed as minutes and seconds, side by side (spec 04 "duration field"; used by the
- * Breastfeed pencils, later by Sleep and Pump). Bound to a `durationGroup()`.
+ * A duration typed as minutes and seconds, side by side (spec 04 "duration field"; behind the
+ * timers' durations). Bound to a `durationGroup()`.
  */
 @Component({
   selector: 'nala-duration-field',
@@ -73,4 +73,9 @@ export class DurationFieldComponent {
     ),
   );
   protected readonly tooLong = computed(() => !!this.status()?.['tooLong']);
+
+  /** A focused part is selected, so typing replaces it. */
+  protected selectAll(event: FocusEvent): void {
+    (event.target as HTMLInputElement).select();
+  }
 }

@@ -64,4 +64,30 @@ describe('TimerComponent', () => {
     expect(toggle().disabled).toBe(true);
   });
 
+  it('shows a plain duration unless editable', () => {
+    expect(find('timer-edit')).toBeNull();
+  });
+
+  it('makes its duration a button emitting edit when editable', async () => {
+    let edits = 0;
+    fixture.componentInstance.edit.subscribe(() => edits++);
+    await set({ editable: true });
+
+    const edit = find<HTMLButtonElement>('timer-edit')!;
+    expect(edit.getAttribute('aria-label')).toBe(en.timer.edit);
+    expect(edit.contains(find('timer-duration'))).toBe(true);
+    edit.click();
+
+    expect(edits).toBe(1);
+    expect(started).toBe(0);
+  });
+
+  it('disables only Start / Stop while the timer is disabled, everything while disabled', async () => {
+    await set({ editable: true, timerDisabled: true });
+    expect(toggle().disabled).toBe(true);
+    expect(find<HTMLButtonElement>('timer-edit')!.disabled).toBe(false);
+
+    await set({ timerDisabled: false, disabled: true });
+    expect(find<HTMLButtonElement>('timer-edit')!.disabled).toBe(true);
+  });
 });

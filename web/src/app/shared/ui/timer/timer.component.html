@@ -1,9 +1,22 @@
 <div class="timer">
-  <span class="duration" data-testid="timer-duration">{{ seconds() | nalaDuration }}</span>
+  @if (editable()) {
+    <button
+      type="button"
+      class="duration editable"
+      [disabled]="disabled()"
+      [attr.aria-label]="'timer.edit' | transloco"
+      (click)="edit.emit()"
+      data-testid="timer-edit"
+    >
+      <span data-testid="timer-duration">{{ seconds() | nalaDuration }}</span>
+    </button>
+  } @else {
+    <span class="duration" data-testid="timer-duration">{{ seconds() | nalaDuration }}</span>
+  }
   <button
     type="button"
     [matButton]="running() ? 'filled' : 'tonal'"
-    [disabled]="disabled()"
+    [disabled]="disabled() || timerDisabled()"
     [attr.aria-pressed]="running()"
     (click)="toggle()"
     data-testid="timer-toggle"

@@ -1,12 +1,14 @@
 import { Signal, computed, effect, inject, signal, untracked } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ValidatorFn, Validators } from '@angular/forms';
+import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { TranslocoService } from '@jsverse/transloco';
-import { Observable, map, merge, startWith } from 'rxjs';
+import { Observable, map, merge, of, startWith, switchMap } from 'rxjs';
 import { EntryDeleteResult, EntryResult } from '../../../core/entries/entry-result';
 import { UserName } from '../../../core/entries/entry.models';
 import { applyServerErrors } from '../../../core/http/apply-server-errors';
+import { sectionScheme } from '../../../core/sections/section-scheme';
 import { afterStart } from '../../../core/time/after-start';
 import { isLiveLongerThan } from '../../../core/time/live-longer-than';
 import { NowService } from '../../../core/time/now.service';
@@ -14,8 +16,12 @@ import { spanSeconds } from '../../../core/time/span-seconds';
 import { LiveEntriesSync } from '../../../core/timers/live-entries-sync';
 import { stoppedEntry } from '../../../core/timers/stopped-entry';
 import { notesControl } from '../notes-row/notes-row.component';
-import { SheetRef } from '../sheet/sheet-ref';
-import { EntrySheetResult } from './entry-sheet.models';
+import {
+  DurationDialogComponent,
+  DurationDialogData,
+} from '../duration-dialog/duration-dialog.component';
+import { SHEET_DATA, SheetRef } from '../sheet/sheet-ref';
+import { EntrySheetData, EntrySheetResult } from './entry-sheet.models';
 
 /** An entry with a single timer (spec 04 Timers: Sleep, Pump), as the API returns it. */
 export interface TimedEntry {
@@ -91,11 +97,14 @@ const onlyWhen =
  * while the baby has a live entry, the sheet opens that one (the oldest); a Start refused because
  * another entry went live meanwhile opens that one too.
  *
- * A past entry can be typed by hand: typing an end time on an entry that isn't live turns Start off
- * (`manual`) until Save or ×. Save sends the fields (`PUT`, or `POST` for an entry that only exists in
- * the sheet) and never starts or stops the timer. × discards the form: on a sheet opened to add whose
- * Start created the entry, it deletes it (after confirming); on an entry whose timer was tapped here,
- * it closes with the entry as the taps left it, so lists show it.
+ * A past entry can be typed by hand: typing an end time on an entry that isn't live, or typing the
+ * timer's duration (`editDuration`: the end becomes start + duration, the start never moves), turns
+ * Start / Stop off (`manual`) until Save or ×. Save sends the fields (`PUT`, or `POST` for an entry
+ * that only exists in the sheet) and never starts or stops the timer, except after a duration typed
+ * on a live entry: it is stopped at the typed end first, then the fields are sent (spec 04). ×
+ * discards the form: on a sheet opened to add whose Start created the entry, it deletes it (after
+ * confirming); on an entry whose timer was tapped here, it closes with the entry as the taps left it,
+ * so lists show it.
  *
  * Taps, Save and Delete apply to the shared live state (`sync`) at once. The sheet follows what other
  * devices do to its live entry: new values (unless edited here), and once it leaves the live list, it
@@ -109,6 +118,8 @@ export class LiveEntrySheet<T extends TimedEntry, F extends TimedEntryFields> {
   private readonly snackBar = inject(MatSnackBar);
   private readonly transloco = inject(TranslocoService);
   private readonly sheetRef = inject<SheetRef<EntrySheetResult<T>>>(SheetRef);
+  private readonly dialog = inject(MatDialog);
+  private readonly section = inject<EntrySheetData<T>>(SHEET_DATA).section;
   private readonly now = inject(NowService).now;
   private readonly api: TimedEntryApi<T, F>;
   private readonly sync: LiveEntriesSync<T>;
@@ -139,7 +150,9 @@ export class LiveEntrySheet<T extends TimedEntry, F extends TimedEntryFields> {
 
   /** An end time typed on an entry that isn't live: the timer is off until Save or ×. */
   private readonly endTyped: Signal<boolean>;
-  readonly manual = computed(() => !this.live() && this.endTyped());
+  /** The timer's duration was typed: the end is start + duration, even on a live entry. */
+  private readonly durationTyped = signal(false);
+  readonly manual = computed(() => this.durationTyped() || (!this.live() && this.endTyped()));
 
   /** The stored entry's duration, live while it runs; 0 before Start. */
   readonly timerSeconds = computed(() => {
@@ -150,7 +163,7 @@ export class LiveEntrySheet<T extends TimedEntry, F extends TimedEntryFields> {
   private readonly times: Signal<{ startTime: Date | null; endTime: Date | null }>;
   /** From the start to the end (live while it runs); null until both are set and the end is after the start. */
   readonly seconds = computed(() => {
-    if (this.live()) {
+    if (this.live() && !this.durationTyped()) {
       return this.timerSeconds();
     }
     const { startTime, endTime } = this.times();
@@ -160,6 +173,11 @@ export class LiveEntrySheet<T extends TimedEntry, F extends TimedEntryFields> {
         : null;
     return seconds !== null && seconds > 0 ? seconds : null;
   });
+
+  /** What the timer shows: the typed times while `manual`, the stored entry otherwise. */
+  readonly shownSeconds = computed(() =>
+    this.manual() ? (this.seconds() ?? 0) : this.timerSeconds(),
+  );
 
   /** This sheet, opened to add, created the entry with a Start: × deletes it. */
   private readonly createdHere = signal(false);
@@ -187,8 +205,11 @@ export class LiveEntrySheet<T extends TimedEntry, F extends TimedEntryFields> {
     );
     this.endTime = new FormControl<Date | null>(
       entry?.endTime ? new Date(entry.endTime) : null,
-      // A live entry has no end time yet.
-      onlyWhen(() => !this.live(), [Validators.required, afterStart(() => this.startTime.value)]),
+      // A live entry has no end time yet, unless its duration was typed.
+      onlyWhen(
+        () => !this.live() || this.durationTyped(),
+        [Validators.required, afterStart(() => this.startTime.value)],
+      ),
     );
     this.notes = notesControl(entry?.notes ?? '');
     this.endTyped = toSignal(this.endTime.events.pipe(map(() => this.endTime.dirty)), {
@@ -230,11 +251,11 @@ export class LiveEntrySheet<T extends TimedEntry, F extends TimedEntryFields> {
     });
   }
 
-  /** The shared fields of a valid form. A live entry has no end time. */
+  /** The shared fields of a valid form. A live entry has no end time, unless its duration was typed. */
   fields(): TimedEntryFields {
     return {
       startTime: this.startTime.value!.toISOString(),
-      endTime: this.live() ? null : this.endTime.value!.toISOString(),
+      endTime: this.live() && !this.durationTyped() ? null : this.endTime.value!.toISOString(),
       notes: this.notes.value.trim() || null,
     };
   }
@@ -259,7 +280,40 @@ export class LiveEntrySheet<T extends TimedEntry, F extends TimedEntryFields> {
     this.tap(this.api.stop(entry.id, at), () => stoppedEntry(entry, at));
   }
 
-  /** Saves `fields` (from a valid form); live or not, Save never starts or stops the timer. */
+  /**
+   * Opens the duration dialog on what the timer shows; a typed duration sets the end time to the start
+   * plus it, never moving the start, and turns the timer off until Save or ×.
+   */
+  editDuration(): void {
+    this.dialog
+      .open<DurationDialogComponent, DurationDialogData, number | undefined>(
+        DurationDialogComponent,
+        {
+          data: {
+            title: this.transloco.translate('timer.duration'),
+            seconds: this.shownSeconds(),
+          },
+          panelClass: sectionScheme(this.section),
+        },
+      )
+      .afterClosed()
+      .subscribe((seconds) => {
+        const start = this.startTime.value;
+        if (seconds === undefined || !start) {
+          return;
+        }
+        this.durationTyped.set(true);
+        this.endTime.setValue(new Date(start.getTime() + seconds * 1000));
+        this.endTime.markAsDirty();
+        this.endTime.markAsTouched();
+        this.form.markAsDirty();
+      });
+  }
+
+  /**
+   * Saves `fields` (from a valid form); Save never starts or stops the timer, except after a duration
+   * typed on a live entry, which is stopped at the typed end first.
+   */
   save(fields: F): void {
     if (this.form.invalid || this.saving()) {
       return;
@@ -267,9 +321,18 @@ export class LiveEntrySheet<T extends TimedEntry, F extends TimedEntryFields> {
     this.saving.set(true);
     this.formError.set(null);
     const entry = this.entry();
-    const request = entry
-      ? this.api.update(entry.id, fields)
-      : this.api.create(this.config.babyId!, fields, this.newId);
+    const stopFirst = !!entry && this.live() && fields.endTime !== null;
+    const request = !entry
+      ? this.api.create(this.config.babyId!, fields, this.newId)
+      : stopFirst
+        ? this.api
+            .stop(entry.id, fields.endTime!)
+            .pipe(
+              switchMap((stopped) =>
+                stopped.ok ? this.api.update(entry.id, fields) : of(stopped),
+              ),
+            )
+        : this.api.update(entry.id, fields);
     request.subscribe((result) => {
       this.saving.set(false);
       if (result.ok) {
@@ -423,7 +486,9 @@ export class LiveEntrySheet<T extends TimedEntry, F extends TimedEntryFields> {
       this.notes.setValue(entry.notes ?? '');
     }
     if (entry.endTime === null) {
-      this.endTime.reset(null);
+      if (!this.durationTyped()) {
+        this.endTime.reset(null);
+      }
     } else if (this.endTime.pristine) {
       this.endTime.setValue(new Date(entry.endTime));
     }

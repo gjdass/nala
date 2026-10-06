@@ -11,6 +11,7 @@ import { Sleep } from '../../../core/sleeps/sleep.models';
 import { SleepService } from '../../../core/sleeps/sleep.service';
 import { SleepSyncService } from '../../../core/sleeps/sleep-sync.service';
 import { NowService } from '../../../core/time/now.service';
+import { DurationDialogComponent } from '../../../shared/ui/duration-dialog/duration-dialog.component';
 import { EntrySheetData } from '../../../shared/ui/entry-sheet/entry-sheet.models';
 import { SHEET_DATA, SheetRef } from '../../../shared/ui/sheet/sheet-ref';
 import { fakeSleepSync } from '../../../testing/sleep-sync';
@@ -35,6 +36,8 @@ describe('SleepSheetComponent', () => {
   >;
   let sheetRef: { close: ReturnType<typeof vi.fn> };
   let confirmed: Subject<boolean | undefined>;
+  let typed: Subject<number | undefined>;
+  let dialog: { open: ReturnType<typeof vi.fn> };
   let sync: ReturnType<typeof fakeSleepSync>;
   let snackBar: { open: ReturnType<typeof vi.fn> };
 
@@ -60,6 +63,12 @@ describe('SleepSheetComponent', () => {
       ...overrides,
     });
   const settle = () => fixture.whenStable();
+  /** Taps the timer's duration and answers the duration dialog with `seconds` (undefined: Cancel). */
+  const typeDuration = async (seconds: number | undefined) => {
+    await click('timer-edit');
+    typed.next(seconds);
+    await settle();
+  };
   const form = () => fixture.componentInstance.form;
   const rows = () => [...host().querySelectorAll('nala-time-row')];
   const alerts = () =>
@@ -99,6 +108,12 @@ describe('SleepSheetComponent', () => {
     snackBar = { open: vi.fn() };
     sheetRef = { close: vi.fn() };
     confirmed = new Subject();
+    typed = new Subject();
+    dialog = {
+      open: vi.fn((component: unknown) => ({
+        afterClosed: () => (component === DurationDialogComponent ? typed : confirmed),
+      })),
+    };
     await TestBed.configureTestingModule({
       imports: [SleepSheetComponent, translocoTesting()],
       providers: [
@@ -110,7 +125,7 @@ describe('SleepSheetComponent', () => {
         { provide: NowService, useValue: { now } },
         { provide: SleepSyncService, useValue: sync },
         { provide: MatSnackBar, useValue: snackBar },
-        { provide: MatDialog, useValue: { open: vi.fn(() => ({ afterClosed: () => confirmed })) } },
+        { provide: MatDialog, useValue: dialog },
       ],
     }).compileComponents();
   });
@@ -556,6 +571,114 @@ describe('SleepSheetComponent', () => {
         await settle();
 
         expect(toggle().disabled).toBe(true);
+      });
+    });
+  });
+
+  describe('typing the duration', () => {
+    describe('adding', () => {
+      beforeEach(() => render());
+
+      it('opens the duration dialog from the timer, with its duration', async () => {
+        await click('timer-edit');
+
+        expect(dialog.open).toHaveBeenCalledWith(DurationDialogComponent, {
+          data: { title: en.timer.duration, seconds: 0 },
+          panelClass: 'nala-scheme-sleep',
+        });
+      });
+
+      it('sets the end to the start plus the duration, never moving the start', async () => {
+        form().controls.startTime.setValue(at(9));
+        await typeDuration(90 * 60);
+
+        expect(form().controls.startTime.value).toEqual(at(9));
+        expect(form().controls.endTime.value).toEqual(at(10, 30));
+        expect(text('timer-duration')).toBe('1h 30m');
+        expect(text('sleep-duration')).toBe('1h 30m');
+        expect(toggle().disabled).toBe(true);
+        expect(save().disabled).toBe(false);
+      });
+
+      it('changes nothing when the dialog is cancelled', async () => {
+        await typeDuration(undefined);
+
+        expect(form().controls.endTime.value).toBeNull();
+        expect(toggle().disabled).toBe(false);
+        expect(save().disabled).toBe(true);
+      });
+
+      it('saves the typed sleep', async () => {
+        form().controls.startTime.setValue(at(9));
+        await typeDuration(90 * 60);
+        save().click();
+        await settle();
+
+        expect(sleeps.create).toHaveBeenCalledWith(
+          'b1',
+          { startTime: at(9).toISOString(), endTime: at(10, 30).toISOString(), notes: null },
+          expect.any(String),
+        );
+      });
+    });
+
+    describe('on a live sleep', () => {
+      const sleep = liveSleep(60, { id: 's7' });
+      const start = new Date(sleep.startTime);
+      const end = new Date(start.getTime() + 30 * 60_000);
+
+      beforeEach(async () => {
+        await render(sleep);
+        await typeDuration(30 * 60);
+      });
+
+      it('freezes the timer on the typed duration and shows the end it gives', async () => {
+        now.set(now() + 5 * 60_000);
+        await settle();
+
+        expect(text('timer-duration')).toBe('30m');
+        expect(toggle().disabled).toBe(true);
+        expect(form().controls.startTime.value).toEqual(start);
+        expect(form().controls.endTime.value).toEqual(end);
+        expect(find('sleep-end-time')).toBeNull();
+        expect(rows()[1].textContent).toContain(`Today ${shortTime(end)}`);
+      });
+
+      it('keeps the typed end when the live sleep is polled again', async () => {
+        sync.inProgress.set([{ ...sleep, updatedAt: '2026-09-30T11:59:00Z' }]);
+        await settle();
+
+        expect(form().controls.endTime.value).toEqual(end);
+        expect(text('timer-duration')).toBe('30m');
+      });
+
+      it('stops it at the typed end on Save, then saves the form', async () => {
+        save().click();
+        await settle();
+
+        expect(sleeps.stop).toHaveBeenCalledWith('s7', end.toISOString());
+        expect(sleeps.update).not.toHaveBeenCalled();
+        await respondTimer({ ok: true, entry: { ...sleep, endTime: end.toISOString() } });
+
+        expect(sleeps.update).toHaveBeenCalledWith('s7', {
+          startTime: start.toISOString(),
+          endTime: end.toISOString(),
+          notes: null,
+        });
+        const stored = { ...sleep, endTime: end.toISOString() };
+        saved.next({ ok: true, entry: stored });
+        await settle();
+        expect(sheetRef.close).toHaveBeenCalledWith({ saved: stored });
+      });
+
+      it('leaves it running on ×', async () => {
+        await click('sheet-close');
+        confirmed.next(true);
+        await settle();
+
+        expect(sleeps.stop).not.toHaveBeenCalled();
+        expect(sleeps.update).not.toHaveBeenCalled();
+        expect(sheetRef.close).toHaveBeenCalled();
       });
     });
   });

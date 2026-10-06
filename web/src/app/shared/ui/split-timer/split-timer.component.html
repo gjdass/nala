@@ -10,20 +10,23 @@
       <span class="label" [attr.data-testid]="'split-' + item.side + '-label'">{{
         item.label | transloco
       }}</span>
-      <span class="duration" [attr.data-testid]="'split-' + item.side + '-duration'">{{
-        seconds(item.side) | nalaDuration
-      }}</span>
       @if (editable()) {
         <button
-          mat-icon-button
           type="button"
+          class="duration editable"
           [disabled]="disabled()"
           [attr.aria-label]="item.editLabel | transloco"
           (click)="edit.emit(item.side)"
           [attr.data-testid]="'split-' + item.side + '-edit'"
         >
-          <mat-icon>edit</mat-icon>
+          <span [attr.data-testid]="'split-' + item.side + '-duration'">{{
+            seconds(item.side) | nalaDuration
+          }}</span>
         </button>
+      } @else {
+        <span class="duration" [attr.data-testid]="'split-' + item.side + '-duration'">{{
+          seconds(item.side) | nalaDuration
+        }}</span>
       }
       <button
         type="button"

@@ -17,15 +17,18 @@
   }
 
   <nala-timer
-    [seconds]="sheet.timerSeconds()"
+    [seconds]="sheet.shownSeconds()"
     [running]="sheet.live()"
-    [disabled]="sheet.saving() || sheet.manual()"
+    [editable]="true"
+    [disabled]="sheet.saving()"
+    [timerDisabled]="sheet.manual()"
     (start)="sheet.start()"
     (stop)="sheet.stop()"
+    (edit)="sheet.editDuration()"
   />
 
   <nala-time-row [label]="'entrySheet.startTime' | transloco" [control]="form.controls.startTime" />
-  @if (sheet.live()) {
+  @if (sheet.live() && !sheet.manual()) {
     <nala-form-row
       [label]="'pump.sheet.endTime' | transloco"
       [interactive]="false"

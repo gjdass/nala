@@ -8,6 +8,7 @@
       min="0"
       step="1"
       formControlName="minutes"
+      (focus)="selectAll($event)"
       data-testid="duration-minutes"
     />
     <mat-error>{{ 'durationField.minutesRange' | transloco }}</mat-error>
@@ -22,6 +23,7 @@
       max="59"
       step="1"
       formControlName="seconds"
+      (focus)="selectAll($event)"
       data-testid="duration-seconds"
     />
     <mat-error>{{ 'durationField.secondsRange' | transloco }}</mat-error>
