@@ -369,6 +369,13 @@
     "startTime": "Heure de début",
     "date": "Date",
     "time": "Heure",
+    "hour": "Heure",
+    "minute": "Minute",
+    "hourRange12": "1 à 12",
+    "hourRange24": "0 à 23",
+    "minuteRange": "0 à 59",
+    "am": "AM",
+    "pm": "PM",
     "required": "Obligatoire.",
     "afterEnd": "Ne peut pas être après la fin.",
     "audit": {

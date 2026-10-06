@@ -7,7 +7,25 @@
   flex-wrap: wrap;
   gap: 0 16px;
 
-  mat-form-field {
+  .date {
     flex: 1 1 160px;
+  }
+}
+
+// Hour, minute and AM / PM on one line.
+.time {
+  display: flex;
+  flex: 1 1 240px;
+  align-items: flex-start;
+  gap: 8px;
+
+  mat-form-field {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  mat-button-toggle-group {
+    flex: none;
+    margin-top: 4px;
   }
 }

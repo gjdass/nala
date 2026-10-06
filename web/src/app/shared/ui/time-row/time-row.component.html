@@ -12,7 +12,7 @@
 >
   @if (open()) {
     <div rowEditor class="pickers">
-      <mat-form-field appearance="outline">
+      <mat-form-field appearance="outline" class="date">
         <mat-label>{{ 'entrySheet.date' | transloco }}</mat-label>
         <input
           matInput
@@ -24,17 +24,52 @@
         <mat-datepicker #datePicker [panelClass]="scheme ?? []" />
       </mat-form-field>
       @if (!dateOnly()) {
-        <mat-form-field appearance="outline">
-          <mat-label>{{ 'entrySheet.time' | transloco }}</mat-label>
-          <input
-            matInput
-            [matTimepicker]="timePicker"
-            [formControl]="time"
-            data-testid="time-row-time"
-          />
-          <mat-timepicker-toggle matIconSuffix [for]="timePicker" />
-          <mat-timepicker #timePicker [panelClass]="scheme" />
-        </mat-form-field>
+        <div class="time">
+          <mat-form-field appearance="outline">
+            <mat-label>{{ 'entrySheet.hour' | transloco }}</mat-label>
+            <input
+              matInput
+              type="text"
+              inputmode="numeric"
+              maxlength="2"
+              autocomplete="off"
+              [formControl]="hour"
+              (focus)="selectAll($event)"
+              data-testid="time-row-hour"
+            />
+            <mat-error>{{
+              (twelveHours() ? 'entrySheet.hourRange12' : 'entrySheet.hourRange24') | transloco
+            }}</mat-error>
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>{{ 'entrySheet.minute' | transloco }}</mat-label>
+            <input
+              matInput
+              type="text"
+              inputmode="numeric"
+              maxlength="2"
+              autocomplete="off"
+              [formControl]="minute"
+              (focus)="selectAll($event)"
+              data-testid="time-row-minute"
+            />
+            <mat-error>{{ 'entrySheet.minuteRange' | transloco }}</mat-error>
+          </mat-form-field>
+          @if (twelveHours()) {
+            <mat-button-toggle-group
+              [formControl]="period"
+              [hideSingleSelectionIndicator]="true"
+              [attr.aria-label]="'entrySheet.time' | transloco"
+            >
+              <mat-button-toggle value="am" data-testid="time-row-am">{{
+                'entrySheet.am' | transloco
+              }}</mat-button-toggle>
+              <mat-button-toggle value="pm" data-testid="time-row-pm">{{
+                'entrySheet.pm' | transloco
+              }}</mat-button-toggle>
+            </mat-button-toggle-group>
+          }
+        </div>
       }
     </div>
   }

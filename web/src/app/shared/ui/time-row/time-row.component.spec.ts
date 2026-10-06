@@ -3,9 +3,10 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { FormControl, Validators } from '@angular/forms';
 import { provideNativeDateAdapter } from '@angular/material/core';
 import { MatDatepicker } from '@angular/material/datepicker';
-import { MatTimepicker } from '@angular/material/timepicker';
 import { By } from '@angular/platform-browser';
+import { TranslocoService } from '@jsverse/transloco';
 import en from '../../../../../public/i18n/en.json';
+import fr from '../../../../../public/i18n/fr.json';
 import { SECTION_SCHEME } from '../../../core/sections/section-scheme';
 import { translocoTesting } from '../../../testing/transloco-testing';
 import { TimeRowComponent } from './time-row.component';
@@ -72,16 +73,127 @@ describe('TimeRowComponent', () => {
     );
   });
 
+  const input = (testId: string) => find<HTMLInputElement>(`[data-testid="${testId}"]`)!;
+  const period = (value: 'am' | 'pm') =>
+    find<HTMLButtonElement>(`[data-testid="time-row-${value}"] button`)!;
+  const value = () => fixture.componentInstance.control.value;
+
   it('hides the pickers until the row is tapped', async () => {
     expect(find('[data-testid="time-row-date"]')).toBeNull();
-    expect(find('[data-testid="time-row-time"]')).toBeNull();
+    expect(find('[data-testid="time-row-hour"]')).toBeNull();
 
     await open();
 
     expect(find('[data-testid="time-row-date"]')).toBeTruthy();
-    expect(find('[data-testid="time-row-time"]')).toBeTruthy();
     expect(find('mat-datepicker-toggle')).toBeTruthy();
-    expect(find('mat-timepicker-toggle')).toBeTruthy();
+    expect(find('[data-testid="time-row-hour"]')).toBeTruthy();
+    expect(find('[data-testid="time-row-minute"]')).toBeTruthy();
+    expect(find('mat-timepicker-toggle')).toBeNull();
+  });
+
+  it('types the time with hour and minute fields and the numeric keypad, AM / PM in English', async () => {
+    await open();
+
+    expect(input('time-row-hour').value).toBe('10');
+    expect(input('time-row-minute').value).toBe('30');
+    expect(input('time-row-hour').getAttribute('inputmode')).toBe('numeric');
+    expect(input('time-row-minute').getAttribute('inputmode')).toBe('numeric');
+    expect(period('am').getAttribute('aria-checked')).toBe('true');
+    expect(period('pm').getAttribute('aria-checked')).toBe('false');
+    expect(host().textContent).toContain(en.entrySheet.hour);
+    expect(host().textContent).toContain(en.entrySheet.minute);
+  });
+
+  it('shows minutes on two digits', async () => {
+    fixture.componentInstance.control.setValue(new Date(2026, 8, 30, 14, 5));
+    await open();
+
+    expect(input('time-row-hour').value).toBe('2');
+    expect(input('time-row-minute').value).toBe('05');
+    expect(period('pm').getAttribute('aria-checked')).toBe('true');
+  });
+
+  it('changes the hour or the minute exactly, keeping the date', async () => {
+    await open();
+
+    await type('time-row-hour', '8');
+    expect(value()).toEqual(new Date(2026, 8, 30, 8, 30));
+    expect(fixture.componentInstance.control.dirty).toBe(true);
+
+    await type('time-row-minute', '17');
+    expect(value()).toEqual(new Date(2026, 8, 30, 8, 17));
+  });
+
+  it('switches between AM and PM', async () => {
+    await open();
+
+    period('pm').click();
+    await fixture.whenStable();
+    expect(value()).toEqual(new Date(2026, 8, 30, 22, 30));
+
+    period('am').click();
+    await fixture.whenStable();
+    expect(value()).toEqual(new Date(2026, 8, 30, 10, 30));
+  });
+
+  it('reads 12 AM as midnight and 12 PM as noon', async () => {
+    await open();
+
+    await type('time-row-hour', '12');
+    expect(value()).toEqual(new Date(2026, 8, 30, 0, 30));
+
+    period('pm').click();
+    await fixture.whenStable();
+    expect(value()).toEqual(new Date(2026, 8, 30, 12, 30));
+  });
+
+  it('refuses an hour outside 1–12 or a minute outside 0–59, keeping the time', async () => {
+    await open();
+
+    await type('time-row-hour', '13');
+    expect(value()).toEqual(new Date(2026, 8, 30, 10, 30));
+    expect(host().textContent).toContain(en.entrySheet.hourRange12);
+
+    await type('time-row-hour', '10');
+    await type('time-row-minute', '60');
+    expect(value()).toEqual(new Date(2026, 8, 30, 10, 30));
+    expect(host().textContent).toContain(en.entrySheet.minuteRange);
+  });
+
+  it('follows a value changed elsewhere', async () => {
+    await open();
+
+    fixture.componentInstance.control.setValue(new Date(2026, 8, 30, 21, 45));
+    await fixture.whenStable();
+
+    expect(input('time-row-hour').value).toBe('9');
+    expect(input('time-row-minute').value).toBe('45');
+    expect(period('pm').getAttribute('aria-checked')).toBe('true');
+  });
+
+  it('selects a field once it gets the focus, so typing replaces it', async () => {
+    await open();
+    const select = vi.spyOn(input('time-row-hour'), 'select');
+
+    input('time-row-hour').dispatchEvent(new FocusEvent('focus'));
+
+    expect(select).toHaveBeenCalled();
+  });
+
+  it('types a 24-hour time in French, without AM / PM', async () => {
+    TestBed.inject(TranslocoService).setActiveLang('fr');
+    await open();
+
+    expect(input('time-row-hour').value).toBe('10');
+    expect(find('[data-testid="time-row-am"]')).toBeNull();
+    expect(host().textContent).toContain(fr.entrySheet.hour);
+
+    await type('time-row-hour', '22');
+    expect(value()).toEqual(new Date(2026, 8, 30, 22, 30));
+
+    await type('time-row-hour', '24');
+    expect(value()).toEqual(new Date(2026, 8, 30, 22, 30));
+    expect(host().textContent).toContain(fr.entrySheet.hourRange24);
   });
 
   it('changing the date keeps the time', async () => {
@@ -90,13 +202,6 @@ describe('TimeRowComponent', () => {
 
     expect(fixture.componentInstance.control.value).toEqual(new Date(2026, 8, 28, 10, 30));
     expect(fixture.componentInstance.control.dirty).toBe(true);
-  });
-
-  it('changing the time keeps the date', async () => {
-    await open();
-    await type('time-row-time', '8:15 AM');
-
-    expect(fixture.componentInstance.control.value).toEqual(new Date(2026, 8, 30, 8, 15));
   });
 
   it('shows no error for a time in the future', async () => {
@@ -146,7 +251,7 @@ describe('TimeRowComponent', () => {
 
       expect(fixture.componentInstance.control.value).toEqual(NOW);
       expect(fixture.componentInstance.control.dirty).toBe(true);
-      expect(find('[data-testid="time-row-time"]')).toBeTruthy();
+      expect(find('[data-testid="time-row-hour"]')).toBeTruthy();
       expect(find('nala-form-row')?.textContent).toContain(`Today ${shortTime(NOW)}`);
     });
   });
@@ -202,8 +307,8 @@ describe('TimeRowComponent, date only (spec 10)', () => {
     await open();
 
     expect(find('[data-testid="time-row-date"]')).toBeTruthy();
-    expect(find('[data-testid="time-row-time"]')).toBeNull();
-    expect(find('mat-timepicker-toggle')).toBeNull();
+    expect(find('[data-testid="time-row-hour"]')).toBeNull();
+    expect(find('[data-testid="time-row-minute"]')).toBeNull();
   });
 
   it('sets the picked date at local midnight', async () => {
@@ -260,24 +365,15 @@ describe('TimeRowComponent, in a section (spec 04)', () => {
       .querySelector<HTMLButtonElement>('nala-form-row button')!
       .click();
     await fixture.whenStable();
-    return {
-      date: fixture.debugElement.query(By.directive(MatDatepicker)).componentInstance
-        .panelClass as string[],
-      time: fixture.debugElement.query(By.directive(MatTimepicker)).componentInstance.panelClass(),
-    };
+    return fixture.debugElement.query(By.directive(MatDatepicker)).componentInstance
+      .panelClass as string[];
   };
 
-  it("opens its date and time pickers in the section's colour scheme", async () => {
-    const { date, time } = await pickers('nala-scheme-sleep');
-
-    expect(date).toEqual(['nala-scheme-sleep']);
-    expect(time).toBe('nala-scheme-sleep');
+  it("opens its datepicker in the section's colour scheme", async () => {
+    expect(await pickers('nala-scheme-sleep')).toEqual(['nala-scheme-sleep']);
   });
 
   it('keeps the app scheme outside a section', async () => {
-    const { date, time } = await pickers(null);
-
-    expect(date).toEqual([]);
-    expect(time).toBeUndefined();
+    expect(await pickers(null)).toEqual([]);
   });
 });
