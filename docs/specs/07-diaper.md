@@ -18,7 +18,7 @@ Log the selected baby's diaper changes in a few taps (wet, dirty, both or dry, d
   - **Consistency** (`liquid`, `runny`, `soft`, `firm`, `hard`).
   - Turning Dirty off hides and clears them; Save then sends them as null. The API ignores them when `dirty` is false (not validated, stored and returned null, like Feed's fields of another kind).
 - **Diaper endpoints:** `POST /api/diapers` with `{ id, babyId, time, wet, dirty, rash, color, consistency, notes }` → 201; sending an existing id again → 200 with the stored diaper unchanged (idempotent re-send). `PUT /api/diapers/{id}` with `{ time, wet, dirty, rash, color, consistency, notes }` replaces every field → 200. `DELETE /api/diapers/{id}` → 204; `GET /api/diapers/{id}` → 200; unknown diaper → 404 `{ code: "diaperNotFound" }`. `GET /api/babies/{babyId}/diapers?cursor=&limit=` → `{ entries, next }`, newest first (time, then id), 20 per page by default, 1–50; malformed cursor → 400 `cursor: invalid`. Unknown baby → 404 `{ code: "babyNotFound" }`. Each diaper carries `loggedBy` and `updatedBy` (`{ id, displayName }`).
-- **Validation codes:** `id` / `babyId` `required`, `time` `required` / `inFuture` (1 min tolerance), `color` `invalid`, `consistency` `invalid` (only checked when `dirty`), `notes` `tooLong` (spec 04, 1000). `wet`, `dirty`, `rash` default to false when missing.
+- **Validation codes:** `id` / `babyId` `required`, `time` `required`, `color` `invalid`, `consistency` `invalid` (only checked when `dirty`), `notes` `tooLong` (spec 04, 1000). `wet`, `dirty`, `rash` default to false when missing.
 - **Adding:** the sheet opens with the time at now, every toggle off, no details. Save is the only action (no timer, so × simply discards).
 - **Card highlight:** "Last change" (FR "Dernier change") with the time since the most recent diaper (latest time among the card's loaded entries; no separate endpoint), in spec 04's highlight duration format ("1h 20m", "45m", "<1m", ">24h"); on the right, in an M3 display/headline typescale, that diaper's type ("Wet + dirty"…), with a "Rash" label (FR "Érythème") under it when its rash toggle is on. With no diaper at all: an empty state.
 - **Offline:** add, edit and delete go through the shared device queue (spec 05 Offline), with the same snackbars.
@@ -45,7 +45,7 @@ Each item becomes at least one test, written failing first.
 - [x] Wet and Dirty are independent: either, both or neither can be on; with neither, the diaper is saved as dry.
 - [x] Colour and Consistency chip rows show only while Dirty is on; both are optional, single choice, and colour chips show a colour dot.
 - [x] Turning Dirty off hides the details and saves them as null.
-- [x] Save is disabled when the time is in the future (1 min tolerance).
+- [x] A time in the future is accepted (spec 04).
 - [x] An existing diaper opens with its values; Save replaces them; × discards the form edits.
 - [x] Delete deletes it after confirmation.
 

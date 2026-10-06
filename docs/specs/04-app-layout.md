@@ -1,6 +1,6 @@
 # 04 — App layout & section pattern
 
-Status: done
+Status: in progress
 
 ## Goal
 
@@ -38,6 +38,9 @@ Give every activity section (Feed, Diaper, Sleep, Health, Growth, Pump…) the s
   - **× discards what Save would have saved.** On a sheet opened to add, it deletes the entry its Start created (after the unsaved-changes confirmation: a Start counts as a change). On an existing entry it discards the form edits only; timer taps made in the sheet stay (they are live actions, already seen by other devices).
   - The end time is the end of the last timed segment, empty while live.
   - Warnings about an entry live for too long ("Still feeding?") are defined per feature.
+  - **Typing a timer's duration:** the duration shown by a timer (`nala-timer`, each side of `nala-split-timer`) is itself the button that edits it: tapping it opens the duration dialog (minutes and seconds, typed with the device's numeric keypad), filled with the duration shown. There is no separate pencil. The start time never changes: the end time becomes start + typed duration (a split timer: start + both sides). Typing a duration freezes the timer and disables Start / Stop until Save or ×, also on a live entry; Save then stores the typed end, so the entry is no longer live (an explicit correction, like typing an end time). × discards the typed duration; a running timer keeps running.
+- **Times in the future are allowed.** No entry time, date, duration or timer tap is refused for being in the future, in the app or the API: the user logs what they want. Only the baby's birth date (spec 03) still can't be in the future. "End after start" and "not before birth" stay.
+- **Typing a time:** a time row (`nala-time-row`) edits the date with the Material datepicker and the time with an hour field and a minute field side by side, each typed with the device's numeric keypad, exact to the minute (no list of 30-minute steps). In English the hour is 1–12 with an AM / PM segmented button; in French it is 0–23. The value changes as soon as both fields hold a valid number.
 - **Live sync (every section with timers).** Devices learn about other devices' timers by polling one endpoint for every section, not one per section.
   - `GET /api/live` → `{ feeds: [...], sleeps: [...], pumps: [...] }`: every baby's live entries per section, oldest start first, each in the section's usual JSON. Any signed-in member. A new timer section adds its own list there. The per-section `GET /api/feeds/in-progress` and `GET /api/sleeps/in-progress` are removed.
   - The web app has **one shared poller** (`LiveSyncService`, `core/timers/`) that calls `/api/live` and hands each section's sync its list. The rest of the live sync stays as it is: own actions applied at once, a response started before an own change ignored, changes waiting on the device applied on top by the section's overlay, a failed call keeping the last lists, paused while the app is hidden and called again as soon as it is shown, called at once after sign-in and once the offline queue has been sent, cleared on sign-out.
@@ -111,7 +114,7 @@ Shared by the card's expanded list and the history page:
 ### Entry sheet (add / edit form)
 - A Material **bottom sheet** sliding up over the dimmed page, expanded to most of the screen height (a standard dialog on wide screens).
 - Header in the section's colour, laid out like an M3 top app bar: close icon button on the left, the entry kind as title, **Save** text button on the right. Save saves the form only; × discards it (see Timers for entries with timers).
-- Body as a list of **form rows** (M3 list items): label as headline, current value or action as trailing text ("Today 2:37pm", "Add") or a trailing switch. Every trailing text uses the same type style, whether the row is tappable or read-only (e.g. "Sleeping…", a duration, a total); only tappable values take the primary colour. Tapping a row edits it with the standard Material control (timepicker/datepicker, text field, …).
+- Body as a list of **form rows** (M3 list items): label as headline, current value or action as trailing text ("Today 2:37pm", "Add") or a trailing switch. Every trailing text uses the same type style, whether the row is tappable or read-only (e.g. "Sleeping…", a duration, a total); only tappable values take the primary colour. Tapping a row edits it with the standard Material control (datepicker, hour and minute fields, text field, …).
 - Optional **suggestion row** under a field (e.g. "Use last breast milk amount: 90 ml? [Yes]").
 - A **Notes** row on every kind.
 - In edit mode, who logged the entry and who edited it last, and when (shared `nala-entry-audit`: "Logged by Anna · Edited by Ben, 2:40 PM").
@@ -167,6 +170,13 @@ Each item becomes at least one test, written failing first.
 - [x] A section card never shows a timer or timer controls: while an entry is live it keeps its normal highlight (or empty state).
 - [x] A live entry is listed in the card and history at once, with its live total.
 - [x] While the section has a live entry for the selected baby, + is replaced by the timer button, which opens that entry's sheet.
+- [ ] Tapping a timer's duration (Sleep, Pump, each Breastfeed side) opens the duration dialog filled with it; there is no pencil.
+- [ ] A typed duration sets the end time to start + duration and never changes the start time; the timer shows the typed duration and Start / Stop is disabled until Save or ×.
+- [ ] Save after typing a duration on a live Sleep or Pump stores that end time, so it is no longer live; × keeps it running.
+
+### Times
+- [ ] Times, dates and durations in the future are accepted in every section, by the app and the API (Feed, Breastfeed durations, Sleep, Pump, Diaper, Health, Growth, timer taps); the birth date still can't be in the future.
+- [ ] A time row edits the time with an hour field and a minute field (numeric keypad), exact to the minute; English has 1–12 with AM / PM, French 0–23.
 
 ### Bottom navigation bar
 - [x] Every signed-in screen shows the floating bottom navigation bar with Dashboard, History, Trends and Settings, in that order, icons only with their names as accessible names; the current destination is marked active.
@@ -234,6 +244,12 @@ iPhone home screen app (after the PWA install work):
 - [x] **Slice 16 — Section colour scheme.** `.nala-scheme-<key>` classes in `_sections.scss` (`mat.theme` colours from each section palette, `theme-type: color-scheme`) and `sectionScheme(key)`. Set on the section card, the history page host, the kind picker and entry sheet panels (`SheetService.open` takes a `panelClass`), the entry sheet's confirmation dialog and Feed's duration dialog; `nala-entry-sheet` provides `SECTION_SCHEME`, used by the time row for its date and time picker panels. Covers: the section colour scheme criterion.
 - [x] **Slice 17 — Same text size on every form row.** `nala-form-row` gives its read-only trailing slot the same `label-large` style as a tappable value (shared `value` class; only tappable values are primary). Fixes Sleep (end time, duration), Pump (end time, duration, total) and Breastfeed (total time). Covers: the read-only row text criterion.
 
+Timer and time editing after use on a phone:
+
+- [ ] **Slice 18 — Times in the future allowed.** API: the `inFuture` checks of every entry go (`EntryFields.FutureTolerance` / `IsInFuture`, start / end times, timer `at`, Breastfeed `durations`, Diaper, Health and Growth times and dates); the birth date check stays. Web: `notInFuture` and its uses removed, with the entry `inFuture` translations (`entrySheet.inFuture`, `feed.breastfeed.errors.durationsInFuture`, Growth's). Covers: the first Times criterion.
+- [ ] **Slice 19 — Tap a timer's duration to type it.** `nala-timer` and `nala-split-timer`: the duration is a button (primary colour, "Edit duration" accessible name) emitting `edit`; the split timer's pencil goes. The duration dialog focuses and selects the minutes field. Breastfeed: same manual mode as before, opened from the duration. `LiveEntrySheet` (Sleep, Pump): `typeDuration(seconds)` sets the end time to start + seconds, the timer shows the typed duration and is disabled until Save or ×; Save on a live entry sends Stop at that end, then the edit. Covers: the three new Timers criteria.
+- [ ] **Slice 20 — Hour and minute fields.** `nala-time-row` replaces `mat-timepicker` with hour and minute `mat-form-field`s (`inputmode="numeric"`), AM / PM `mat-button-toggle-group` in English, 0–23 in French; invalid numbers show the field error and leave the value as it was. Covers: the last Times criterion.
+
 ## Material 3 mapping
 
 Use Angular Material's M3 components as-is. Customize only through the global theme (colour tokens, typography, density); do not override component shapes, sizes or internal styles in component CSS. When no Material component exists (e.g. the section card's header band, the duration bar), build it from Material surfaces and theme tokens, following M3 guidance.
@@ -248,7 +264,7 @@ Use Angular Material's M3 components as-is. Customize only through the global th
 | Entry list item | List item (`mat-list-item`) with leading icon, headline, supporting text, trailing icon |
 | Kind picker | Bottom sheet (`MatBottomSheet`) with a list of items |
 | Entry sheet | Bottom sheet on phones, dialog (`MatDialog`) on wide screens |
-| Form row | List item; editing through `mat-form-field`, `mat-timepicker`, `mat-datepicker` |
+| Form row | List item; editing through `mat-form-field` (hour and minute fields for a time), `mat-datepicker` |
 | Single choice among 2–4 options (e.g. milk type) | Segmented button (`mat-button-toggle-group`) |
 | Optional / multi choice (e.g. meal type, reaction, wet/dirty/dry) | Filter chips (`mat-chip-listbox`) |
 | On/off field (e.g. diaper rash) | Switch (`mat-slide-toggle`) |
@@ -266,7 +282,7 @@ Use Angular Material's M3 components as-is. Customize only through the global th
 
 ## UI notes — shared components
 
-Section card (with the live timer button), entry list item (two lines: time · optional label, one-line summary), bottom navigation bar, kind picker sheet, entry sheet (header, form row, suggestion row, notes row, chip choice row `nala-chip-choice-row` for optional single choices as filter chips (translated or raw labels, optionally not clearable), delete action, entry audit line), time picker row (`nala-time-row`: "Today 2:37 PM", datepicker + timepicker editing the date and the time separately), duration field (`nala-duration-field`, minutes + seconds, and `nala-duration-dialog` around it), banner (`nala-banner`: icon, title, text, optional action; a section card shows one above its highlight through the `[sectionBanner]` slot), running timers mini-bar, empty state.
+Section card (with the live timer button), entry list item (two lines: time · optional label, one-line summary), bottom navigation bar, kind picker sheet, entry sheet (header, form row, suggestion row, notes row, chip choice row `nala-chip-choice-row` for optional single choices as filter chips (translated or raw labels, optionally not clearable), delete action, entry audit line), time picker row (`nala-time-row`: "Today 2:37 PM", datepicker for the date, hour and minute fields (+ AM / PM in English) for the time), duration field (`nala-duration-field`, minutes + seconds, and `nala-duration-dialog` around it, opened by tapping a timer's duration), banner (`nala-banner`: icon, title, text, optional action; a section card shows one above its highlight through the `[sectionBanner]` slot), running timers mini-bar, empty state.
 
 ## What each feature spec must define
 
