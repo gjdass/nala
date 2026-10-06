@@ -98,7 +98,7 @@ public class FeedService(IFeedRepository feeds, IBabyRepository babies, TimeProv
         }
 
         var now = time.GetUtcNow();
-        var errors = FeedFields.Validate(input, now);
+        var errors = FeedFields.Validate(input);
         if (input.Kind == "breastfeed" && input.Durations is null)
         {
             // Otherwise a breastfeed starts from its timers.
@@ -142,7 +142,7 @@ public class FeedService(IFeedRepository feeds, IBabyRepository babies, TimeProv
 
         var now = time.GetUtcNow();
         input = input with { Kind = FeedFields.Format(feed.Kind) };
-        var errors = FeedFields.Validate(input, now);
+        var errors = FeedFields.Validate(input);
         if (!errors.ContainsKey("startTime") && input.Durations is null && feed.EndTime is { } end && input.StartTime > end)
         {
             errors["startTime"] = "afterEnd";
@@ -221,7 +221,7 @@ public class FeedService(IFeedRepository feeds, IBabyRepository babies, TimeProv
         CancellationToken cancellationToken = default)
     {
         var now = time.GetUtcNow();
-        var errors = FeedFields.ValidateTimerAction(side, needsSide: true, at, now);
+        var errors = FeedFields.ValidateTimerAction(side, needsSide: true, at);
         if (errors.Count > 0)
         {
             return new BreastfeedResult.Invalid(errors);
@@ -289,7 +289,7 @@ public class FeedService(IFeedRepository feeds, IBabyRepository babies, TimeProv
     /// </summary>
     public async Task<BreastfeedResult> StopSideAsync(User actor, Guid feedId, DateTimeOffset? at, CancellationToken cancellationToken = default)
     {
-        var errors = FeedFields.ValidateTimerAction(null, needsSide: false, at, time.GetUtcNow());
+        var errors = FeedFields.ValidateTimerAction(null, needsSide: false, at);
         if (errors.Count > 0)
         {
             return new BreastfeedResult.Invalid(errors);

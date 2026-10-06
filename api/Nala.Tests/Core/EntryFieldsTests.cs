@@ -10,7 +10,7 @@ public class EntryFieldsTests
     private static Dictionary<string, string> Validate(DateTimeOffset? start, DateTimeOffset? end, bool live = false)
     {
         var errors = new Dictionary<string, string>();
-        EntryFields.ValidateStartEnd(start, end, Now, live, errors);
+        EntryFields.ValidateStartEnd(start, end, live, errors);
         return errors;
     }
 
@@ -25,14 +25,8 @@ public class EntryFieldsTests
             Is.EqualTo(new Dictionary<string, string> { ["startTime"] = "required", ["endTime"] = "required" }));
 
     [Test]
-    public void Times_may_be_up_to_one_minute_ahead() =>
-        Assert.That(Validate(Now.AddSeconds(30), Now.AddSeconds(60)), Is.Empty);
-
-    [Test]
-    public void Times_more_than_one_minute_ahead_are_in_the_future() =>
-        Assert.That(
-            Validate(Now.AddMinutes(2), Now.AddMinutes(3)),
-            Is.EqualTo(new Dictionary<string, string> { ["startTime"] = "inFuture", ["endTime"] = "inFuture" }));
+    public void Times_may_be_in_the_future() =>
+        Assert.That(Validate(Now.AddDays(2), Now.AddDays(2).AddHours(1)), Is.Empty);
 
     [TestCase(-1)]
     [TestCase(0)]
@@ -52,12 +46,9 @@ public class EntryFieldsTests
 
     [Test]
     public void A_timer_tap_needs_its_time() =>
-        Assert.That(EntryFields.ValidateTimerAt(null, Now), Is.EqualTo(new Dictionary<string, string> { ["at"] = "required" }));
+        Assert.That(EntryFields.ValidateTimerAt(null), Is.EqualTo(new Dictionary<string, string> { ["at"] = "required" }));
 
     [Test]
-    public void A_timer_tap_may_be_up_to_one_minute_ahead()
-    {
-        Assert.That(EntryFields.ValidateTimerAt(Now.AddSeconds(60), Now), Is.Empty);
-        Assert.That(EntryFields.ValidateTimerAt(Now.AddSeconds(61), Now), Is.EqualTo(new Dictionary<string, string> { ["at"] = "inFuture" }));
-    }
+    public void A_timer_tap_may_be_in_the_future() =>
+        Assert.That(EntryFields.ValidateTimerAt(Now.AddHours(2)), Is.Empty);
 }

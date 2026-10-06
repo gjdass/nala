@@ -23,7 +23,6 @@ import {
 } from '../../../core/feeds/feed.models';
 import { FeedService } from '../../../core/feeds/feed.service';
 import { applyServerErrors } from '../../../core/http/apply-server-errors';
-import { notInFuture } from '../../../core/time/not-in-future';
 import { EntryAuditComponent } from '../../../shared/ui/entry-audit/entry-audit.component';
 import { EntrySheetComponent } from '../../../shared/ui/entry-sheet/entry-sheet.component';
 import {
@@ -82,7 +81,7 @@ export class BottleSheetComponent {
   readonly form = new FormGroup({
     startTime: new FormControl<Date | null>(
       this.feed ? new Date(this.feed.startTime) : new Date(),
-      [Validators.required, notInFuture()],
+      Validators.required,
     ),
     milkType: new FormControl<MilkType | null>(this.feed?.milkType ?? null, Validators.required),
     amountMl: new FormControl<number | null>(this.feed?.amountMl ?? null, [

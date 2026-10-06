@@ -171,11 +171,11 @@ describe('SleepSheetComponent', () => {
       expect(alerts()).toContain(en.entrySheet.beforeStart);
     });
 
-    it('refuses an end in the future', async () => {
-      await setTimes(at(11), at(12, 5));
+    it('accepts times in the future', async () => {
+      await setTimes(at(13), at(14, 5));
 
-      expect(save().disabled).toBe(true);
-      expect(alerts()).toContain(en.entrySheet.inFuture);
+      expect(save().disabled).toBe(false);
+      expect(alerts()).toEqual([]);
     });
 
     it('adds the sleep for the selected baby and closes with it', async () => {
@@ -393,7 +393,10 @@ describe('SleepSheetComponent', () => {
         await respondTimer({ ok: false, errors: { form: 'sleepInProgress' } });
 
         expect(sync.refreshes()).toBe(2);
-        sync.inProgress.set([liveSleep(30, { id: 'other', babyId: 'b2' }), liveSleep(20, { id: 's9' })]);
+        sync.inProgress.set([
+          liveSleep(30, { id: 'other', babyId: 'b2' }),
+          liveSleep(20, { id: 's9' }),
+        ]);
         sync.refreshed.next();
         await settle();
 
@@ -610,7 +613,11 @@ describe('SleepSheetComponent', () => {
     });
 
     it('makes a stopped sleep live again offline, from its start time', async () => {
-      const sleep = aSleep({ id: 's7', startTime: at(8).toISOString(), endTime: at(9).toISOString() });
+      const sleep = aSleep({
+        id: 's7',
+        startTime: at(8).toISOString(),
+        endTime: at(9).toISOString(),
+      });
       await render(sleep);
       offlineShows(() => ({ ...sleep, endTime: null }));
 

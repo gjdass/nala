@@ -198,7 +198,7 @@ public class GrowthEntryEndpointTests
         Assert.Multiple(() =>
         {
             Assert.That(outOfRange.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
-            Assert.That(errors.GetProperty("date")[0].GetString(), Is.EqualTo("inFuture"));
+            Assert.That(errors.TryGetProperty("date", out _), Is.False, "a date in the future is accepted");
             Assert.That(errors.GetProperty("weightG")[0].GetString(), Is.EqualTo("outOfRange"));
             Assert.That(errors.GetProperty("lengthCm")[0].GetString(), Is.EqualTo("outOfRange"));
             Assert.That(errors.GetProperty("headCircumferenceCm")[0].GetString(), Is.EqualTo("outOfRange"));

@@ -175,7 +175,7 @@ Each item becomes at least one test, written failing first.
 - [ ] Save after typing a duration on a live Sleep or Pump stores that end time, so it is no longer live; × keeps it running.
 
 ### Times
-- [ ] Times, dates and durations in the future are accepted in every section, by the app and the API (Feed, Breastfeed durations, Sleep, Pump, Diaper, Health, Growth, timer taps); the birth date still can't be in the future.
+- [x] Times, dates and durations in the future are accepted in every section, by the app and the API (Feed, Breastfeed durations, Sleep, Pump, Diaper, Health, Growth, timer taps); the birth date still can't be in the future.
 - [ ] A time row edits the time with an hour field and a minute field (numeric keypad), exact to the minute; English has 1–12 with AM / PM, French 0–23.
 
 ### Bottom navigation bar
@@ -246,7 +246,7 @@ iPhone home screen app (after the PWA install work):
 
 Timer and time editing after use on a phone:
 
-- [ ] **Slice 18 — Times in the future allowed.** API: the `inFuture` checks of every entry go (`EntryFields.FutureTolerance` / `IsInFuture`, start / end times, timer `at`, Breastfeed `durations`, Diaper, Health and Growth times and dates); the birth date check stays. Web: `notInFuture` and its uses removed, with the entry `inFuture` translations (`entrySheet.inFuture`, `feed.breastfeed.errors.durationsInFuture`, Growth's). Covers: the first Times criterion.
+- [x] **Slice 18 — Times in the future allowed.** API: the `inFuture` checks of every entry go (`EntryFields.FutureTolerance` / `IsInFuture`, start / end times, timer `at`, Breastfeed `durations`, Diaper, Health and Growth times and dates); the birth date check stays. Web: `notInFuture` and its uses removed, with the entry `inFuture` translations (`entrySheet.inFuture`, `feed.breastfeed.errors.durationsInFuture`, Growth's). Covers: the first Times criterion.
 - [ ] **Slice 19 — Tap a timer's duration to type it.** `nala-timer` and `nala-split-timer`: the duration is a button (primary colour, "Edit duration" accessible name) emitting `edit`; the split timer's pencil goes. The duration dialog focuses and selects the minutes field. Breastfeed: same manual mode as before, opened from the duration. `LiveEntrySheet` (Sleep, Pump): `typeDuration(seconds)` sets the end time to start + seconds, the timer shows the typed duration and is disabled until Save or ×; Save on a live entry sends Stop at that end, then the edit. Covers: the three new Timers criteria.
 - [ ] **Slice 20 — Hour and minute fields.** `nala-time-row` replaces `mat-timepicker` with hour and minute `mat-form-field`s (`inputmode="numeric"`), AM / PM `mat-button-toggle-group` in English, 0–23 in French; invalid numbers show the field error and leave the value as it was. Covers: the last Times criterion.
 

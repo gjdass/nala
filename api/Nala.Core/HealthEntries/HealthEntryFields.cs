@@ -27,19 +27,15 @@ public static class HealthEntryFields
     };
 
     /// <summary>
-    /// Field name → error code (<c>required</c>, <c>inFuture</c>, <c>tooLong</c>, <c>outOfRange</c>, <c>invalid</c>,
+    /// Field name → error code (<c>required</c>, <c>tooLong</c>, <c>outOfRange</c>, <c>invalid</c>,
     /// <c>nameRequired</c>); empty when valid. A name or a temperature is required; an amount needs a name and a unit.
     /// </summary>
-    public static Dictionary<string, string> Validate(HealthEntryInput input, DateTimeOffset now)
+    public static Dictionary<string, string> Validate(HealthEntryInput input)
     {
         var errors = new Dictionary<string, string>();
-        if (input.Time is not { } time)
+        if (input.Time is null)
         {
             errors["time"] = "required";
-        }
-        else if (EntryFields.IsInFuture(time, now))
-        {
-            errors["time"] = "inFuture";
         }
 
         var name = EntryFields.NormalizeText(input.Name);

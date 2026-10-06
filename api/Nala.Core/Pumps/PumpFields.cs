@@ -18,10 +18,10 @@ public static class PumpFields
     /// <c>rightMl</c> <c>invalid</c> (not a whole number) or <c>outOfRange</c> (not 0–500; null is not recorded), and
     /// notes <c>tooLong</c>; empty when valid.
     /// </summary>
-    public static Dictionary<string, string> Validate(PumpInput input, DateTimeOffset now, bool live = false)
+    public static Dictionary<string, string> Validate(PumpInput input, bool live = false)
     {
         var errors = new Dictionary<string, string>();
-        EntryFields.ValidateStartEnd(input.StartTime, input.EndTime, now, live, errors);
+        EntryFields.ValidateStartEnd(input.StartTime, input.EndTime, live, errors);
         ValidateVolume("leftMl", input.LeftMl, errors);
         ValidateVolume("rightMl", input.RightMl, errors);
 

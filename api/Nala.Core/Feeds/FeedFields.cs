@@ -68,9 +68,9 @@ public static class FeedFields
     };
 
     /// <summary>
-    /// Field name → error code (<c>required</c>, <c>invalid</c>, <c>inFuture</c>, <c>outOfRange</c>, <c>tooLong</c>); empty when valid.
+    /// Field name → error code (<c>required</c>, <c>invalid</c>, <c>outOfRange</c>, <c>tooLong</c>); empty when valid.
     /// </summary>
-    public static Dictionary<string, string> Validate(FeedInput input, DateTimeOffset now)
+    public static Dictionary<string, string> Validate(FeedInput input)
     {
         var errors = new Dictionary<string, string>();
         if (string.IsNullOrEmpty(input.Kind))
@@ -82,13 +82,9 @@ public static class FeedFields
             errors["kind"] = "invalid";
         }
 
-        if (input.StartTime is not { } startTime)
+        if (input.StartTime is null)
         {
             errors["startTime"] = "required";
-        }
-        else if (startTime > now + EntryFields.FutureTolerance)
-        {
-            errors["startTime"] = "inFuture";
         }
 
         if (EntryFields.NormalizeText(input.Notes)?.Length > EntryFields.NotesMaxLength)
@@ -106,7 +102,7 @@ public static class FeedFields
         }
         else if (input.Kind == "breastfeed" && input.Durations is { } durations)
         {
-            ValidateDurations(durations, input.StartTime, now, errors);
+            ValidateDurations(durations, errors);
         }
 
         return errors;
@@ -123,7 +119,7 @@ public static class FeedFields
     public static string Format(MilkType milkType) => MilkTypes.Single(m => m.Value == milkType).Key;
 
     /// <summary>Validation of a breastfeed timer action: the side (when given) and when it happened.</summary>
-    public static Dictionary<string, string> ValidateTimerAction(string? side, bool needsSide, DateTimeOffset? at, DateTimeOffset now)
+    public static Dictionary<string, string> ValidateTimerAction(string? side, bool needsSide, DateTimeOffset? at)
     {
         var errors = new Dictionary<string, string>();
         if (needsSide && string.IsNullOrEmpty(side))
@@ -135,13 +131,9 @@ public static class FeedFields
             errors["side"] = "invalid";
         }
 
-        if (at is not { } time)
+        if (at is null)
         {
             errors["at"] = "required";
-        }
-        else if (time > now + EntryFields.FutureTolerance)
-        {
-            errors["at"] = "inFuture";
         }
 
         return errors;
@@ -195,7 +187,7 @@ public static class FeedFields
         : durations.RightSeconds == 0 ? BreastSide.Left
         : ParseSide(durations.EndedOn!);
 
-    private static void ValidateDurations(BreastfeedDurations durations, DateTimeOffset? startTime, DateTimeOffset now, Dictionary<string, string> errors)
+    private static void ValidateDurations(BreastfeedDurations durations, Dictionary<string, string> errors)
     {
         if (durations.LeftSeconds is not (>= 0 and <= DurationMaxSeconds) || durations.RightSeconds is not (>= 0 and <= DurationMaxSeconds))
         {
@@ -207,10 +199,6 @@ public static class FeedFields
         if (total == 0)
         {
             errors["durations"] = "zero";
-        }
-        else if (startTime?.AddSeconds(total) > now + EntryFields.FutureTolerance)
-        {
-            errors["durations"] = "inFuture";
         }
 
         if (durations.LeftSeconds > 0 && durations.RightSeconds > 0)

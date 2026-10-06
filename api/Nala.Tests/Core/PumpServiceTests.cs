@@ -260,7 +260,7 @@ public class PumpServiceTests
             Is.TypeOf<PumpTimerResult.BabyNotFound>());
 
     [Test]
-    public async Task Start_needs_a_time_not_in_the_future()
+    public async Task Start_needs_a_time_which_may_be_in_the_future()
     {
         var missing = await _service.StartAsync(_anna, Guid.NewGuid(), _lea.Id, null);
         var future = await StartAsync(Guid.NewGuid(), Now.AddMinutes(2));
@@ -268,8 +268,8 @@ public class PumpServiceTests
         Assert.Multiple(() =>
         {
             Assert.That(((PumpTimerResult.Invalid)missing).Errors, Is.EqualTo(new Dictionary<string, string> { ["at"] = "required" }));
-            Assert.That(((PumpTimerResult.Invalid)future).Errors, Is.EqualTo(new Dictionary<string, string> { ["at"] = "inFuture" }));
-            Assert.That(_pumps.Pumps, Is.Empty);
+            Assert.That(future, Is.Not.InstanceOf<PumpTimerResult.Invalid>());
+            Assert.That(_pumps.Pumps, Has.Count.EqualTo(1));
         });
     }
 

@@ -201,15 +201,15 @@ describe('BottleSheetComponent', () => {
       expect(save().disabled).toBe(false);
     });
 
-    it('refuses a start time in the future', async () => {
+    it('accepts a start time in the future', async () => {
       bottleDefaults.next(defaults('formula', 90, 120));
       await typeAmount('120');
       fixture.componentInstance.form.controls.startTime.setValue(
-        new Date(NOW.getTime() + 5 * 60_000),
+        new Date(NOW.getTime() + 2 * 24 * 60 * 60_000),
       );
       await settle();
 
-      expect(save().disabled).toBe(true);
+      expect(save().disabled).toBe(false);
     });
 
     it('adds the bottle for the selected baby and closes with it', async () => {

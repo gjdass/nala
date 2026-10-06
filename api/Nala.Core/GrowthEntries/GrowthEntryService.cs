@@ -80,7 +80,7 @@ public class GrowthEntryService(IGrowthEntryRepository growthEntries, IBabyRepos
 
         var growthKind = GrowthEntryFields.ParseKind(kind!);
         var now = time.GetUtcNow();
-        var errors = GrowthEntryFields.Validate(growthKind, input, now, baby.BirthDate);
+        var errors = GrowthEntryFields.Validate(growthKind, input, baby.BirthDate);
         if (errors.Count > 0)
         {
             return new CreateGrowthEntryResult.Invalid(errors);
@@ -104,7 +104,7 @@ public class GrowthEntryService(IGrowthEntryRepository growthEntries, IBabyRepos
         // A baby's entries are deleted with it, so the baby of an entry always exists.
         var baby = (await babies.GetAsync(growthEntry.BabyId, cancellationToken))!;
         var now = time.GetUtcNow();
-        var errors = GrowthEntryFields.Validate(growthEntry.Kind, input, now, baby.BirthDate);
+        var errors = GrowthEntryFields.Validate(growthEntry.Kind, input, baby.BirthDate);
         if (errors.Count > 0)
         {
             return new UpdateGrowthEntryResult.Invalid(errors);

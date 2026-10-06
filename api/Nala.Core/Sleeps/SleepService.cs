@@ -66,7 +66,7 @@ public class SleepService(ISleepRepository sleeps, IBabyRepository babies, TimeP
         }
 
         var now = time.GetUtcNow();
-        var errors = SleepFields.Validate(input, now);
+        var errors = SleepFields.Validate(input);
         if (errors.Count > 0)
         {
             return new CreateSleepResult.Invalid(errors);
@@ -96,7 +96,7 @@ public class SleepService(ISleepRepository sleeps, IBabyRepository babies, TimeP
         }
 
         var now = time.GetUtcNow();
-        var errors = SleepFields.Validate(input, now, live: sleep.EndTime is null);
+        var errors = SleepFields.Validate(input, live: sleep.EndTime is null);
         if (errors.Count > 0)
         {
             return new UpdateSleepResult.Invalid(errors);

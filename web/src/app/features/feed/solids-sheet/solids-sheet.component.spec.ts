@@ -155,14 +155,14 @@ describe('SolidsSheetComponent', () => {
       expect(find('food')!.tagName).toBe('TEXTAREA');
     });
 
-    it('refuses a start time in the future', async () => {
+    it('accepts a start time in the future', async () => {
       await typeFood('Carrot purée');
       fixture.componentInstance.form.controls.startTime.setValue(
-        new Date(NOW.getTime() + 5 * 60_000),
+        new Date(NOW.getTime() + 2 * 24 * 60 * 60_000),
       );
       await settle();
 
-      expect(save().disabled).toBe(true);
+      expect(save().disabled).toBe(false);
     });
 
     it('adds the solids for the selected baby and closes with them', async () => {

@@ -10,7 +10,6 @@ import { applyServerErrors } from '../../../core/http/apply-server-errors';
 import { afterStart } from '../../../core/time/after-start';
 import { isLiveLongerThan } from '../../../core/time/live-longer-than';
 import { NowService } from '../../../core/time/now.service';
-import { notInFuture } from '../../../core/time/not-in-future';
 import { spanSeconds } from '../../../core/time/span-seconds';
 import { LiveEntriesSync } from '../../../core/timers/live-entries-sync';
 import { stoppedEntry } from '../../../core/timers/stopped-entry';
@@ -184,15 +183,12 @@ export class LiveEntrySheet<T extends TimedEntry, F extends TimedEntryFields> {
     this.entry.set(entry);
     this.startTime = new FormControl<Date | null>(
       entry ? new Date(entry.startTime) : new Date(),
-      [Validators.required, notInFuture()],
+      Validators.required,
     );
     this.endTime = new FormControl<Date | null>(
       entry?.endTime ? new Date(entry.endTime) : null,
       // A live entry has no end time yet.
-      onlyWhen(
-        () => !this.live(),
-        [Validators.required, notInFuture(), afterStart(() => this.startTime.value)],
-      ),
+      onlyWhen(() => !this.live(), [Validators.required, afterStart(() => this.startTime.value)]),
     );
     this.notes = notesControl(entry?.notes ?? '');
     this.endTyped = toSignal(this.endTime.events.pipe(map(() => this.endTime.dirty)), {

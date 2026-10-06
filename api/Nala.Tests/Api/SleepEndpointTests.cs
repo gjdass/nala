@@ -146,7 +146,7 @@ public class SleepEndpointTests
         var errors = (await JsonAsync(response)).GetProperty("errors");
         Assert.Multiple(() =>
         {
-            Assert.That(errors.GetProperty("startTime")[0].GetString(), Is.EqualTo("inFuture"));
+            Assert.That(errors.TryGetProperty("startTime", out _), Is.False, "a startTime in the future is accepted");
             Assert.That(errors.GetProperty("endTime")[0].GetString(), Is.EqualTo("required"));
             Assert.That(errors.GetProperty("notes")[0].GetString(), Is.EqualTo("tooLong"));
         });
@@ -385,7 +385,7 @@ public class SleepEndpointTests
         Assert.That(missing.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
         var errors = (await JsonAsync(missing)).GetProperty("errors");
         Assert.That(errors.GetProperty("babyId")[0].GetString(), Is.EqualTo("required"));
-        Assert.That((await JsonAsync(future)).GetProperty("errors").GetProperty("at")[0].GetString(), Is.EqualTo("inFuture"));
+        Assert.That(future.StatusCode, Is.EqualTo(HttpStatusCode.Created), "a start in the future is accepted");
         Assert.That(unknown.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
         AssertCode(await JsonAsync(unknown), "babyNotFound");
     }

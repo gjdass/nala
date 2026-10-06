@@ -148,7 +148,7 @@ public class FeedEndpointTests
         var errors = (await JsonAsync(response)).GetProperty("errors");
         Assert.Multiple(() =>
         {
-            Assert.That(errors.GetProperty("startTime")[0].GetString(), Is.EqualTo("inFuture"));
+            Assert.That(errors.TryGetProperty("startTime", out _), Is.False, "a startTime in the future is accepted");
             Assert.That(errors.GetProperty("milkType")[0].GetString(), Is.EqualTo("invalid"));
             Assert.That(errors.GetProperty("amountMl")[0].GetString(), Is.EqualTo("outOfRange"));
         });
@@ -646,7 +646,7 @@ public class FeedEndpointTests
         Assert.That((await JsonAsync(missing)).GetProperty("errors").GetProperty("durations")[0].GetString(), Is.EqualTo("required"));
         Assert.That(future.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
         var errors = (await JsonAsync(future)).GetProperty("errors");
-        Assert.That(errors.GetProperty("durations")[0].GetString(), Is.EqualTo("inFuture"));
+        Assert.That(errors.TryGetProperty("durations", out _), Is.False, "a durations in the future is accepted");
         Assert.That(errors.GetProperty("endedOn")[0].GetString(), Is.EqualTo("invalid"));
     }
 }

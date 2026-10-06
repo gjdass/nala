@@ -14,7 +14,7 @@ public class GrowthEntryFieldsTests
         new(date ?? new DateOnly(2026, 10, 1), weightG, lengthCm, headCircumferenceCm, notes);
 
     private static Dictionary<string, string> Validate(GrowthEntryInput input) =>
-        GrowthEntryFields.Validate(GrowthKind.Measurement, input, Now, BirthDate);
+        GrowthEntryFields.Validate(GrowthKind.Measurement, input, BirthDate);
 
     private static Dictionary<string, string> Error(string field, string code) => new() { [field] = code };
 
@@ -48,8 +48,8 @@ public class GrowthEntryFieldsTests
         Assert.That(Validate(Measurement(date: new DateOnly(2026, 10, 4))), Is.Empty);
 
     [Test]
-    public void Date_after_today_anywhere_on_earth_is_in_the_future() =>
-        Assert.That(Validate(Measurement(date: new DateOnly(2026, 10, 5))), Is.EqualTo(Error("date", "inFuture")));
+    public void Date_may_be_in_the_future() =>
+        Assert.That(Validate(Measurement(date: new DateOnly(2027, 1, 1))), Is.Empty);
 
     [Test]
     public void Date_may_be_the_birth_date() =>
@@ -139,7 +139,7 @@ public class GrowthEntryFieldsTests
         new(date ?? new DateOnly(2026, 10, 1), null, null, null, null, milestone, title);
 
     private static Dictionary<string, string> ValidateMilestone(GrowthEntryInput input) =>
-        GrowthEntryFields.Validate(GrowthKind.Milestone, input, Now, BirthDate);
+        GrowthEntryFields.Validate(GrowthKind.Milestone, input, BirthDate);
 
     [TestCase("firstSmile")]
     [TestCase("firstLaugh")]
@@ -196,7 +196,7 @@ public class GrowthEntryFieldsTests
         Assert.Multiple(() =>
         {
             Assert.That(ValidateMilestone(Milestone() with { Date = null }), Is.EqualTo(Error("date", "required")));
-            Assert.That(ValidateMilestone(Milestone(date: new DateOnly(2026, 10, 5))), Is.EqualTo(Error("date", "inFuture")));
+            Assert.That(ValidateMilestone(Milestone(date: new DateOnly(2027, 1, 1))), Is.Empty);
             Assert.That(ValidateMilestone(Milestone(date: BirthDate.AddDays(-1))), Is.EqualTo(Error("date", "beforeBirth")));
         });
     }

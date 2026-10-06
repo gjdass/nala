@@ -125,9 +125,9 @@ public class DiaperServiceTests
     [Test]
     public async Task Creating_refuses_invalid_fields()
     {
-        var result = await _service.CreateAsync(_anna, Guid.NewGuid(), _lea.Id, Diaper(minutesAgo: -5));
+        var result = await _service.CreateAsync(_anna, Guid.NewGuid(), _lea.Id, Diaper(minutesAgo: 5) with { Time = null });
 
-        Assert.That(((CreateDiaperResult.Invalid)result).Errors, Is.EqualTo(new Dictionary<string, string> { ["time"] = "inFuture" }));
+        Assert.That(((CreateDiaperResult.Invalid)result).Errors, Is.EqualTo(new Dictionary<string, string> { ["time"] = "required" }));
         Assert.That(_diapers.Diapers, Is.Empty);
     }
 

@@ -59,7 +59,7 @@ public class DiaperService(IDiaperRepository diapers, IBabyRepository babies, Ti
         }
 
         var now = time.GetUtcNow();
-        var errors = DiaperFields.Validate(input, now);
+        var errors = DiaperFields.Validate(input);
         if (errors.Count > 0)
         {
             return new CreateDiaperResult.Invalid(errors);
@@ -86,7 +86,7 @@ public class DiaperService(IDiaperRepository diapers, IBabyRepository babies, Ti
         }
 
         var now = time.GetUtcNow();
-        var errors = DiaperFields.Validate(input, now);
+        var errors = DiaperFields.Validate(input);
         if (errors.Count > 0)
         {
             return new UpdateDiaperResult.Invalid(errors);

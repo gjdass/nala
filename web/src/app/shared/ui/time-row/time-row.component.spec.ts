@@ -7,7 +7,6 @@ import { MatTimepicker } from '@angular/material/timepicker';
 import { By } from '@angular/platform-browser';
 import en from '../../../../../public/i18n/en.json';
 import { SECTION_SCHEME } from '../../../core/sections/section-scheme';
-import { notInFuture } from '../../../core/time/not-in-future';
 import { translocoTesting } from '../../../testing/transloco-testing';
 import { TimeRowComponent } from './time-row.component';
 
@@ -21,7 +20,6 @@ const NOW = new Date(2026, 8, 30, 12, 0, 0);
 class Host {
   readonly control = new FormControl<Date | null>(new Date(2026, 8, 30, 10, 30), [
     Validators.required,
-    notInFuture(() => NOW.getTime()),
   ]);
 }
 
@@ -101,20 +99,20 @@ describe('TimeRowComponent', () => {
     expect(fixture.componentInstance.control.value).toEqual(new Date(2026, 8, 30, 8, 15));
   });
 
-  it('shows an error for a time in the future', async () => {
-    fixture.componentInstance.control.setValue(new Date(2026, 8, 30, 12, 5));
+  it('shows no error for a time in the future', async () => {
+    fixture.componentInstance.control.setValue(new Date(2026, 9, 2, 12, 5));
     fixture.componentInstance.control.markAsTouched();
     await fixture.whenStable();
 
-    expect(find('[role="alert"]')?.textContent?.trim()).toBe(en.entrySheet.inFuture);
+    expect(find('[role="alert"]')).toBeNull();
   });
 
   it('shows an error sent back by the server', async () => {
-    fixture.componentInstance.control.setErrors({ server: 'inFuture' });
+    fixture.componentInstance.control.setErrors({ server: 'beforeStart' });
     fixture.componentInstance.control.markAsTouched();
     await fixture.whenStable();
 
-    expect(find('[role="alert"]')?.textContent?.trim()).toBe(en.entrySheet.inFuture);
+    expect(find('[role="alert"]')?.textContent?.trim()).toBe(en.entrySheet.beforeStart);
   });
 
   it('shows a start after the end sent back by the server', async () => {

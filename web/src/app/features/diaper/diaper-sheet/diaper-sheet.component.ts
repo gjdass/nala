@@ -13,7 +13,6 @@ import {
 } from '../../../core/diapers/diaper.models';
 import { DiaperService } from '../../../core/diapers/diaper.service';
 import { applyServerErrors } from '../../../core/http/apply-server-errors';
-import { notInFuture } from '../../../core/time/not-in-future';
 import { ChipChoiceRowComponent } from '../../../shared/ui/chip-choice-row/chip-choice-row.component';
 import { ChipTogglesRowComponent } from '../../../shared/ui/chip-toggles-row/chip-toggles-row.component';
 import { EntryAuditComponent } from '../../../shared/ui/entry-audit/entry-audit.component';
@@ -74,7 +73,6 @@ export class DiaperSheetComponent {
   readonly form = new FormGroup({
     time: new FormControl<Date | null>(this.diaper ? new Date(this.diaper.time) : new Date(), [
       Validators.required,
-      notInFuture(),
     ]),
     ...this.type,
     rash: toggle(this.diaper?.rash ?? false),

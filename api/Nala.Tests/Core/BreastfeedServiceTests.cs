@@ -210,8 +210,6 @@ public class BreastfeedServiceTests
                 Is.EqualTo(new Dictionary<string, string> { ["side"] = "invalid" }));
             Assert.That(((BreastfeedResult.Invalid)await _service.StartSideAsync(_anna, Guid.NewGuid(), _lea.Id, Guid.NewGuid(), null, null)).Errors,
                 Is.EqualTo(new Dictionary<string, string> { ["side"] = "required", ["at"] = "required" }));
-            Assert.That(((BreastfeedResult.Invalid)await StartAsync(feedId, "right", Now.AddMinutes(2))).Errors,
-                Is.EqualTo(new Dictionary<string, string> { ["at"] = "inFuture" }));
             Assert.That(((BreastfeedResult.Invalid)await StartAsync(feedId, "right", At(11))).Errors,
                 Is.EqualTo(new Dictionary<string, string> { ["at"] = "invalid" }));
             Assert.That(((BreastfeedResult.Invalid)await _service.StopSideAsync(_anna, feedId, At(11))).Errors,

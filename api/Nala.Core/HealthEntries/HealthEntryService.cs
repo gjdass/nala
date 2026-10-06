@@ -66,7 +66,7 @@ public class HealthEntryService(IHealthEntryRepository healthEntries, IBabyRepos
         }
 
         var now = time.GetUtcNow();
-        var errors = HealthEntryFields.Validate(input, now);
+        var errors = HealthEntryFields.Validate(input);
         if (errors.Count > 0)
         {
             return new CreateHealthEntryResult.Invalid(errors);
@@ -93,7 +93,7 @@ public class HealthEntryService(IHealthEntryRepository healthEntries, IBabyRepos
         }
 
         var now = time.GetUtcNow();
-        var errors = HealthEntryFields.Validate(input, now);
+        var errors = HealthEntryFields.Validate(input);
         if (errors.Count > 0)
         {
             return new UpdateHealthEntryResult.Invalid(errors);

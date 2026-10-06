@@ -207,7 +207,7 @@ public class HealthEntryEndpointTests
         var missingErrors = (await JsonAsync(missing)).GetProperty("errors");
         Assert.Multiple(() =>
         {
-            Assert.That(errors.GetProperty("time")[0].GetString(), Is.EqualTo("inFuture"));
+            Assert.That(errors.TryGetProperty("time", out _), Is.False, "a time in the future is accepted");
             Assert.That(errors.GetProperty("name")[0].GetString(), Is.EqualTo("tooLong"));
             Assert.That(errors.GetProperty("amount")[0].GetString(), Is.EqualTo("outOfRange"));
             Assert.That(errors.GetProperty("unit")[0].GetString(), Is.EqualTo("invalid"));
@@ -329,11 +329,11 @@ public class HealthEntryEndpointTests
         var id = Guid.NewGuid();
         await _admin.PostAsJsonAsync("/api/health-entries", HealthEntry(id));
 
-        var invalid = await _admin.PutAsJsonAsync($"/api/health-entries/{id}", new { time = _now.AddMinutes(10), name = "Paracetamol" });
+        var invalid = await _admin.PutAsJsonAsync($"/api/health-entries/{id}", new { name = "Paracetamol" });
         var unknown = await _admin.PutAsJsonAsync($"/api/health-entries/{Guid.NewGuid()}", new { time = _now.AddMinutes(-10), name = "Paracetamol" });
 
         Assert.That(invalid.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
-        Assert.That((await JsonAsync(invalid)).GetProperty("errors").GetProperty("time")[0].GetString(), Is.EqualTo("inFuture"));
+        Assert.That((await JsonAsync(invalid)).GetProperty("errors").GetProperty("time")[0].GetString(), Is.EqualTo("required"));
         Assert.That(unknown.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
         AssertCode(await JsonAsync(unknown), "healthEntryNotFound");
     }

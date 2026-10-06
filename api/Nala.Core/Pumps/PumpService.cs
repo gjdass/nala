@@ -69,7 +69,7 @@ public class PumpService(IPumpRepository pumps, IBabyRepository babies, TimeProv
         }
 
         var now = time.GetUtcNow();
-        var errors = PumpFields.Validate(input, now);
+        var errors = PumpFields.Validate(input);
         if (errors.Count > 0)
         {
             return new CreatePumpResult.Invalid(errors);
@@ -99,7 +99,7 @@ public class PumpService(IPumpRepository pumps, IBabyRepository babies, TimeProv
         }
 
         var now = time.GetUtcNow();
-        var errors = PumpFields.Validate(input, now, live: pump.EndTime is null);
+        var errors = PumpFields.Validate(input, live: pump.EndTime is null);
         if (errors.Count > 0)
         {
             return new UpdatePumpResult.Invalid(errors);

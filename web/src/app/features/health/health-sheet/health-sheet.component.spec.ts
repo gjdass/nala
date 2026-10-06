@@ -306,16 +306,14 @@ describe('HealthSheetComponent', () => {
       expect(fieldsSent()).toMatchObject({ amount: null, unit: null });
     });
 
-    it('refuses a time in the future (1 minute tolerance)', async () => {
+    it('accepts a time in the future', async () => {
       await type('name', 'Paracetamol');
-      const time = fixture.componentInstance.form.controls.time;
-      time.setValue(new Date(NOW.getTime() + 60_000));
+      fixture.componentInstance.form.controls.time.setValue(
+        new Date(NOW.getTime() + 2 * 24 * 60 * 60_000),
+      );
       await settle();
-      expect(save().disabled).toBe(false);
 
-      time.setValue(new Date(NOW.getTime() + 5 * 60_000));
-      await settle();
-      expect(save().disabled).toBe(true);
+      expect(save().disabled).toBe(false);
     });
 
     it('closes with the saved dose', async () => {

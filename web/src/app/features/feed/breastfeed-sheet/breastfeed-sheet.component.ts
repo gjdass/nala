@@ -28,7 +28,6 @@ import { applyServerErrors } from '../../../core/http/apply-server-errors';
 import { sectionScheme } from '../../../core/sections/section-scheme';
 import { DurationPipe } from '../../../core/time/duration';
 import { NowService } from '../../../core/time/now.service';
-import { notInFuture } from '../../../core/time/not-in-future';
 import { TimeSincePipe } from '../../../core/time/time-since';
 import { BannerComponent } from '../../../shared/ui/banner/banner.component';
 import {
@@ -56,7 +55,6 @@ const FORM_ERRORS: Record<string, string> = {
 /** Translation keys of the `durations` codes, and of any `endedOn` code. */
 const DURATION_ERRORS: Record<string, string> = {
   zero: 'feed.breastfeed.errors.durationsZero',
-  inFuture: 'feed.breastfeed.errors.durationsInFuture',
   outOfRange: 'feed.breastfeed.errors.durationsOutOfRange',
   endedOn: 'feed.breastfeed.errors.endedOnRequired',
 };
@@ -131,7 +129,7 @@ export class BreastfeedSheetComponent {
   readonly form = new FormGroup({
     startTime: new FormControl<Date | null>(
       this.entry ? new Date(this.entry.startTime) : new Date(),
-      [Validators.required, notInFuture()],
+      Validators.required,
     ),
     notes: notesControl(this.entry?.notes ?? ''),
     /** Asked only when both typed durations are above 0. */

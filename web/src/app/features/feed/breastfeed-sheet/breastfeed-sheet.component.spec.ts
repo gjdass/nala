@@ -643,15 +643,6 @@ describe('BreastfeedSheetComponent', () => {
       expect(dialog.open).toHaveBeenCalledWith(ConfirmDialogComponent, expect.anything());
       expect(sheetRef.close).not.toHaveBeenCalled();
     });
-
-    it('shows a duration ending in the future as an error', async () => {
-      await typeDuration('left', 300);
-      await click('sheet-save');
-      saved.next({ ok: false, errors: { durations: 'inFuture' } });
-      await settle();
-
-      expect(text('form-error')).toBe(en.feed.breastfeed.errors.durationsInFuture);
-    });
   });
 
   describe('correcting a live feed', () => {

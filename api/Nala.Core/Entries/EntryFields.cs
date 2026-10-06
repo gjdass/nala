@@ -1,35 +1,25 @@
 namespace Nala.Core.Entries;
 
-/// <summary>Field rules shared by every kind of entry (spec 04): notes, times not in the future, text normalisation, timer taps.</summary>
+/// <summary>Field rules shared by every kind of entry (spec 04): notes, text normalisation, start / end times, timer taps. Times may be in the future.</summary>
 public static class EntryFields
 {
     public const int NotesMaxLength = 1000;
-
-    /// <summary>How far ahead of the server clock a time may be, for devices whose clock runs a little fast.</summary>
-    public static readonly TimeSpan FutureTolerance = TimeSpan.FromMinutes(1);
 
     /// <summary>Trimmed; blank text is none.</summary>
     public static string? NormalizeText(string? input) =>
         string.IsNullOrWhiteSpace(input) ? null : input.Trim();
 
-    /// <summary>Whether <paramref name="time"/> is further ahead of <paramref name="now"/> than the tolerance.</summary>
-    public static bool IsInFuture(DateTimeOffset time, DateTimeOffset now) => time > now + FutureTolerance;
-
     /// <summary>
     /// The start and end time rules of an entry with both (Sleep, Pump), added to <paramref name="errors"/>:
-    /// <c>startTime</c> <c>required</c> / <c>inFuture</c>; <c>endTime</c> <c>required</c> / <c>inFuture</c> /
+    /// <c>startTime</c> <c>required</c>; <c>endTime</c> <c>required</c> /
     /// <c>beforeStart</c> (not after the start), or <c>notAllowed</c> on a <paramref name="live"/> entry, which has none.
     /// </summary>
     public static void ValidateStartEnd(
-        DateTimeOffset? startTime, DateTimeOffset? endTime, DateTimeOffset now, bool live, Dictionary<string, string> errors)
+        DateTimeOffset? startTime, DateTimeOffset? endTime, bool live, Dictionary<string, string> errors)
     {
-        if (startTime is not { } start)
+        if (startTime is null)
         {
             errors["startTime"] = "required";
-        }
-        else if (IsInFuture(start, now))
-        {
-            errors["startTime"] = "inFuture";
         }
 
         if (live)
@@ -43,27 +33,19 @@ public static class EntryFields
         {
             errors["endTime"] = "required";
         }
-        else if (IsInFuture(end, now))
-        {
-            errors["endTime"] = "inFuture";
-        }
         else if (startTime is { } from && end <= from)
         {
             errors["endTime"] = "beforeStart";
         }
     }
 
-    /// <summary>Validation of a timer tap's time (<c>at</c>): <c>required</c>, <c>inFuture</c>; empty when valid.</summary>
-    public static Dictionary<string, string> ValidateTimerAt(DateTimeOffset? at, DateTimeOffset now)
+    /// <summary>Validation of a timer tap's time (<c>at</c>): <c>required</c>; empty when valid.</summary>
+    public static Dictionary<string, string> ValidateTimerAt(DateTimeOffset? at)
     {
         var errors = new Dictionary<string, string>();
-        if (at is not { } time)
+        if (at is null)
         {
             errors["at"] = "required";
-        }
-        else if (IsInFuture(time, now))
-        {
-            errors["at"] = "inFuture";
         }
 
         return errors;

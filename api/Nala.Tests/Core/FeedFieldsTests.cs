@@ -14,7 +14,7 @@ public class FeedFieldsTests
     private static FeedInput Solids(string? food = "Carrot purée", string? mealType = "lunch", string? reaction = "liked") =>
         new("solids", Now.AddMinutes(-5), null, null, null, mealType, food, reaction);
 
-    private static Dictionary<string, string> Validate(FeedInput input) => FeedFields.Validate(input, Now);
+    private static Dictionary<string, string> Validate(FeedInput input) => FeedFields.Validate(input);
 
     [Test]
     public void A_complete_bottle_is_valid()
@@ -35,12 +35,8 @@ public class FeedFieldsTests
         Assert.That(Validate(Bottle() with { StartTime = null }), Is.EqualTo(new Dictionary<string, string> { ["startTime"] = "required" }));
 
     [Test]
-    public void Start_time_may_be_up_to_one_minute_ahead() =>
-        Assert.That(Validate(Bottle(startTime: Now.AddSeconds(60))), Is.Empty);
-
-    [Test]
-    public void Start_time_more_than_one_minute_ahead_is_refused() =>
-        Assert.That(Validate(Bottle(startTime: Now.AddSeconds(61))), Is.EqualTo(new Dictionary<string, string> { ["startTime"] = "inFuture" }));
+    public void Start_time_may_be_in_the_future() =>
+        Assert.That(Validate(Bottle(startTime: Now.AddDays(2))), Is.Empty);
 
     [TestCase(null, "required")]
     [TestCase("", "required")]
@@ -149,13 +145,8 @@ public class FeedFieldsTests
         Assert.That(Validate(Breastfeed(0, 0)), Is.EqualTo(new Dictionary<string, string> { ["durations"] = "zero" }));
 
     [Test]
-    public void Typed_durations_cannot_end_more_than_one_minute_ahead()
-    {
-        Assert.That(Validate(Breastfeed(600, 660, startTime: Now.AddMinutes(-20))), Is.Empty);
-        Assert.That(
-            Validate(Breastfeed(600, 661, startTime: Now.AddMinutes(-20))),
-            Is.EqualTo(new Dictionary<string, string> { ["durations"] = "inFuture" }));
-    }
+    public void Typed_durations_may_end_in_the_future() =>
+        Assert.That(Validate(Breastfeed(600, 661, startTime: Now.AddMinutes(-5))), Is.Empty);
 
     [TestCase(null, "required")]
     [TestCase("", "required")]

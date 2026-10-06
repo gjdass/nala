@@ -17,7 +17,6 @@ import { notBeforeBirth, today } from '../../../core/growth-entries/growth-date'
 import { GrowthEntryService } from '../../../core/growth-entries/growth-entry.service';
 import { gramsToKg, isoDate, kgToGrams, localDate } from '../../../core/growth-entries/measurement';
 import { applyServerErrors } from '../../../core/http/apply-server-errors';
-import { notInFuture } from '../../../core/time/not-in-future';
 import { EntryAuditComponent } from '../../../shared/ui/entry-audit/entry-audit.component';
 import { EntrySheetComponent } from '../../../shared/ui/entry-sheet/entry-sheet.component';
 import {
@@ -55,7 +54,7 @@ const SERVER_FIELDS: Record<string, string> = {
 
 /**
  * The Measurement sheet (spec 10), adding a measurement for the selected baby or editing the one it
- * was opened with: the date (today by default, without a time, not in the future nor before the
+ * was opened with: the date (today by default, without a time, not before the
  * baby's birth date), then weight (kg, 0.3 to 30, up to 3 decimals, saved as grams), length (cm, 20 to
  * 130) and head circumference (cm, 15 to 60, both up to 1 decimal) in one row, at least one of them,
  * and notes. No timer: Save is the only action, and × discards the form. Closes with the saved entry,
@@ -89,11 +88,7 @@ export class MeasurementSheetComponent {
     {
       date: new FormControl<Date | null>(
         this.growthEntry ? localDate(this.growthEntry.date) : today(),
-        [
-          Validators.required,
-          notInFuture(),
-          notBeforeBirth(() => this.store.selected()?.birthDate ?? null),
-        ],
+        [Validators.required, notBeforeBirth(() => this.store.selected()?.birthDate ?? null)],
       ),
       weight: new FormControl<number | null>(
         this.growthEntry?.weightG != null ? gramsToKg(this.growthEntry.weightG) : null,

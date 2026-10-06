@@ -370,7 +370,6 @@
     "date": "Date",
     "time": "Time",
     "required": "Required.",
-    "inFuture": "Can't be in the future.",
     "afterEnd": "Can't be after the end.",
     "audit": {
       "logged": "Logged by {{name}}",
@@ -457,7 +456,6 @@
       },
       "errors": {
         "durationsZero": "Time at least one side before saving.",
-        "durationsInFuture": "The feed can't end in the future: check the start time and durations.",
         "durationsOutOfRange": "Each side is at most 4 hours.",
         "endedOnRequired": "Choose the side the feed ended on."
       },

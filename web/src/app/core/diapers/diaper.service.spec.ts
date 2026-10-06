@@ -94,11 +94,11 @@ describe('DiaperService', () => {
       const result = firstValueFrom(service.create('b1', fields, 'd1'));
       http
         .expectOne('/api/diapers')
-        .flush({ errors: { time: ['inFuture'] } }, { status: 400, statusText: 'Bad Request' });
+        .flush({ errors: { time: ['required'] } }, { status: 400, statusText: 'Bad Request' });
 
       expect(await result).toEqual<EntryResult<Diaper>>({
         ok: false,
-        errors: { time: 'inFuture' },
+        errors: { time: 'required' },
       });
     });
 

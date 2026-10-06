@@ -236,11 +236,11 @@ describe('PumpSheetComponent', () => {
       expect(alerts()).toContain(en.entrySheet.beforeStart);
     });
 
-    it('refuses an end in the future', async () => {
-      await setTimes(at(11), at(12, 5));
+    it('accepts times in the future', async () => {
+      await setTimes(at(13), at(14, 5));
 
-      expect(save().disabled).toBe(true);
-      expect(alerts()).toContain(en.entrySheet.inFuture);
+      expect(save().disabled).toBe(false);
+      expect(alerts()).toEqual([]);
     });
 
     it('adds the session for the selected baby and closes with it', async () => {
@@ -476,7 +476,10 @@ describe('PumpSheetComponent', () => {
         await respondTimer({ ok: false, errors: { form: 'pumpInProgress' } });
 
         expect(sync.refreshes()).toBe(2);
-        sync.inProgress.set([livePump(30, { id: 'other', babyId: 'b2' }), livePump(20, { id: 'p9' })]);
+        sync.inProgress.set([
+          livePump(30, { id: 'other', babyId: 'b2' }),
+          livePump(20, { id: 'p9' }),
+        ]);
         sync.refreshed.next();
         await settle();
 
@@ -716,7 +719,11 @@ describe('PumpSheetComponent', () => {
     });
 
     it('makes a stopped session live again offline, from its start time', async () => {
-      const pump = aPump({ id: 'p7', startTime: at(8).toISOString(), endTime: at(9).toISOString() });
+      const pump = aPump({
+        id: 'p7',
+        startTime: at(8).toISOString(),
+        endTime: at(9).toISOString(),
+      });
       await render(pump);
       offlineShows(() => ({ ...pump, endTime: null }));
 

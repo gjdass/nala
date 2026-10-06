@@ -225,7 +225,7 @@ public class DiaperEndpointTests
         var missingErrors = (await JsonAsync(missing)).GetProperty("errors");
         Assert.Multiple(() =>
         {
-            Assert.That(errors.GetProperty("time")[0].GetString(), Is.EqualTo("inFuture"));
+            Assert.That(errors.TryGetProperty("time", out _), Is.False, "a time in the future is accepted");
             Assert.That(errors.GetProperty("notes")[0].GetString(), Is.EqualTo("tooLong"));
             Assert.That(missingErrors.GetProperty("time")[0].GetString(), Is.EqualTo("required"));
         });
@@ -343,11 +343,11 @@ public class DiaperEndpointTests
         var id = Guid.NewGuid();
         await _admin.PostAsJsonAsync("/api/diapers", Diaper(id));
 
-        var invalid = await _admin.PutAsJsonAsync($"/api/diapers/{id}", new { time = _now.AddMinutes(10) });
+        var invalid = await _admin.PutAsJsonAsync($"/api/diapers/{id}", new { notes = "no time" });
         var unknown = await _admin.PutAsJsonAsync($"/api/diapers/{Guid.NewGuid()}", new { time = _now.AddMinutes(-10) });
 
         Assert.That(invalid.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
-        Assert.That((await JsonAsync(invalid)).GetProperty("errors").GetProperty("time")[0].GetString(), Is.EqualTo("inFuture"));
+        Assert.That((await JsonAsync(invalid)).GetProperty("errors").GetProperty("time")[0].GetString(), Is.EqualTo("required"));
         Assert.That(unknown.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
         AssertCode(await JsonAsync(unknown), "diaperNotFound");
     }

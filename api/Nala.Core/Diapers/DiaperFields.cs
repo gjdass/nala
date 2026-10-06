@@ -38,19 +38,15 @@ public static class DiaperFields
     };
 
     /// <summary>
-    /// Field name → error code (<c>required</c>, <c>inFuture</c>, <c>invalid</c>, <c>tooLong</c>); empty when valid. Colour
+    /// Field name → error code (<c>required</c>, <c>invalid</c>, <c>tooLong</c>); empty when valid. Colour
     /// and consistency are only checked for a dirty diaper.
     /// </summary>
-    public static Dictionary<string, string> Validate(DiaperInput input, DateTimeOffset now)
+    public static Dictionary<string, string> Validate(DiaperInput input)
     {
         var errors = new Dictionary<string, string>();
-        if (input.Time is not { } time)
+        if (input.Time is null)
         {
             errors["time"] = "required";
-        }
-        else if (EntryFields.IsInFuture(time, now))
-        {
-            errors["time"] = "inFuture";
         }
 
         if (input.Dirty && input.Color is not null && !Colors.ContainsKey(input.Color))

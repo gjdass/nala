@@ -370,7 +370,6 @@
     "date": "Date",
     "time": "Heure",
     "required": "Obligatoire.",
-    "inFuture": "Ne peut pas être dans le futur.",
     "afterEnd": "Ne peut pas être après la fin.",
     "audit": {
       "logged": "Enregistré par {{name}}",
@@ -457,7 +456,6 @@
       },
       "errors": {
         "durationsZero": "Chronométrez au moins un côté avant d'enregistrer.",
-        "durationsInFuture": "La tétée ne peut pas finir dans le futur : vérifiez l'heure de début et les durées.",
         "durationsOutOfRange": "Chaque côté dure 4 heures maximum.",
         "endedOnRequired": "Choisissez le côté de fin."
       },

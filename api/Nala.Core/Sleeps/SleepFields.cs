@@ -9,13 +9,13 @@ public sealed record SleepInput(DateTimeOffset? StartTime, DateTimeOffset? EndTi
 public static class SleepFields
 {
     /// <summary>
-    /// Field name → error code (<c>required</c>, <c>inFuture</c>, <c>beforeStart</c>: the end isn't after the start,
+    /// Field name → error code (<c>required</c>, <c>beforeStart</c>: the end isn't after the start,
     /// <c>tooLong</c>, and <c>notAllowed</c>: an end time on a <paramref name="live"/> sleep, which has none); empty when valid.
     /// </summary>
-    public static Dictionary<string, string> Validate(SleepInput input, DateTimeOffset now, bool live = false)
+    public static Dictionary<string, string> Validate(SleepInput input, bool live = false)
     {
         var errors = new Dictionary<string, string>();
-        EntryFields.ValidateStartEnd(input.StartTime, input.EndTime, now, live, errors);
+        EntryFields.ValidateStartEnd(input.StartTime, input.EndTime, live, errors);
 
         if (EntryFields.NormalizeText(input.Notes)?.Length > EntryFields.NotesMaxLength)
         {

@@ -44,7 +44,7 @@ public class EntryTimer<T, TEntry>(
         User actor, Guid id, Guid babyId, DateTimeOffset? at, bool queued = false, CancellationToken cancellationToken = default)
     {
         var now = time.GetUtcNow();
-        var errors = EntryFields.ValidateTimerAt(at, now);
+        var errors = EntryFields.ValidateTimerAt(at);
         if (errors.Count > 0)
         {
             return new TimerResult<TEntry>.Invalid(errors);
@@ -95,7 +95,7 @@ public class EntryTimer<T, TEntry>(
     public async Task<TimerResult<TEntry>> StopAsync(User actor, Guid id, DateTimeOffset? at, CancellationToken cancellationToken = default)
     {
         var now = time.GetUtcNow();
-        var errors = EntryFields.ValidateTimerAt(at, now);
+        var errors = EntryFields.ValidateTimerAt(at);
         if (errors.Count > 0)
         {
             return new TimerResult<TEntry>.Invalid(errors);

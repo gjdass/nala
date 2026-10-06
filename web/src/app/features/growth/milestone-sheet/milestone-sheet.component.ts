@@ -23,7 +23,6 @@ import {
 import { GrowthEntryService } from '../../../core/growth-entries/growth-entry.service';
 import { isoDate, localDate } from '../../../core/growth-entries/measurement';
 import { applyServerErrors } from '../../../core/http/apply-server-errors';
-import { notInFuture } from '../../../core/time/not-in-future';
 import { ChipChoiceRowComponent } from '../../../shared/ui/chip-choice-row/chip-choice-row.component';
 import { EntryAuditComponent } from '../../../shared/ui/entry-audit/entry-audit.component';
 import { EntrySheetComponent } from '../../../shared/ui/entry-sheet/entry-sheet.component';
@@ -51,7 +50,7 @@ const FORM_ERRORS = ['growthEntryNotFound', 'babyNotFound'];
 /**
  * The Milestone sheet (spec 10), adding a milestone for the selected baby or editing the one it was
  * opened with: the milestone (one of the preset chips, or Other with its own title, 1 to 100
- * characters), the date (today by default, without a time, not in the future nor before the baby's
+ * characters), the date (today by default, without a time, not before the baby's
  * birth date) and notes. The title only shows, and only counts, while Other is chosen: a preset is
  * saved without it, though what was typed stays while the sheet is open. No timer: Save is the only
  * action, and × discards the form. Closes with the saved entry, or the id of the deleted one;
@@ -95,11 +94,7 @@ export class MilestoneSheetComponent {
     }),
     date: new FormControl<Date | null>(
       this.growthEntry ? localDate(this.growthEntry.date) : today(),
-      [
-        Validators.required,
-        notInFuture(),
-        notBeforeBirth(() => this.store.selected()?.birthDate ?? null),
-      ],
+      [Validators.required, notBeforeBirth(() => this.store.selected()?.birthDate ?? null)],
     ),
     notes: notesControl(this.growthEntry?.notes ?? ''),
   });

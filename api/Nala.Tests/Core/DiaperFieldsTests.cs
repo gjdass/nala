@@ -9,7 +9,7 @@ public class DiaperFieldsTests
     private static DiaperInput Diaper(DateTimeOffset? time = null, string? notes = null) =>
         new(time ?? Now.AddMinutes(-10), Wet: true, Dirty: false, Rash: false, notes);
 
-    private static Dictionary<string, string> Validate(DiaperInput input) => DiaperFields.Validate(input, Now);
+    private static Dictionary<string, string> Validate(DiaperInput input) => DiaperFields.Validate(input);
 
     [Test]
     public void A_complete_diaper_is_valid() =>
@@ -24,12 +24,8 @@ public class DiaperFieldsTests
         Assert.That(Validate(Diaper() with { Time = null }), Is.EqualTo(new Dictionary<string, string> { ["time"] = "required" }));
 
     [Test]
-    public void Time_may_be_up_to_one_minute_ahead() =>
-        Assert.That(Validate(Diaper(time: Now.AddSeconds(60))), Is.Empty);
-
-    [Test]
-    public void Time_more_than_one_minute_ahead_is_in_the_future() =>
-        Assert.That(Validate(Diaper(time: Now.AddSeconds(61))), Is.EqualTo(new Dictionary<string, string> { ["time"] = "inFuture" }));
+    public void Time_may_be_in_the_future() =>
+        Assert.That(Validate(Diaper(time: Now.AddDays(2))), Is.Empty);
 
     [Test]
     public void Notes_are_at_most_1000_characters_once_trimmed()

@@ -23,7 +23,6 @@ import {
   RecentMedicine,
 } from '../../../core/health-entries/health-entry.models';
 import { HealthEntryService } from '../../../core/health-entries/health-entry.service';
-import { notInFuture } from '../../../core/time/not-in-future';
 import { ChipChoiceRowComponent } from '../../../shared/ui/chip-choice-row/chip-choice-row.component';
 import { EntryAuditComponent } from '../../../shared/ui/entry-audit/entry-audit.component';
 import { EntrySheetComponent } from '../../../shared/ui/entry-sheet/entry-sheet.component';
@@ -123,7 +122,7 @@ export class HealthSheetComponent {
     {
       time: new FormControl<Date | null>(
         this.healthEntry ? new Date(this.healthEntry.time) : new Date(),
-        [Validators.required, notInFuture()],
+        Validators.required,
       ),
       name: new FormControl(this.healthEntry?.name ?? '', { nonNullable: true, validators: name }),
       amount: new FormControl<number | null>(this.healthEntry?.amount ?? null, [

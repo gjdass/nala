@@ -9,7 +9,7 @@ public class HealthEntryFieldsTests
     private static HealthEntryInput HealthEntry(DateTimeOffset? time = null, string? name = "Paracetamol", decimal? amount = 2.5m, string? unit = "ml", decimal? temperature = null, string? notes = null) =>
         new(time ?? Now.AddMinutes(-10), name, amount, unit, temperature, notes);
 
-    private static Dictionary<string, string> Validate(HealthEntryInput input) => HealthEntryFields.Validate(input, Now);
+    private static Dictionary<string, string> Validate(HealthEntryInput input) => HealthEntryFields.Validate(input);
 
     private static Dictionary<string, string> Error(string field, string code) => new() { [field] = code };
 
@@ -26,12 +26,8 @@ public class HealthEntryFieldsTests
         Assert.That(Validate(HealthEntry() with { Time = null }), Is.EqualTo(Error("time", "required")));
 
     [Test]
-    public void Time_may_be_up_to_one_minute_ahead() =>
-        Assert.That(Validate(HealthEntry(time: Now.AddSeconds(60))), Is.Empty);
-
-    [Test]
-    public void Time_more_than_one_minute_ahead_is_in_the_future() =>
-        Assert.That(Validate(HealthEntry(time: Now.AddSeconds(61))), Is.EqualTo(Error("time", "inFuture")));
+    public void Time_may_be_in_the_future() =>
+        Assert.That(Validate(HealthEntry(time: Now.AddDays(2))), Is.Empty);
 
     [TestCase(null)]
     [TestCase("")]

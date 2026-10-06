@@ -9,7 +9,7 @@ public class SleepFieldsTests
     private static SleepInput Sleep(DateTimeOffset? startTime = null, DateTimeOffset? endTime = null, string? notes = null) =>
         new(startTime ?? Now.AddHours(-2), endTime ?? Now.AddHours(-1), notes);
 
-    private static Dictionary<string, string> Validate(SleepInput input) => SleepFields.Validate(input, Now);
+    private static Dictionary<string, string> Validate(SleepInput input) => SleepFields.Validate(input);
 
     [Test]
     public void A_complete_sleep_is_valid() =>
@@ -24,14 +24,8 @@ public class SleepFieldsTests
         Assert.That(Validate(Sleep() with { EndTime = null }), Is.EqualTo(new Dictionary<string, string> { ["endTime"] = "required" }));
 
     [Test]
-    public void Times_may_be_up_to_one_minute_ahead() =>
-        Assert.That(Validate(Sleep(startTime: Now.AddSeconds(30), endTime: Now.AddSeconds(60))), Is.Empty);
-
-    [Test]
-    public void Times_more_than_one_minute_ahead_are_in_the_future() =>
-        Assert.That(
-            Validate(Sleep(startTime: Now.AddMinutes(2), endTime: Now.AddMinutes(3))),
-            Is.EqualTo(new Dictionary<string, string> { ["startTime"] = "inFuture", ["endTime"] = "inFuture" }));
+    public void Times_may_be_in_the_future() =>
+        Assert.That(Validate(Sleep(startTime: Now.AddDays(2), endTime: Now.AddDays(2).AddHours(1))), Is.Empty);
 
     [TestCase(-1)]
     [TestCase(0)]
@@ -49,17 +43,17 @@ public class SleepFieldsTests
 
     [Test]
     public void A_live_sleep_has_no_end_time() =>
-        Assert.That(SleepFields.Validate(Sleep() with { EndTime = null }, Now, live: true), Is.Empty);
+        Assert.That(SleepFields.Validate(Sleep() with { EndTime = null }, live: true), Is.Empty);
 
     [Test]
     public void A_live_sleep_refuses_an_end_time() =>
         Assert.That(
-            SleepFields.Validate(Sleep(), Now, live: true),
+            SleepFields.Validate(Sleep(), live: true),
             Is.EqualTo(new Dictionary<string, string> { ["endTime"] = "notAllowed" }));
 
     [Test]
     public void A_live_sleep_still_checks_its_start_time_and_notes() =>
         Assert.That(
-            SleepFields.Validate(new SleepInput(Now.AddMinutes(5), null, new string('a', 1001)), Now, live: true),
-            Is.EqualTo(new Dictionary<string, string> { ["startTime"] = "inFuture", ["notes"] = "tooLong" }));
+            SleepFields.Validate(new SleepInput(null, null, new string('a', 1001)), live: true),
+            Is.EqualTo(new Dictionary<string, string> { ["startTime"] = "required", ["notes"] = "tooLong" }));
 }

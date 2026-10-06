@@ -126,11 +126,11 @@ describe('HealthEntryService', () => {
       const result = firstValueFrom(service.create('b1', fields, 'm1'));
       http
         .expectOne('/api/health-entries')
-        .flush({ errors: { time: ['inFuture'] } }, { status: 400, statusText: 'Bad Request' });
+        .flush({ errors: { time: ['required'] } }, { status: 400, statusText: 'Bad Request' });
 
       expect(await result).toEqual<EntryResult<HealthEntry>>({
         ok: false,
-        errors: { time: 'inFuture' },
+        errors: { time: 'required' },
       });
     });
 

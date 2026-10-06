@@ -65,21 +65,17 @@ public static class GrowthEntryFields
     }
 
     /// <summary>
-    /// Field name → error code (<c>required</c>, <c>inFuture</c>, <c>beforeBirth</c>, <c>invalid</c>, <c>outOfRange</c>,
-    /// <c>tooLong</c>); empty when valid. The date is not after today anywhere on Earth (as a birth date) nor before
+    /// Field name → error code (<c>required</c>, <c>beforeBirth</c>, <c>invalid</c>, <c>outOfRange</c>,
+    /// <c>tooLong</c>); empty when valid. The date may be in the future but not before
     /// <paramref name="birthDate"/>; a measurement needs at least one value (<c>measurements</c>: <c>required</c>); a
     /// milestone needs a known <c>milestone</c>, and a custom one a <c>title</c>. The other kind's fields are not checked.
     /// </summary>
-    public static Dictionary<string, string> Validate(GrowthKind kind, GrowthEntryInput input, DateTimeOffset now, DateOnly birthDate)
+    public static Dictionary<string, string> Validate(GrowthKind kind, GrowthEntryInput input, DateOnly birthDate)
     {
         var errors = new Dictionary<string, string>();
         if (input.Date is not { } date)
         {
             errors["date"] = "required";
-        }
-        else if (date > BabyFields.LatestDate(now))
-        {
-            errors["date"] = "inFuture";
         }
         else if (date < birthDate)
         {

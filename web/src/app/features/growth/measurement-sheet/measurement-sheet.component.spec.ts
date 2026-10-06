@@ -216,13 +216,10 @@ describe('MeasurementSheetComponent', () => {
       expect(save().disabled).toBe(false);
     });
 
-    it('refuses a date after today', async () => {
+    it('accepts a date after today', async () => {
       await type('weight', '4.2');
 
-      await setDate(new Date(2026, 9, 4));
-      expect(save().disabled).toBe(true);
-
-      await setDate(new Date(2026, 9, 3));
+      await setDate(new Date(2026, 11, 25));
       expect(save().disabled).toBe(false);
     });
 

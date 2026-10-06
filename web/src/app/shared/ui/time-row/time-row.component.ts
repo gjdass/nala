@@ -24,7 +24,6 @@ import { FormRowComponent } from '../form-row/form-row.component';
 /** Translation keys of the errors a time row shows, by code (also as `{ server: code }` from the API). */
 const ERRORS: Record<string, string> = {
   required: 'entrySheet.required',
-  inFuture: 'entrySheet.inFuture',
   afterEnd: 'entrySheet.afterEnd',
   beforeStart: 'entrySheet.beforeStart',
   beforeBirth: 'entrySheet.beforeBirth',
@@ -34,7 +33,7 @@ const ERRORS: Record<string, string> = {
  * A date-and-time row of an entry sheet (spec 04, e.g. Start time): the value as "Today 2:37 PM",
  * "Yesterday …" or a date, and, once tapped, a datepicker and a timepicker that edit the date and the
  * time of `control` separately. Without a value it offers "Add", and tapping it sets the value to now
- * (e.g. End time). Shows the control's errors once touched (`required`, `inFuture`, `afterEnd`,
+ * (e.g. End time). Shows the control's errors once touched (`required`, `afterEnd`,
  * `beforeStart`, `beforeBirth`).
  *
  * With `dateOnly` (entries dated without a time, spec 10), the value reads "Today", "Yesterday" or a
@@ -87,7 +86,7 @@ export class TimeRowComponent {
       return null;
     }
     const code = (state.errors['server'] as string | undefined) ?? Object.keys(state.errors)[0];
-    return ERRORS[code] ?? ERRORS['inFuture'];
+    return ERRORS[code] ?? ERRORS['required'];
   });
 
   constructor() {

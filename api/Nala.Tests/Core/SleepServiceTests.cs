@@ -246,7 +246,7 @@ public class SleepServiceTests
             Is.TypeOf<SleepTimerResult.BabyNotFound>());
 
     [Test]
-    public async Task Start_needs_a_time_not_in_the_future()
+    public async Task Start_needs_a_time_which_may_be_in_the_future()
     {
         var missing = await _service.StartAsync(_anna, Guid.NewGuid(), _lea.Id, null);
         var future = await StartAsync(Guid.NewGuid(), Now.AddMinutes(2));
@@ -254,8 +254,8 @@ public class SleepServiceTests
         Assert.Multiple(() =>
         {
             Assert.That(((SleepTimerResult.Invalid)missing).Errors, Is.EqualTo(new Dictionary<string, string> { ["at"] = "required" }));
-            Assert.That(((SleepTimerResult.Invalid)future).Errors, Is.EqualTo(new Dictionary<string, string> { ["at"] = "inFuture" }));
-            Assert.That(_sleeps.Sleeps, Is.Empty);
+            Assert.That(future, Is.Not.InstanceOf<SleepTimerResult.Invalid>());
+            Assert.That(_sleeps.Sleeps, Has.Count.EqualTo(1));
         });
     }
 

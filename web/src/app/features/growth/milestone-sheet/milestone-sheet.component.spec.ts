@@ -157,7 +157,9 @@ describe('MilestoneSheetComponent', () => {
     it('puts the milestone before the date', () => {
       const chips = host().querySelector('nala-chip-choice-row')!;
       const dateRow = host().querySelector('nala-time-row')!;
-      expect(chips.compareDocumentPosition(dateRow) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(
+        chips.compareDocumentPosition(dateRow) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
     });
 
     it('opens on today, without a time, with no milestone chosen', () => {
@@ -262,13 +264,10 @@ describe('MilestoneSheetComponent', () => {
       });
     });
 
-    it('refuses a date after today', async () => {
+    it('accepts a date after today', async () => {
       await choose('firstSmile');
 
-      await setDate(new Date(2026, 9, 4));
-      expect(save().disabled).toBe(true);
-
-      await setDate(new Date(2026, 9, 3));
+      await setDate(new Date(2026, 11, 25));
       expect(save().disabled).toBe(false);
     });
 
@@ -415,7 +414,9 @@ describe('MilestoneSheetComponent', () => {
 
     it('says who logged it and who edited it last, and when', async () => {
       const updatedAt = new Date(2026, 9, 3, 11, 40).toISOString();
-      await render(aMilestone({ ...entry, updatedBy: { id: 'u2', displayName: 'Ben' }, updatedAt }));
+      await render(
+        aMilestone({ ...entry, updatedBy: { id: 'u2', displayName: 'Ben' }, updatedAt }),
+      );
 
       expect(
         host().querySelector('nala-entry-audit')?.textContent?.replace(/\s+/g, ' ').trim(),

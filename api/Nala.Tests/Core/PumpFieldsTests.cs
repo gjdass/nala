@@ -10,7 +10,7 @@ public class PumpFieldsTests
         DateTimeOffset? startTime = null, DateTimeOffset? endTime = null, decimal? leftMl = 90, decimal? rightMl = 80, string? notes = null) =>
         new(startTime ?? Now.AddMinutes(-30), endTime ?? Now.AddMinutes(-10), leftMl, rightMl, notes);
 
-    private static Dictionary<string, string> Validate(PumpInput input) => PumpFields.Validate(input, Now);
+    private static Dictionary<string, string> Validate(PumpInput input) => PumpFields.Validate(input);
 
     [Test]
     public void A_complete_session_is_valid() =>
@@ -47,10 +47,8 @@ public class PumpFieldsTests
         Assert.That(Validate(Pump() with { EndTime = null }), Is.EqualTo(new Dictionary<string, string> { ["endTime"] = "required" }));
 
     [Test]
-    public void Times_more_than_one_minute_ahead_are_in_the_future() =>
-        Assert.That(
-            Validate(Pump(startTime: Now.AddMinutes(2), endTime: Now.AddMinutes(3))),
-            Is.EqualTo(new Dictionary<string, string> { ["startTime"] = "inFuture", ["endTime"] = "inFuture" }));
+    public void Times_may_be_in_the_future() =>
+        Assert.That(Validate(Pump(startTime: Now.AddDays(2), endTime: Now.AddDays(2).AddHours(1))), Is.Empty);
 
     [TestCase(-1)]
     [TestCase(0)]
@@ -68,9 +66,9 @@ public class PumpFieldsTests
 
     [Test]
     public void A_live_session_has_no_end_time() =>
-        Assert.That(PumpFields.Validate(Pump() with { EndTime = null }, Now, live: true), Is.Empty);
+        Assert.That(PumpFields.Validate(Pump() with { EndTime = null }, live: true), Is.Empty);
 
     [Test]
     public void A_live_session_refuses_an_end_time() =>
-        Assert.That(PumpFields.Validate(Pump(), Now, live: true), Is.EqualTo(new Dictionary<string, string> { ["endTime"] = "notAllowed" }));
+        Assert.That(PumpFields.Validate(Pump(), live: true), Is.EqualTo(new Dictionary<string, string> { ["endTime"] = "notAllowed" }));
 }
