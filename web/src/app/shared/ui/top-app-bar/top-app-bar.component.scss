@@ -22,17 +22,16 @@
   font: var(--mat-sys-title-medium);
 }
 
-// On the right, level with the baby's name: the name/age block is centred in the bar, its name
-// line 8 px above the centre, hence the bottom margin (twice that) on the centred brand.
+// On the right, centred with the name/age block and as tall as it: the 40 px lion's head matches
+// the title-medium + body-small lines (24 + 16 px).
 .brand {
   flex: none;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   margin-inline-start: auto;
-  margin-bottom: 16px;
   padding-inline-start: 12px;
-  font: var(--mat-sys-title-small);
+  font: var(--mat-sys-headline-small);
   color: var(--mat-sys-on-surface-variant);
 
   img {
