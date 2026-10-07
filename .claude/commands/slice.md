@@ -37,7 +37,8 @@ Build the next slice of spec `$ARGUMENTS` from `docs/specs/`.
 6. **Update the spec**
    - Tick the acceptance criteria now covered by passing tests, and tick the slice.
    - Set the spec's status (and its row in the overview) to `in progress`, or `done` when every criterion is ticked.
-   - If anything was decided or changed during the slice, update the spec to match — never leave the spec and the code disagreeing.
+   - If anything was decided or changed during the slice, update the spec to match — never leave the spec and the code disagreeing. Rewrite or remove the text that changed (in this spec and in any other spec it contradicts) instead of appending a new paragraph; a rule shared by several sections goes into spec 04.
+   - When the spec becomes `done`, collapse its Build slices to one line: `Built in N slices, all done; each is a commit "Spec NN slice N: …" (git log --grep "Spec NN slice").`
 
 7. **Commit**
    - Commit on `master` with a message naming the spec and the slice. Do not push.
