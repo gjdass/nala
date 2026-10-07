@@ -70,6 +70,6 @@ export class SleepSheetComponent {
   }
 
   protected save(): void {
-    this.sheet.save(this.sheet.fields());
+    this.sheet.save();
   }
 }

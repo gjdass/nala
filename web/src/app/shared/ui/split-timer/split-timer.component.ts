@@ -9,8 +9,8 @@ export type SplitSide = 'left' | 'right';
  * Two independent timers side by side, Left and Right (spec 05; reused by Pump): each shows its own
  * duration and a Start Left / Start Right button (M3 tonal), which becomes a filled Stop while that
  * side runs. `markedSide` gets `markLabel` above its timer (e.g. "last side"). When `editable`, each
- * duration is itself a button emitting `edit` so the caller can have it typed (spec 04); `timersDisabled` turns off
- * Start/Stop only, `disabled` every button. Emits which side to start, stop or edit; the caller owns
+ * duration is itself a button emitting `edit` so the caller can have it typed (spec 04); `disabled`
+ * turns every button off. Emits which side to start, stop or edit; the caller owns
  * the timing.
  */
 @Component({
@@ -31,7 +31,6 @@ export class SplitTimerComponent {
   readonly start = output<SplitSide>();
   readonly stop = output<SplitSide>();
   readonly editable = input(false);
-  readonly timersDisabled = input(false);
   readonly edit = output<SplitSide>();
 
   protected readonly sides = [

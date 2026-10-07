@@ -98,6 +98,7 @@ export class PumpSheetComponent {
 
   constructor() {
     this.sheet.connect(this.form, {
+      fields: () => ({ leftMl: ml(this.leftMl.value), rightMl: ml(this.rightMl.value) }),
       values: (pump) => ({ leftMl: pump.leftMl, rightMl: pump.rightMl }),
       follow: (pump) => {
         if (this.leftMl.pristine) {
@@ -111,11 +112,7 @@ export class PumpSheetComponent {
   }
 
   protected save(): void {
-    this.sheet.save({
-      ...this.sheet.fields(),
-      leftMl: ml(this.leftMl.value),
-      rightMl: ml(this.rightMl.value),
-    });
+    this.sheet.save();
   }
 }
 

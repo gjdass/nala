@@ -429,12 +429,43 @@ describe('SleepSheetComponent', () => {
         expect(ids[0]).toBe(ids[1]);
       });
 
-      it('turns Start off once an end time is typed', async () => {
+      it('keeps Start on once an end time is typed', async () => {
         form().controls.endTime.setValue(at(11));
         form().controls.endTime.markAsDirty();
         await settle();
 
-        expect(toggle().disabled).toBe(true);
+        expect(toggle().disabled).toBe(false);
+      });
+
+      it('creates the typed sleep first on Start, then starts it', async () => {
+        await setTimes(at(9), at(10));
+        form().controls.endTime.markAsDirty();
+        await click('timer-toggle');
+
+        const id = sleeps.create.mock.calls[0][2];
+        expect(sleeps.create).toHaveBeenCalledWith(
+          'b1',
+          { startTime: at(9).toISOString(), endTime: at(10).toISOString(), notes: null },
+          id,
+        );
+        expect(sleeps.start).not.toHaveBeenCalled();
+        saved.next({
+          ok: true,
+          entry: aSleep({ id, startTime: at(9).toISOString(), endTime: at(10).toISOString() }),
+        });
+        await settle();
+
+        expect(sleeps.start).toHaveBeenCalledWith(id, 'b1', NOW.toISOString());
+        expect(sheetRef.close).not.toHaveBeenCalled();
+      });
+
+      it('starts alone when the typed times would be refused', async () => {
+        await setTimes(at(10), at(9));
+        form().controls.endTime.markAsDirty();
+        await click('timer-toggle');
+
+        expect(sleeps.create).not.toHaveBeenCalled();
+        expect(sleeps.start).toHaveBeenCalled();
       });
 
       describe('× once Start created the sleep', () => {
@@ -565,12 +596,48 @@ describe('SleepSheetComponent', () => {
         expect(find('entry-delete')).not.toBeNull();
       });
 
-      it('turns Start off once its end time is changed', async () => {
+      it('keeps Start on once its end time is changed', async () => {
         form().controls.endTime.setValue(at(10));
         form().controls.endTime.markAsDirty();
         await settle();
 
-        expect(toggle().disabled).toBe(true);
+        expect(toggle().disabled).toBe(false);
+      });
+
+      it('saves a changed end time first on Start, then makes it live again', async () => {
+        await typeDuration(100 * 60);
+        await click('timer-toggle');
+
+        expect(sleeps.update).toHaveBeenCalledWith('s7', {
+          startTime: at(8).toISOString(),
+          endTime: at(9, 40).toISOString(),
+          notes: null,
+        });
+        expect(sleeps.start).not.toHaveBeenCalled();
+        const corrected = {
+          ...sleep,
+          endTime: at(9, 40).toISOString(),
+          updatedAt: NOW.toISOString(),
+        };
+        saved.next({ ok: true, entry: corrected });
+        await settle();
+
+        expect(sleeps.start).toHaveBeenCalledWith('s7', 'b1', NOW.toISOString());
+        await respondTimer({ ok: true, entry: { ...corrected, endTime: null } });
+
+        expect(toggle().textContent?.trim()).toBe(en.timer.stop);
+        expect(text('timer-duration')).toBe('4h');
+        expect(sheetRef.close).not.toHaveBeenCalled();
+      });
+
+      it('shows the save error and does not start when saving first is refused', async () => {
+        await typeDuration(100 * 60);
+        await click('timer-toggle');
+        saved.next({ ok: false, errors: { form: 'sleepNotFound' } });
+        await settle();
+
+        expect(sleeps.start).not.toHaveBeenCalled();
+        expect(text('form-error')).toBe(en.sleep.errors.sleepNotFound);
       });
     });
   });
@@ -596,7 +663,7 @@ describe('SleepSheetComponent', () => {
         expect(form().controls.endTime.value).toEqual(at(10, 30));
         expect(text('timer-duration')).toBe('1h 30m');
         expect(text('sleep-duration')).toBe('1h 30m');
-        expect(toggle().disabled).toBe(true);
+        expect(toggle().disabled).toBe(false);
         expect(save().disabled).toBe(false);
       });
 
@@ -623,55 +690,87 @@ describe('SleepSheetComponent', () => {
     });
 
     describe('on a live sleep', () => {
-      const sleep = liveSleep(60, { id: 's7' });
-      const start = new Date(sleep.startTime);
-      const end = new Date(start.getTime() + 30 * 60_000);
+      const sleep = liveSleep(33, { id: 's7' });
+      const minutesAgo = (minutes: number) => new Date(NOW.getTime() - minutes * 60_000);
 
-      beforeEach(async () => {
-        await render(sleep);
-        await typeDuration(30 * 60);
-      });
+      beforeEach(() => render(sleep));
 
-      it('freezes the timer on the typed duration and shows the end it gives', async () => {
-        now.set(now() + 5 * 60_000);
+      it('moves the start earlier for a longer duration and keeps running', async () => {
+        await typeDuration(34 * 60);
+
+        expect(form().controls.startTime.value).toEqual(minutesAgo(34));
+        expect(form().controls.endTime.value).toBeNull();
+        expect(text('timer-duration')).toBe('34m');
+        expect(text('sleep-end-time')).toContain(en.sleep.sheet.sleeping);
+        expect(toggle().textContent?.trim()).toBe(en.timer.stop);
+        expect(toggle().disabled).toBe(false);
+        now.set(now() + 60_000);
         await settle();
-
-        expect(text('timer-duration')).toBe('30m');
-        expect(toggle().disabled).toBe(true);
-        expect(form().controls.startTime.value).toEqual(start);
-        expect(form().controls.endTime.value).toEqual(end);
-        expect(find('sleep-end-time')).toBeNull();
-        expect(rows()[1].textContent).toContain(`Today ${shortTime(end)}`);
+        expect(text('timer-duration')).toBe('35m');
+        expect(text('sleep-duration')).toBe('35m');
       });
 
-      it('keeps the typed end when the live sleep is polled again', async () => {
+      it('moves the start later for a shorter duration and keeps running', async () => {
+        await typeDuration(32 * 60);
+
+        expect(form().controls.startTime.value).toEqual(minutesAgo(32));
+        expect(text('timer-duration')).toBe('32m');
+        expect(toggle().textContent?.trim()).toBe(en.timer.stop);
+        expect(save().disabled).toBe(false);
+      });
+
+      it('keeps the typed start when the live sleep is polled again', async () => {
+        await typeDuration(34 * 60);
         sync.inProgress.set([{ ...sleep, updatedAt: '2026-09-30T11:59:00Z' }]);
         await settle();
 
-        expect(form().controls.endTime.value).toEqual(end);
-        expect(text('timer-duration')).toBe('30m');
+        expect(form().controls.startTime.value).toEqual(minutesAgo(34));
+        expect(text('timer-duration')).toBe('34m');
       });
 
-      it('stops it at the typed end on Save, then saves the form', async () => {
+      it('saves the moved start on Save and keeps it live', async () => {
+        await typeDuration(34 * 60);
         save().click();
         await settle();
 
-        expect(sleeps.stop).toHaveBeenCalledWith('s7', end.toISOString());
-        expect(sleeps.update).not.toHaveBeenCalled();
-        await respondTimer({ ok: true, entry: { ...sleep, endTime: end.toISOString() } });
-
+        expect(sleeps.stop).not.toHaveBeenCalled();
         expect(sleeps.update).toHaveBeenCalledWith('s7', {
-          startTime: start.toISOString(),
-          endTime: end.toISOString(),
+          startTime: minutesAgo(34).toISOString(),
+          endTime: null,
           notes: null,
         });
-        const stored = { ...sleep, endTime: end.toISOString() };
+        const stored = { ...sleep, startTime: minutesAgo(34).toISOString() };
         saved.next({ ok: true, entry: stored });
         await settle();
         expect(sheetRef.close).toHaveBeenCalledWith({ saved: stored });
       });
 
-      it('leaves it running on ×', async () => {
+      it('saves the moved start first on Stop, then stops it now', async () => {
+        await typeDuration(34 * 60);
+        await click('timer-toggle');
+
+        expect(sleeps.update).toHaveBeenCalledWith('s7', {
+          startTime: minutesAgo(34).toISOString(),
+          endTime: null,
+          notes: null,
+        });
+        expect(sleeps.stop).not.toHaveBeenCalled();
+        const corrected = {
+          ...sleep,
+          startTime: minutesAgo(34).toISOString(),
+          updatedAt: NOW.toISOString(),
+        };
+        saved.next({ ok: true, entry: corrected });
+        await settle();
+
+        expect(sleeps.stop).toHaveBeenCalledWith('s7', NOW.toISOString());
+        await respondTimer({ ok: true, entry: { ...corrected, endTime: NOW.toISOString() } });
+        expect(toggle().textContent?.trim()).toBe(en.timer.start);
+        expect(text('timer-duration')).toBe('34m');
+      });
+
+      it('discards the typed duration on × and leaves it running', async () => {
+        await typeDuration(34 * 60);
         await click('sheet-close');
         confirmed.next(true);
         await settle();

@@ -476,7 +476,7 @@
       "stillFeeding": {
         "title": "Still feeding?",
         "card": "Started {{since}}.",
-        "sheet": "Started {{since}}. Correct the durations with the pencils, then save.",
+        "sheet": "Started {{since}}. Tap Stop, or correct the durations by tapping them.",
         "review": "Review"
       },
       "endedElsewhere": "This feed was deleted on another device."

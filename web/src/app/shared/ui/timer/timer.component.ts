@@ -6,8 +6,7 @@ import { DurationPipe } from '../../../core/time/duration';
 /**
  * A single timer (spec 06; reused by later timer sections): its duration and a Start button (M3
  * tonal), which becomes a filled Stop while it runs. When `editable`, the duration itself is a button
- * emitting `edit`, so the caller can have it typed (spec 04). `timerDisabled` turns off Start / Stop
- * only, `disabled` both. Emits `start`, `stop` or `edit`; the caller owns the timing.
+ * emitting `edit`, so the caller can have it typed (spec 04). `disabled` turns both off. Emits `start`, `stop` or `edit`; the caller owns the timing.
  */
 @Component({
   selector: 'nala-timer',
@@ -23,7 +22,6 @@ export class TimerComponent {
   readonly start = output<void>();
   readonly stop = output<void>();
   readonly editable = input(false);
-  readonly timerDisabled = input(false);
   readonly edit = output<void>();
 
   protected toggle(): void {

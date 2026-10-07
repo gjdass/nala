@@ -507,12 +507,12 @@ describe('PumpSheetComponent', () => {
         expect(ids[0]).toBe(ids[1]);
       });
 
-      it('turns Start off once an end time is typed', async () => {
+      it('keeps Start on once an end time is typed', async () => {
         form().controls.endTime.setValue(at(11));
         form().controls.endTime.markAsDirty();
         await settle();
 
-        expect(toggle().disabled).toBe(true);
+        expect(toggle().disabled).toBe(false);
       });
 
       describe('× once Start created the session', () => {
@@ -599,12 +599,41 @@ describe('PumpSheetComponent', () => {
         expect(sheetRef.close).not.toHaveBeenCalled();
       });
 
-      it('keeps the volumes typed while live when Stop is tapped', async () => {
+      it('saves the volumes typed while live first when Stop is tapped, then stops it', async () => {
         await typeMl('left', '80');
         await click('timer-toggle');
-        await respondTimer({ ok: true, entry: { ...pump, endTime: NOW.toISOString() } });
 
+        expect(pumps.update).toHaveBeenCalledWith('p7', {
+          startTime: pump.startTime,
+          endTime: null,
+          leftMl: 80,
+          rightMl: null,
+          notes: null,
+        });
+        expect(pumps.stop).not.toHaveBeenCalled();
+        const corrected = { ...pump, leftMl: 80, updatedAt: NOW.toISOString() };
+        saved.next({ ok: true, entry: corrected });
+        await settle();
+
+        expect(pumps.stop).toHaveBeenCalledWith('p7', NOW.toISOString());
+        await respondTimer({ ok: true, entry: { ...corrected, endTime: NOW.toISOString() } });
         expect(ml('left').value).toBe('80');
+        expect(sheetRef.close).not.toHaveBeenCalled();
+      });
+
+      it('moves the start to now minus a typed duration and keeps running', async () => {
+        find<HTMLButtonElement>('timer-edit')!.click();
+        typed.next(25 * 60);
+        await settle();
+
+        expect(form().controls.startTime.value).toEqual(new Date(NOW.getTime() - 25 * 60_000));
+        expect(text('timer-duration')).toBe('25m');
+        expect(text('pump-end-time')).toContain(en.pump.sheet.pumping);
+        expect(toggle().textContent?.trim()).toBe(en.timer.stop);
+        expect(toggle().disabled).toBe(false);
+        now.set(now() + 60_000);
+        await settle();
+        expect(text('timer-duration')).toBe('26m');
       });
 
       it('closes on × with the session as the taps left it, discarding the form edits', async () => {
@@ -665,12 +694,12 @@ describe('PumpSheetComponent', () => {
         expect(text('pump-end-time')).toContain(en.pump.sheet.pumping);
       });
 
-      it('turns Start off once its end time is changed', async () => {
+      it('keeps Start on once its end time is changed', async () => {
         form().controls.endTime.setValue(at(9));
         form().controls.endTime.markAsDirty();
         await settle();
 
-        expect(toggle().disabled).toBe(true);
+        expect(toggle().disabled).toBe(false);
       });
     });
   });
@@ -687,7 +716,7 @@ describe('PumpSheetComponent', () => {
       expect(form().controls.startTime.value).toEqual(at(9));
       expect(form().controls.endTime.value).toEqual(at(9, 20));
       expect(text('timer-duration')).toBe('20m');
-      expect(toggle().disabled).toBe(true);
+      expect(toggle().disabled).toBe(false);
     });
   });
 

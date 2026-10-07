@@ -31,7 +31,7 @@
       <button
         type="button"
         [matButton]="runs ? 'filled' : 'tonal'"
-        [disabled]="disabled() || timersDisabled()"
+        [disabled]="disabled()"
         [attr.aria-pressed]="runs"
         (click)="toggle(item.side)"
         [attr.data-testid]="'split-' + item.side + '-toggle'"

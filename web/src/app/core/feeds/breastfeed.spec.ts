@@ -202,6 +202,34 @@ describe('applyQueued', () => {
     ).toEqual([]);
   });
 
+  it('keeps a live feed live when typed durations are saved, its running side last and open', () => {
+    const live = aBreastfeed({
+      id: 'f3',
+      endTime: null,
+      segments: [aSegment('left', iso('10:00:00'), null)],
+    });
+
+    const [feed] = applyQueued(
+      [live],
+      [
+        request('PUT', '/api/feeds/f3', {
+          startTime: iso('09:58:00'),
+          notes: ' calm ',
+          durations: { leftSeconds: 300, rightSeconds: 120, endedOn: 'left' },
+        }),
+      ],
+      ben,
+    );
+
+    expect(feed.startTime).toBe(iso('09:58:00'));
+    expect(feed.endTime).toBeNull();
+    expect(feed.notes).toBe('calm');
+    expect(feed.segments.map((s) => [s.side, s.startedAt, s.endedAt])).toEqual([
+      ['right', iso('09:58:00'), iso('10:00:00')],
+      ['left', iso('10:00:00'), null],
+    ]);
+  });
+
   it('reopens a saved feed it is given', () => {
     const [feed] = applyQueued([aBreastfeed()], [start('f3', 'left', '11:00:00')], ben);
 

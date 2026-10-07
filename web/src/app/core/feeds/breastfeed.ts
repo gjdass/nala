@@ -56,14 +56,15 @@ interface StopBody {
 interface EditBody {
   startTime: string;
   notes: string | null;
-  durations?: unknown;
+  durations?: { leftSeconds: number; rightSeconds: number };
 }
 
 /**
  * The live breastfeeds once `requests` (the user's changes waiting on the device, oldest first) are
  * applied to `feeds`, following the server's rules (spec 05): a start creates the feed (start time =
- * its time) or makes it live again and stops the other side; a stop, a delete or durations typed by
- * hand end it; an edit changes its start time and notes. A tap the feed already has (same segment,
+ * its time) or makes it live again and stops the other side; a stop or a delete ends it; an edit
+ * changes its start time and notes, and its typed durations become its segments, the running side
+ * last and still open (without a running side, they end it). A tap the feed already has (same segment,
  * side already running, or a time before its latest segment) changes nothing, so applying the same
  * requests again is harmless. A feed created here is logged by `user`. Only live feeds are returned.
  */
@@ -95,13 +96,18 @@ export function applyQueued(
       continue;
     }
     const edit = request.body as EditBody;
-    if (request.method === 'DELETE' || (request.method === 'PUT' && edit?.durations)) {
+    const running = runningSide(feed);
+    if (request.method === 'DELETE' || (request.method === 'PUT' && edit?.durations && !running)) {
       list = list.filter((f) => f.id !== feed.id);
     } else if (request.method === 'PUT') {
       replace({
         ...feed,
         startTime: edit.startTime,
         notes: edit.notes?.trim() || null,
+        segments:
+          edit.durations && running
+            ? liveSegments(edit.startTime, edit.durations, running)
+            : feed.segments,
         updatedBy: user,
         updatedAt: request.queuedAt,
       });
@@ -165,6 +171,26 @@ export function stopped(feed: Feed, at: string, user: UserName = feed.updatedBy)
     updatedBy: user,
     updatedAt: at,
   };
+}
+
+/**
+ * Durations typed on a live feed as the server stores them (spec 05): back to back from `start`, the
+ * other side first (left out at 0), then `running` in an open segment.
+ */
+function liveSegments(
+  start: string,
+  durations: { leftSeconds: number; rightSeconds: number },
+  running: BreastSide,
+): BreastFeedSegment[] {
+  const other: BreastSide = running === 'left' ? 'right' : 'left';
+  const otherMs = (other === 'left' ? durations.leftSeconds : durations.rightSeconds) * 1000;
+  const switchedAt = new Date(Date.parse(start) + otherMs).toISOString();
+  return [
+    ...(otherMs > 0
+      ? [{ id: crypto.randomUUID(), side: other, startedAt: start, endedAt: switchedAt }]
+      : []),
+    { id: crypto.randomUUID(), side: running, startedAt: switchedAt, endedAt: null },
+  ];
 }
 
 function closeOpen(segments: readonly BreastFeedSegment[], at: string): BreastFeedSegment[] {

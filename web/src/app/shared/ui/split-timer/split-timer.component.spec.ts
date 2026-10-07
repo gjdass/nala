@@ -128,18 +128,11 @@ describe('SplitTimerComponent', () => {
     expect(started).toEqual([]);
   });
 
-  it('disables only Start and Stop while the timers are disabled', async () => {
-    await set({ editable: true, timersDisabled: true });
+  it('disables Start / Stop and the durations while disabled', async () => {
+    await set({ editable: true, disabled: true });
 
     expect(toggle('left').disabled).toBe(true);
     expect(toggle('right').disabled).toBe(true);
-    expect(find<HTMLButtonElement>('split-left-edit')!.disabled).toBe(false);
-    expect(find<HTMLButtonElement>('split-right-edit')!.disabled).toBe(false);
-  });
-
-  it('disables the durations too while disabled', async () => {
-    await set({ editable: true, disabled: true });
-
     expect(find<HTMLButtonElement>('split-left-edit')!.disabled).toBe(true);
   });
 });

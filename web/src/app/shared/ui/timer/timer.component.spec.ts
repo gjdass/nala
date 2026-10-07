@@ -82,12 +82,9 @@ describe('TimerComponent', () => {
     expect(started).toBe(0);
   });
 
-  it('disables only Start / Stop while the timer is disabled, everything while disabled', async () => {
-    await set({ editable: true, timerDisabled: true });
+  it('disables Start / Stop and the duration while disabled', async () => {
+    await set({ editable: true, disabled: true });
     expect(toggle().disabled).toBe(true);
-    expect(find<HTMLButtonElement>('timer-edit')!.disabled).toBe(false);
-
-    await set({ timerDisabled: false, disabled: true });
     expect(find<HTMLButtonElement>('timer-edit')!.disabled).toBe(true);
   });
 });

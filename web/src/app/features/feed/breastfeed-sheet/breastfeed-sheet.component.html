@@ -26,7 +26,6 @@
     [markLabel]="'feed.breastfeed.lastSide' | transloco"
     [disabled]="busy()"
     [editable]="true"
-    [timersDisabled]="!!typed()"
     (start)="start($event)"
     (stop)="stop()"
     (edit)="editDuration($event)"

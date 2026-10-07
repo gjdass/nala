@@ -476,7 +476,7 @@
       "stillFeeding": {
         "title": "Toujours en train de téter ?",
         "card": "Commencée {{since}}.",
-        "sheet": "Commencée {{since}}. Corrigez les durées avec les crayons, puis enregistrez.",
+        "sheet": "Commencée {{since}}. Appuyez sur Arrêter, ou corrigez les durées en les touchant.",
         "review": "Vérifier"
       },
       "endedElsewhere": "Cette tétée a été supprimée sur un autre appareil."

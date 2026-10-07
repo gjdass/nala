@@ -16,7 +16,7 @@
   <button
     type="button"
     [matButton]="running() ? 'filled' : 'tonal'"
-    [disabled]="disabled() || timerDisabled()"
+    [disabled]="disabled()"
     [attr.aria-pressed]="running()"
     (click)="toggle()"
     data-testid="timer-toggle"

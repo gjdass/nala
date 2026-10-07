@@ -557,16 +557,47 @@ describe('BreastfeedSheetComponent', () => {
       });
     });
 
-    it('shows the typed duration and total, disables the timers and enables Save', async () => {
+    it('shows the typed duration and total, keeps the timers on and enables Save', async () => {
       await typeDuration('left', 300);
 
       expect(text('split-left-duration')).toBe('5m');
       expect(text('split-right-duration')).toBe('0s');
       expect(text('total-time')).toBe('5m');
-      expect(toggle('left').disabled).toBe(true);
-      expect(toggle('right').disabled).toBe(true);
+      expect(toggle('left').disabled).toBe(false);
+      expect(toggle('right').disabled).toBe(false);
       expect(save().disabled).toBe(false);
       expect(feeds.startSide).not.toHaveBeenCalled();
+    });
+
+    it('creates the typed feed first on Start, then starts the side', async () => {
+      await typeDuration('left', 300);
+      await click('split-right-toggle');
+
+      const id = feeds.create.mock.calls[0][3];
+      expect(feeds.create).toHaveBeenCalledWith(
+        'b1',
+        'breastfeed',
+        {
+          startTime: NOW.toISOString(),
+          notes: null,
+          durations: { leftSeconds: 300, rightSeconds: 0, endedOn: 'left' },
+        },
+        id,
+      );
+      expect(feeds.startSide).not.toHaveBeenCalled();
+      const typedFeed = aBreastfeed({
+        id,
+        startTime: NOW.toISOString(),
+        endTime: new Date(NOW.getTime() + 300_000).toISOString(),
+        segments: [
+          aSegment('left', NOW.toISOString(), new Date(NOW.getTime() + 300_000).toISOString()),
+        ],
+      });
+      saved.next({ ok: true, feed: typedFeed });
+      await settle();
+
+      expect(feeds.startSide).toHaveBeenCalledWith(id, 'b1', 'right', NOW.toISOString());
+      expect(sheetRef.close).not.toHaveBeenCalled();
     });
 
     it('changes nothing when the dialog is cancelled', async () => {
@@ -651,6 +682,8 @@ describe('BreastfeedSheetComponent', () => {
       await respondState({ inProgress: running({ notes: 'calm' }), lastSide: 'right' });
     });
 
+    const startTime = () => fixture.componentInstance.form.controls.startTime.value;
+
     it('opens the dialog with the side live duration', async () => {
       await click('split-right-edit');
 
@@ -660,25 +693,81 @@ describe('BreastfeedSheetComponent', () => {
       });
     });
 
-    it('freezes the other side at its current duration', async () => {
+    it('keeps the running side running from its typed duration, moving the start', async () => {
+      await typeDuration('right', 360);
+
+      expect(startTime()).toEqual(new Date(iso('09:59:00')));
+      expect(text('split-left-duration')).toBe('5m');
+      expect(text('split-right-duration')).toBe('6m');
+      expect(text('split-right-toggle')).toBe(en.splitTimer.stop);
+      expect(toggle('right').disabled).toBe(false);
+      expect(toggle('left').disabled).toBe(false);
+      await tick(60_000);
+      expect(text('split-right-duration')).toBe('7m');
+      expect(text('total-time')).toBe('12m');
+      expect(find('ended-on')).toBeNull();
+    });
+
+    it('keeps the other side at its typed duration while the running one runs on', async () => {
       await typeDuration('left', 120);
       await tick(60_000);
 
+      expect(startTime()).toEqual(new Date(iso('10:03:00')));
       expect(text('split-left-duration')).toBe('2m');
-      expect(text('split-right-duration')).toBe('5m');
-      expect(text('total-time')).toBe('7m');
-      expect(toggle('right').disabled).toBe(true);
+      expect(text('split-right-duration')).toBe('6m');
+      expect(text('total-time')).toBe('8m');
     });
 
-    it('saves the typed durations through update', async () => {
+    it('saves the typed durations through update, still live on its running side', async () => {
       await typeDuration('left', 120);
       await click('sheet-save');
 
       expect(feeds.update).toHaveBeenCalledWith('f3', {
-        startTime: iso('10:00:00.000'),
+        startTime: iso('10:03:00.000'),
         notes: 'calm',
-        durations: { leftSeconds: 120, rightSeconds: 300, endedOn: 'left' },
+        durations: { leftSeconds: 120, rightSeconds: 300, endedOn: 'right' },
       });
+    });
+
+    it('saves the typed durations first when the other side is started, then switches', async () => {
+      await typeDuration('left', 120);
+      await click('split-left-toggle');
+
+      expect(feeds.update).toHaveBeenCalledWith('f3', {
+        startTime: iso('10:03:00.000'),
+        notes: 'calm',
+        durations: { leftSeconds: 120, rightSeconds: 300, endedOn: 'right' },
+      });
+      expect(feeds.startSide).not.toHaveBeenCalled();
+      const corrected = running({
+        notes: 'calm',
+        startTime: iso('10:03:00'),
+        updatedAt: NOW.toISOString(),
+        segments: [
+          aSegment('left', iso('10:03:00'), iso('10:05:00')),
+          aSegment('right', iso('10:05:00'), null),
+        ],
+      });
+      saved.next({ ok: true, feed: corrected });
+      await settle();
+
+      expect(feeds.startSide).toHaveBeenCalledWith('f3', 'b1', 'left', NOW.toISOString());
+      await respondTimer({
+        ok: true,
+        feed: {
+          ...corrected,
+          segments: [
+            aSegment('left', iso('10:03:00'), iso('10:05:00')),
+            aSegment('right', iso('10:05:00'), NOW.toISOString()),
+            aSegment('left', NOW.toISOString(), null),
+          ],
+        },
+      });
+      await tick(60_000);
+
+      expect(text('split-left-duration')).toBe('3m');
+      expect(text('split-right-duration')).toBe('5m');
+      expect(sheetRef.close).not.toHaveBeenCalled();
     });
   });
 

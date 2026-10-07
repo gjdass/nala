@@ -7,12 +7,13 @@ import {
   signal,
   untracked,
 } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
-import { Observable } from 'rxjs';
+import { Observable, of } from 'rxjs';
 import { SelectedBabyService } from '../../../core/babies/selected-baby.service';
 import { isStillFeeding, runningSide, sideSeconds, stopped } from '../../../core/feeds/breastfeed';
 import { BreastfeedSyncService } from '../../../core/feeds/breastfeed-sync.service';
@@ -72,10 +73,13 @@ type Durations = Record<BreastSide, number>;
  * created the feed, it deletes that feed (after confirming: the Start counts as a change). Closes
  * with the saved feed or the deleted id.
  *
- * Each side's pencil lets its duration be typed: both durations are then frozen (the timers are off
- * until Save or ×), the ended-on side is asked when both are above 0, and Save sends the durations
- * (adding a feed logged by hand, or replacing the timed ones, so it is no longer live). A live feed
- * started more than 3 hours ago shows "Still feeding?".
+ * Tapping a side's duration lets it be typed (spec 04): the other side keeps its value. On a live feed
+ * the start time moves to now − both sides and the running side keeps running from its typed value;
+ * otherwise both durations are typed and the ended-on side is asked when both are above 0. Save sends
+ * the durations (adding a feed logged by hand, or replacing the timed ones; a live feed stays live).
+ * The timers are never turned off: a tap while the sheet has changes Save would accept saves them
+ * first (the sheet stays open), then is sent. A live feed started more than 3 hours ago shows "Still
+ * feeding?".
  *
  * Other devices: its own actions update the shared live state at once; changes made elsewhere (side
  * switch) show live, unless durations are being typed. When the feed leaves the live list without
@@ -137,13 +141,16 @@ export class BreastfeedSheetComponent {
   });
 
   protected readonly sides = BREAST_SIDES;
-  /** The durations typed with the pencils, in seconds; null while the timers give them. */
+  /**
+   * The durations typed, in seconds; null while the timers give them. On a live feed, the running
+   * side's runs on from the start time instead.
+   */
   protected readonly typed = signal<Durations | null>(null);
-  protected readonly left = computed(() => this.typed()?.left ?? this.seconds('left'));
-  protected readonly right = computed(() => this.typed()?.right ?? this.seconds('right'));
-  protected readonly askEndedOn = computed(
-    () => this.left() > 0 && this.right() > 0 && !!this.typed(),
-  );
+  private readonly startTime = toSignal(this.form.controls.startTime.valueChanges, {
+    initialValue: this.form.controls.startTime.value,
+  });
+  protected readonly left = computed(() => this.shown('left'));
+  protected readonly right = computed(() => this.shown('right'));
   protected readonly stillFeeding = computed(() => {
     const feed = this.feed();
     return !!feed && isStillFeeding(feed, this.now());
@@ -153,6 +160,10 @@ export class BreastfeedSheetComponent {
     const feed = this.feed();
     return feed ? runningSide(feed) : null;
   });
+  /** A live feed ends on its running side: asked only for typed durations of a feed that isn't live. */
+  protected readonly askEndedOn = computed(
+    () => this.left() > 0 && this.right() > 0 && !!this.typed() && !this.running(),
+  );
   /** "last side" helps choose where to start: not shown once the feed has ended. */
   protected readonly markedSide = computed(() => (this.feed()?.endTime ? null : this.lastSide()));
   protected readonly edited = computed(() => {
@@ -187,26 +198,33 @@ export class BreastfeedSheetComponent {
   }
 
   protected start(side: BreastSide): void {
-    const id = this.feed()?.id ?? this.newId;
-    this.send(
-      this.feeds.startSide(id, this.babyId!, side, new Date().toISOString()),
-      () => this.sync.inProgress().find((f) => f.id === id),
-      () => {
-        if (id === this.newId && !this.entry) {
-          this.createdHere.set(true);
-          this.form.markAsDirty();
-        }
-      },
-    );
+    this.send(() => {
+      const id = this.feed()?.id ?? this.newId;
+      return {
+        request: this.feeds.startSide(id, this.babyId!, side, new Date().toISOString()),
+        offline: () => this.sync.inProgress().find((f) => f.id === id),
+        done: () => {
+          if (id === this.newId && !this.entry) {
+            this.createdHere.set(true);
+            this.form.markAsDirty();
+          }
+        },
+      };
+    });
   }
 
   protected stop(): void {
-    const feed = this.feed()!;
-    const at = new Date().toISOString();
-    this.send(this.feeds.stopSide(feed.id, at), () => stopped(feed, at));
+    this.send(() => {
+      const feed = this.feed()!;
+      const at = new Date().toISOString();
+      return { request: this.feeds.stopSide(feed.id, at), offline: () => stopped(feed, at) };
+    });
   }
 
-  /** Opens the duration dialog for `side`; a typed duration freezes both sides. */
+  /**
+   * Opens the duration dialog for `side`; the other side keeps its value. On a live feed the start
+   * time moves to now − both sides, so the running side runs on from its typed value.
+   */
   protected editDuration(side: BreastSide): void {
     this.dialog
       .open<DurationDialogComponent, DurationDialogData, number | undefined>(
@@ -224,27 +242,28 @@ export class BreastfeedSheetComponent {
         if (seconds === undefined) {
           return;
         }
-        const current = this.typed() ?? { left: this.left(), right: this.right() };
-        this.typed.set({ ...current, [side]: seconds });
-        this.form.controls.endedOn.setValue(side);
+        const durations = { left: this.left(), right: this.right(), [side]: seconds };
+        this.typed.set(durations);
+        if (this.running()) {
+          const startTime = this.form.controls.startTime;
+          startTime.setValue(new Date(Date.now() - (durations.left + durations.right) * 1000));
+          startTime.markAsDirty();
+          startTime.markAsTouched();
+        } else {
+          this.form.controls.endedOn.setValue(side);
+        }
         this.form.markAsDirty();
       });
   }
 
   protected save(): void {
-    const feed = this.feed();
-    const typed = this.typed();
-    if ((!feed && !typed) || this.form.invalid || this.busy()) {
+    if (!this.saveable() || this.busy()) {
       return;
     }
     this.busy.set(true);
     this.formError.set(null);
-    const fields = this.fields();
     // Live or not, Save never starts or stops a side.
-    const request = feed
-      ? this.feeds.update(feed.id, fields)
-      : this.feeds.create(this.babyId!, 'breastfeed', fields, this.newId);
-    request.subscribe((result) => {
+    this.saveRequest().subscribe((result) => {
       this.busy.set(false);
       if (result.ok) {
         this.settled = true;
@@ -256,15 +275,33 @@ export class BreastfeedSheetComponent {
         this.sheetRef.close({ saved: result.feed });
         return;
       }
-      const { durations, endedOn, ...errors } = result.errors;
-      const durationError = durations ?? (endedOn ? 'endedOn' : null);
-      if (durationError) {
-        this.formError.set(DURATION_ERRORS[durationError] ?? 'feed.errors.unknown');
-        applyServerErrors(this.form, errors);
-        return;
-      }
-      this.showFormError(applyServerErrors(this.form, errors));
+      this.showSaveErrors(result.errors);
     });
+  }
+
+  /** What Save would accept: a valid form, with a feed or typed durations, not both sides at 0 s. */
+  private saveable(): boolean {
+    return (!!this.feed() || !!this.typed()) && this.form.valid && this.total() > 0;
+  }
+
+  /** Sends the form: an update, or a create for a feed that only exists in the sheet. */
+  private saveRequest(): Observable<FeedResult> {
+    const feed = this.feed();
+    const fields = this.fields();
+    return feed
+      ? this.feeds.update(feed.id, fields)
+      : this.feeds.create(this.babyId!, 'breastfeed', fields, this.newId);
+  }
+
+  private showSaveErrors(allErrors: Partial<Record<string, string>>): void {
+    const { durations, endedOn, ...errors } = allErrors;
+    const durationError = durations ?? (endedOn ? 'endedOn' : null);
+    if (durationError) {
+      this.formError.set(DURATION_ERRORS[durationError] ?? 'feed.errors.unknown');
+      applyServerErrors(this.form, errors);
+      return;
+    }
+    this.showFormError(applyServerErrors(this.form, errors));
   }
 
   protected delete(): void {
@@ -288,20 +325,53 @@ export class BreastfeedSheetComponent {
   }
 
   /**
-   * Sends a timer tap and shows the feed the server answers with, or, when the tap is kept on the
-   * device, the feed as it will be once applied (`offline`, after the shared state applied it).
-   * `done` runs once the tap is accepted or kept.
+   * Sends a timer tap (built by `tap` once the changes Save would accept are saved, so the tap doesn't
+   * lose them; the sheet stays open) and shows the feed the server answers with, or, when the tap is
+   * kept on the device, the feed as it will be once applied (`offline`, after the shared state applied
+   * it). `done` runs once the tap is accepted or kept.
    */
   private send(
-    request: Observable<FeedResult>,
-    offline: () => Feed | undefined,
-    done: () => void = () => undefined,
+    tap: () => {
+      request: Observable<FeedResult>;
+      offline: () => Feed | undefined;
+      done?: () => void;
+    },
   ): void {
     if (this.busy()) {
       return;
     }
     this.busy.set(true);
     this.formError.set(null);
+    const changed =
+      !!this.typed() || Object.values(this.form.controls).some((control) => control.dirty);
+    const first = changed && this.saveable() ? this.saveRequest() : of(null as FeedResult | null);
+    first.subscribe((saved) => {
+      if (saved && !saved.ok) {
+        this.busy.set(false);
+        this.showSaveErrors(saved.errors);
+        return;
+      }
+      if (saved) {
+        this.typed.set(null);
+        Object.values(this.form.controls).forEach((control) => control.markAsPristine());
+        if (!saved.queued) {
+          this.sync.put(saved.feed);
+          this.show(saved.feed);
+        }
+      }
+      this.sendTap(tap());
+    });
+  }
+
+  private sendTap({
+    request,
+    offline,
+    done = () => undefined,
+  }: {
+    request: Observable<FeedResult>;
+    offline: () => Feed | undefined;
+    done?: () => void;
+  }): void {
     request.subscribe((result) => {
       this.busy.set(false);
       if (result.ok && result.queued) {
@@ -390,6 +460,20 @@ export class BreastfeedSheetComponent {
     }
   }
 
+  /** A side's duration: typed, running on from the start time on a live feed, or from the timers. */
+  private shown(side: BreastSide): number {
+    const typed = this.typed();
+    if (!typed) {
+      return this.seconds(side);
+    }
+    const start = this.startTime();
+    if (this.running() !== side || !start) {
+      return typed[side];
+    }
+    const other = typed[side === 'left' ? 'right' : 'left'];
+    return Math.max(0, Math.floor((this.now() - start.getTime()) / 1000) - other);
+  }
+
   private seconds(side: BreastSide): number {
     const feed = this.feed();
     return feed ? Math.floor(sideSeconds(feed, side, this.now())) : 0;
@@ -406,11 +490,12 @@ export class BreastfeedSheetComponent {
       startTime: value.startTime!.toISOString(),
       notes: value.notes.trim() || null,
     };
-    const typed = this.typed();
-    if (typed) {
+    if (this.typed()) {
+      const [left, right] = [this.left(), this.right()];
       const endedOn =
-        typed.left === 0 ? 'right' : typed.right === 0 ? 'left' : (value.endedOn ?? 'right');
-      fields.durations = { leftSeconds: typed.left, rightSeconds: typed.right, endedOn };
+        this.running() ??
+        (left === 0 ? 'right' : right === 0 ? 'left' : (value.endedOn ?? 'right'));
+      fields.durations = { leftSeconds: left, rightSeconds: right, endedOn };
     }
     return fields;
   }
