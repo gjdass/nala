@@ -417,6 +417,33 @@ public class FeedRepositoryTests
     }
 
     [Test]
+    public async Task Replacing_the_open_segment_of_a_live_feed_with_a_new_open_one_is_saved()
+    {
+        var added = await AddBreastfeedAsync(Now.AddMinutes(-20), null, null, (BreastSide.Left, 0, null));
+        var start = Now.AddMinutes(-15);
+        List<BreastFeedSegment> replacement = [];
+        await using (var db = _db())
+        {
+            var repository = new FeedRepository(db);
+            var feed = (await repository.GetAsync(added.Id))!;
+            replacement = Breastfeed.LiveSyntheticSegments(feed.Id, start, TimeSpan.FromMinutes(2), BreastSide.Left);
+            feed.StartTime = start;
+            feed.Segments.Clear();
+            feed.Segments.AddRange(replacement);
+            await repository.UpdateAsync(feed);
+        }
+
+        await using var read = _db();
+        var saved = (await new FeedRepository(read).GetEntryAsync(added.Id))!.Feed;
+
+        Assert.That(saved.Segments.Select(s => (s.Id, s.Side, s.StartedAt, s.EndedAt)), Is.EqualTo(new (Guid, BreastSide, DateTimeOffset, DateTimeOffset?)[]
+        {
+            (replacement[0].Id, BreastSide.Right, start, start.AddMinutes(2)),
+            (replacement[1].Id, BreastSide.Left, start.AddMinutes(2), null),
+        }));
+    }
+
+    [Test]
     public void A_feed_cannot_have_two_open_segments()
     {
         Assert.That(

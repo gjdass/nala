@@ -41,4 +41,22 @@ public static class Breastfeed
 
         return segments;
     }
+
+    /// <summary>
+    /// Durations typed on a live feed as segments: back to back from <paramref name="start"/>, the other side first
+    /// (left out at zero), then <paramref name="running"/> in an open segment, so it keeps running.
+    /// </summary>
+    public static List<BreastFeedSegment> LiveSyntheticSegments(
+        Guid feedId, DateTimeOffset start, TimeSpan other, BreastSide running)
+    {
+        var otherSide = running == BreastSide.Left ? BreastSide.Right : BreastSide.Left;
+        var segments = new List<BreastFeedSegment>();
+        if (other > TimeSpan.Zero)
+        {
+            segments.Add(new BreastFeedSegment { Id = Guid.NewGuid(), FeedId = feedId, Side = otherSide, StartedAt = start, EndedAt = start + other });
+        }
+
+        segments.Add(new BreastFeedSegment { Id = Guid.NewGuid(), FeedId = feedId, Side = running, StartedAt = start + other });
+        return segments;
+    }
 }

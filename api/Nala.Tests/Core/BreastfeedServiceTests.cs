@@ -406,19 +406,61 @@ public class BreastfeedServiceTests
     }
 
     [Test]
-    public async Task Typed_durations_save_a_breastfeed_in_progress()
+    public async Task Typed_durations_keep_a_live_breastfeed_running_on_its_side()
     {
         var feedId = Guid.NewGuid();
         await StartAsync(feedId, "left", At(200));
 
-        var result = await _service.UpdateAsync(_anna, feedId, Typed(900, 0, null, startedMinutesAgo: 200));
+        // Left typed at 15 min and Right at 2 min, now: the sheet sends the start time now − both sides.
+        var result = await _service.UpdateAsync(_anna, feedId, Typed(900, 120, "right", startedMinutesAgo: 17));
 
         var feed = ((UpdateFeedResult.Updated)result).Entry.Feed;
         Assert.Multiple(() =>
         {
-            Assert.That(feed.EndTime, Is.EqualTo(At(185)));
-            Assert.That(Breastfeed.RunningSide(feed), Is.Null);
-            Assert.That(Spans(feed), Is.EqualTo(new (BreastSide, DateTimeOffset, DateTimeOffset?)[] { (BreastSide.Left, At(200), At(185)) }));
+            Assert.That(feed.StartTime, Is.EqualTo(At(17)));
+            Assert.That(feed.EndTime, Is.Null);
+            Assert.That(Breastfeed.RunningSide(feed), Is.EqualTo(BreastSide.Left));
+            Assert.That(Breastfeed.SideDuration(feed, BreastSide.Left, Now), Is.EqualTo(TimeSpan.FromMinutes(15)));
+            Assert.That(Spans(feed), Is.EqualTo(new (BreastSide, DateTimeOffset, DateTimeOffset?)[]
+            {
+                (BreastSide.Right, At(17), At(15)),
+                (BreastSide.Left, At(15), null),
+            }));
+        });
+    }
+
+    [Test]
+    public async Task Typed_durations_keep_the_running_side_open_when_the_other_side_is_at_zero()
+    {
+        var feedId = Guid.NewGuid();
+        await StartAsync(feedId, "right", At(30));
+
+        var result = await _service.UpdateAsync(_anna, feedId, Typed(0, 600, null, startedMinutesAgo: 10));
+
+        var feed = ((UpdateFeedResult.Updated)result).Entry.Feed;
+        Assert.Multiple(() =>
+        {
+            Assert.That(feed.EndTime, Is.Null);
+            Assert.That(Spans(feed), Is.EqualTo(new (BreastSide, DateTimeOffset, DateTimeOffset?)[] { (BreastSide.Right, At(10), null) }));
+        });
+    }
+
+    [Test]
+    public async Task A_live_breastfeed_corrected_by_hand_can_switch_sides_and_stop()
+    {
+        var feedId = Guid.NewGuid();
+        await StartAsync(feedId, "left", At(200));
+        await _service.UpdateAsync(_anna, feedId, Typed(300, 0, null, startedMinutesAgo: 5));
+
+        await StartAsync(feedId, "right", At(2));
+        var result = await _service.StopSideAsync(_anna, feedId, Now);
+
+        var feed = FeedOf(result);
+        Assert.Multiple(() =>
+        {
+            Assert.That(feed.EndTime, Is.EqualTo(Now));
+            Assert.That(Breastfeed.SideDuration(feed, BreastSide.Left, Now), Is.EqualTo(TimeSpan.FromMinutes(3)));
+            Assert.That(Breastfeed.SideDuration(feed, BreastSide.Right, Now), Is.EqualTo(TimeSpan.FromMinutes(2)));
         });
     }
 

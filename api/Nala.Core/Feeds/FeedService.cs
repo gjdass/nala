@@ -130,7 +130,7 @@ public class FeedService(IFeedRepository feeds, IBabyRepository babies, TimeProv
 
     /// <summary>
     /// Replaces every field of the feed's kind; the baby and the kind never change. A breastfeed without typed durations
-    /// keeps its sides as they are, live or not; typed durations replace its segments, so it is no longer live.
+    /// keeps its sides as they are, live or not; typed durations replace its segments, and a live one keeps its side running.
     /// </summary>
     public async Task<UpdateFeedResult> UpdateAsync(User actor, Guid id, FeedInput input, CancellationToken cancellationToken = default)
     {
@@ -354,9 +354,17 @@ public class FeedService(IFeedRepository feeds, IBabyRepository babies, TimeProv
         {
             var left = TimeSpan.FromSeconds(durations.LeftSeconds!.Value);
             var right = TimeSpan.FromSeconds(durations.RightSeconds!.Value);
+            var running = Breastfeed.RunningSide(feed);
             feed.Segments.Clear();
-            feed.Segments.AddRange(Breastfeed.SyntheticSegments(feed.Id, feed.StartTime, left, right, FeedFields.EndedOn(durations)));
-            feed.EndTime = feed.StartTime + left + right;
+            if (running is { } side)
+            {
+                feed.Segments.AddRange(Breastfeed.LiveSyntheticSegments(feed.Id, feed.StartTime, side == BreastSide.Left ? right : left, side));
+            }
+            else
+            {
+                feed.Segments.AddRange(Breastfeed.SyntheticSegments(feed.Id, feed.StartTime, left, right, FeedFields.EndedOn(durations)));
+                feed.EndTime = feed.StartTime + left + right;
+            }
         }
         else if (feed.Kind == FeedKind.Bottle)
         {
