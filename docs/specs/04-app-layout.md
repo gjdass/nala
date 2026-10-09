@@ -291,11 +291,11 @@ Hold for every section with timers (Feed's breastfeed, Sleep, Pump); each covers
 - [x] If the session has expired while entries are queued, the queue is kept on the device; it is sent after the user logs in again, as the same user only.
 
 ### Refresh on return
-- [ ] Coming back to the app after at least 30 s away, or the network coming back, sends the reload signal; coming back sooner sends nothing; nothing is sent while signed out.
-- [ ] Changes kept on the device reaching the server send the reload signal; coming back while changes wait sends nothing until the queue is sent.
-- [ ] On the reload signal every home card reloads its entries, keeping the ones shown until the new ones arrive.
-- [ ] On the reload signal the open history list loads again from the first page.
-- [ ] On the reload signal the home page reloads the babies and the section preferences, and the history page reloads the babies; babies that didn't change keep the same selected baby (the cards don't reload again).
+- [x] Coming back to the app after at least 30 s away, or the network coming back, sends the reload signal; coming back sooner sends nothing; nothing is sent while signed out.
+- [x] Changes kept on the device reaching the server send the reload signal; coming back while changes wait sends nothing until the queue is sent.
+- [x] On the reload signal every home card reloads its entries, keeping the ones shown until the new ones arrive.
+- [x] On the reload signal the open history list loads again from the first page.
+- [x] On the reload signal the home page reloads the babies and the section preferences, and the history page reloads the babies; babies that didn't change keep the same selected baby (the cards don't reload again).
 
 ### Bottom navigation bar
 - [x] Every signed-in screen shows the floating bottom navigation bar with Dashboard, History, Trends and Settings, in that order, icons only with their names as accessible names; the current destination is marked active.

@@ -4,6 +4,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { BabySheetResult } from '../../core/babies/baby.models';
 import { SelectedBabyService } from '../../core/babies/selected-baby.service';
+import { onReload } from '../../core/refresh/data-refresh.service';
 import { SECTIONS, SectionDefinition } from '../../core/sections/section.models';
 import { SectionPreferencesService } from '../../core/sections/section-preferences.service';
 import { EmptyStateComponent } from '../../shared/ui/empty-state/empty-state.component';
@@ -14,7 +15,8 @@ import { LoadComponentPipe } from '../../core/sections/load-component.pipe';
 
 /**
  * The top bar with the selected baby, then one card per visible built section in the user's order;
- * until the family has a baby, only the invitation to add one.
+ * until the family has a baby, only the invitation to add one. The babies and the section preferences
+ * load again on the reload signal (spec 04 Refresh on return).
  */
 @Component({
   selector: 'nala-home',
@@ -47,8 +49,12 @@ export class HomePage {
   );
 
   constructor() {
-    this.store.refresh();
-    this.preferences.load();
+    const load = () => {
+      this.store.refresh();
+      this.preferences.load();
+    };
+    load();
+    onReload(load);
   }
 
   protected addBaby(): void {

@@ -7,7 +7,9 @@ import { Subject } from 'rxjs';
 import en from '../../../../public/i18n/en.json';
 import { BabiesResult, Baby } from '../../core/babies/baby.models';
 import { BabyService } from '../../core/babies/baby.service';
+import { DataRefreshService } from '../../core/refresh/data-refresh.service';
 import { SECTIONS } from '../../core/sections/section.models';
+import { fakeDataRefresh } from '../../testing/data-refresh';
 import { fakeSection } from '../../testing/fake-section';
 import { translocoTesting } from '../../testing/transloco-testing';
 import { HistoryPage } from './history.page';
@@ -26,6 +28,7 @@ describe('HistoryPage', () => {
   let harness: RouterTestingHarness;
   let babiesLoaded: Subject<BabiesResult>;
   let list: ReturnType<typeof vi.fn>;
+  let refresh: ReturnType<typeof fakeDataRefresh>;
 
   const lea: Baby = {
     id: 'b1',
@@ -49,6 +52,7 @@ describe('HistoryPage', () => {
     localStorage.clear();
     babiesLoaded = new Subject<BabiesResult>();
     list = vi.fn(() => babiesLoaded);
+    refresh = fakeDataRefresh();
     await TestBed.configureTestingModule({
       imports: [translocoTesting()],
       providers: [
@@ -66,10 +70,21 @@ describe('HistoryPage', () => {
           ],
         },
         { provide: BabyService, useValue: { list } },
+        { provide: DataRefreshService, useValue: refresh },
       ],
     }).compileComponents();
     harness = await RouterTestingHarness.create();
     await harness.navigateByUrl('/history/feed', HistoryPage);
+  });
+
+  it('reloads the babies on the reload signal', async () => {
+    await load({ ok: true, babies: [lea] });
+    list.mockClear();
+
+    refresh.reload.set(1);
+    await harness.fixture.whenStable();
+
+    expect(list).toHaveBeenCalledTimes(1);
   });
 
   it("uses the section's colour scheme for the whole page", () => {
