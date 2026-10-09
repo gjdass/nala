@@ -5,13 +5,13 @@ import { Baby, BabySheetResult } from '../../../core/babies/baby.models';
 import { SelectedBabyService } from '../../../core/babies/selected-baby.service';
 import { GrowthEntry } from '../../../core/growth-entries/growth-entry.models';
 import { GrowthEntryService } from '../../../core/growth-entries/growth-entry.service';
-import { OfflineQueueService } from '../../../core/offline/offline-queue.service';
+import { DataRefreshService } from '../../../core/refresh/data-refresh.service';
 import { HistoryPage } from '../../../core/sections/section.models';
 import { EntrySheetResult } from '../../../shared/ui/entry-sheet/entry-sheet.models';
 import { EntrySheetService } from '../../../shared/ui/entry-sheet/entry-sheet.service';
 import { SheetService } from '../../../shared/ui/sheet/sheet.service';
 import { aGrowthEntry } from '../../../testing/growth-entries';
-import { fakeOfflineQueue } from '../../../testing/offline-queue';
+import { fakeDataRefresh } from '../../../testing/data-refresh';
 import { translocoTesting } from '../../../testing/transloco-testing';
 import { BabySheetComponent } from '../../babies/baby-sheet/baby-sheet.component';
 import { GrowthHistoryComponent } from './growth-history.component';
@@ -53,7 +53,7 @@ describe('GrowthHistoryComponent', () => {
   let selected: ReturnType<typeof signal<Baby | null>>;
   let edited: Subject<EntrySheetResult | undefined>;
   let entrySheets: { edit: ReturnType<typeof vi.fn> };
-  let queue: ReturnType<typeof fakeOfflineQueue>;
+  let refresh: ReturnType<typeof fakeDataRefresh>;
   let babySheet: Subject<BabySheetResult | undefined>;
   let sheets: { open: ReturnType<typeof vi.fn> };
   let store: {
@@ -81,7 +81,7 @@ describe('GrowthHistoryComponent', () => {
     selected = signal<Baby | null>(baby('b1'));
     edited = new Subject();
     entrySheets = { edit: vi.fn(() => edited) };
-    queue = fakeOfflineQueue();
+    refresh = fakeDataRefresh();
     babySheet = new Subject();
     sheets = { open: vi.fn(() => babySheet) };
     store = { selected, update: vi.fn(), remove: vi.fn() };
@@ -92,7 +92,7 @@ describe('GrowthHistoryComponent', () => {
         { provide: SelectedBabyService, useValue: store },
         { provide: SheetService, useValue: sheets },
         { provide: EntrySheetService, useValue: entrySheets },
-        { provide: OfflineQueueService, useValue: queue },
+        { provide: DataRefreshService, useValue: refresh },
       ],
     }).compileComponents();
     fixture = TestBed.createComponent(GrowthHistoryComponent);
@@ -157,11 +157,11 @@ describe('GrowthHistoryComponent', () => {
     expect(summaries()).toEqual(['Head 38.0 cm']);
   });
 
-  it('starts again from the first page once changes kept on the device have been sent', async () => {
+  it('starts again from the first page on the reload signal', async () => {
     pages[0].next({ entries: [entryOf('g1', 38)], next: null });
     await fixture.whenStable();
 
-    queue.sent.set(1);
+    refresh.reload.set(1);
     await fixture.whenStable();
 
     expect(growthEntries.page).toHaveBeenCalledTimes(2);

@@ -11,7 +11,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { Subscription, filter } from 'rxjs';
 import { SelectedBabyService } from '../../../core/babies/selected-baby.service';
-import { OfflineQueueService } from '../../../core/offline/offline-queue.service';
+import { onReload } from '../../../core/refresh/data-refresh.service';
 import { loadRecentEntries } from '../../../core/sections/recent-entries';
 import { Sleep } from '../../../core/sleeps/sleep.models';
 import { SleepService } from '../../../core/sleeps/sleep.service';
@@ -37,8 +37,8 @@ import { SleepEntryComponent } from '../sleep-entry/sleep-entry.component';
  * the card, spec 04): the timer button opens it; a sleep live for more than 12 hours shows "Still
  * sleeping?", whose Review opens it. The live sleep is listed as
  * the shared state has it now, and the card reloads when a sleep becomes live or stops anywhere.
- * Reloads after an entry is added, edited or deleted, when another baby is selected, and once changes
- * kept on the device (offline) have been sent.
+ * Reloads after an entry is added, edited or deleted, when another baby is selected, and
+ * on the reload signal (spec 04 Refresh on return).
  */
 @Component({
   selector: 'nala-sleep-card',
@@ -62,7 +62,6 @@ export class SleepCardComponent {
   private readonly entrySheets = inject(EntrySheetService);
   private readonly store = inject(SelectedBabyService);
   private readonly now = inject(NowService).now;
-  private readonly queue = inject(OfflineQueueService);
   private readonly sync = inject(SleepSyncService);
 
   /** Newest first; null while loading. */
@@ -114,17 +113,7 @@ export class SleepCardComponent {
         }
       });
     });
-    // Changes kept on the device (offline) have reached the server.
-    let sent = this.queue.sent();
-    effect(() => {
-      const now = this.queue.sent();
-      untracked(() => {
-        if (now !== sent) {
-          sent = now;
-          this.reload();
-        }
-      });
-    });
+    onReload(() => this.reload());
     // A sleep became live or stopped on any device: listed from its first Start, then the highlight
     // follows its end.
     let shown: { babyId: string; id: string | null } | null = null;

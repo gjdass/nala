@@ -3,13 +3,13 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Observable, Subject } from 'rxjs';
 import { Baby } from '../../../core/babies/baby.models';
 import { SelectedBabyService } from '../../../core/babies/selected-baby.service';
-import { OfflineQueueService } from '../../../core/offline/offline-queue.service';
+import { DataRefreshService } from '../../../core/refresh/data-refresh.service';
 import { HistoryPage } from '../../../core/sections/section.models';
 import { Sleep } from '../../../core/sleeps/sleep.models';
 import { SleepService } from '../../../core/sleeps/sleep.service';
 import { EntrySheetResult } from '../../../shared/ui/entry-sheet/entry-sheet.models';
 import { EntrySheetService } from '../../../shared/ui/entry-sheet/entry-sheet.service';
-import { fakeOfflineQueue } from '../../../testing/offline-queue';
+import { fakeDataRefresh } from '../../../testing/data-refresh';
 import { aSleep } from '../../../testing/sleeps';
 import { translocoTesting } from '../../../testing/transloco-testing';
 import { SleepHistoryComponent } from './sleep-history.component';
@@ -46,7 +46,7 @@ describe('SleepHistoryComponent', () => {
   let selected: ReturnType<typeof signal<Baby | null>>;
   let edited: Subject<EntrySheetResult | undefined>;
   let entrySheets: { edit: ReturnType<typeof vi.fn> };
-  let queue: ReturnType<typeof fakeOfflineQueue>;
+  let refresh: ReturnType<typeof fakeDataRefresh>;
 
   const host = () => fixture.nativeElement as HTMLElement;
   const durations = () =>
@@ -67,14 +67,14 @@ describe('SleepHistoryComponent', () => {
     selected = signal<Baby | null>(baby('b1'));
     edited = new Subject();
     entrySheets = { edit: vi.fn(() => edited) };
-    queue = fakeOfflineQueue();
+    refresh = fakeDataRefresh();
     await TestBed.configureTestingModule({
       imports: [SleepHistoryComponent, translocoTesting()],
       providers: [
         { provide: SleepService, useValue: sleeps },
         { provide: SelectedBabyService, useValue: { selected } },
         { provide: EntrySheetService, useValue: entrySheets },
-        { provide: OfflineQueueService, useValue: queue },
+        { provide: DataRefreshService, useValue: refresh },
       ],
     }).compileComponents();
     fixture = TestBed.createComponent(SleepHistoryComponent);
@@ -130,11 +130,11 @@ describe('SleepHistoryComponent', () => {
     expect(durations()).toEqual(['1h']);
   });
 
-  it('starts again from the first page once changes kept on the device have been sent', async () => {
+  it('starts again from the first page on the reload signal', async () => {
     pages[0].next({ entries: [sleepOf('s1', 1)], next: null });
     await fixture.whenStable();
 
-    queue.sent.set(1);
+    refresh.reload.set(1);
     await fixture.whenStable();
 
     expect(sleeps.page).toHaveBeenCalledTimes(2);

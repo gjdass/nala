@@ -3,8 +3,9 @@ import { TestBed } from '@angular/core/testing';
 import { AuthState } from '../auth/auth.models';
 import { AuthService } from '../auth/auth.service';
 import { OfflineQueueService } from '../offline/offline-queue.service';
+import { fakeDataRefresh } from '../../testing/data-refresh';
 import { fakeOfflineQueue } from '../../testing/offline-queue';
-import { DataRefreshService, RESUME_AWAY_MS } from './data-refresh.service';
+import { DataRefreshService, RESUME_AWAY_MS, onReload } from './data-refresh.service';
 
 const signedIn: AuthState = {
   setupRequired: false,
@@ -131,5 +132,33 @@ describe('DataRefreshService', () => {
     window.dispatchEvent(new Event('online'));
 
     expect(service.reload()).toBe(0);
+  });
+});
+
+describe('onReload()', () => {
+  let refresh: ReturnType<typeof fakeDataRefresh>;
+  let reloaded: ReturnType<typeof vi.fn<() => void>>;
+
+  beforeEach(() => {
+    refresh = fakeDataRefresh();
+    reloaded = vi.fn<() => void>();
+    TestBed.configureTestingModule({
+      providers: [{ provide: DataRefreshService, useValue: refresh }],
+    });
+    TestBed.runInInjectionContext(() => onReload(reloaded));
+    TestBed.tick();
+  });
+
+  it('does not call back on its own', () => {
+    expect(reloaded).not.toHaveBeenCalled();
+  });
+
+  it('calls back once per reload signal', () => {
+    refresh.reload.set(1);
+    TestBed.tick();
+    refresh.reload.set(2);
+    TestBed.tick();
+
+    expect(reloaded).toHaveBeenCalledTimes(2);
   });
 });

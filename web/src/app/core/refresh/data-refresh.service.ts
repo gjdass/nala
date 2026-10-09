@@ -69,3 +69,18 @@ export class DataRefreshService {
     }
   }
 }
+
+/** Calls `reload` on each reload signal (not at once). Call it in an injection context. */
+export function onReload(reload: () => void): void {
+  const signal = inject(DataRefreshService).reload;
+  let seen = signal();
+  effect(() => {
+    const now = signal();
+    untracked(() => {
+      if (now !== seen) {
+        seen = now;
+        reload();
+      }
+    });
+  });
+}

@@ -7,12 +7,12 @@ import { Baby } from '../../../core/babies/baby.models';
 import { SelectedBabyService } from '../../../core/babies/selected-baby.service';
 import { Diaper } from '../../../core/diapers/diaper.models';
 import { DiaperService } from '../../../core/diapers/diaper.service';
-import { OfflineQueueService } from '../../../core/offline/offline-queue.service';
+import { DataRefreshService } from '../../../core/refresh/data-refresh.service';
 import { HistoryPage } from '../../../core/sections/section.models';
 import { EntrySheetResult } from '../../../shared/ui/entry-sheet/entry-sheet.models';
 import { EntrySheetService } from '../../../shared/ui/entry-sheet/entry-sheet.service';
 import { aDiaper } from '../../../testing/diapers';
-import { fakeOfflineQueue } from '../../../testing/offline-queue';
+import { fakeDataRefresh } from '../../../testing/data-refresh';
 import { translocoTesting } from '../../../testing/transloco-testing';
 import { DiaperCardComponent } from './diaper-card.component';
 
@@ -29,7 +29,7 @@ describe('DiaperCardComponent', () => {
   let selected: ReturnType<typeof signal<Baby | null>>;
   let edited: Subject<EntrySheetResult | undefined>;
   let entrySheets: { add: ReturnType<typeof vi.fn>; edit: ReturnType<typeof vi.fn> };
-  let queue: ReturnType<typeof fakeOfflineQueue>;
+  let refresh: ReturnType<typeof fakeDataRefresh>;
 
   const host = () => fixture.nativeElement as HTMLElement;
   const find = (testId: string) => host().querySelector<HTMLElement>(`[data-testid="${testId}"]`);
@@ -54,7 +54,7 @@ describe('DiaperCardComponent', () => {
     selected = signal<Baby | null>(baby('b1'));
     edited = new Subject();
     entrySheets = { add: vi.fn(() => of({ saved: aDiaper() })), edit: vi.fn(() => edited) };
-    queue = fakeOfflineQueue();
+    refresh = fakeDataRefresh();
     await TestBed.configureTestingModule({
       imports: [DiaperCardComponent, translocoTesting()],
       providers: [
@@ -62,7 +62,7 @@ describe('DiaperCardComponent', () => {
         { provide: DiaperService, useValue: diapers },
         { provide: SelectedBabyService, useValue: { selected } },
         { provide: EntrySheetService, useValue: entrySheets },
-        { provide: OfflineQueueService, useValue: queue },
+        { provide: DataRefreshService, useValue: refresh },
       ],
     }).compileComponents();
     fixture = TestBed.createComponent(DiaperCardComponent);
@@ -190,13 +190,16 @@ describe('DiaperCardComponent', () => {
     expect(diapers.page).toHaveBeenCalledTimes(2);
   });
 
-  it('reloads once changes kept on the device have been sent', async () => {
-    await respond([]);
+  it('reloads on the reload signal, keeping the diapers shown until the new ones arrive', async () => {
+    await respond([diaper('d1', 30)]);
 
-    queue.sent.set(1);
+    refresh.reload.set(1);
     await fixture.whenStable();
 
     expect(diapers.page).toHaveBeenCalledTimes(2);
+    expect(text('diaper-since')).toBe('30m');
+    await respond([diaper('d2', 10), diaper('d1', 30)]);
+    expect(text('diaper-since')).toBe('10m');
   });
 
   it('reloads for the baby switched to', async () => {
