@@ -11,7 +11,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { Subscription, filter } from 'rxjs';
 import { SelectedBabyService } from '../../../core/babies/selected-baby.service';
-import { OfflineQueueService } from '../../../core/offline/offline-queue.service';
+import { onReload } from '../../../core/refresh/data-refresh.service';
 import { pumpTotalMl } from '../../../core/pumps/pump';
 import { Pump } from '../../../core/pumps/pump.models';
 import { PumpService } from '../../../core/pumps/pump.service';
@@ -40,8 +40,8 @@ import { PumpEntryComponent } from '../pump-entry/pump-entry.component';
  * the card, spec 04): the timer button opens it; a session live for more than 1 hour shows "Still
  * pumping?", whose Review opens it. The live session is listed as the shared state has it now, and the
  * card reloads when a session becomes live or stops anywhere. Reloads after an entry is added, edited
- * or deleted, when another baby is selected, and once changes kept on the device (offline) have been
- * sent.
+ * or deleted, when another baby is selected, and
+ * on the reload signal (spec 04 Refresh on return).
  */
 @Component({
   selector: 'nala-pump-card',
@@ -65,7 +65,6 @@ export class PumpCardComponent {
   private readonly entrySheets = inject(EntrySheetService);
   private readonly store = inject(SelectedBabyService);
   private readonly now = inject(NowService).now;
-  private readonly queue = inject(OfflineQueueService);
   private readonly sync = inject(PumpSyncService);
 
   /** Newest first; null while loading. */
@@ -116,17 +115,7 @@ export class PumpCardComponent {
         }
       });
     });
-    // Changes kept on the device (offline) have reached the server.
-    let sent = this.queue.sent();
-    effect(() => {
-      const now = this.queue.sent();
-      untracked(() => {
-        if (now !== sent) {
-          sent = now;
-          this.reload();
-        }
-      });
-    });
+    onReload(() => this.reload());
     // A session became live or stopped on any device: listed from its first Start, then the
     // highlight follows its end.
     let shown: { babyId: string; id: string | null } | null = null;

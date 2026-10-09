@@ -3,13 +3,13 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Observable, Subject } from 'rxjs';
 import { Baby } from '../../../core/babies/baby.models';
 import { SelectedBabyService } from '../../../core/babies/selected-baby.service';
-import { OfflineQueueService } from '../../../core/offline/offline-queue.service';
+import { DataRefreshService } from '../../../core/refresh/data-refresh.service';
 import { HistoryPage } from '../../../core/sections/section.models';
 import { HealthEntry } from '../../../core/health-entries/health-entry.models';
 import { HealthEntryService } from '../../../core/health-entries/health-entry.service';
 import { EntrySheetResult } from '../../../shared/ui/entry-sheet/entry-sheet.models';
 import { EntrySheetService } from '../../../shared/ui/entry-sheet/entry-sheet.service';
-import { fakeOfflineQueue } from '../../../testing/offline-queue';
+import { fakeDataRefresh } from '../../../testing/data-refresh';
 import { aHealthEntry } from '../../../testing/health-entries';
 import { translocoTesting } from '../../../testing/transloco-testing';
 import { HealthHistoryComponent } from './health-history.component';
@@ -42,7 +42,7 @@ describe('HealthHistoryComponent', () => {
   let selected: ReturnType<typeof signal<Baby | null>>;
   let edited: Subject<EntrySheetResult | undefined>;
   let entrySheets: { edit: ReturnType<typeof vi.fn> };
-  let queue: ReturnType<typeof fakeOfflineQueue>;
+  let refresh: ReturnType<typeof fakeDataRefresh>;
 
   const host = () => fixture.nativeElement as HTMLElement;
   const notes = () =>
@@ -61,14 +61,14 @@ describe('HealthHistoryComponent', () => {
     selected = signal<Baby | null>(baby('b1'));
     edited = new Subject();
     entrySheets = { edit: vi.fn(() => edited) };
-    queue = fakeOfflineQueue();
+    refresh = fakeDataRefresh();
     await TestBed.configureTestingModule({
       imports: [HealthHistoryComponent, translocoTesting()],
       providers: [
         { provide: HealthEntryService, useValue: healthEntries },
         { provide: SelectedBabyService, useValue: { selected } },
         { provide: EntrySheetService, useValue: entrySheets },
-        { provide: OfflineQueueService, useValue: queue },
+        { provide: DataRefreshService, useValue: refresh },
       ],
     }).compileComponents();
     fixture = TestBed.createComponent(HealthHistoryComponent);
@@ -124,11 +124,11 @@ describe('HealthHistoryComponent', () => {
     expect(notes()).toEqual(['1h']);
   });
 
-  it('starts again from the first page once changes kept on the device have been sent', async () => {
+  it('starts again from the first page on the reload signal', async () => {
     pages[0].next({ entries: [healthEntryOf('d1', '1h')], next: null });
     await fixture.whenStable();
 
-    queue.sent.set(1);
+    refresh.reload.set(1);
     await fixture.whenStable();
 
     expect(healthEntries.page).toHaveBeenCalledTimes(2);

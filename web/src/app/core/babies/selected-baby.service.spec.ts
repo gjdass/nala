@@ -122,6 +122,27 @@ describe('SelectedBabyService', () => {
     expect(store.selected()).toEqual(tom);
   });
 
+  it('keeps the selected baby as it was when the reloaded babies did not change', () => {
+    const store = loaded({ ok: true, babies: [tom, lea] });
+    const before = store.selected();
+
+    store.refresh();
+    listed.next({ ok: true, babies: [{ ...tom }, { ...lea }] });
+
+    expect(store.selected()).toBe(before);
+  });
+
+  it('takes a baby changed elsewhere when reloaded', () => {
+    const store = loaded({ ok: true, babies: [tom, lea] });
+    const renamed = { ...tom, name: 'Tommy' };
+
+    store.refresh();
+    listed.next({ ok: true, babies: [renamed, { ...lea }] });
+
+    expect(store.selected()).toEqual(renamed);
+    expect(store.babies()).toEqual([renamed, lea]);
+  });
+
   it('reports a load error', () => {
     const store = loaded({ ok: false, errors: { form: 'unknown' } });
 

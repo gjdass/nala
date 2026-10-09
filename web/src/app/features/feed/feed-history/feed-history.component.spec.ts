@@ -8,9 +8,9 @@ import { FeedService } from '../../../core/feeds/feed.service';
 import { HistoryPage } from '../../../core/sections/section.models';
 import { EntrySheetResult } from '../../../shared/ui/entry-sheet/entry-sheet.models';
 import { EntrySheetService } from '../../../shared/ui/entry-sheet/entry-sheet.service';
-import { OfflineQueueService } from '../../../core/offline/offline-queue.service';
+import { DataRefreshService } from '../../../core/refresh/data-refresh.service';
 import { aBottle } from '../../../testing/feeds';
-import { fakeOfflineQueue } from '../../../testing/offline-queue';
+import { fakeDataRefresh } from '../../../testing/data-refresh';
 import { translocoTesting } from '../../../testing/transloco-testing';
 import { FeedHistoryComponent } from './feed-history.component';
 
@@ -39,7 +39,7 @@ describe('FeedHistoryComponent', () => {
   let selected: ReturnType<typeof signal<Baby | null>>;
   let edited: Subject<EntrySheetResult | undefined>;
   let entrySheets: { edit: ReturnType<typeof vi.fn> };
-  let queue: ReturnType<typeof fakeOfflineQueue>;
+  let refresh: ReturnType<typeof fakeDataRefresh>;
 
   const host = () => fixture.nativeElement as HTMLElement;
   const summaries = () =>
@@ -58,14 +58,14 @@ describe('FeedHistoryComponent', () => {
     selected = signal<Baby | null>(baby('b1'));
     edited = new Subject();
     entrySheets = { edit: vi.fn(() => edited) };
-    queue = fakeOfflineQueue();
+    refresh = fakeDataRefresh();
     await TestBed.configureTestingModule({
       imports: [FeedHistoryComponent, translocoTesting()],
       providers: [
         { provide: FeedService, useValue: feeds },
         { provide: SelectedBabyService, useValue: { selected } },
         { provide: EntrySheetService, useValue: entrySheets },
-        { provide: OfflineQueueService, useValue: queue },
+        { provide: DataRefreshService, useValue: refresh },
       ],
     }).compileComponents();
     fixture = TestBed.createComponent(FeedHistoryComponent);
@@ -110,11 +110,11 @@ describe('FeedHistoryComponent', () => {
     expect(feeds.page).toHaveBeenCalledTimes(1);
   });
 
-  it('starts again from the first page once changes kept on the device have been sent', async () => {
+  it('starts again from the first page on the reload signal', async () => {
     pages[0].next({ entries: [aBottle()], next: null });
     await fixture.whenStable();
 
-    queue.sent.set(1);
+    refresh.reload.set(1);
     await fixture.whenStable();
 
     expect(feeds.page).toHaveBeenCalledTimes(2);

@@ -28,13 +28,22 @@ export class SelectedBabyService {
     return babies.find((b) => b.id === this.storedId()) ?? babies[0] ?? null;
   });
 
-  /** Loads the babies and restores this device's choice. */
+  /**
+   * Loads the babies and restores this device's choice. A baby that didn't change stays the same
+   * object, so reloading leaves the selected baby (and what follows it) as it was.
+   */
   refresh(): void {
     this.api.list().subscribe((result) => {
       if (result.ok) {
+        const known = new Map((this.list() ?? []).map((b) => [b.id, b]));
+        const same = (a: Baby, b: Baby | undefined) => JSON.stringify(a) === JSON.stringify(b);
         this.storedId.set(this.readStored());
         this.loadError.set(false);
-        this.list.set(result.babies);
+        this.list.set(
+          result.babies.map((baby) =>
+            same(baby, known.get(baby.id)) ? known.get(baby.id)! : baby,
+          ),
+        );
       } else {
         this.loadError.set(true);
       }

@@ -3,7 +3,7 @@ import { filter } from 'rxjs';
 import { SelectedBabyService } from '../../../core/babies/selected-baby.service';
 import { Feed } from '../../../core/feeds/feed.models';
 import { FeedService } from '../../../core/feeds/feed.service';
-import { OfflineQueueService } from '../../../core/offline/offline-queue.service';
+import { DataRefreshService } from '../../../core/refresh/data-refresh.service';
 import { HistoryPageLoader } from '../../../core/sections/section.models';
 import { EntrySheetResult } from '../../../shared/ui/entry-sheet/entry-sheet.models';
 import { EntrySheetService } from '../../../shared/ui/entry-sheet/entry-sheet.service';
@@ -13,8 +13,8 @@ import { FeedEntryComponent } from '../feed-entry/feed-entry.component';
 
 /**
  * The Feed history page's list (spec 05): the selected baby's feeds page by page, newest first; an
- * entry edited or deleted from it is updated in place. Loads again from the first page once changes
- * kept on the device (offline) have been sent.
+ * entry edited or deleted from it is updated in place. Loads again from the first page
+ * on the reload signal (spec 04 Refresh on return).
  */
 @Component({
   selector: 'nala-feed-history',
@@ -26,13 +26,13 @@ export class FeedHistoryComponent {
   private readonly feeds = inject(FeedService);
   private readonly entrySheets = inject(EntrySheetService);
   private readonly store = inject(SelectedBabyService);
-  private readonly queue = inject(OfflineQueueService);
+  private readonly refresh = inject(DataRefreshService);
   private readonly list = viewChild<HistoryListComponent<Feed>>(HistoryListComponent);
 
   protected readonly loader = computed((): HistoryPageLoader<Feed> | null => {
     const babyId = this.store.selected()?.id;
-    // A new loader starts again from the first page, e.g. once changes made offline were sent.
-    this.queue.sent();
+    // A new loader starts again from the first page, e.g. on the reload signal.
+    this.refresh.reload();
     return babyId ? (cursor) => this.feeds.page(babyId, cursor) : null;
   });
 

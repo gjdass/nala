@@ -14,7 +14,7 @@ import { SelectedBabyService } from '../../../core/babies/selected-baby.service'
 import { diaperType } from '../../../core/diapers/diaper';
 import { Diaper } from '../../../core/diapers/diaper.models';
 import { DiaperService } from '../../../core/diapers/diaper.service';
-import { OfflineQueueService } from '../../../core/offline/offline-queue.service';
+import { onReload } from '../../../core/refresh/data-refresh.service';
 import { loadRecentEntries } from '../../../core/sections/recent-entries';
 import { HighlightDurationPipe } from '../../../core/time/highlight-duration';
 import { NowService } from '../../../core/time/now.service';
@@ -29,8 +29,8 @@ import { DiaperEntryComponent } from '../diaper-entry/diaper-entry.component';
  * most recent) in the shared section card, with "Last change" and the time since the most recent
  * diaper (in hours and minutes only, see `HighlightDurationPipe`), on the right that diaper's type,
  * marked "Rash" when it had one, or an empty state without any diaper. Reloads after an entry is
- * added, edited or deleted, when another baby is selected, and once changes kept on the device
- * (offline) have been sent.
+ * added, edited or deleted, when another baby is selected, and
+ * on the reload signal (spec 04 Refresh on return).
  */
 @Component({
   selector: 'nala-diaper-card',
@@ -52,7 +52,6 @@ export class DiaperCardComponent {
   private readonly entrySheets = inject(EntrySheetService);
   private readonly store = inject(SelectedBabyService);
   private readonly now = inject(NowService).now;
-  private readonly queue = inject(OfflineQueueService);
 
   /** Newest first; null while loading. */
   protected readonly entries = signal<readonly Diaper[] | null>(null);
@@ -85,17 +84,7 @@ export class DiaperCardComponent {
         }
       });
     });
-    // Changes kept on the device (offline) have reached the server.
-    let sent = this.queue.sent();
-    effect(() => {
-      const now = this.queue.sent();
-      untracked(() => {
-        if (now !== sent) {
-          sent = now;
-          this.reload();
-        }
-      });
-    });
+    onReload(() => this.reload());
   }
 
   protected reload(): void {

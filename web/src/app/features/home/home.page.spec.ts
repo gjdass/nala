@@ -5,9 +5,11 @@ import { Subject } from 'rxjs';
 import en from '../../../../public/i18n/en.json';
 import { BabiesResult, Baby, BabySheetResult } from '../../core/babies/baby.models';
 import { BabyService } from '../../core/babies/baby.service';
+import { DataRefreshService } from '../../core/refresh/data-refresh.service';
 import { SECTIONS, SectionDefinition, SectionPreference } from '../../core/sections/section.models';
 import { SectionPreferencesService } from '../../core/sections/section-preferences.service';
 import { SheetService } from '../../shared/ui/sheet/sheet.service';
+import { fakeDataRefresh } from '../../testing/data-refresh';
 import { translocoTesting } from '../../testing/transloco-testing';
 import { BabySheetComponent } from '../babies/baby-sheet/baby-sheet.component';
 import { HomePage } from './home.page';
@@ -40,6 +42,7 @@ describe('HomePage', () => {
   let babiesLoaded: Subject<BabiesResult>;
   let sheetClosed: Subject<BabySheetResult | undefined>;
   let sheet: { open: ReturnType<typeof vi.fn> };
+  let refresh: ReturnType<typeof fakeDataRefresh>;
 
   const lea: Baby = {
     id: 'b1',
@@ -104,6 +107,7 @@ describe('HomePage', () => {
     babiesLoaded = new Subject<BabiesResult>();
     sheetClosed = new Subject<BabySheetResult | undefined>();
     sheet = { open: vi.fn(() => sheetClosed) };
+    refresh = fakeDataRefresh();
     await TestBed.configureTestingModule({
       imports: [HomePage, translocoTesting()],
       providers: [
@@ -115,10 +119,22 @@ describe('HomePage', () => {
         },
         { provide: BabyService, useValue: { list: () => babiesLoaded } },
         { provide: SheetService, useValue: sheet },
+        { provide: DataRefreshService, useValue: refresh },
       ],
     }).compileComponents();
     fixture = TestBed.createComponent(HomePage);
     await fixture.whenStable();
+  });
+
+  it('reloads the babies and the section preferences on the reload signal', async () => {
+    const list = vi.spyOn(TestBed.inject(BabyService), 'list');
+    loadSections.mockClear();
+
+    refresh.reload.set(1);
+    await fixture.whenStable();
+
+    expect(list).toHaveBeenCalledTimes(1);
+    expect(loadSections).toHaveBeenCalledTimes(1);
   });
 
   it('shows the top bar, whatever the babies', () => {

@@ -17,7 +17,7 @@ import {
 } from '../../../core/growth-entries/growth-entry.models';
 import { GrowthEntryService } from '../../../core/growth-entries/growth-entry.service';
 import { MeasurementPipe, localDate } from '../../../core/growth-entries/measurement';
-import { OfflineQueueService } from '../../../core/offline/offline-queue.service';
+import { onReload } from '../../../core/refresh/data-refresh.service';
 import { loadRecentEntries } from '../../../core/sections/recent-entries';
 import { EntryDatePipe } from '../../../core/time/entry-time';
 import { EmptyStateComponent } from '../../../shared/ui/empty-state/empty-state.component';
@@ -40,8 +40,8 @@ interface Measure {
  * latest weight, length and head circumference side by side (each from its latest measurement or the
  * birth profile, its date or "Birth" under it, "—" without a value), or the empty state when the baby
  * has no value at all. Without the latest values (offline), the entries show without a highlight.
- * Reloads after an entry is added, edited or deleted, when another baby is selected, and once changes
- * kept on the device (offline) have been sent.
+ * Reloads after an entry is added, edited or deleted, when another baby is selected, and
+ * on the reload signal (spec 04 Refresh on return).
  */
 @Component({
   selector: 'nala-growth-card',
@@ -62,7 +62,6 @@ export class GrowthCardComponent {
   private readonly growthEntries = inject(GrowthEntryService);
   private readonly entrySheets = inject(EntrySheetService);
   private readonly store = inject(SelectedBabyService);
-  private readonly queue = inject(OfflineQueueService);
 
   protected readonly birthDate = computed(() => this.store.selected()?.birthDate ?? null);
   /** Newest first; null while loading. */
@@ -108,17 +107,7 @@ export class GrowthCardComponent {
         }
       });
     });
-    // Changes kept on the device (offline) have reached the server.
-    let sent = this.queue.sent();
-    effect(() => {
-      const now = this.queue.sent();
-      untracked(() => {
-        if (now !== sent) {
-          sent = now;
-          this.reload();
-        }
-      });
-    });
+    onReload(() => this.reload());
   }
 
   protected reload(): void {

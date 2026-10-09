@@ -112,7 +112,7 @@ Every section card has the same frame (shared `nala-section-card`), filled with 
 ### History page
 - `/history/:section`, for a registered section only (anything else → home); without a baby it goes home. M3 top app bar: back icon button to home, title "Feed history" with the selected baby's name as supporting text, no switcher. Below, the section's registered history component.
 - The section's entries for the selected baby, newest first, as a plain list of entry list items. No totals, no charts.
-- **Paging:** a page loader is `(cursor | null) → { entries, next }`, newest first; `null` asks for the first page and `next: null` marks the last one (the cursor format is each section's API). The next page loads when the end of the list scrolls into view (and again right away while it stays in view). While loading: a progress spinner. Without entries: an empty state ("Nothing logged yet"). A failed page shows an error with Try again, keeping the pages already loaded. A new loader (another baby) starts again from the first page. An entry edited from the history is replaced where it is, a deleted one removed; no reload.
+- **Paging:** a page loader is `(cursor | null) → { entries, next }`, newest first; `null` asks for the first page and `next: null` marks the last one (the cursor format is each section's API). The next page loads when the end of the list scrolls into view (and again right away while it stays in view). While loading: a progress spinner. Without entries: an empty state ("Nothing logged yet"). A failed page shows an error with Try again, keeping the pages already loaded. A new loader (another baby, or the reload signal, see Refresh on return) starts again from the first page. An entry edited from the history is replaced where it is, a deleted one removed; no reload.
 - A section may add an end template (`nalaHistoryEnd`), rendered after the last page (not while loading nor after an error); with it, the list shows no empty state (Growth's Birth item, spec 10).
 
 ## Entries
@@ -139,11 +139,21 @@ For a section with resource `/api/<entries>` (e.g. `/api/diapers`):
 
 ### Offline queue
 - A shared device queue (`core/offline/`, `localStorage`) keeps every add / edit / delete (and timer tap) made while the server can't be reached (no network, or 502/503/504), with the signed-in user and the time of the action. Once one waits, the user's next changes queue behind it so they arrive in order.
-- A snackbar says "Saved on this device. It will be sent when you're back online."; the card and history stay as they were until the queue is sent, then reload (reading history needs the network). For timer taps, only the first tap queued while nothing waits shows it (Save always does).
+- A snackbar says "Saved on this device. It will be sent when you're back online."; the card and history stay as they were until the queue is sent, then reload through the reload signal (see Refresh on return; reading history needs the network). For timer taps, only the first tap queued while nothing waits shows it (Save always does).
 - The queue is sent oldest first, one at a time, as its own user only: at app start / login, back online, when the app is shown, and every 30 s while some wait; one tab at a time (Web Locks). A network failure, a server error or 401 stops and keeps the rest; a request refused for good (other 4xx) is dropped with a snackbar "A change made offline couldn't be applied."; a queued delete answered 404 counts as done.
 - Logout and session expiry keep the queue on the device; it is sent once the same user signs in again. Another user's queued changes are never sent.
 - Re-sending is idempotent through the client UUIDs (entries, and timer actions' own ids).
 - Requests queued by an older app version are upgraded before sending (`core/offline/queue-upgrades.ts`, e.g. Feed's finish taps, spec 05).
+
+### Refresh on return
+- One app-wide **reload signal** (`DataRefreshService.reload`, `core/refresh/`) means "reload your data". Sections listen to it and nothing else (`onReload()`), so a new section gets it with one line.
+- It is sent, while signed in, when:
+  - the user **comes back to the app after at least 30 s away** (`visibilitychange`: hidden, then visible again 30 s or more later). A shorter switch sends nothing;
+  - the **network comes back** (`online`);
+  - changes kept on the device (offline queue) **have reached the server**.
+- **Queued changes first:** coming back (or back online) while changes wait on the device sends no signal; the queue is sent and its arrival sends it, so the lists never show the server's data without the user's own changes, and reload once.
+- On the signal, the mounted lists reload: every visible home card (its recent entries and highlight), the open history list (from the first page), the babies (home and history pages) and the section order and visibility (home). A card keeps what it shows until the new entries arrive; a failed call keeps it. Reloading babies that didn't change keeps the selected baby as it was, so the cards don't reload twice.
+- Not reloaded: the settings page, and an open entry sheet (timer sections follow other devices through Live sync; a form being typed is never overwritten). Live timers keep their own polling (Live sync).
 
 ## Timers
 
@@ -279,6 +289,13 @@ Hold for every section with timers (Feed's breastfeed, Sleep, Pump); each covers
 ### Offline queue
 - [x] Changes made while the server can't be reached are queued on the device in order, each with its own time, and sent oldest first when back online; refused-for-good requests are dropped with a snackbar; a queued delete answered 404 counts as done.
 - [x] If the session has expired while entries are queued, the queue is kept on the device; it is sent after the user logs in again, as the same user only.
+
+### Refresh on return
+- [x] Coming back to the app after at least 30 s away, or the network coming back, sends the reload signal; coming back sooner sends nothing; nothing is sent while signed out.
+- [x] Changes kept on the device reaching the server send the reload signal; coming back while changes wait sends nothing until the queue is sent.
+- [x] On the reload signal every home card reloads its entries, keeping the ones shown until the new ones arrive.
+- [x] On the reload signal the open history list loads again from the first page.
+- [x] On the reload signal the home page reloads the babies and the section preferences, and the history page reloads the babies; babies that didn't change keep the same selected baby (the cards don't reload again).
 
 ### Bottom navigation bar
 - [x] Every signed-in screen shows the floating bottom navigation bar with Dashboard, History, Trends and Settings, in that order, icons only with their names as accessible names; the current destination is marked active.

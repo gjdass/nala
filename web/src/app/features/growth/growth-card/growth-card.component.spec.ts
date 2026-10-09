@@ -7,12 +7,12 @@ import { Baby } from '../../../core/babies/baby.models';
 import { SelectedBabyService } from '../../../core/babies/selected-baby.service';
 import { GrowthEntry, GrowthLatest } from '../../../core/growth-entries/growth-entry.models';
 import { GrowthEntryService } from '../../../core/growth-entries/growth-entry.service';
-import { OfflineQueueService } from '../../../core/offline/offline-queue.service';
+import { DataRefreshService } from '../../../core/refresh/data-refresh.service';
 import { HistoryPage } from '../../../core/sections/section.models';
 import { EntrySheetResult } from '../../../shared/ui/entry-sheet/entry-sheet.models';
 import { EntrySheetService } from '../../../shared/ui/entry-sheet/entry-sheet.service';
 import { aGrowthEntry, aMilestone } from '../../../testing/growth-entries';
-import { fakeOfflineQueue } from '../../../testing/offline-queue';
+import { fakeDataRefresh } from '../../../testing/data-refresh';
 import { translocoTesting } from '../../../testing/transloco-testing';
 import { GrowthCardComponent } from './growth-card.component';
 
@@ -28,7 +28,7 @@ describe('GrowthCardComponent', () => {
   let selected: ReturnType<typeof signal<Baby | null>>;
   let edited: Subject<EntrySheetResult | undefined>;
   let entrySheets: { add: ReturnType<typeof vi.fn>; edit: ReturnType<typeof vi.fn> };
-  let queue: ReturnType<typeof fakeOfflineQueue>;
+  let refresh: ReturnType<typeof fakeDataRefresh>;
 
   const host = () => fixture.nativeElement as HTMLElement;
   const find = (testId: string) => host().querySelector<HTMLElement>(`[data-testid="${testId}"]`);
@@ -64,7 +64,7 @@ describe('GrowthCardComponent', () => {
     selected = signal<Baby | null>(baby('b1'));
     edited = new Subject();
     entrySheets = { add: vi.fn(() => of({ saved: aGrowthEntry() })), edit: vi.fn(() => edited) };
-    queue = fakeOfflineQueue();
+    refresh = fakeDataRefresh();
     await TestBed.configureTestingModule({
       imports: [GrowthCardComponent, translocoTesting()],
       providers: [
@@ -72,7 +72,7 @@ describe('GrowthCardComponent', () => {
         { provide: GrowthEntryService, useValue: growthEntries },
         { provide: SelectedBabyService, useValue: { selected } },
         { provide: EntrySheetService, useValue: entrySheets },
-        { provide: OfflineQueueService, useValue: queue },
+        { provide: DataRefreshService, useValue: refresh },
       ],
     }).compileComponents();
     fixture = TestBed.createComponent(GrowthCardComponent);
@@ -230,14 +230,16 @@ describe('GrowthCardComponent', () => {
     expect(growthEntries.latest).toHaveBeenCalledTimes(2);
   });
 
-  it('reloads once changes kept on the device have been sent', async () => {
+  it('reloads on the reload signal', async () => {
     await respond([]);
+    const shown = host().textContent;
 
-    queue.sent.set(1);
+    refresh.reload.set(1);
     await fixture.whenStable();
 
     expect(growthEntries.page).toHaveBeenCalledTimes(2);
     expect(growthEntries.latest).toHaveBeenCalledTimes(2);
+    expect(host().textContent).toBe(shown);
   });
 
   it('reloads for the baby switched to', async () => {
