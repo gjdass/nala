@@ -27,12 +27,12 @@ Build the next slice of spec `$ARGUMENTS` from `docs/specs/`.
 
 4. **Red**
    - Write the tests for the slice's acceptance criteria (API: NUnit in `Nala.Tests`; web: unit tests next to the component/service).
-   - Run them and show that they fail, and that they fail for the expected reason.
+   - Run only those tests (web: `npm test -- --watch=false <path>`; API: `dotnet test --filter "FullyQualifiedName~<Class>"`) and show that they fail, and that they fail for the expected reason.
 
 5. **Green**
    - Implement the minimum to make them pass, following the approved plan (tell me if you have to deviate from it), reusing existing shared components and Core services before creating new ones. Follow the Material 3 mapping in `docs/specs/04-app-layout.md`; no hard-coded colours.
-   - Refactor with tests green.
-   - Run the **full** test suites and lint of every touched layer, and the build. All must pass.
+   - Refactor with tests green. While iterating, run only the new and touched tests (same filters as in Red).
+   - Then run the **full** test suites and lint of every touched layer, and the build, once as the final gate. All must pass. If something fails, read only the failing tests' messages (API: `--logger "console;verbosity=minimal"`), fix with filtered runs, then rerun the full suites.
 
 6. **Update the spec**
    - Tick the acceptance criteria now covered by passing tests, and tick the slice.
