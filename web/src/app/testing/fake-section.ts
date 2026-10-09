@@ -1,4 +1,6 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, Injectable } from '@angular/core';
+import { EMPTY } from 'rxjs';
+import { HistorySource } from '../core/history/history-source.models';
 import { SectionDefinition, SectionKey, SectionKind } from '../core/sections/section.models';
 
 @Component({
@@ -22,6 +24,16 @@ export class FakeKindSheet {}
 })
 export class FakeSectionHistory {}
 
+/** A History source listing nothing. */
+@Injectable({ providedIn: 'root' })
+export class FakeHistorySource implements HistorySource {
+  readonly item = FakeSectionCard;
+  page = () => EMPTY;
+  time = () => new Date(0);
+  kind = () => 'only';
+  inputs = () => ({});
+}
+
 /** A kind whose sheet renders nothing; labelled with an existing translation key. */
 export const fakeKind = (key: string, icon = 'circle', label = 'sections.feed'): SectionKind => ({
   key,
@@ -41,4 +53,5 @@ export const fakeSection = (
   loadCard: () => Promise.resolve(FakeSectionCard),
   kinds,
   loadHistory: () => Promise.resolve(FakeSectionHistory),
+  loadSource: () => Promise.resolve(FakeHistorySource),
 });

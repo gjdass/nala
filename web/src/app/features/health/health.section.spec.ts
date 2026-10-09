@@ -3,6 +3,7 @@ import fr from '../../../../public/i18n/fr.json';
 import { HealthCardComponent } from './health-card/health-card.component';
 import { HealthHistoryComponent } from './health-history/health-history.component';
 import { HealthSheetComponent } from './health-sheet/health-sheet.component';
+import { HealthHistorySource } from './health-history-source';
 import { HEALTH_SECTION } from './health.section';
 
 describe('HEALTH_SECTION', () => {
@@ -16,6 +17,10 @@ describe('HEALTH_SECTION', () => {
   it('loads its card and history on demand', async () => {
     expect(await HEALTH_SECTION.loadCard()).toBe(HealthCardComponent);
     expect(await HEALTH_SECTION.loadHistory()).toBe(HealthHistoryComponent);
+  });
+
+  it('loads its History source on demand', async () => {
+    expect(await HEALTH_SECTION.loadSource()).toBe(HealthHistorySource);
   });
 
   it('has a single kind, so + opens the Health sheet directly', async () => {

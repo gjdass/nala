@@ -4,6 +4,7 @@ import { GrowthCardComponent } from './growth-card/growth-card.component';
 import { GrowthHistoryComponent } from './growth-history/growth-history.component';
 import { MeasurementSheetComponent } from './measurement-sheet/measurement-sheet.component';
 import { MilestoneSheetComponent } from './milestone-sheet/milestone-sheet.component';
+import { GrowthHistorySource } from './growth-history-source';
 import { GROWTH_SECTION } from './growth.section';
 
 describe('GROWTH_SECTION', () => {
@@ -17,6 +18,10 @@ describe('GROWTH_SECTION', () => {
   it('loads its card and history on demand', async () => {
     expect(await GROWTH_SECTION.loadCard()).toBe(GrowthCardComponent);
     expect(await GROWTH_SECTION.loadHistory()).toBe(GrowthHistoryComponent);
+  });
+
+  it('loads its History source on demand', async () => {
+    expect(await GROWTH_SECTION.loadSource()).toBe(GrowthHistorySource);
   });
 
   it('has two kinds, Measurement and Milestone, so + opens the kind picker', async () => {

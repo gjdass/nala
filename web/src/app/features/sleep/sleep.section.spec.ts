@@ -3,6 +3,7 @@ import fr from '../../../../public/i18n/fr.json';
 import { SleepCardComponent } from './sleep-card/sleep-card.component';
 import { SleepHistoryComponent } from './sleep-history/sleep-history.component';
 import { SleepSheetComponent } from './sleep-sheet/sleep-sheet.component';
+import { SleepHistorySource } from './sleep-history-source';
 import { SLEEP_SECTION } from './sleep.section';
 
 describe('SLEEP_SECTION', () => {
@@ -14,6 +15,10 @@ describe('SLEEP_SECTION', () => {
   it('loads its card and history on demand', async () => {
     expect(await SLEEP_SECTION.loadCard()).toBe(SleepCardComponent);
     expect(await SLEEP_SECTION.loadHistory()).toBe(SleepHistoryComponent);
+  });
+
+  it('loads its History source on demand', async () => {
+    expect(await SLEEP_SECTION.loadSource()).toBe(SleepHistorySource);
   });
 
   it('has a single kind, so + opens the Sleep sheet directly', async () => {

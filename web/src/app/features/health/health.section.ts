@@ -7,21 +7,17 @@ import { SectionDefinition } from '../../core/sections/section.models';
 export const HEALTH_SECTION: SectionDefinition = {
   key: 'health',
   icon: 'medical_services',
-  loadCard: () =>
-    import('./health-card/health-card.component').then((m) => m.HealthCardComponent),
+  loadCard: () => import('./health-card/health-card.component').then((m) => m.HealthCardComponent),
   kinds: [
     {
       key: 'health',
       icon: 'medical_services',
       label: 'health.kinds.health',
       loadSheet: () =>
-        import('./health-sheet/health-sheet.component').then(
-          (m) => m.HealthSheetComponent,
-        ),
+        import('./health-sheet/health-sheet.component').then((m) => m.HealthSheetComponent),
     },
   ],
   loadHistory: () =>
-    import('./health-history/health-history.component').then(
-      (m) => m.HealthHistoryComponent,
-    ),
+    import('./health-history/health-history.component').then((m) => m.HealthHistoryComponent),
+  loadSource: () => import('./health-history-source').then((m) => m.HealthHistorySource),
 };

@@ -36,7 +36,7 @@ Status: `idea` → `specified` → `in progress` → `done`. A feature moves to 
 | 08 | Pump | [08-pump.md](08-pump.md) | done | **Hard requirement:** pumping sessions with volume and history. One Start/Stop timer (like Sleep), Left ml and Right ml, notes. |
 | 09 | Health | [09-health.md](09-health.md) | done | Built as Medication, then renamed Health. Medicine name (recent names as chips), optional dose, optional temperature °C; at least a name or a temperature. Never gives dose advice nor interprets temperatures. |
 | 10 | Growth | [10-growth.md](10-growth.md) | done | **Hard requirement:** simple measurement entries over time — weight, height, head circumference, milestones. Raw logging only, no percentile/trend charts. Birth measurements (03) are the starting point of the growth history. |
-| 11 | History (all sections) | [11-history.md](11-history.md) | specified | The bottom bar's History destination: every selected section's entries together, newest first, filtered by time window (24 h / 7 days / 30 days) and sections, remembered per device. Replaces the per-section history pages: a card's All activities opens it for that section. |
+| 11 | History (all sections) | [11-history.md](11-history.md) | in progress | The bottom bar's History destination: every selected section's entries together, newest first, filtered by time window (24 h / 7 days / 30 days) and sections, remembered per device. Replaces the per-section history pages: a card's All activities opens it for that section. |
 | 12 | Trends | — | idea | The bottom bar's Trends destination (placeholder built in 04). Content to decide in its spec: today totals, statistics and charts are out of scope everywhere else. |
 
 ## Build plan

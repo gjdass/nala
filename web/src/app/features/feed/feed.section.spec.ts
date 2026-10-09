@@ -4,6 +4,7 @@ import { BreastfeedSheetComponent } from './breastfeed-sheet/breastfeed-sheet.co
 import { FeedCardComponent } from './feed-card/feed-card.component';
 import { FeedHistoryComponent } from './feed-history/feed-history.component';
 import { SolidsSheetComponent } from './solids-sheet/solids-sheet.component';
+import { FeedHistorySource } from './feed-history-source';
 import { FEED_SECTION } from './feed.section';
 
 describe('FEED_SECTION', () => {
@@ -15,6 +16,10 @@ describe('FEED_SECTION', () => {
   it('loads its card and history on demand', async () => {
     expect(await FEED_SECTION.loadCard()).toBe(FeedCardComponent);
     expect(await FEED_SECTION.loadHistory()).toBe(FeedHistoryComponent);
+  });
+
+  it('loads its History source on demand', async () => {
+    expect(await FEED_SECTION.loadSource()).toBe(FeedHistorySource);
   });
 
   it('has the bottle, breastfeed and solids kinds, so + opens the kind picker', async () => {

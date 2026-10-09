@@ -3,6 +3,7 @@ import fr from '../../../../public/i18n/fr.json';
 import { PumpCardComponent } from './pump-card/pump-card.component';
 import { PumpHistoryComponent } from './pump-history/pump-history.component';
 import { PumpSheetComponent } from './pump-sheet/pump-sheet.component';
+import { PumpHistorySource } from './pump-history-source';
 import { PUMP_SECTION } from './pump.section';
 
 describe('PUMP_SECTION', () => {
@@ -14,6 +15,10 @@ describe('PUMP_SECTION', () => {
   it('loads its card and history on demand', async () => {
     expect(await PUMP_SECTION.loadCard()).toBe(PumpCardComponent);
     expect(await PUMP_SECTION.loadHistory()).toBe(PumpHistoryComponent);
+  });
+
+  it('loads its History source on demand', async () => {
+    expect(await PUMP_SECTION.loadSource()).toBe(PumpHistorySource);
   });
 
   it('has a single kind, so + opens the Pump sheet directly', async () => {

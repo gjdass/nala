@@ -19,4 +19,5 @@ export const PUMP_SECTION: SectionDefinition = {
   ],
   loadHistory: () =>
     import('./pump-history/pump-history.component').then((m) => m.PumpHistoryComponent),
+  loadSource: () => import('./pump-history-source').then((m) => m.PumpHistorySource),
 };

@@ -6,6 +6,7 @@ import en from '../../../../public/i18n/en.json';
 import { BabiesResult, Baby, BabySheetResult } from '../../core/babies/baby.models';
 import { BabyService } from '../../core/babies/baby.service';
 import { DataRefreshService } from '../../core/refresh/data-refresh.service';
+import { FakeHistorySource } from '../../testing/fake-section';
 import { SECTIONS, SectionDefinition, SectionPreference } from '../../core/sections/section.models';
 import { SectionPreferencesService } from '../../core/sections/section-preferences.service';
 import { SheetService } from '../../shared/ui/sheet/sheet.service';
@@ -63,6 +64,7 @@ describe('HomePage', () => {
       loadCard: () => Promise.resolve(FakeFeedCard),
       kinds: [],
       loadHistory: () => Promise.resolve(FakeFeedCard),
+      loadSource: () => Promise.resolve(FakeHistorySource),
     },
     {
       key: 'diaper',
@@ -70,6 +72,7 @@ describe('HomePage', () => {
       loadCard: () => Promise.resolve(FakeDiaperCard),
       kinds: [],
       loadHistory: () => Promise.resolve(FakeDiaperCard),
+      loadSource: () => Promise.resolve(FakeHistorySource),
     },
     {
       key: 'sleep',
@@ -77,6 +80,7 @@ describe('HomePage', () => {
       loadCard: () => Promise.resolve(FakeSleepCard),
       kinds: [],
       loadHistory: () => Promise.resolve(FakeSleepCard),
+      loadSource: () => Promise.resolve(FakeHistorySource),
     },
   ];
   const saved: SectionPreference[] = [

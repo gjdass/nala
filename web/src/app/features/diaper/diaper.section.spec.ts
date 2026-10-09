@@ -3,6 +3,7 @@ import fr from '../../../../public/i18n/fr.json';
 import { DiaperCardComponent } from './diaper-card/diaper-card.component';
 import { DiaperHistoryComponent } from './diaper-history/diaper-history.component';
 import { DiaperSheetComponent } from './diaper-sheet/diaper-sheet.component';
+import { DiaperHistorySource } from './diaper-history-source';
 import { DIAPER_SECTION } from './diaper.section';
 
 describe('DIAPER_SECTION', () => {
@@ -14,6 +15,10 @@ describe('DIAPER_SECTION', () => {
   it('loads its card and history on demand', async () => {
     expect(await DIAPER_SECTION.loadCard()).toBe(DiaperCardComponent);
     expect(await DIAPER_SECTION.loadHistory()).toBe(DiaperHistoryComponent);
+  });
+
+  it('loads its History source on demand', async () => {
+    expect(await DIAPER_SECTION.loadSource()).toBe(DiaperHistorySource);
   });
 
   it('has a single kind, so + opens the Diaper sheet directly', async () => {

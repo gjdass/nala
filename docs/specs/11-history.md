@@ -1,6 +1,6 @@
 # 11 — History
 
-Status: specified
+Status: in progress
 
 Builds on [04 — App layout](04-app-layout.md): the app shell, the section registry, the entry list items, the entry sheets, `nala-history-list` paging and the reload signal apply. Each section's list item and sheet come from its own spec (05–10). This spec only adds what is specific to the History destination.
 
@@ -39,7 +39,7 @@ On the History tab, show the selected baby's entries from several sections in on
 
 ### Architecture
 - **No API change.** The overview asks a combined timeline to aggregate across types explicitly: the web does it with each section's existing list endpoint.
-- **History sources:** each `SectionDefinition` gets a lazily loaded history source (`loadSource: () => import(…)`, replacing `loadHistory`), providing: the section's page loader for a baby, the entry's time (for the window and the order), the entry's kind (to open its sheet), and the entry list item component. A new section joins History by registering its source.
+- **History sources:** each `SectionDefinition` gets a lazily loaded history source (`loadSource: () => import(…)`, replacing `loadHistory`), providing: the section's page loader for a baby, the entry's time (for the window and the order), the entry's kind (to open its sheet), and the entry's list item component with its inputs. A new section joins History by registering its source.
 - **Merged loader** (`core/history/`): for each selected section it pages through that section's list (limit 50) until an entry is older than the window or the last page, merges the sections newest first, and hands out pages of 20 items `{ id, section, entry }` in final order. It has the `HistoryPageLoader` signature, so `nala-history-list` (paging, `apply()`, retry) is reused unchanged. A section's failed page fails the whole load (Try again retries it); nothing is listed out of order.
 
 ## User stories
@@ -82,14 +82,14 @@ Each item becomes at least one test, written failing first.
 - [ ] Switching baby or the reload signal (04) loads the list again from the first page.
 
 ### Merged loader
-- [ ] It reads each selected section's pages only until one entry is older than the window (or the last page), and returns pages of 20 in final order.
-- [ ] A failed section page makes the load fail; Try again retries it and the list goes on in order.
+- [x] It reads each selected section's pages only until one entry is older than the window (or the last page), and returns pages of 20 in final order.
+- [x] A failed section page makes the load fail; Try again retries it and the list goes on in order.
 
 ## Build slices
 
 Each slice goes red → green → commit on `master`, in this order.
 
-- [ ] **Slice 1 — Merged loader and history sources.** `core/history/` merged loader (window cut-off, order across sections, Growth by date, pages of 20, errors), `loadSource` registered by all six sections. Covers: Merged loader.
+- [x] **Slice 1 — Merged loader and history sources.** `core/history/` merged loader (window cut-off, order across sections, Growth by date, pages of 20, errors), `loadSource` registered by all six sections. Covers: Merged loader.
 - [ ] **Slice 2 — History page with the default filters.** `/history` replaces the placeholder: no title, list of the last 24 h of Feed, Sleep and Diaper, each section's list item in its scheme, tap → sheet with in-place update, empty and error states, baby switch and reload signal; spec 04 updated first (only Trends stays a placeholder). Covers: Page, List.
 - [ ] **Slice 3 — Filter bar.** Time segmented button and sections dropdown chip (home order, hidden ones after a divider, last one locked), restart on change, remembered per device, sticky. Covers: Filter bar.
 - [ ] **Slice 4 — All activities opens History.** `/history?section=<key>` with the 7 days window and nothing saved, `/history/:section` redirect, section history components and `loadHistory` retired; specs 04 and 10 updated first (history page, All activities, Birth item). Covers: Opened from a card.

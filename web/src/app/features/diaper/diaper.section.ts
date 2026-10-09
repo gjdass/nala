@@ -19,4 +19,5 @@ export const DIAPER_SECTION: SectionDefinition = {
   ],
   loadHistory: () =>
     import('./diaper-history/diaper-history.component').then((m) => m.DiaperHistoryComponent),
+  loadSource: () => import('./diaper-history-source').then((m) => m.DiaperHistorySource),
 };

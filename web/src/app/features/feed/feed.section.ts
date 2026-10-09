@@ -36,4 +36,5 @@ export const FEED_SECTION: SectionDefinition = {
   ],
   loadHistory: () =>
     import('./feed-history/feed-history.component').then((m) => m.FeedHistoryComponent),
+  loadSource: () => import('./feed-history-source').then((m) => m.FeedHistorySource),
 };

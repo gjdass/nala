@@ -1,6 +1,7 @@
 import { InjectionToken, Type } from '@angular/core';
 import { Observable } from 'rxjs';
 import { FieldErrors } from '../auth/auth.models';
+import { HistorySourceLoader } from '../history/history-source.models';
 
 /** Every home section, in the default order (the API owns the list; spec 04). */
 export const SECTION_KEYS = ['feed', 'sleep', 'diaper', 'pump', 'growth', 'health'] as const;
@@ -46,6 +47,8 @@ export interface SectionDefinition {
   kinds: readonly SectionKind[];
   /** Loads its history list, which loads its pages for the selected baby and wraps `nala-history-list`. */
   loadHistory: ComponentLoader;
+  /** Loads its History source (spec 11), giving History its pages, times, kinds and list item. */
+  loadSource: HistorySourceLoader;
 }
 
 /** One page of a section's history, newest first; `next` is the cursor of the following page, null after the last. */
