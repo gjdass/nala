@@ -29,7 +29,7 @@ Status: `idea` → `specified` → `in progress` → `done`. A feature moves to 
 | 01 | Project skeleton (solution, Angular PWA, Docker Compose, test setups) | [01-project-skeleton.md](01-project-skeleton.md) | done | |
 | 02 | Authentication (login, register, sessions) | [02-auth.md](02-auth.md) | done | |
 | 03 | Family & baby profile | [03-family-baby.md](03-family-baby.md) | done | |
-| 04 | App layout & section pattern (home cards, entry sheet, mini-bar, bottom navigation, timers) | [04-app-layout.md](04-app-layout.md) | in progress | Shared by every section: app shell, section pattern, entry API conventions, offline queue, timers, live sync and refresh on return (the reload signal), no zoom and portrait-only phones. |
+| 04 | App layout & section pattern (home cards, entry sheet, mini-bar, bottom navigation, timers) | [04-app-layout.md](04-app-layout.md) | done | Shared by every section: app shell, section pattern, entry API conventions, offline queue, timers, live sync and refresh on return (the reload signal), no zoom and portrait-only phones. |
 | 05 | Feed | [05-feed.md](05-feed.md) | done | **Hard requirement:** breast feeding has two independent per-side timers (left/right), side by side in the Breastfeed sheet. A single timer with a "side" field is not acceptable. |
 | 06 | Sleep | [06-sleep.md](06-sleep.md) | done | One kind, single Start/Stop timer, start/end times, notes. |
 | 07 | Diaper | [07-diaper.md](07-diaper.md) | done | Time, Wet and Dirty as two independent toggles (neither = dry), diaper-rash toggle, notes; a dirty diaper has optional colour and consistency. No timer. |

@@ -1,6 +1,7 @@
 {
   "app": {
-    "title": "Nala"
+    "title": "Nala",
+    "turnUpright": "Tournez votre téléphone à la verticale"
   },
   "lang": {
     "en": "English",

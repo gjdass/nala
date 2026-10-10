@@ -34,3 +34,29 @@ body {
 body {
   padding-top: var(--nala-safe-top);
 }
+
+// No zoom (spec 04): scrolling only, no pinch or double-tap zoom. The viewport meta (Android, iOS focus zoom)
+// and the app shell's `gesturestart` listener (iOS pinch) do the rest.
+html {
+  touch-action: pan-x pan-y;
+}
+
+// Phones are portrait only, and iOS can't lock a web app's orientation: on a phone in landscape this message
+// covers everything, sheets and dialogs included (the CDK overlay container is at 1000). Shown by CSS only, so
+// nothing behind it is closed or lost.
+.nala-upright {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 1001;
+  align-items: center;
+  justify-content: center;
+  background: var(--mat-sys-surface);
+  touch-action: none;
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+  .nala-upright {
+    display: flex;
+  }
+}

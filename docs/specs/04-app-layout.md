@@ -1,6 +1,6 @@
 # 04 — App layout & section pattern
 
-Status: in progress
+Status: done
 
 ## Goal
 
@@ -27,7 +27,7 @@ This spec has four parts:
   - the document has `touch-action: pan-x pan-y` (`_layout.scss`): scrolling works, pinch and double-tap zoom don't;
   - the app shell cancels iOS's `gesturestart` events (`preventDefault`), which catches the pinch iOS still lets through.
   The iOS layers are a known workaround, not an API Apple supports: a future iOS may break them (checked by hand on an iPhone). iOS's system Zoom accessibility feature (three-finger double tap) can't be blocked and isn't meant to be.
-- **Phones are portrait only.** iOS can't lock a web app's orientation (it ignores the manifest's `orientation`, and has no Screen Orientation `lock()`), and the manifest lock on Android would lock tablets too. So the app doesn't lock: on a phone in landscape (`orientation: landscape` and at most 500 px tall), the app shell covers the whole screen, above everything (sheets and dialogs included), with a "Turn your phone upright" message (a rotate icon and the translated text, centred, on `--mat-sys-surface`). Back in portrait it disappears and the app is exactly as it was: nothing is closed or lost. Tablets and desktop (taller than 500 px in landscape) keep both orientations.
+- **Phones are portrait only.** iOS can't lock a web app's orientation (it ignores the manifest's `orientation`, and has no Screen Orientation `lock()`), and the manifest lock on Android would lock tablets too. So the app doesn't lock: on a phone in landscape (`orientation: landscape` and at most 500 px tall), the app shell covers the whole screen, above everything (sheets and dialogs included), with a "Turn your phone upright" message (a rotate icon and the translated text, centred, on `--mat-sys-surface`, through the shared empty state). It is shown by CSS only (`.nala-upright`, `_layout.scss`): always in the page, so nothing behind it is created or destroyed on rotation. Back in portrait it disappears and the app is exactly as it was: nothing is closed or lost. Tablets and desktop (taller than 500 px in landscape) keep both orientations.
 
 ### Top app bar
 - Selected baby (name + age) with the baby switcher (03). Shared `nala-top-app-bar`. No settings button: Settings is a destination of the bottom navigation bar.
@@ -318,8 +318,8 @@ Hold for every section with timers (Feed's breastfeed, Sleep, Pump); each covers
 - [x] Every screen starts below the top safe area plus 8 px, nothing when there is no safe area; the bottom sheets end above the bottom safe area.
 - [x] The app shell has a fixed edge guard across the top edge, as tall as the top offset, in the page background colour; on iOS the top offset is at least 12 px. *(Tests check the markup and CSS; the missing blur is checked by hand on an iPhone.)*
 - [x] The document doesn't rubber-band when pulled past its top or bottom (`overscroll-behavior-y: none`), so the bottom navigation bar stays in place.
-- [ ] The app can't be zoomed: `index.html`'s viewport sets `maximum-scale=1, user-scalable=no`, the document has `touch-action: pan-x pan-y`, and the app shell cancels `gesturestart`. *(Tests check the markup, CSS and listener; pinch, double tap and field focus are checked by hand on an iPhone and an Android phone.)*
-- [ ] On a phone in landscape (landscape and at most 500 px tall), a full-screen "Turn your phone upright" message (icon and text, EN/FR) covers the app, sheets and dialogs included; in portrait, and on screens taller than 500 px in landscape, it doesn't show. Rotating back leaves the app as it was.
+- [x] The app can't be zoomed: `index.html`'s viewport sets `maximum-scale=1, user-scalable=no`, the document has `touch-action: pan-x pan-y`, and the app shell cancels `gesturestart`. *(Tests check the markup, CSS and listener; pinch, double tap and field focus are checked by hand on an iPhone and an Android phone.)*
+- [x] On a phone in landscape (landscape and at most 500 px tall), a full-screen "Turn your phone upright" message (icon and text, EN/FR) covers the app, sheets and dialogs included; in portrait, and on screens taller than 500 px in landscape, it doesn't show. Rotating back leaves the app as it was. *(Tests check the markup and the media query; rotation is checked by hand on a phone.)*
 - [x] The top app bar shows the Nala brand on the right, with one baby, several babies or none.
 - [x] The brand shows "Nala" first and the lion's head after it, on the far right; the lion's head is 40 px, as tall as the baby's name + age block, and "Nala" uses `headline-small`.
 
@@ -344,9 +344,7 @@ Hold for every section with timers (Feed's breastfeed, Sleep, Pump); each covers
 
 ## Build slices
 
-Slices 1–22 built; each is a commit "Spec 04 slice N: …" (`git log --grep "Spec 04 slice"`).
-
-- [ ] **Slice 23: no zoom, portrait on phones.** Viewport meta, `touch-action` and the `gesturestart` listener; the landscape message in the app shell with its EN/FR strings.
+Built in 23 slices, all done; each is a commit "Spec 04 slice N: …" (`git log --grep "Spec 04 slice"`).
 
 ## Material 3 mapping
 

@@ -52,6 +52,31 @@ describe('App', () => {
     }
   });
 
+  it('holds the turn-upright message on every screen, signed in or not, with its icon and translated text', async () => {
+    for (const auth of [signedIn, signedOut]) {
+      TestBed.resetTestingModule();
+      const message = (await setup(false, auth)).querySelector('.nala-upright nala-empty-state');
+      expect(message).not.toBeNull();
+      expect(message!.querySelector('[data-testid="empty-icon"]')?.textContent?.trim()).toBe('screen_rotation');
+      expect(message!.querySelector('[data-testid="empty-title"]')?.textContent?.trim()).toBe('Turn your phone upright');
+    }
+  });
+
+  it("cancels iOS's gesturestart, so the page can't be pinch-zoomed", async () => {
+    await setup(false);
+    const event = new Event('gesturestart', { cancelable: true });
+    document.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(true);
+  });
+
+  it('stops cancelling gesturestart once destroyed', async () => {
+    await setup(false);
+    TestBed.resetTestingModule();
+    const event = new Event('gesturestart', { cancelable: true });
+    document.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(false);
+  });
+
   it('shows the running timers bar on every screen while a timer runs', async () => {
     const host = await setup(true);
     expect(host.querySelector('router-outlet ~ .dock nala-running-timers-bar')).not.toBeNull();

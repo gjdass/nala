@@ -47,6 +47,13 @@ describe('PWA install on iOS (index.html)', () => {
     assert.match(meta('viewport') ?? '', /(^|,\s*)viewport-fit=cover(,|$)/);
   });
 
+  it('never zooms: the viewport sets maximum-scale=1 and user-scalable=no (spec 04)', () => {
+    const viewport = meta('viewport') ?? '';
+    assert.match(viewport, /(^|,\s*)maximum-scale=1(,|$)/);
+    assert.match(viewport, /(^|,\s*)user-scalable=no(,|$)/);
+    assert.match(viewport, /(^|,\s*)viewport-fit=cover(,|$)/);
+  });
+
   it('opens standalone, titled Nala, with a theme colour', () => {
     assert.equal(meta('apple-mobile-web-app-capable'), 'yes');
     assert.equal(meta('mobile-web-app-capable'), 'yes');

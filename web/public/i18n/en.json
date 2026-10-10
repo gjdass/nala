@@ -1,6 +1,7 @@
 {
   "app": {
-    "title": "Nala"
+    "title": "Nala",
+    "turnUpright": "Turn your phone upright"
   },
   "lang": {
     "en": "English",

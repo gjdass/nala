@@ -117,6 +117,26 @@ describe('global theme', () => {
     assert.match(css, /html,\s*body\s*\{[^}]*overscroll-behavior-y:\s*none/);
   });
 
+  it('lets the document scroll but not pinch or double-tap zoom', () => {
+    assert.match(css, /html\s*\{[^}]*touch-action:\s*pan-x pan-y/);
+  });
+
+  it('hides the turn-upright message by default, covering everything (sheets and dialogs included) when shown', () => {
+    const rule = css.match(/\.nala-upright\s*\{([^}]*)\}/)?.[1] ?? '';
+    assert.match(rule, /display:\s*none/);
+    assert.match(rule, /position:\s*fixed/);
+    assert.match(rule, /inset:\s*0/);
+    assert.ok(Number(rule.match(/z-index:\s*(\d+)/)?.[1]) > 1000, 'above the CDK overlay container (1000)');
+    assert.match(rule, /background:\s*var\(--mat-sys-surface\)/);
+  });
+
+  it('shows the turn-upright message on a phone in landscape only (landscape and at most 500 px tall)', () => {
+    assert.match(
+      css,
+      /@media \(orientation: landscape\) and \(max-height: 500px\)\s*\{\s*\.nala-upright\s*\{[^}]*display:\s*flex/,
+    );
+  });
+
   it('ends the bottom sheets above the bottom safe area', () => {
     assert.match(
       css,
