@@ -3,7 +3,7 @@ import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { AuthService } from '../../../core/auth/auth.service';
 import { AuthCardComponent } from '../../../shared/ui/auth-card/auth-card.component';
@@ -30,6 +30,8 @@ type Field = 'email' | 'password';
 export class LoginPage {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  /** Opened from an invitation link (`?invite={token}`): signing in comes back to it. Only a token, never a URL. */
+  private readonly invite = inject(ActivatedRoute).snapshot.queryParamMap.get('invite');
 
   protected readonly form = new FormGroup({
     email: new FormControl('', { nonNullable: true, validators: email }),
@@ -55,7 +57,9 @@ export class LoginPage {
     this.formError.set(null);
     this.auth.login({ email: value.email.trim(), password: value.password }).subscribe((result) => {
       if (result.ok) {
-        void this.router.navigateByUrl('/');
+        void this.router.navigateByUrl(
+          this.invite ? `/invite/${encodeURIComponent(this.invite)}` : '/',
+        );
         return;
       }
       for (const [field, code] of Object.entries(result.errors)) {

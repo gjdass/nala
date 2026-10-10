@@ -15,7 +15,13 @@ public sealed record LoginRequest(string? Email, string? Password);
 
 public sealed record RegisterRequest(string? Email, string? DisplayName, string? Password, string? Language);
 
-public sealed record InvitationResponse(string InvitedBy, DateTimeOffset ExpiresAt);
+/// <summary><c>Kind</c>: <c>join</c> or <c>newFamily</c>; <c>FamilyName</c> is null for a new-family invitation.</summary>
+public sealed record InvitationResponse(string Kind, string InvitedBy, string? FamilyName, DateTimeOffset ExpiresAt);
+
+/// <summary><c>FamilyName</c> is for new-family invitations (spec 03 slice 16), ignored for now.</summary>
+public sealed record AcceptInvitationRequest(string? FamilyName);
+
+public sealed record AcceptInvitationResponse(Guid FamilyId);
 
 public sealed record ForgotPasswordRequest(string? Email);
 
@@ -91,6 +97,7 @@ public static class AuthEndpoints
         auth.MapPost("/logout", LogoutAsync);
         auth.MapGet("/invitations/{token}", LookupInvitationAsync).AllowAnonymous();
         auth.MapPost("/invitations/{token}/register", RegisterAsync).AllowAnonymous();
+        auth.MapPost("/invitations/{token}/accept", AcceptInvitationAsync);
         auth.MapPost("/password-resets", RequestPasswordResetAsync).AllowAnonymous();
         auth.MapGet("/password-resets/{token}", LookupResetLinkAsync).AllowAnonymous();
         auth.MapPost("/password-resets/{token}", ResetPasswordAsync).AllowAnonymous();
@@ -154,7 +161,8 @@ public static class AuthEndpoints
     {
         var lookup = await registration.LookupAsync(token, cancellationToken);
         return lookup is InvitationLookup.Valid valid
-            ? Results.Ok(new InvitationResponse(valid.InvitedBy, valid.ExpiresAt))
+            ? Results.Ok(new InvitationResponse(
+                valid.Kind == InvitationKind.Join ? "join" : "newFamily", valid.InvitedBy, valid.FamilyName, valid.ExpiresAt))
             : InvitationUnavailable(((InvitationLookup.Unavailable)lookup).Problem);
     }
 
@@ -180,6 +188,16 @@ public static class AuthEndpoints
                 return InvitationUnavailable(((RegisterResult.Unavailable)result).Problem);
         }
     }
+
+    /// <summary>Accepts an invitation with the signed-in account; 409 <c>alreadyMember</c> leaves the invitation unused.</summary>
+    private static async Task<IResult> AcceptInvitationAsync(
+        string token, AcceptInvitationRequest request, RegistrationService registration, HttpContext context, CancellationToken cancellationToken) =>
+        await registration.AcceptAsync(CurrentUser(context)!, token, cancellationToken) switch
+        {
+            AcceptResult.Accepted accepted => Results.Ok(new AcceptInvitationResponse(accepted.FamilyId)),
+            AcceptResult.AlreadyMember => Results.Json(new ErrorResponse("alreadyMember"), statusCode: StatusCodes.Status409Conflict),
+            var result => InvitationUnavailable(((AcceptResult.Unavailable)result).Problem),
+        };
 
     /// <summary>404 for an unknown link, 410 for one that existed but can no longer be used; the code tells why.</summary>
     public static IResult InvitationUnavailable(InvitationProblem problem) =>

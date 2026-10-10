@@ -12,18 +12,20 @@ public class RegistrationServiceTests
 
     private FakeUserRepository _users = null!;
     private FakeInvitationRepository _invitations = null!;
+    private FakeFamilyRepository _families = null!;
     private FixedTimeProvider _time = null!;
     private RegistrationService _service = null!;
     private User _anna = null!;
-    private readonly Guid _familyId = Guid.NewGuid();
+    private Guid _familyId;
 
     [SetUp]
     public void SetUp()
     {
         _users = new FakeUserRepository();
-        _invitations = new FakeInvitationRepository(_users);
+        _families = new FakeFamilyRepository(_users);
+        _invitations = new FakeInvitationRepository(_users, _families);
         _time = new FixedTimeProvider(Now);
-        _service = new RegistrationService(_invitations, _users, new FakePasswordHasher(), _time);
+        _service = new RegistrationService(_invitations, _users, _families, new FakePasswordHasher(), _time);
         _anna = new User
         {
             Id = Guid.NewGuid(),
@@ -35,17 +37,18 @@ public class RegistrationServiceTests
             CreatedAt = Now,
         };
         _users.Users.Add(_anna);
+        _familyId = _families.Seed("Martins", Now, _anna).Id;
     }
 
-    /// <summary>Seeds an invitation created by Anna now; returns its token.</summary>
-    private string Invite(Action<Invitation>? change = null)
+    /// <summary>Seeds an invitation created by Anna now, to her family unless <paramref name="newFamily"/>; returns its token.</summary>
+    private string Invite(Action<Invitation>? change = null, bool newFamily = false)
     {
         var token = LinkToken.Generate();
         var invitation = new Invitation
         {
             Id = Guid.NewGuid(),
             TokenHash = LinkToken.Hash(token),
-            FamilyId = _familyId,
+            FamilyId = newFamily ? null : _familyId,
             CreatedByUserId = _anna.Id,
             CreatedAt = Now,
             ExpiresAt = Now + InvitationPolicy.Lifetime,
@@ -66,6 +69,24 @@ public class RegistrationServiceTests
         var valid = (InvitationLookup.Valid)result;
         Assert.That(valid.InvitedBy, Is.EqualTo("Anna"));
         Assert.That(valid.ExpiresAt, Is.EqualTo(Now + TimeSpan.FromDays(7)));
+    }
+
+    [Test]
+    public async Task Lookup_of_a_join_invitation_returns_its_kind_and_family_name()
+    {
+        var valid = (InvitationLookup.Valid)await _service.LookupAsync(Invite());
+
+        Assert.That(valid.Kind, Is.EqualTo(InvitationKind.Join));
+        Assert.That(valid.FamilyName, Is.EqualTo("Martins"));
+    }
+
+    [Test]
+    public async Task Lookup_of_a_new_family_invitation_has_no_family_name()
+    {
+        var valid = (InvitationLookup.Valid)await _service.LookupAsync(Invite(newFamily: true));
+
+        Assert.That(valid.Kind, Is.EqualTo(InvitationKind.NewFamily));
+        Assert.That(valid.FamilyName, Is.Null);
     }
 
     [TestCase(null)]
@@ -251,5 +272,107 @@ public class RegistrationServiceTests
 
         Assert.That(result, Is.EqualTo(new RegisterResult.Unavailable(InvitationProblem.Used)));
         Assert.That(_users.Users, Has.Count.EqualTo(1));
+    }
+
+    private User AddBen()
+    {
+        var ben = new User
+        {
+            Id = Guid.NewGuid(),
+            Email = "ben@mail.com",
+            DisplayName = "Ben",
+            PasswordHash = "hashed:x",
+            PreferredLanguage = "en",
+            CreatedAt = Now,
+        };
+        _users.Users.Add(ben);
+        _families.Seed("Others", Now, ben);
+        return ben;
+    }
+
+    [Test]
+    public async Task Accept_adds_a_member_membership_and_consumes_the_invitation()
+    {
+        var ben = AddBen();
+
+        var result = await _service.AcceptAsync(ben, Invite());
+
+        Assert.That(result, Is.EqualTo(new AcceptResult.Accepted(_familyId)));
+        var membership = _families.Memberships.Single(m => m.FamilyId == _familyId && m.UserId == ben.Id);
+        Assert.That(
+            new { membership.Role, membership.JoinedAt },
+            Is.EqualTo(new { Role = FamilyRole.Member, JoinedAt = Now }));
+        var invitation = _invitations.Invitations.Single();
+        Assert.That(invitation.UsedAt, Is.EqualTo(Now));
+        Assert.That(invitation.UsedByUserId, Is.EqualTo(ben.Id));
+    }
+
+    [Test]
+    public async Task Accept_by_someone_already_in_the_family_is_already_member_and_leaves_the_invitation_unused()
+    {
+        var result = await _service.AcceptAsync(_anna, Invite());
+
+        Assert.That(result, Is.EqualTo(new AcceptResult.AlreadyMember()));
+        Assert.That(_invitations.Invitations.Single().UsedAt, Is.Null);
+        Assert.That(_families.Memberships.Count(m => m.UserId == _anna.Id), Is.EqualTo(1));
+    }
+
+    [TestCase(InvitationProblem.Expired)]
+    [TestCase(InvitationProblem.Used)]
+    [TestCase(InvitationProblem.Revoked)]
+    public async Task Accept_of_an_unavailable_invitation_is_refused(InvitationProblem problem)
+    {
+        var ben = AddBen();
+        var token = Invite(i =>
+        {
+            switch (problem)
+            {
+                case InvitationProblem.Expired: i.ExpiresAt = Now; break;
+                case InvitationProblem.Used: i.UsedAt = Now; i.UsedByUserId = _anna.Id; break;
+                default: i.RevokedAt = Now; break;
+            }
+        });
+
+        Assert.That(await _service.AcceptAsync(ben, token), Is.EqualTo(new AcceptResult.Unavailable(problem)));
+        Assert.That(_families.Memberships.Any(m => m.FamilyId == _familyId && m.UserId == ben.Id), Is.False);
+    }
+
+    [Test]
+    public async Task Accept_of_an_unknown_token_is_refused() =>
+        Assert.That(
+            await _service.AcceptAsync(AddBen(), "unknown"),
+            Is.EqualTo(new AcceptResult.Unavailable(InvitationProblem.Unknown)));
+
+    [Test]
+    public async Task Accept_of_an_invitation_consumed_concurrently_is_used()
+    {
+        var ben = AddBen();
+        var token = Invite();
+        _invitations.ConsumedConcurrently = true;
+
+        Assert.That(await _service.AcceptAsync(ben, token), Is.EqualTo(new AcceptResult.Unavailable(InvitationProblem.Used)));
+        Assert.That(_families.Memberships.Any(m => m.FamilyId == _familyId && m.UserId == ben.Id), Is.False);
+    }
+
+    [Test]
+    public async Task Accept_racing_another_membership_is_already_member()
+    {
+        var ben = AddBen();
+        var token = Invite();
+        _invitations.MembershipConflict = true;
+
+        Assert.That(await _service.AcceptAsync(ben, token), Is.EqualTo(new AcceptResult.AlreadyMember()));
+        Assert.That(_invitations.Invitations.Single().UsedAt, Is.Null);
+    }
+
+    /// <summary>New-family invitations are accepted from slice 16 on; none can be created before.</summary>
+    [Test]
+    public async Task Accept_of_a_new_family_invitation_is_unknown_for_now()
+    {
+        var ben = AddBen();
+        var token = Invite(newFamily: true);
+
+        Assert.That(await _service.AcceptAsync(ben, token), Is.EqualTo(new AcceptResult.Unavailable(InvitationProblem.Unknown)));
+        Assert.That(_invitations.Invitations.Single().UsedAt, Is.Null);
     }
 }

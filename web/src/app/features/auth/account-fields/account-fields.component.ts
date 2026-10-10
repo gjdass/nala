@@ -30,6 +30,12 @@ export function createAccountForm(): AccountForm {
 })
 export class AccountFieldsComponent {
   readonly form = input.required<AccountForm>();
+  /** Translation key of the message for an email that already has an account. */
+  readonly emailTakenKey = input('auth.errors.email.taken');
+
+  protected emailErrorKey(code: string): string {
+    return code === 'taken' ? this.emailTakenKey() : `auth.errors.email.${code}`;
+  }
 
   protected errorOf(control: AbstractControl): string | null {
     return errorCode(control);

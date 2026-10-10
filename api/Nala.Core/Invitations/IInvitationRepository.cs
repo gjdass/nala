@@ -25,6 +25,13 @@ public interface IInvitationRepository
     Task<bool> RedeemAsync(
         Guid invitationId, User user, Membership? membership, DateTimeOffset now, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Atomically saves the <paramref name="membership"/> of an existing user and marks the invitation used by them, if it
+    /// is still usable at <paramref name="now"/>. False when it is not (nothing is saved).
+    /// Throws <see cref="MembershipConflictException"/> when the user is already in that family.
+    /// </summary>
+    Task<bool> AcceptAsync(Guid invitationId, Membership membership, DateTimeOffset now, CancellationToken cancellationToken = default);
+
     /// <summary>Revokes, at <paramref name="now"/>, the invitations the user created that are still usable then.</summary>
     Task RevokePendingAsync(Guid createdByUserId, DateTimeOffset now, CancellationToken cancellationToken = default);
 }

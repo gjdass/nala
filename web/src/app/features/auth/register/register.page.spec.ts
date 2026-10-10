@@ -1,10 +1,17 @@
+import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
 import { TranslocoService } from '@jsverse/transloco';
 import { Subject } from 'rxjs';
 import en from '../../../../../public/i18n/en.json';
-import { InvitationLookup, RegisterResult } from '../../../core/auth/auth.models';
+import {
+  AcceptInvitationResult,
+  AuthState,
+  InvitationLookup,
+  RegisterResult,
+} from '../../../core/auth/auth.models';
 import { AuthService } from '../../../core/auth/auth.service';
+import { CurrentFamilyService } from '../../../core/families/current-family.service';
 import { translocoTesting } from '../../../testing/transloco-testing';
 import { RegisterPage } from './register.page';
 
@@ -12,7 +19,14 @@ describe('RegisterPage', () => {
   let fixture: ComponentFixture<RegisterPage>;
   let lookup: Subject<InvitationLookup>;
   let result: Subject<RegisterResult>;
-  let auth: { lookupInvitation: ReturnType<typeof vi.fn>; register: ReturnType<typeof vi.fn> };
+  let accepted: Subject<AcceptInvitationResult>;
+  let auth: {
+    lookupInvitation: ReturnType<typeof vi.fn>;
+    register: ReturnType<typeof vi.fn>;
+    acceptInvitation: ReturnType<typeof vi.fn>;
+    state: ReturnType<typeof signal<AuthState | null>>;
+  };
+  let families: { select: ReturnType<typeof vi.fn> };
   let navigateByUrl: ReturnType<typeof vi.spyOn>;
 
   const host = () => fixture.nativeElement as HTMLElement;
@@ -24,6 +38,10 @@ describe('RegisterPage', () => {
   const submit = () => host().querySelector<HTMLButtonElement>('button[data-testid="submit"]');
   const toLogin = () => host().querySelector<HTMLAnchorElement>('a[data-testid="to-login"]');
   const loading = () => host().querySelector('mat-progress-bar');
+  const existing = () => host().querySelector<HTMLAnchorElement>('a[data-testid="existing-account"]');
+  const accept = () => host().querySelector<HTMLButtonElement>('button[data-testid="accept"]');
+  const notNow = () => host().querySelector<HTMLButtonElement>('button[data-testid="not-now"]');
+  const subtitle = () => host().querySelector('mat-card-subtitle')?.textContent?.trim();
 
   const type = (field: string, value: string) => {
     input(field)!.value = value;
@@ -36,9 +54,23 @@ describe('RegisterPage', () => {
     type('password', 'correct horse');
   };
   const found = async () => {
-    lookup.next({ ok: true, invitation: { invitedBy: 'Anna', expiresAt: '2026-10-04T20:00:00Z' } });
+    lookup.next({
+      ok: true,
+      invitation: {
+        kind: 'join',
+        invitedBy: 'Anna',
+        familyName: 'Martins',
+        expiresAt: '2026-10-04T20:00:00Z',
+      },
+    });
     await fixture.whenStable();
   };
+  const signIn = () =>
+    auth.state.set({
+      setupRequired: false,
+      smtpEnabled: false,
+      user: { id: 'u3', email: 'carl@mail.com', displayName: 'Carl', language: 'en', isAdmin: false },
+    });
   const send = async () => {
     submit()!.click();
     await fixture.whenStable();
@@ -51,12 +83,20 @@ describe('RegisterPage', () => {
   beforeEach(async () => {
     lookup = new Subject<InvitationLookup>();
     result = new Subject<RegisterResult>();
-    auth = { lookupInvitation: vi.fn(() => lookup), register: vi.fn(() => result) };
+    accepted = new Subject<AcceptInvitationResult>();
+    auth = {
+      lookupInvitation: vi.fn(() => lookup),
+      register: vi.fn(() => result),
+      acceptInvitation: vi.fn(() => accepted),
+      state: signal<AuthState | null>({ setupRequired: false, user: null, smtpEnabled: false }),
+    };
+    families = { select: vi.fn() };
     await TestBed.configureTestingModule({
       imports: [RegisterPage, translocoTesting()],
       providers: [
         provideRouter([]),
         { provide: AuthService, useValue: auth },
+        { provide: CurrentFamilyService, useValue: families },
         {
           provide: ActivatedRoute,
           useValue: { snapshot: { paramMap: convertToParamMap({ token: 'a-b_c' }) } },
@@ -74,7 +114,7 @@ describe('RegisterPage', () => {
     expect(input('email')).toBeNull();
   });
 
-  it('shows the form, naming who sent the invitation', async () => {
+  it('shows the form, naming who sent the invitation and to which family', async () => {
     await found();
 
     expect(loading()).toBeNull();
@@ -82,7 +122,7 @@ describe('RegisterPage', () => {
       en.auth.register.title,
     );
     expect(host().querySelector('mat-card-subtitle')?.textContent?.trim()).toBe(
-      en.auth.register.subtitle.replace('{{name}}', 'Anna'),
+      en.auth.register.subtitle.replace('{{name}}', 'Anna').replace('{{family}}', 'Martins'),
     );
     expect(input('email')).not.toBeNull();
     expect(input('displayName')).not.toBeNull();
@@ -150,7 +190,8 @@ describe('RegisterPage', () => {
     await send();
     await answer({ ok: false, errors: { email: 'taken' } });
 
-    expect(error('email')).toBe(en.auth.errors.email.taken);
+    expect(error('email')).toBe(en.auth.register.emailTaken);
+    expect(existing()).not.toBeNull();
     expect(submit()!.disabled).toBe(false);
     expect(navigateByUrl).not.toHaveBeenCalled();
   });
@@ -174,5 +215,71 @@ describe('RegisterPage', () => {
 
     expect(formError()).toBe(en.auth.errors.form.unknown);
     expect(input('email')).not.toBeNull();
+  });
+
+  it('offers to log in with an existing account and come back to the invitation', async () => {
+    await found();
+
+    expect(existing()?.textContent?.trim()).toBe(en.auth.register.existingAccount);
+    expect(existing()?.getAttribute('href')).toBe('/login?invite=a-b_c');
+  });
+
+  describe('signed in', () => {
+    beforeEach(async () => {
+      signIn();
+      await found();
+    });
+
+    it('offers to accept with the current account, without the account fields', () => {
+      expect(host().querySelector('mat-card-title')?.textContent?.trim()).toBe(en.auth.accept.title);
+      expect(subtitle()).toBe(
+        en.auth.accept.subtitle.replace('{{name}}', 'Anna').replace('{{family}}', 'Martins'),
+      );
+      expect(input('email')).toBeNull();
+      expect(accept()?.textContent?.trim()).toBe(en.auth.accept.accept);
+      expect(notNow()?.textContent?.trim()).toBe(en.auth.accept.notNow);
+    });
+
+    it('accepts, selects the joined family and opens the app', async () => {
+      accept()!.click();
+      await fixture.whenStable();
+      expect(auth.acceptInvitation).toHaveBeenCalledWith('a-b_c');
+      expect(accept()!.disabled).toBe(true);
+
+      accepted.next({ ok: true, familyId: 'f2' });
+      await fixture.whenStable();
+
+      expect(families.select).toHaveBeenCalledWith('f2');
+      expect(navigateByUrl).toHaveBeenCalledWith('/');
+    });
+
+    it('Not now opens the app and leaves the invitation unused', async () => {
+      notNow()!.click();
+      await fixture.whenStable();
+
+      expect(auth.acceptInvitation).not.toHaveBeenCalled();
+      expect(navigateByUrl).toHaveBeenCalledWith('/');
+    });
+
+    it('says when the user is already in the family, keeping the card', async () => {
+      accept()!.click();
+      accepted.next({ ok: false, errors: { form: 'alreadyMember' } });
+      await fixture.whenStable();
+
+      expect(formError()).toBe(en.auth.errors.form.alreadyMember);
+      expect(accept()!.disabled).toBe(false);
+      expect(notNow()).not.toBeNull();
+      expect(families.select).not.toHaveBeenCalled();
+    });
+
+    it('switches to the unusable-link message when the invitation is refused', async () => {
+      accept()!.click();
+      accepted.next({ ok: false, errors: { form: 'invitationRevoked' } });
+      await fixture.whenStable();
+
+      expect(formError()).toBe(en.auth.errors.form.invitationRevoked);
+      expect(accept()).toBeNull();
+      expect(toLogin()).not.toBeNull();
+    });
   });
 });

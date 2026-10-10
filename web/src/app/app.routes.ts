@@ -3,6 +3,7 @@ import { Router, Routes } from '@angular/router';
 import {
   authGuard,
   emailResetGuard,
+  invitationGuard,
   signedOutGuard,
   setupOnlyGuard,
 } from './core/auth/auth.guards';
@@ -21,7 +22,7 @@ export const routes: Routes = [
   },
   {
     path: 'invite/:token',
-    canActivate: [signedOutGuard],
+    canActivate: [invitationGuard],
     loadComponent: () =>
       import('./features/auth/register/register.page').then((m) => m.RegisterPage),
   },

@@ -52,7 +52,7 @@ public class RegisterEndpointTests
         var token = LinkToken.Generate();
         var now = _time.GetUtcNow();
         using var scope = _factory.Services.CreateScope();
-        var family = await scope.ServiceProvider.GetRequiredService<NalaDbContext>().Set<Family>().SingleOrDefaultAsync();
+        var family = await scope.ServiceProvider.GetRequiredService<NalaDbContext>().Set<Family>().SingleOrDefaultAsync(f => f.Name == "Martins");
         var invitation = new Invitation
         {
             Id = Guid.NewGuid(),
@@ -226,5 +226,120 @@ public class RegisterEndpointTests
 
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Forbidden));
         Assert.That(await UserAsync("ben@mail.com"), Is.Null);
+    }
+
+    private Task<HttpResponseMessage> AcceptAsync(string token, HttpClient client) =>
+        client.PostAsJsonAsync($"/api/auth/invitations/{token}/accept", new { });
+
+    private async Task<HttpClient> AnnaAsync()
+    {
+        var anna = NewClient();
+        var response = await anna.PostAsJsonAsync("/api/auth/login", new { email = "anna@mail.com", password = Password });
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        return anna;
+    }
+
+    private async Task<Guid> MartinsIdAsync()
+    {
+        using var scope = _factory.Services.CreateScope();
+        return (await scope.ServiceProvider.GetRequiredService<NalaDbContext>().Set<Family>().SingleAsync(f => f.Name == "Martins")).Id;
+    }
+
+    [Test]
+    public async Task Lookup_returns_kind_and_family_name()
+    {
+        var body = await (await _client.GetAsync($"/api/auth/invitations/{await InviteAsync()}")).Content.ReadFromJsonAsync<JsonElement>();
+
+        Assert.That(body.GetProperty("kind").GetString(), Is.EqualTo("join"));
+        Assert.That(body.GetProperty("familyName").GetString(), Is.EqualTo("Martins"));
+    }
+
+    [Test]
+    public async Task Accept_joins_the_family_and_returns_its_id()
+    {
+        var token = await InviteAsync();
+        using var carl = await OtherFamily.CreateAsync(_factory);
+
+        var response = await AcceptAsync(token, carl.Client);
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        var martinsId = await MartinsIdAsync();
+        Assert.That((await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("familyId").GetGuid(), Is.EqualTo(martinsId));
+        var families = await (await carl.Client.GetAsync("/api/families")).Content.ReadFromJsonAsync<JsonElement>();
+        Assert.That(
+            families.EnumerateArray().Select(f => (f.GetProperty("name").GetString(), f.GetProperty("isAdmin").GetBoolean())),
+            Is.EqualTo(new[] { ("Martins", false), ("Others", true) }));
+    }
+
+    [Test]
+    public async Task Accept_requires_a_session()
+    {
+        var token = await InviteAsync();
+
+        var response = await AcceptAsync(token, _client);
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
+    }
+
+    [Test]
+    public async Task Accept_by_a_member_of_the_family_is_409_already_member_and_the_link_stays_usable()
+    {
+        var token = await InviteAsync();
+        using var anna = await AnnaAsync();
+
+        var response = await AcceptAsync(token, anna);
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Conflict));
+        Assert.That(await CodeAsync(response), Is.EqualTo("alreadyMember"));
+        using var carl = await OtherFamily.CreateAsync(_factory);
+        Assert.That((await AcceptAsync(token, carl.Client)).StatusCode, Is.EqualTo(HttpStatusCode.OK));
+    }
+
+    [Test]
+    public async Task Accept_of_a_used_or_revoked_invitation_is_410()
+    {
+        var used = await InviteAsync();
+        Assert.That((await RegisterAsync(used)).StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        var revoked = await InviteAsync(i => i.RevokedAt = _time.GetUtcNow());
+        using var carl = await OtherFamily.CreateAsync(_factory);
+
+        foreach (var (token, code) in new[] { (used, "invitationUsed"), (revoked, "invitationRevoked") })
+        {
+            var response = await AcceptAsync(token, carl.Client);
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Gone), code);
+            Assert.That(await CodeAsync(response), Is.EqualTo(code));
+        }
+    }
+
+    [Test]
+    public async Task Accept_of_an_unknown_invitation_is_404()
+    {
+        using var carl = await OtherFamily.CreateAsync(_factory);
+
+        var response = await AcceptAsync("unknown", carl.Client);
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
+        Assert.That(await CodeAsync(response), Is.EqualTo("invitationUnknown"));
+    }
+
+    [Test]
+    public async Task Removed_member_comes_back_through_a_new_invitation()
+    {
+        Assert.That((await RegisterAsync(await InviteAsync())).StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        var ben = await UserAsync("ben@mail.com");
+        using (var scope = _factory.Services.CreateScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<NalaDbContext>().Set<Membership>()
+                .Where(m => m.UserId == ben!.Id).ExecuteDeleteAsync();
+        }
+
+        Assert.That((await (await _client.GetAsync("/api/families")).Content.ReadFromJsonAsync<JsonElement>()).GetArrayLength(), Is.Zero);
+
+        var response = await AcceptAsync(await InviteAsync(), _client);
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        var families = await (await _client.GetAsync("/api/families")).Content.ReadFromJsonAsync<JsonElement>();
+        Assert.That(families.GetArrayLength(), Is.EqualTo(1));
+        Assert.That(families[0].GetProperty("name").GetString(), Is.EqualTo("Martins"));
     }
 }

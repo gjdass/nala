@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using Nala.Core.Families;
 using Nala.Core.Invitations;
 using Nala.Core.Users;
@@ -57,6 +58,40 @@ public class InvitationRepository(NalaDbContext db) : IInvitationRepository
         {
             db.Set<Membership>().Add(membership);
             await db.SaveChangesAsync(cancellationToken);
+        }
+
+        await transaction.CommitAsync(cancellationToken);
+        return true;
+    }
+
+    public async Task<bool> AcceptAsync(
+        Guid invitationId, Membership membership, DateTimeOffset now, CancellationToken cancellationToken = default)
+    {
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+
+        // Conditional update: of concurrent uses of one link, only the first to lock the row gets it.
+        var accepted = await db.Set<Invitation>()
+            .Where(i => i.Id == invitationId && i.UsedAt == null && i.RevokedAt == null && i.ExpiresAt > now)
+            .ExecuteUpdateAsync(
+                s => s.SetProperty(i => i.UsedAt, now).SetProperty(i => i.UsedByUserId, membership.UserId),
+                cancellationToken);
+        if (accepted == 0)
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            return false;
+        }
+
+        db.Set<Membership>().Add(membership);
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException e) when (e.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+        {
+            // Already in the family: the invitation stays unused.
+            await transaction.RollbackAsync(cancellationToken);
+            db.Entry(membership).State = EntityState.Detached;
+            throw new MembershipConflictException(e);
         }
 
         await transaction.CommitAsync(cancellationToken);

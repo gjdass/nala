@@ -8,9 +8,19 @@ public sealed record RegisterCommand(string? Token, string? Email, string? Displ
 
 public abstract record InvitationLookup
 {
-    public sealed record Valid(string InvitedBy, DateTimeOffset ExpiresAt) : InvitationLookup;
+    public sealed record Valid(InvitationKind Kind, string InvitedBy, string? FamilyName, DateTimeOffset ExpiresAt) : InvitationLookup;
 
     public sealed record Unavailable(InvitationProblem Problem) : InvitationLookup;
+}
+
+public abstract record AcceptResult
+{
+    public sealed record Accepted(Guid FamilyId) : AcceptResult;
+
+    /// <summary>The caller is already in the invitation's family; the invitation stays unused.</summary>
+    public sealed record AlreadyMember : AcceptResult;
+
+    public sealed record Unavailable(InvitationProblem Problem) : AcceptResult;
 }
 
 public abstract record RegisterResult
@@ -23,8 +33,12 @@ public abstract record RegisterResult
     public sealed record Invalid(IReadOnlyDictionary<string, string> Errors) : RegisterResult;
 }
 
-/// <summary>Turns an invitation link into an account, a member of the invitation's family. There is no other way to sign up once the instance is set up.</summary>
-public class RegistrationService(IInvitationRepository invitations, IUserRepository users, IPasswordHasher hasher, TimeProvider time)
+/// <summary>
+/// Turns an invitation link into an account, a member of the invitation's family, or into a membership of an existing
+/// account. There is no other way to sign up once the instance is set up.
+/// </summary>
+public class RegistrationService(
+    IInvitationRepository invitations, IUserRepository users, IFamilyRepository families, IPasswordHasher hasher, TimeProvider time)
 {
     private static readonly IReadOnlyDictionary<string, string> EmailTaken = new Dictionary<string, string> { ["email"] = "taken" };
 
@@ -38,7 +52,8 @@ public class RegistrationService(IInvitationRepository invitations, IUserReposit
 
         // Users are never hard-deleted, and a deleted account keeps its display name.
         var inviter = await users.GetByIdAsync(invitation.CreatedByUserId, cancellationToken);
-        return new InvitationLookup.Valid(inviter!.DisplayName, invitation.ExpiresAt);
+        var family = invitation.FamilyId is { } familyId ? await families.GetAsync(familyId, cancellationToken) : null;
+        return new InvitationLookup.Valid(invitation.Kind, inviter!.DisplayName, family?.Name, invitation.ExpiresAt);
     }
 
     /// <summary>The invitation is checked before the fields, so an unusable link never tells whether an email has an account.</summary>
@@ -87,6 +102,43 @@ public class RegistrationService(IInvitationRepository invitations, IUserReposit
         catch (UserConflictException)
         {
             return new RegisterResult.Invalid(EmailTaken);
+        }
+    }
+
+    /// <summary>
+    /// Accepts a join invitation with the signed-in account: the caller becomes a member of its family. Someone already in
+    /// it is refused and the invitation stays unused. New-family invitations are not accepted yet (spec 03 slice 16).
+    /// </summary>
+    public async Task<AcceptResult> AcceptAsync(User actor, string? token, CancellationToken cancellationToken = default)
+    {
+        var (invitation, problem) = await FindUsableAsync(token, cancellationToken);
+        if (invitation is null)
+        {
+            return new AcceptResult.Unavailable(problem!.Value);
+        }
+
+        if (invitation.FamilyId is not { } familyId)
+        {
+            return new AcceptResult.Unavailable(InvitationProblem.Unknown);
+        }
+
+        if (await families.GetRoleAsync(familyId, actor.Id, cancellationToken) is not null)
+        {
+            return new AcceptResult.AlreadyMember();
+        }
+
+        var now = time.GetUtcNow();
+        var membership = new Membership { FamilyId = familyId, UserId = actor.Id, Role = FamilyRole.Member, JoinedAt = now };
+        try
+        {
+            // Another acceptance or registration may have used the link since it was read.
+            return await invitations.AcceptAsync(invitation.Id, membership, now, cancellationToken)
+                ? new AcceptResult.Accepted(familyId)
+                : new AcceptResult.Unavailable(InvitationProblem.Used);
+        }
+        catch (MembershipConflictException)
+        {
+            return new AcceptResult.AlreadyMember();
         }
     }
 

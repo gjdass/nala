@@ -38,8 +38,11 @@ export interface LoginRequest {
 export type LoginResult = { ok: true } | { ok: false; errors: FieldErrors };
 
 export interface Invitation {
+  /** `join` adds a member to `familyName`; `newFamily` lets the recipient create a family (no family name then). */
+  kind: 'join' | 'newFamily';
   /** Display name of the member who created the invitation. */
   invitedBy: string;
+  familyName: string | null;
   expiresAt: string;
 }
 
@@ -50,6 +53,11 @@ export type InvitationLookup = { ok: true; invitation: Invitation } | { ok: fals
 export type RegisterRequest = Omit<SetupRequest, 'familyName'>;
 
 export type RegisterResult = { ok: true } | { ok: false; errors: FieldErrors };
+
+/** `familyId`: the family joined. Form codes: `alreadyMember`, `invitation…`, `unknown`. */
+export type AcceptInvitationResult =
+  | { ok: true; familyId: string }
+  | { ok: false; errors: FieldErrors };
 
 export interface ResetLink {
   /** The account whose password the link resets. */

@@ -34,10 +34,18 @@
     },
     "register": {
       "title": "Rejoindre Nala",
-      "subtitle": "{{name}} vous invite à rejoindre la famille. Créez votre compte.",
+      "subtitle": "{{name}} vous invite à rejoindre {{family}}. Créez votre compte.",
       "submit": "Créer le compte",
       "toLogin": "Aller à la connexion",
-      "loading": "Vérification de l'invitation…"
+      "loading": "Vérification de l'invitation…",
+      "existingAccount": "Déjà un compte ? Connectez-vous",
+      "emailTaken": "Un compte utilise déjà cet e-mail. Connectez-vous pour accepter l'invitation avec."
+    },
+    "accept": {
+      "title": "Rejoindre une famille",
+      "subtitle": "{{name}} vous invite à rejoindre {{family}}",
+      "accept": "Accepter",
+      "notNow": "Plus tard"
     },
     "reset": {
       "title": "Choisir un nouveau mot de passe",
@@ -97,7 +105,8 @@
         "emailResetDisabled": "Ce Nala ne peut pas envoyer d'emails. Demandez un lien de réinitialisation à l'administrateur de la famille.",
         "babyNotFound": "Ce bébé n'existe plus. Il a peut-être été supprimé.",
         "familyNotFound": "Cette famille n'existe plus, ou vous n'en faites plus partie.",
-        "familyAdminOnly": "Seul l'admin de la famille peut faire ça."
+        "familyAdminOnly": "Seul l'admin de la famille peut faire ça.",
+        "alreadyMember": "Vous êtes déjà membre de cette famille."
       }
     }
   },

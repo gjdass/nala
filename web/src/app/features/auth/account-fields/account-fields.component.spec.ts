@@ -7,10 +7,11 @@ import { AccountFieldsComponent, createAccountForm } from './account-fields.comp
 @Component({
   imports: [AccountFieldsComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `<nala-account-fields [form]="form" />`,
+  template: `<nala-account-fields [form]="form" [emailTakenKey]="emailTakenKey" />`,
 })
 class HostComponent {
   readonly form = createAccountForm();
+  emailTakenKey = 'auth.errors.email.taken';
 }
 
 describe('AccountFieldsComponent', () => {
@@ -76,5 +77,19 @@ describe('AccountFieldsComponent', () => {
     await fixture.whenStable();
 
     expect(error('email')).toBe(en.auth.errors.email.taken);
+  });
+
+  it('shows a taken email with the default message, or the one given', async () => {
+    const form = fixture.componentInstance.form;
+    form.controls.email.setErrors({ server: 'taken' });
+    form.markAllAsTouched();
+    fixture.componentRef.changeDetectorRef.markForCheck();
+    await fixture.whenStable();
+    expect(error('email')).toBe(en.auth.errors.email.taken);
+
+    fixture.componentInstance.emailTakenKey = 'auth.register.emailTaken';
+    fixture.componentRef.changeDetectorRef.markForCheck();
+    await fixture.whenStable();
+    expect(error('email')).toBe(en.auth.register.emailTaken);
   });
 });

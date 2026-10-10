@@ -1,6 +1,6 @@
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { Router, provideRouter } from '@angular/router';
+import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
 import { Subject } from 'rxjs';
 import en from '../../../../../public/i18n/en.json';
 import { AuthState, LoginResult } from '../../../core/auth/auth.models';
@@ -13,6 +13,7 @@ describe('LoginPage', () => {
   let result: Subject<LoginResult>;
   let auth: { login: ReturnType<typeof vi.fn>; state: ReturnType<typeof signal<AuthState | null>> };
   let router: { navigateByUrl: ReturnType<typeof vi.spyOn> };
+  let route: { snapshot: { queryParamMap: ReturnType<typeof convertToParamMap> } };
 
   const host = () => fixture.nativeElement as HTMLElement;
   const input = (field: string) =>
@@ -49,9 +50,14 @@ describe('LoginPage', () => {
   beforeEach(async () => {
     result = new Subject<LoginResult>();
     auth = { login: vi.fn(() => result), state: signal<AuthState | null>(null) };
+    route = { snapshot: { queryParamMap: convertToParamMap({}) } };
     await TestBed.configureTestingModule({
       imports: [LoginPage, translocoTesting()],
-      providers: [provideRouter([]), { provide: AuthService, useValue: auth }],
+      providers: [
+        provideRouter([]),
+        { provide: AuthService, useValue: auth },
+        { provide: ActivatedRoute, useValue: route },
+      ],
     }).compileComponents();
     router = {
       navigateByUrl: vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true),
@@ -144,5 +150,16 @@ describe('LoginPage', () => {
 
     expect(forgot()).toBeNull();
     expect(askAdmin()).toBe(en.auth.login.askAdmin);
+  });
+
+  it('comes back to the invitation it was opened from once logged in', async () => {
+    route.snapshot.queryParamMap = convertToParamMap({ invite: 'a-b_c' });
+    fixture = TestBed.createComponent(LoginPage);
+    await fixture.whenStable();
+    fillValid();
+    await send();
+    await answer({ ok: true });
+
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/invite/a-b_c');
   });
 });

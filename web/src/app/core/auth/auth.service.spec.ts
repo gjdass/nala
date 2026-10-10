@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { firstValueFrom } from 'rxjs';
 import {
+  AcceptInvitationResult,
   AuthState,
   ForgotPasswordResult,
   InvitationLookup,
@@ -170,12 +171,15 @@ describe('AuthService', () => {
       const result = firstValueFrom(service.lookupInvitation('a-b_c'));
       const req = http.expectOne('/api/auth/invitations/a-b_c');
       expect(req.request.method).toBe('GET');
-      req.flush({ invitedBy: 'Anna', expiresAt: '2026-10-04T20:00:00Z' });
+      const invitation = {
+        kind: 'join' as const,
+        invitedBy: 'Anna',
+        familyName: 'Martins',
+        expiresAt: '2026-10-04T20:00:00Z',
+      };
+      req.flush(invitation);
 
-      expect(await result).toEqual<InvitationLookup>({
-        ok: true,
-        invitation: { invitedBy: 'Anna', expiresAt: '2026-10-04T20:00:00Z' },
-      });
+      expect(await result).toEqual<InvitationLookup>({ ok: true, invitation });
     });
 
     it.each([
@@ -237,6 +241,31 @@ describe('AuthService', () => {
         .flush({ code }, { status, statusText: 'Error' });
 
       expect(await result).toEqual<RegisterResult>({ ok: false, errors: { form: code } });
+    });
+  });
+
+  describe('acceptInvitation()', () => {
+    it('posts to the invitation and returns the joined family', async () => {
+      const result = firstValueFrom(service.acceptInvitation('a-b_c'));
+      const req = http.expectOne('/api/auth/invitations/a-b_c/accept');
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual({});
+      req.flush({ familyId: 'f2' });
+
+      expect(await result).toEqual<AcceptInvitationResult>({ ok: true, familyId: 'f2' });
+    });
+
+    it.each([
+      [409, 'alreadyMember'],
+      [404, 'invitationUnknown'],
+      [410, 'invitationUsed'],
+    ])('maps a %i to the %s form error', async (status, code) => {
+      const result = firstValueFrom(service.acceptInvitation('tok'));
+      http
+        .expectOne('/api/auth/invitations/tok/accept')
+        .flush({ code }, { status, statusText: 'Error' });
+
+      expect(await result).toEqual<AcceptInvitationResult>({ ok: false, errors: { form: code } });
     });
   });
 

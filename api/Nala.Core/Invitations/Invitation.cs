@@ -11,6 +11,8 @@ public class Invitation
     /// <summary>The family a join invitation adds a member to; null for a new-family invitation.</summary>
     public Guid? FamilyId { get; init; }
 
+    public InvitationKind Kind => FamilyId is null ? InvitationKind.NewFamily : InvitationKind.Join;
+
     public Guid CreatedByUserId { get; init; }
 
     public DateTimeOffset CreatedAt { get; init; }

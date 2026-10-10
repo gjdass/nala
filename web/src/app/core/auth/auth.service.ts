@@ -2,6 +2,7 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
 import { Observable, catchError, finalize, map, of, shareReplay, tap } from 'rxjs';
 import {
+  AcceptInvitationResult,
   AuthState,
   ForgotPasswordRequest,
   ForgotPasswordResult,
@@ -83,6 +84,16 @@ export class AuthService {
       map((): RegisterResult => ({ ok: true })),
       catchError((error: HttpErrorResponse) =>
         of<RegisterResult>({ ok: false, errors: toFieldErrors(error) }),
+      ),
+    );
+  }
+
+  /** Accepts an invitation with the signed-in account; `alreadyMember` leaves it unused. */
+  acceptInvitation(token: string): Observable<AcceptInvitationResult> {
+    return this.http.post<{ familyId: string }>(`${invitationUrl(token)}/accept`, {}).pipe(
+      map(({ familyId }): AcceptInvitationResult => ({ ok: true, familyId })),
+      catchError((error: HttpErrorResponse) =>
+        of<AcceptInvitationResult>({ ok: false, errors: toFieldErrors(error) }),
       ),
     );
   }

@@ -320,4 +320,67 @@ public class InvitationRepositoryTests
         Assert.That((await ReadAsync(revoked)).RevokedAt, Is.EqualTo(Now.AddDays(-1)));
         Assert.That((await ReadAsync(expired)).RevokedAt, Is.Null);
     }
+
+    private async Task<(Family Family, User Ben)> FamilyAndBenAsync()
+    {
+        var ben = NewUser("ben@mail.com");
+        await using var db = _db();
+        await new UserRepository(db).AddAsync(ben);
+        return (await TestFamilies.SeedAsync(db, _anna), ben);
+    }
+
+    private async Task<bool> AcceptAsync(Invitation invitation, Membership membership)
+    {
+        await using var db = _db();
+        return await new InvitationRepository(db).AcceptAsync(invitation.Id, membership, Now.AddHours(1));
+    }
+
+    private static Membership MemberOf(Family family, User user) =>
+        new() { FamilyId = family.Id, UserId = user.Id, Role = FamilyRole.Member, JoinedAt = Now.AddHours(1) };
+
+    [Test]
+    public async Task Accept_saves_the_membership_and_marks_the_invitation_used()
+    {
+        var (family, ben) = await FamilyAndBenAsync();
+        var invitation = await InviteAsync(familyId: family.Id);
+
+        Assert.That(await AcceptAsync(invitation, MemberOf(family, ben)), Is.True);
+
+        var saved = (await MembershipsAsync()).Single(m => m.UserId == ben.Id);
+        Assert.That(
+            new { saved.FamilyId, saved.Role, saved.JoinedAt },
+            Is.EqualTo(new { FamilyId = family.Id, Role = FamilyRole.Member, JoinedAt = Now.AddHours(1) }));
+        var read = await ReadAsync(invitation);
+        Assert.That(read.UsedAt, Is.EqualTo(Now.AddHours(1)));
+        Assert.That(read.UsedByUserId, Is.EqualTo(ben.Id));
+    }
+
+    [Test]
+    public async Task Accept_of_a_used_revoked_or_expired_invitation_saves_nothing()
+    {
+        var (family, ben) = await FamilyAndBenAsync();
+        var used = await InviteAsync(i => { i.UsedAt = Now; i.UsedByUserId = _anna.Id; }, familyId: family.Id);
+        var revoked = await InviteAsync(i => i.RevokedAt = Now, familyId: family.Id);
+        var expired = await InviteAsync(i => i.ExpiresAt = Now, familyId: family.Id);
+
+        foreach (var invitation in new[] { used, revoked, expired })
+        {
+            Assert.That(await AcceptAsync(invitation, MemberOf(family, ben)), Is.False);
+        }
+
+        Assert.That((await MembershipsAsync()).Any(m => m.UserId == ben.Id), Is.False);
+        Assert.That((await ReadAsync(revoked)).UsedAt, Is.Null);
+    }
+
+    [Test]
+    public async Task Accept_with_an_existing_membership_throws_and_leaves_the_invitation_unused()
+    {
+        var (family, _) = await FamilyAndBenAsync();
+        var invitation = await InviteAsync(familyId: family.Id);
+
+        Assert.That(() => AcceptAsync(invitation, MemberOf(family, _anna)), Throws.InstanceOf<MembershipConflictException>());
+
+        Assert.That((await ReadAsync(invitation)).UsedAt, Is.Null);
+        Assert.That((await MembershipsAsync()).Single(m => m.UserId == _anna.Id).Role, Is.EqualTo(FamilyRole.Admin));
+    }
 }

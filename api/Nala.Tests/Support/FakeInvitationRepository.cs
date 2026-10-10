@@ -4,8 +4,11 @@ using Nala.Core.Users;
 
 namespace Nala.Tests.Support;
 
-/// <summary>Redeeming adds the user to the given user repository, like the real transaction.</summary>
-public class FakeInvitationRepository(FakeUserRepository users) : IInvitationRepository
+/// <summary>
+/// Redeeming adds the user to the given user repository, like the real transaction; accepting adds the membership to the
+/// given family repository.
+/// </summary>
+public class FakeInvitationRepository(FakeUserRepository users, FakeFamilyRepository? families = null) : IInvitationRepository
 {
     public List<Invitation> Invitations { get; } = [];
 
@@ -47,6 +50,30 @@ public class FakeInvitationRepository(FakeUserRepository users) : IInvitationRep
         }
 
         return true;
+    }
+
+    /// <summary>Simulates the user joining the family by another way between the service's check and the save.</summary>
+    public bool MembershipConflict { get; set; }
+
+    public Task<bool> AcceptAsync(
+        Guid invitationId, Membership membership, DateTimeOffset now, CancellationToken cancellationToken = default)
+    {
+        var invitation = Invitations.Single(i => i.Id == invitationId);
+        if (ConsumedConcurrently || invitation.ProblemAt(now) is not null)
+        {
+            return Task.FromResult(false);
+        }
+
+        var memberships = families?.Memberships ?? Memberships;
+        if (MembershipConflict || memberships.Any(m => m.FamilyId == membership.FamilyId && m.UserId == membership.UserId))
+        {
+            throw new MembershipConflictException();
+        }
+
+        memberships.Add(membership);
+        invitation.UsedAt = now;
+        invitation.UsedByUserId = membership.UserId;
+        return Task.FromResult(true);
     }
 
     /// <summary>Simulates a registration using the invitation between the service reading it and revoking it.</summary>

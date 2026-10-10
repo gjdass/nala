@@ -48,7 +48,6 @@ export const setupOnlyGuard: CanActivateFn = () => {
     );
 };
 
-
 /** "Forgot password" only exists when the instance can email reset links; otherwise the login screen says to ask the admin. */
 export const emailResetGuard: CanActivateFn = () => {
   const router = inject(Router);
@@ -58,5 +57,16 @@ export const emailResetGuard: CanActivateFn = () => {
     .pipe(
       map((state) => (state.smtpEnabled ? true : login)),
       catchError(() => of(login)),
+    );
+};
+
+/** Invitation links: signed-out visitors register (or log in), signed-in users accept with their account. */
+export const invitationGuard: CanActivateFn = () => {
+  const router = inject(Router);
+  return inject(AuthService)
+    .load()
+    .pipe(
+      map((state) => (state.setupRequired ? router.createUrlTree(['/setup']) : true)),
+      catchError(() => of(true)),
     );
 };

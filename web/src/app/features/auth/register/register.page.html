@@ -15,15 +15,50 @@
       {{ 'auth.register.toLogin' | transloco }}
     </a>
   </nala-auth-card>
+} @else if (current.kind === 'accept') {
+  <nala-auth-card
+    [title]="'auth.accept.title' | transloco"
+    [subtitle]="
+      'auth.accept.subtitle'
+        | transloco: { name: current.invitation.invitedBy, family: current.invitation.familyName }
+    "
+    [error]="formError() ? ('auth.errors.form.' + formError() | transloco) : null"
+  >
+    <button authCardActions mat-button type="button" (click)="notNow()" data-testid="not-now">
+      {{ 'auth.accept.notNow' | transloco }}
+    </button>
+    <button
+      authCardActions
+      mat-flat-button
+      type="button"
+      [disabled]="pending()"
+      (click)="accept()"
+      data-testid="accept"
+    >
+      {{ 'auth.accept.accept' | transloco }}
+    </button>
+  </nala-auth-card>
 } @else {
   <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
     <nala-auth-card
       [title]="'auth.register.title' | transloco"
-      [subtitle]="'auth.register.subtitle' | transloco: { name: current.invitedBy }"
+      [subtitle]="
+        'auth.register.subtitle'
+          | transloco: { name: current.invitation.invitedBy, family: current.invitation.familyName }
+      "
       [error]="formError() ? ('auth.errors.form.' + formError() | transloco) : null"
     >
-      <nala-account-fields [form]="form" />
+      <nala-account-fields [form]="form" emailTakenKey="auth.register.emailTaken" />
 
+      <a
+        authCardActions
+        mat-button
+        routerLink="/login"
+        [queryParams]="{ invite: token }"
+        data-testid="existing-account"
+      >
+        {{ 'auth.register.existingAccount' | transloco }}
+      </a>
       <button
         authCardActions
         mat-flat-button

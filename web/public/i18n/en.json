@@ -34,10 +34,18 @@
     },
     "register": {
       "title": "Join Nala",
-      "subtitle": "{{name}} invited you to join the family. Create your account.",
+      "subtitle": "{{name}} invited you to join {{family}}. Create your account.",
       "submit": "Create account",
       "toLogin": "Go to login",
-      "loading": "Checking your invitation…"
+      "loading": "Checking your invitation…",
+      "existingAccount": "Already have an account? Log in",
+      "emailTaken": "An account already uses this email. Log in to accept the invitation with it."
+    },
+    "accept": {
+      "title": "Join a family",
+      "subtitle": "{{name}} invites you to join {{family}}",
+      "accept": "Accept",
+      "notNow": "Not now"
     },
     "reset": {
       "title": "Set a new password",
@@ -97,7 +105,8 @@
         "emailResetDisabled": "This Nala can't send emails. Ask your family's admin for a reset link.",
         "babyNotFound": "This baby no longer exists. It may have been deleted.",
         "familyNotFound": "This family no longer exists, or you're no longer part of it.",
-        "familyAdminOnly": "Only the family admin can do this."
+        "familyAdminOnly": "Only the family admin can do this.",
+        "alreadyMember": "You're already a member of this family."
       }
     }
   },

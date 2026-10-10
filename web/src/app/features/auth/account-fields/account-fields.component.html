@@ -8,7 +8,7 @@
     data-testid="email"
   />
   @if (errorOf(form().controls.email); as code) {
-    <mat-error data-testid="error-email">{{ 'auth.errors.email.' + code | transloco }}</mat-error>
+    <mat-error data-testid="error-email">{{ emailErrorKey(code) | transloco }}</mat-error>
   }
 </mat-form-field>
 

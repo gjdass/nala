@@ -2,7 +2,13 @@ import { TestBed } from '@angular/core/testing';
 import { ActivatedRouteSnapshot, Router, RouterStateSnapshot, UrlTree } from '@angular/router';
 import { Observable, of, throwError } from 'rxjs';
 import { firstValueFrom } from 'rxjs';
-import { authGuard, emailResetGuard, signedOutGuard, setupOnlyGuard } from './auth.guards';
+import {
+  authGuard,
+  emailResetGuard,
+  invitationGuard,
+  signedOutGuard,
+  setupOnlyGuard,
+} from './auth.guards';
 import { AuthState } from './auth.models';
 import { AuthService } from './auth.service';
 
@@ -107,6 +113,28 @@ describe('auth guards', () => {
     it('redirects to /login when the state cannot be loaded', async () => {
       load = () => throwError(() => new Error('offline'));
       expect(url(await run(emailResetGuard))).toBe('/login');
+    });
+  });
+
+  describe('invitationGuard', () => {
+    it('redirects to /setup while the instance has no user', async () => {
+      load = () => of(setupRequired);
+      expect(url(await run(invitationGuard))).toBe('/setup');
+    });
+
+    it('allows signed-out visitors, who register or log in', async () => {
+      load = () => of(signedOut);
+      expect(await run(invitationGuard)).toBe(true);
+    });
+
+    it('allows signed-in users, who accept with their account', async () => {
+      load = () => of(signedIn);
+      expect(await run(invitationGuard)).toBe(true);
+    });
+
+    it('allows the route when the state cannot be loaded', async () => {
+      load = () => throwError(() => new Error('offline'));
+      expect(await run(invitationGuard)).toBe(true);
     });
   });
 });
