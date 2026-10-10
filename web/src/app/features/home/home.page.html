@@ -1,18 +1,26 @@
 <nala-top-app-bar
+  [families]="families.families() ?? []"
+  [family]="families.current()"
   [babies]="store.babies() ?? []"
   [selected]="store.selected()"
   (babySelected)="store.select($event)"
+  (familySelected)="store.selectFamily($event)"
 />
 
 <main>
-  @if (store.loadError()) {
-    <p class="error" role="alert" data-testid="babies-error">
-      {{ 'babies.loadError' | transloco }}
-    </p>
-  } @else if (store.babies(); as babies) {
-    @if (babies.length === 0) {
+  @switch (store.screen()) {
+    @case ('error') {
+      <p class="error" role="alert" data-testid="babies-error">
+        {{ 'babies.loadError' | transloco }}
+      </p>
+    }
+    @case ('noFamily') {
+      <nala-no-family />
+    }
+    @case ('noBaby') {
       <nala-no-baby />
-    } @else {
+    }
+    @case ('ready') {
       <div class="sections" data-testid="section-column">
         @for (section of sections(); track section.key) {
           <ng-container

@@ -1,10 +1,12 @@
 import { ChangeDetectionStrategy, Component, WritableSignal, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { Subject } from 'rxjs';
+import { Subject, of } from 'rxjs';
 import en from '../../../../public/i18n/en.json';
 import { BabiesResult, Baby, BabySheetResult } from '../../core/babies/baby.models';
 import { BabyService } from '../../core/babies/baby.service';
+import { FamiliesResult, Family } from '../../core/families/family.models';
+import { FamilyService } from '../../core/families/family.service';
 import { DataRefreshService } from '../../core/refresh/data-refresh.service';
 import { FakeHistorySource } from '../../testing/fake-section';
 import { SECTIONS, SectionDefinition, SectionPreference } from '../../core/sections/section.models';
@@ -44,6 +46,10 @@ describe('HomePage', () => {
   let sheetClosed: Subject<BabySheetResult | undefined>;
   let sheet: { open: ReturnType<typeof vi.fn> };
   let refresh: ReturnType<typeof fakeDataRefresh>;
+  let families: FamiliesResult;
+
+  const martins: Family = { id: 'f1', name: 'Martins', isAdmin: true };
+  const durands: Family = { id: 'f2', name: 'Durands', isAdmin: false };
 
   const lea: Baby = {
     id: 'b1',
@@ -110,6 +116,7 @@ describe('HomePage', () => {
     sheetClosed = new Subject<BabySheetResult | undefined>();
     sheet = { open: vi.fn(() => sheetClosed) };
     refresh = fakeDataRefresh();
+    families = { ok: true, families: [martins] };
     await TestBed.configureTestingModule({
       imports: [HomePage, translocoTesting()],
       providers: [
@@ -120,6 +127,7 @@ describe('HomePage', () => {
           useValue: { preferences, load: loadSections, save: vi.fn() },
         },
         { provide: BabyService, useValue: { list: () => babiesLoaded } },
+        { provide: FamilyService, useValue: { list: () => of(families) } },
         { provide: SheetService, useValue: sheet },
         { provide: DataRefreshService, useValue: refresh },
       ],
@@ -146,6 +154,62 @@ describe('HomePage', () => {
   it('shows neither the empty state nor the app content while the babies load', () => {
     expect(find('empty-state')).toBeNull();
     expect(find('section-column')).toBeNull();
+  });
+
+  describe('in no family', () => {
+    beforeEach(async () => {
+      families = { ok: true, families: [] };
+      fixture.destroy();
+      fixture = TestBed.createComponent(HomePage);
+      await load({ ok: true, babies: [] });
+    });
+
+    it('shows only the empty state asking to be invited, without action nor switcher', () => {
+      expect(text('empty-title')).toBe(en.families.none.title);
+      expect(text('empty-text')).toBe(en.families.none.text);
+      expect(find('add-baby')).toBeNull();
+      expect(host().querySelector('[data-testid="empty-state"] button')).toBeNull();
+      expect(find('baby-switcher')).toBeNull();
+      expect(find('section-column')).toBeNull();
+    });
+  });
+
+  describe('in several families', () => {
+    beforeEach(async () => {
+      families = { ok: true, families: [durands, martins] };
+      fixture.destroy();
+      fixture = TestBed.createComponent(HomePage);
+    });
+
+    it('shows the add-a-baby state when the current family has no baby, even if another one has', async () => {
+      await load({ ok: true, babies: [lea] });
+
+      expect(text('family-name')).toBe('Durands');
+      expect(find('add-baby')).not.toBeNull();
+      expect(find('section-column')).toBeNull();
+    });
+
+    it("switching to a baby of another family shows that baby's cards and remembers its family", async () => {
+      await load({ ok: true, babies: [lea] });
+
+      (find('baby-switcher') as HTMLButtonElement).click();
+      await fixture.whenStable();
+      document.querySelector<HTMLButtonElement>('[data-testid="switcher-item"]')!.click();
+      await fixture.whenStable();
+
+      expect(text('selected-name')).toBe('Lea');
+      expect(find('section-column')).toBeTruthy();
+      expect(localStorage.getItem('nala.family')).toBe('f1');
+    });
+
+    it('restores the remembered family', async () => {
+      localStorage.setItem('nala.family', 'f1');
+      fixture.destroy();
+      fixture = TestBed.createComponent(HomePage);
+      await load({ ok: true, babies: [lea] });
+
+      expect(text('selected-name')).toBe('Lea');
+    });
   });
 
   describe('without any baby', () => {

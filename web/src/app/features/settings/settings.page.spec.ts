@@ -9,6 +9,8 @@ import fr from '../../../../public/i18n/fr.json';
 import { AccountService } from '../../core/account/account.service';
 import { AdminService } from '../../core/admin/admin.service';
 import { BabyService } from '../../core/babies/baby.service';
+import { FamiliesResult } from '../../core/families/family.models';
+import { FamilyService } from '../../core/families/family.service';
 import { InvitationService } from '../../core/invitations/invitation.service';
 import { MemberService } from '../../core/members/member.service';
 import { AccountResult, AuthState } from '../../core/auth/auth.models';
@@ -35,6 +37,7 @@ describe('SettingsPage', () => {
   let dialogClosed: Subject<boolean | undefined>;
   let dialog: { open: ReturnType<typeof vi.fn> };
   let router: Router;
+  let families: FamiliesResult;
   /** The built sections; empty until a feature registers one. */
   const registered: SectionDefinition[] = [];
 
@@ -89,6 +92,7 @@ describe('SettingsPage', () => {
     snackBar = { open: vi.fn() };
     dialogClosed = new Subject<boolean | undefined>();
     dialog = { open: vi.fn(() => ({ afterClosed: () => dialogClosed })) };
+    families = { ok: true, families: [{ id: 'f1', name: 'Martins', isAdmin: true }] };
     await TestBed.configureTestingModule({
       imports: [SettingsPage, translocoTesting()],
       providers: [
@@ -105,6 +109,7 @@ describe('SettingsPage', () => {
         },
         { provide: AdminService, useValue: { users: vi.fn(() => of({ ok: true, users: [] })) } },
         { provide: BabyService, useValue: { list: vi.fn(() => of({ ok: true, babies: [] })) } },
+        { provide: FamilyService, useValue: { list: vi.fn(() => of(families)) } },
         {
           provide: InvitationService,
           useValue: { pending: vi.fn(() => of({ ok: true, invitations: [] })) },
@@ -151,6 +156,25 @@ describe('SettingsPage', () => {
     expect(host().querySelector('nala-admin-users')).toBeNull();
     expect(host().querySelector('nala-settings-babies')).not.toBeNull();
     expect(host().querySelector('nala-settings-invitations')).not.toBeNull();
+  });
+
+  it('loads the families: the family sections and the baby sheet need them, and settings can be opened first', () => {
+    expect(TestBed.inject(FamilyService).list).toHaveBeenCalledOnce();
+  });
+
+  it('hides Babies and Members & invitations from a user in no family', async () => {
+    families = { ok: true, families: [] };
+    fixture = TestBed.createComponent(SettingsPage);
+    await fixture.whenStable();
+
+    expect(sectionTitles()).toEqual([
+      en.settings.account.title,
+      en.settings.admin.title,
+      en.settings.appearance.title,
+    ]);
+    expect(host().querySelector('nala-settings-babies')).toBeNull();
+    expect(host().querySelector('nala-settings-members')).toBeNull();
+    expect(host().querySelector('nala-settings-invitations')).toBeNull();
   });
 
   it('hides the Home sections section while no section is built', () => {

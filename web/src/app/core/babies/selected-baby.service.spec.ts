@@ -1,7 +1,9 @@
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Subject } from 'rxjs';
 import { BabiesResult, Baby } from './baby.models';
 import { CurrentFamilyService } from '../families/current-family.service';
+import { Family } from '../families/family.models';
 import { BabyService } from './baby.service';
 import { SelectedBabyService } from './selected-baby.service';
 
@@ -9,11 +11,20 @@ const KEY = 'nala.baby';
 
 describe('SelectedBabyService', () => {
   let listed: Subject<BabiesResult>;
-  let families: { refresh: ReturnType<typeof vi.fn> };
+  let families: {
+    families: ReturnType<typeof signal<Family[] | null>>;
+    current: ReturnType<typeof signal<Family | null>>;
+    loadError: ReturnType<typeof signal<boolean>>;
+    refresh: ReturnType<typeof vi.fn>;
+    select: ReturnType<typeof vi.fn>;
+  };
 
-  const baby = (id: string, name: string, birthDate: string): Baby => ({
+  const martins: Family = { id: 'f1', name: 'Martins', isAdmin: true };
+  const durands: Family = { id: 'f2', name: 'Durands', isAdmin: false };
+
+  const baby = (id: string, name: string, birthDate: string, familyId = 'f1'): Baby => ({
     id,
-    familyId: 'f1',
+    familyId,
     name,
     birthDate,
     sex: 'unspecified',
@@ -23,6 +34,13 @@ describe('SelectedBabyService', () => {
   });
   const tom = baby('b1', 'Tom', '2026-05-18');
   const lea = baby('b2', 'Lea', '2026-09-23');
+  const zoe = baby('b3', 'Zoe', '2026-03-02', 'f2');
+
+  /** The user's families, the first one current, as the real store does without a stored one. */
+  const inFamilies = (...list: Family[]) => {
+    families.families.set(list);
+    families.current.set(list[0] ?? null);
+  };
 
   const loaded = (result: BabiesResult) => {
     const store = TestBed.inject(SelectedBabyService);
@@ -34,7 +52,16 @@ describe('SelectedBabyService', () => {
   beforeEach(() => {
     localStorage.clear();
     listed = new Subject<BabiesResult>();
-    families = { refresh: vi.fn() };
+    families = {
+      families: signal<Family[] | null>(null),
+      current: signal<Family | null>(null),
+      loadError: signal(false),
+      refresh: vi.fn(),
+      select: vi.fn((id: string) =>
+        families.current.set(families.families()?.find((f) => f.id === id) ?? null),
+      ),
+    };
+    inFamilies(martins);
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       providers: [
@@ -175,5 +202,81 @@ describe('SelectedBabyService', () => {
     expect(store.selected()).toEqual(tom);
     store.select(lea.id);
     expect(store.selected()).toEqual(lea);
+  });
+  describe('across families', () => {
+    beforeEach(() => inFamilies(martins, durands));
+
+    it('babies() holds every family\'s babies, familyBabies() only the current family\'s', () => {
+      const store = loaded({ ok: true, babies: [zoe, tom, lea] });
+
+      expect(store.babies()).toEqual([zoe, tom, lea]);
+      expect(store.familyBabies()).toEqual([tom, lea]);
+      expect(store.selected()).toEqual(tom);
+    });
+
+    it("falls back to the current family's first baby when the stored one is in another family", () => {
+      localStorage.setItem(KEY, zoe.id);
+
+      expect(loaded({ ok: true, babies: [zoe, tom, lea] }).selected()).toEqual(tom);
+    });
+
+    it('select() selects the baby and its family', () => {
+      const store = loaded({ ok: true, babies: [zoe, tom, lea] });
+
+      store.select(zoe.id);
+
+      expect(families.select).toHaveBeenCalledWith('f2');
+      expect(store.selected()).toEqual(zoe);
+      expect(localStorage.getItem(KEY)).toBe(zoe.id);
+    });
+
+    it('selectFamily() selects a family without a baby: no baby is selected', () => {
+      const store = loaded({ ok: true, babies: [tom, lea] });
+
+      store.selectFamily('f2');
+
+      expect(families.select).toHaveBeenCalledWith('f2');
+      expect(store.familyBabies()).toEqual([]);
+      expect(store.selected()).toBeNull();
+    });
+  });
+
+  describe('screen()', () => {
+    it('is loading until the babies are loaded', () => {
+      expect(TestBed.inject(SelectedBabyService).screen()).toBe('loading');
+    });
+
+    it('is loading until the families are loaded', () => {
+      families.families.set(null);
+      families.current.set(null);
+
+      expect(loaded({ ok: true, babies: [tom] }).screen()).toBe('loading');
+    });
+
+    it('is error when the babies cannot be loaded', () => {
+      expect(loaded({ ok: false, errors: { form: 'unknown' } }).screen()).toBe('error');
+    });
+
+    it('is error when the families cannot be loaded', () => {
+      families.loadError.set(true);
+
+      expect(loaded({ ok: true, babies: [tom] }).screen()).toBe('error');
+    });
+
+    it('is noFamily when the user is in no family', () => {
+      inFamilies();
+
+      expect(loaded({ ok: true, babies: [] }).screen()).toBe('noFamily');
+    });
+
+    it('is noBaby when the current family has no baby, even if another one has', () => {
+      inFamilies(durands, martins);
+
+      expect(loaded({ ok: true, babies: [tom] }).screen()).toBe('noBaby');
+    });
+
+    it('is ready when a baby is selected', () => {
+      expect(loaded({ ok: true, babies: [tom] }).screen()).toBe('ready');
+    });
   });
 });

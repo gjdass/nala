@@ -221,7 +221,12 @@
         "required": "Enter a family name",
         "tooLong": "50 characters maximum"
       }
-    }
+    },
+    "none": {
+      "title": "You're not part of a family yet",
+      "text": "Ask a family member to invite you."
+    },
+    "noBaby": "No baby yet"
   },
   "babies": {
     "loadError": "Couldn't load your babies. Check your connection and try again.",

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
@@ -11,7 +11,7 @@ import { CurrentFamilyService } from '../../../core/families/current-family.serv
 import { SheetService } from '../../../shared/ui/sheet/sheet.service';
 import { BabySheetComponent } from '../../babies/baby-sheet/baby-sheet.component';
 
-/** The family's babies (name + age), added, edited and deleted (family admin) through the baby sheet. */
+/** The current family's babies (name + age), added, edited and deleted (family admin) through the baby sheet. */
 @Component({
   selector: 'nala-settings-babies',
   imports: [BabyAgePipe, MatButtonModule, MatIconModule, MatListModule, TranslocoPipe],
@@ -21,18 +21,22 @@ import { BabySheetComponent } from '../../babies/baby-sheet/baby-sheet.component
 })
 export class SettingsBabiesComponent {
   private readonly sheet = inject(SheetService);
+  private readonly families = inject(CurrentFamilyService);
+  /** Every family's babies, as listed by the API and changed here. */
+  private readonly all = signal<Baby[]>([]);
 
-  protected readonly babies = signal<Baby[]>([]);
+  protected readonly babies = computed(() => {
+    const familyId = this.families.current()?.id;
+    return this.all().filter((b) => b.familyId === familyId);
+  });
   protected readonly loadError = signal(false);
 
   constructor() {
-    // The baby sheet needs them (current family, family admin), and settings can be opened first.
-    inject(CurrentFamilyService).refresh();
     inject(BabyService)
       .list()
       .subscribe((result) => {
         if (result.ok) {
-          this.babies.set(result.babies);
+          this.all.set(result.babies);
         } else {
           this.loadError.set(true);
         }
@@ -42,7 +46,7 @@ export class SettingsBabiesComponent {
   protected add(): void {
     this.sheet.open<BabySheetComponent, BabySheetResult>(BabySheetComponent).subscribe((result) => {
       if (result && 'saved' in result) {
-        this.babies.update((babies) => byBirthDate([...babies, result.saved]));
+        this.all.update((babies) => byBirthDate([...babies, result.saved]));
       }
     });
   }
@@ -55,10 +59,10 @@ export class SettingsBabiesComponent {
           return;
         }
         if ('deleted' in result) {
-          this.babies.update((babies) => babies.filter((b) => b.id !== result.deleted));
+          this.all.update((babies) => babies.filter((b) => b.id !== result.deleted));
         } else {
           const updated = result.saved;
-          this.babies.update((babies) =>
+          this.all.update((babies) =>
             byBirthDate(babies.map((b) => (b.id === updated.id ? updated : b))),
           );
         }

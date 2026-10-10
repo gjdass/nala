@@ -10,11 +10,13 @@ import {
 } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
-import { EMPTY, Observable, Subject } from 'rxjs';
+import { EMPTY, Observable, Subject, of } from 'rxjs';
 import en from '../../../../public/i18n/en.json';
 import { BabiesResult, Baby } from '../../core/babies/baby.models';
 import { BabyService } from '../../core/babies/baby.service';
 import { SelectedBabyService } from '../../core/babies/selected-baby.service';
+import { FamiliesResult } from '../../core/families/family.models';
+import { FamilyService } from '../../core/families/family.service';
 import { HistoryLoaderService } from '../../core/history/history-loader.service';
 import { HistoryItem, HistorySource } from '../../core/history/history-source.models';
 import { DataRefreshService } from '../../core/refresh/data-refresh.service';
@@ -107,8 +109,9 @@ describe('HistoryPage', () => {
   let entrySheets: { edit: ReturnType<typeof vi.fn> };
   let refresh: ReturnType<typeof fakeDataRefresh>;
 
-  const lea = { id: 'b1', name: 'Lea', birthDate: '2026-09-01' } as Baby;
-  const tom = { id: 'b0', name: 'Tom', birthDate: '2026-05-18' } as Baby;
+  const lea = { id: 'b1', familyId: 'f1', name: 'Lea', birthDate: '2026-09-01' } as Baby;
+  const tom = { id: 'b0', familyId: 'f1', name: 'Tom', birthDate: '2026-05-18' } as Baby;
+  let families: FamiliesResult;
 
   const host = () => fixture.nativeElement as HTMLElement;
   const find = (testId: string) => host().querySelector<HTMLElement>(`[data-testid="${testId}"]`);
@@ -132,6 +135,7 @@ describe('HistoryPage', () => {
     vi.stubGlobal('IntersectionObserver', VisibleIntersectionObserver);
     localStorage.clear();
     babiesLoaded = new Subject();
+    families = { ok: true, families: [{ id: 'f1', name: 'Martins', isAdmin: true }] };
     preferences = signal<SectionPreference[] | null>(null);
     loadSections = vi.fn();
     calls = [];
@@ -163,6 +167,7 @@ describe('HistoryPage', () => {
           ),
         },
         { provide: BabyService, useValue: { list: () => babiesLoaded } },
+        { provide: FamilyService, useValue: { list: () => of(families) } },
         {
           provide: SectionPreferencesService,
           useValue: { preferences, load: loadSections, save: vi.fn() },
@@ -211,6 +216,18 @@ describe('HistoryPage', () => {
 
     expect(host().querySelector('nala-no-baby')).not.toBeNull();
     expect(find('add-baby')).not.toBeNull();
+    expect(host().querySelector('nala-history-list')).toBeNull();
+    expect(host().querySelector('nala-history-filter-bar')).toBeNull();
+    expect(loaders.loader).not.toHaveBeenCalled();
+  });
+
+  it('shows the no-family empty state to a user in no family, and no list', async () => {
+    families = { ok: true, families: [] };
+    TestBed.inject(SelectedBabyService).refresh();
+    await loadBabies([]);
+
+    expect(host().querySelector('nala-no-family')).not.toBeNull();
+    expect(host().querySelector('nala-no-baby')).toBeNull();
     expect(host().querySelector('nala-history-list')).toBeNull();
     expect(host().querySelector('nala-history-filter-bar')).toBeNull();
     expect(loaders.loader).not.toHaveBeenCalled();

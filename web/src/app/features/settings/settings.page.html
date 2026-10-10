@@ -1,14 +1,16 @@
 <main>
   <h1>{{ 'settings.title' | transloco }}</h1>
 
-  <nala-settings-section [title]="'settings.babies.title' | transloco">
-    <nala-settings-babies />
-  </nala-settings-section>
+  @if (hasFamily()) {
+    <nala-settings-section [title]="'settings.babies.title' | transloco">
+      <nala-settings-babies />
+    </nala-settings-section>
 
-  <nala-settings-section [title]="'settings.members.title' | transloco">
-    <nala-settings-members />
-    <nala-settings-invitations />
-  </nala-settings-section>
+    <nala-settings-section [title]="'settings.members.title' | transloco">
+      <nala-settings-members />
+      <nala-settings-invitations />
+    </nala-settings-section>
+  }
 
   @if (hasSections) {
     <nala-settings-section [title]="'settings.sections.title' | transloco">

@@ -221,7 +221,12 @@
         "required": "Saisissez un nom de famille",
         "tooLong": "50 caractères maximum"
       }
-    }
+    },
+    "none": {
+      "title": "Vous ne faites partie d'aucune famille",
+      "text": "Demandez à un membre de la famille de vous inviter."
+    },
+    "noBaby": "Pas encore de bébé"
   },
   "babies": {
     "loadError": "Impossible de charger vos bébés. Vérifiez votre connexion et réessayez.",

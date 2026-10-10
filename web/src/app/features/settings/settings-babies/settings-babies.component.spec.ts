@@ -1,9 +1,11 @@
+import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Subject } from 'rxjs';
 import en from '../../../../../public/i18n/en.json';
 import { BabiesResult, Baby, BabySheetResult } from '../../../core/babies/baby.models';
 import { BabyService } from '../../../core/babies/baby.service';
 import { CurrentFamilyService } from '../../../core/families/current-family.service';
+import { Family } from '../../../core/families/family.models';
 import { SheetService } from '../../../shared/ui/sheet/sheet.service';
 import { translocoTesting } from '../../../testing/transloco-testing';
 import { BabySheetComponent } from '../../babies/baby-sheet/baby-sheet.component';
@@ -14,7 +16,9 @@ describe('SettingsBabiesComponent', () => {
   let listed: Subject<BabiesResult>;
   let sheetClosed: Subject<BabySheetResult | undefined>;
   let sheet: { open: ReturnType<typeof vi.fn> };
-  let families: { refresh: ReturnType<typeof vi.fn> };
+  let families: {
+    current: ReturnType<typeof signal<Family | null>>;
+  };
 
   const baby = (id: string, name: string, birthDate: string): Baby => ({
     id,
@@ -52,7 +56,9 @@ describe('SettingsBabiesComponent', () => {
     listed = new Subject<BabiesResult>();
     sheetClosed = new Subject<BabySheetResult | undefined>();
     sheet = { open: vi.fn(() => sheetClosed) };
-    families = { refresh: vi.fn() };
+    families = {
+      current: signal<Family | null>({ id: 'f1', name: 'Martins', isAdmin: true }),
+    };
     await TestBed.configureTestingModule({
       imports: [SettingsBabiesComponent, translocoTesting()],
       providers: [
@@ -67,10 +73,6 @@ describe('SettingsBabiesComponent', () => {
 
   afterEach(() => vi.useRealTimers());
 
-  it('loads the families, for the baby sheet', () => {
-    expect(families.refresh).toHaveBeenCalledOnce();
-  });
-
   it('lists the babies in the API order with their age', async () => {
     await list({ ok: true, babies: [tom, lea] });
 
@@ -78,6 +80,17 @@ describe('SettingsBabiesComponent', () => {
       ['Tom', '4 months 10 days'],
       ['Lea', '5 days'],
     ]);
+  });
+
+  it("lists only the current family's babies", async () => {
+    const zoe = { ...baby('b3', 'Zoe', '2026-03-02'), familyId: 'f2' };
+    await list({ ok: true, babies: [zoe, tom, lea] });
+
+    expect(rows().map(([name]) => name)).toEqual(['Tom', 'Lea']);
+
+    families.current.set({ id: 'f2', name: 'Durands', isAdmin: false });
+    await fixture.whenStable();
+    expect(rows().map(([name]) => name)).toEqual(['Zoe']);
   });
 
   it('shows a load error', async () => {

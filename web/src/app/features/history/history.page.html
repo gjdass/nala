@@ -1,28 +1,40 @@
 <nala-top-app-bar
+  [families]="families.families() ?? []"
+  [family]="families.current()"
   [babies]="store.babies() ?? []"
   [selected]="store.selected()"
   (babySelected)="store.select($event)"
+  (familySelected)="store.selectFamily($event)"
 />
 
 <main>
-  @if (store.loadError()) {
-    <p class="error" role="alert" data-testid="babies-error">
-      {{ 'babies.loadError' | transloco }}
-    </p>
-  } @else if (store.babies()?.length === 0) {
-    <nala-no-baby />
-  } @else if (loader(); as loader) {
-    <nala-history-filter-bar
-      [window]="filters().window"
-      [selected]="filters().sections"
-      [sections]="menuSections()"
-      (windowChange)="setWindow($event)"
-      (selectedChange)="setSections($event)"
-    />
-    <nala-history-list [loader]="loader" [emptyTitle]="'history.emptyPeriod' | transloco">
-      <ng-template nalaSectionEntry let-item>
-        <nala-history-entry [item]="item" (open)="edit(item)" />
-      </ng-template>
-    </nala-history-list>
+  @switch (store.screen()) {
+    @case ('error') {
+      <p class="error" role="alert" data-testid="babies-error">
+        {{ 'babies.loadError' | transloco }}
+      </p>
+    }
+    @case ('noFamily') {
+      <nala-no-family />
+    }
+    @case ('noBaby') {
+      <nala-no-baby />
+    }
+    @case ('ready') {
+      @if (loader(); as loader) {
+        <nala-history-filter-bar
+          [window]="filters().window"
+          [selected]="filters().sections"
+          [sections]="menuSections()"
+          (windowChange)="setWindow($event)"
+          (selectedChange)="setSections($event)"
+        />
+        <nala-history-list [loader]="loader" [emptyTitle]="'history.emptyPeriod' | transloco">
+          <ng-template nalaSectionEntry let-item>
+            <nala-history-entry [item]="item" (open)="edit(item)" />
+          </ng-template>
+        </nala-history-list>
+      }
+    }
   }
 </main>

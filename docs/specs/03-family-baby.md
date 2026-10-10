@@ -56,14 +56,14 @@ Each item becomes at least one test, written failing first.
 ### Families
 - [x] The account created at first-run setup (02) is the admin of a first family, named at setup.
 - [ ] Accepting a new-family invitation (02) creates a family with the typed name (1–50 characters); the person is its admin and only member, and it has no baby.
-- [ ] A person can belong to several families, admin of some and member of others; `GET /api/families` lists theirs with their role.
+- [x] A person can belong to several families, admin of some and member of others; `GET /api/families` lists theirs with their role.
 - [x] Every family has exactly one admin, its creator; no action changes it.
 - [ ] Only the family admin can rename the family; other members don't see the action and the endpoint refuses them (403).
 - [x] On an existing instance, the migration puts every baby and every non-deleted, enabled user in one family "Family", with the instance admin as its admin; disabled users get no membership.
 
 ### First baby
-- [ ] When the current family has no baby, the app shows an empty state inviting the user to add one to it; no activity screen is reachable until it has one.
-- [ ] A user in no family sees an empty state asking to be invited, with no add-a-baby action and no activity screen.
+- [x] When the current family has no baby, the app shows an empty state inviting the user to add one to it; no activity screen is reachable until it has one.
+- [x] A user in no family sees an empty state asking to be invited, with no add-a-baby action and no activity screen.
 
 ### Babies
 - [x] A baby has a name (required, 1–50 characters), a birth date (required, not in the future), a sex (girl / boy / unspecified, default unspecified), and optional birth weight (g), birth length (cm) and birth head circumference (cm).
@@ -75,9 +75,9 @@ Each item becomes at least one test, written failing first.
 - [x] Babies are listed by birth date, oldest first.
 
 ### Baby switcher
-- [ ] With one family, the switcher is available from every main screen when it has more than one baby, and hidden otherwise.
-- [ ] With several families, the switcher is always available and lists the babies under their family's name; a family without a baby can be selected, and the top app bar then shows its name.
-- [ ] The selected family and baby are remembered per device (not per account) and restored when the app is reopened. A family the user is no longer in falls back to their first family; a baby that no longer exists, to its family's first baby.
+- [x] With one family, the switcher is available from every main screen when it has more than one baby, and hidden otherwise.
+- [x] With several families, the switcher is always available and lists the babies under their family's name; a family without a baby can be selected, and the top app bar then shows its name.
+- [x] The selected family and baby are remembered per device (not per account) and restored when the app is reopened. A family the user is no longer in falls back to their first family; a baby that no longer exists, to its family's first baby.
 
 ### Invitations
 - [ ] Any member of a family can create a join invitation link for it (single-use, expires after 7 days — see 02) and copy or share it with the device's share sheet.
@@ -106,12 +106,12 @@ Each item becomes at least one test, written failing first.
 
 ## Build slices
 
-Slices 1–7 (single family) are done; each is a commit "Spec 03 slice N: …" (`git log --grep "Spec 03 slice"`). Multi-family, with 02's changes, continues from slice 8. The app keeps working after each slice: until slice 11, the web uses the user's first family as the current family.
+Slices 1–7 (single family) are done; each is a commit "Spec 03 slice N: …" (`git log --grep "Spec 03 slice"`). Multi-family, with 02's changes, continues from slice 8. The app keeps working after each slice.
 
 - [x] **Slice 8: families, memberships and setup.** `Family` and `Membership` entities and tables (one admin per family, enforced by a unique partial index); `Baby.FamilyId`; nullable `Invitation.FamilyId`. Migration for existing instances (one family "Family": the instance admin as its admin, every other non-deleted, enabled user as a member, every baby and invitation in it). Setup asks for `familyName` and creates the account, the family and the admin membership together (API and web form). Registering through a join invitation adds a membership in its family. `GET /api/families`. *Covers:* Families 1, 4, 6; 02 First-run setup 2.
 - [x] **Slice 9: shared family check, babies scoped to families.** `Nala.Core/Families` access check (family or baby → the caller's membership and role, 404 before any role check). Baby endpoints use it: `GET` returns the caller's families' babies, `POST` takes `familyId`, `PUT` never changes the family, and `DELETE` answers 403 `familyAdminOnly` to members who aren't the admin. Web: `familyId` on the baby model, a new baby goes to the current family, and only the family admin sees Delete. *Covers:* Babies 3, 5, 6; Isolation 3 (babies).
 - [x] **Slice 10: isolation for every activity endpoint and Live.** Feed, Sleep, Diaper, Pump, Growth, Health and `/api/live` go through the shared check. Another family's baby or entry answers the same 404 as an unknown one, and an id that belongs to another family's entry is never created over, re-sent, started or stopped. Each section's API tests add a user from another family. *Covers:* Isolation 1, 3 (live), 4, 5.
-- [ ] **Slice 11: current family on the web, switcher across families, empty states.** The device remembers the current family and baby, with the fallbacks above. The switcher is grouped by family, with "No baby yet" items. The top bar shows the family name when the family has no baby. Home, History and Trends show the no-family empty state. Settings hides the family sections for a user in no family. *Covers:* First baby 1, 2; Baby switcher 1, 2, 3; Families 3.
+- [x] **Slice 11: current family on the web, switcher across families, empty states.** The device remembers the current family and baby, with the fallbacks above. The switcher is grouped by family, with "No baby yet" items. The top bar shows the family name when the family has no baby. Home, History and Trends show the no-family empty state. Settings hides the family sections for a user in no family. *Covers:* First baby 1, 2; Baby switcher 1, 2, 3; Families 3.
 - [ ] **Slice 12: rename a family.** `PATCH /api/families/{id}`. Settings gets a Family section (name, plus Rename for the admin, in a dialog). *Covers:* Families 5.
 - [ ] **Slice 13: join invitations per family.** Invitation endpoints move under `/api/families/{familyId}/invitations` (link, email with `alreadyMember`, pending list, revoke; `invitationUnknown` across families). Members & invitations shows the current family. *Covers:* Invitations 1, 2, 3; Isolation 2 (invitations).
 - [ ] **Slice 14: accepting an invitation with an existing account.** The lookup returns `kind` and `familyName`. `POST /api/auth/invitations/{token}/accept` (409 `alreadyMember`, link stays usable). Signing in from the invite page comes back to it; signed in, an accept card with Accept / Not now selects the family after accepting. When the email is `taken`, the register page offers to sign in and accept instead. *Covers:* Invitations 4; Members 5; 02 Registration 3 (join), 4, 6.

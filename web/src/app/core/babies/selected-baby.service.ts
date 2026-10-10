@@ -10,9 +10,13 @@ const STORAGE_KEY = 'nala.baby';
 export const byBirthDate = (babies: Baby[]) =>
   [...babies].sort((a, b) => a.birthDate.localeCompare(b.birthDate));
 
+/** What a page shows for the selected baby: nothing yet, a load error, one of 03's empty states, or the baby. */
+export type BabyScreen = 'loading' | 'error' | 'noFamily' | 'noBaby' | 'ready';
+
 /**
- * The family's babies and the one the app shows. The selection is remembered per device;
- * when the remembered baby no longer exists, the first one is shown.
+ * The babies of the user's families and the one the app shows, in the current family. The selection is
+ * remembered per device; when the remembered baby isn't in the current family (or no longer exists), the
+ * family's first one is shown. Picking a baby selects its family.
  */
 @Injectable({ providedIn: 'root' })
 export class SelectedBabyService {
@@ -22,12 +26,29 @@ export class SelectedBabyService {
   private readonly list = signal<Baby[] | null>(null);
   private readonly storedId = signal<string | null>(null);
 
-  /** Null until loaded. */
+  /** Every family's babies; null until loaded. */
   readonly babies = this.list.asReadonly();
+  /** The current family's babies; null until the babies are loaded. */
+  readonly familyBabies = computed(() => {
+    const familyId = this.families.current()?.id;
+    return this.list()?.filter((b) => b.familyId === familyId) ?? null;
+  });
   readonly loadError = signal(false);
   readonly selected = computed(() => {
-    const babies = this.list() ?? [];
+    const babies = this.familyBabies() ?? [];
     return babies.find((b) => b.id === this.storedId()) ?? babies[0] ?? null;
+  });
+  readonly screen = computed((): BabyScreen => {
+    if (this.loadError() || this.families.loadError()) {
+      return 'error';
+    }
+    if (this.list() === null || this.families.families() === null) {
+      return 'loading';
+    }
+    if (!this.families.current()) {
+      return 'noFamily';
+    }
+    return this.selected() ? 'ready' : 'noBaby';
   });
 
   /**
@@ -53,13 +74,23 @@ export class SelectedBabyService {
     });
   }
 
+  /** Selects the baby and its family. */
   select(id: string): void {
+    const familyId = this.list()?.find((b) => b.id === id)?.familyId;
+    if (familyId) {
+      this.families.select(familyId);
+    }
     this.storedId.set(id);
     try {
       this.storage?.setItem(STORAGE_KEY, id);
     } catch {
       // Storage unavailable (private mode, blocked): the choice lasts for this session only.
     }
+  }
+
+  /** Selects a family; its first baby is shown, if it has one. */
+  selectFamily(familyId: string): void {
+    this.families.select(familyId);
   }
 
   add(baby: Baby): void {

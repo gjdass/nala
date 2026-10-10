@@ -12,6 +12,7 @@ import { ActivatedRoute } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { filter } from 'rxjs';
 import { SelectedBabyService } from '../../core/babies/selected-baby.service';
+import { CurrentFamilyService } from '../../core/families/current-family.service';
 import { HistoryLoaderService } from '../../core/history/history-loader.service';
 import { HistoryItem } from '../../core/history/history-source.models';
 import { DataRefreshService, onReload } from '../../core/refresh/data-refresh.service';
@@ -23,6 +24,7 @@ import { HistoryListComponent } from '../../shared/ui/history-list/history-list.
 import { SectionEntryDirective } from '../../shared/ui/section-card/section-entry.directive';
 import { TopAppBarComponent } from '../../shared/ui/top-app-bar/top-app-bar.component';
 import { NoBabyComponent } from '../babies/no-baby/no-baby.component';
+import { NoFamilyComponent } from '../babies/no-family/no-family.component';
 import {
   FilterBarSection,
   HistoryFilterBarComponent,
@@ -40,7 +42,7 @@ import {
  * sections, remembered on the device), then the entries of the selected sections in the window, newest
  * first across sections, each its section's own list item; a tapped entry opens its sheet and is updated
  * in place. Opened from a card (`?section=<key>`), it shows that section over 7 days and saves nothing.
- * Without a baby, 03's empty state. The babies, the home order and the list load again on the reload
+ * Without a baby, or in no family, 03's empty states. The babies, the home order and the list load again on the reload
  * signal (spec 04 Refresh on return).
  */
 @Component({
@@ -50,6 +52,7 @@ import {
     HistoryFilterBarComponent,
     HistoryListComponent,
     NoBabyComponent,
+    NoFamilyComponent,
     SectionEntryDirective,
     TopAppBarComponent,
     TranslocoPipe,
@@ -70,6 +73,7 @@ export class HistoryPage {
   private readonly query = toSignal(inject(ActivatedRoute).queryParamMap);
 
   protected readonly store = inject(SelectedBabyService);
+  protected readonly families = inject(CurrentFamilyService);
 
   /** The registered section of a card's All activities link, null when History is opened otherwise. */
   private readonly linked = computed(() => {

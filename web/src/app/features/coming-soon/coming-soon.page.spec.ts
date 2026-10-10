@@ -5,12 +5,15 @@ import { of } from 'rxjs';
 import en from '../../../../public/i18n/en.json';
 import { Baby } from '../../core/babies/baby.models';
 import { BabyService } from '../../core/babies/baby.service';
+import { FamiliesResult } from '../../core/families/family.models';
+import { FamilyService } from '../../core/families/family.service';
 import { translocoTesting } from '../../testing/transloco-testing';
 import { ComingSoonPage } from './coming-soon.page';
 
 describe('ComingSoonPage', () => {
   let harness: RouterTestingHarness;
   let list: ReturnType<typeof vi.fn>;
+  let families: FamiliesResult;
 
   const lea: Baby = {
     id: 'b1',
@@ -30,6 +33,7 @@ describe('ComingSoonPage', () => {
   beforeEach(async () => {
     localStorage.clear();
     list = vi.fn(() => of({ ok: true, babies: [lea] }));
+    families = { ok: true, families: [{ id: 'f1', name: 'Martins', isAdmin: true }] };
     await TestBed.configureTestingModule({
       imports: [translocoTesting()],
       providers: [
@@ -38,6 +42,7 @@ describe('ComingSoonPage', () => {
           { path: 'trends', component: ComingSoonPage, data: { destination: 'trends' } },
         ]),
         { provide: BabyService, useValue: { list } },
+        { provide: FamilyService, useValue: { list: () => of(families) } },
       ],
     }).compileComponents();
     harness = await RouterTestingHarness.create();
@@ -60,4 +65,17 @@ describe('ComingSoonPage', () => {
       expect(text('empty-text')).toBe(en.comingSoon.text);
     },
   );
+
+  it('/trends shows the no-family empty state instead of "Coming soon" for a user in no family', async () => {
+    families = { ok: true, families: [] };
+    list.mockReturnValue(of({ ok: true, babies: [] }));
+
+    await harness.navigateByUrl('/trends', ComingSoonPage);
+    await harness.fixture.whenStable();
+
+    expect(text('empty-title')).toBe(en.families.none.title);
+    expect(text('empty-text')).toBe(en.families.none.text);
+    expect(host().querySelector('[data-testid="empty-state"] button')).toBeNull();
+    expect(text('selected-name')).toBeUndefined();
+  });
 });

@@ -18,6 +18,7 @@ import { take } from 'rxjs';
 import { AccountService } from '../../core/account/account.service';
 import { FieldErrors } from '../../core/auth/auth.models';
 import { AuthService } from '../../core/auth/auth.service';
+import { CurrentFamilyService } from '../../core/families/current-family.service';
 import { LANGS, Lang } from '../../core/i18n/initial-lang';
 import { SECTIONS } from '../../core/sections/section.models';
 import { THEME_MODES, ThemeMode, ThemeService } from '../../core/theme/theme.service';
@@ -33,7 +34,7 @@ import { SettingsSectionsComponent } from './settings-sections/settings-sections
 
 const SNACK_DURATION = 3000;
 
-/** Babies, members & invitations, home sections (once a section is built), account (display name, language, password, deletion), admin (admin only), appearance (theme), logout and the version. */
+/** Babies, members & invitations (current family, hidden from a user in no family), home sections (once a section is built), account (display name, language, password, deletion), admin (admin only), appearance (theme), logout and the version. */
 @Component({
   selector: 'nala-settings',
   imports: [
@@ -62,6 +63,7 @@ export class SettingsPage {
   private readonly transloco = inject(TranslocoService);
   private readonly router = inject(Router);
   private readonly dialog = inject(MatDialog);
+  private readonly families = inject(CurrentFamilyService);
 
   /** Nothing to order until a section is built. */
   protected readonly hasSections = inject(SECTIONS).length > 0;
@@ -71,6 +73,7 @@ export class SettingsPage {
   protected readonly isAdmin = computed(() => this.auth.state()?.user?.isAdmin ?? false);
   protected readonly themeMode = this.theme.mode;
   protected readonly commit = COMMIT;
+  protected readonly hasFamily = computed(() => this.families.current() !== null);
 
   protected readonly profileForm = new FormGroup({
     displayName: new FormControl(this.auth.state()?.user?.displayName ?? '', {
@@ -84,6 +87,11 @@ export class SettingsPage {
   });
   protected readonly savingProfile = signal(false);
   protected readonly changingPassword = signal(false);
+
+  constructor() {
+    // The family sections and the baby sheet need them, and settings can be opened first.
+    this.families.refresh();
+  }
 
   protected errorOf(form: FormGroup, field: string): string | null {
     return errorCode(form.get(field)!);

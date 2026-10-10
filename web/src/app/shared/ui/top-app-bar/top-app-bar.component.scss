@@ -48,3 +48,10 @@
   margin-inline-start: 8px;
   color: var(--mat-sys-on-surface-variant);
 }
+
+// A family's name above its babies in the switcher, when the user has several families.
+.menu-heading {
+  padding: 8px 16px 4px;
+  font: var(--mat-sys-label-large);
+  color: var(--mat-sys-on-surface-variant);
+}

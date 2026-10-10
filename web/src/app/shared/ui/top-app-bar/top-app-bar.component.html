@@ -1,6 +1,6 @@
 <mat-toolbar>
-  @if (selected(); as baby) {
-    @if (babies().length > 1) {
+  @if (family(); as current) {
+    @if (hasSwitcher()) {
       <button
         mat-button
         type="button"
@@ -9,28 +9,49 @@
         [attr.aria-label]="'babies.switcher' | transloco"
         data-testid="baby-switcher"
       >
-        <ng-container *ngTemplateOutlet="current; context: { $implicit: baby }" />
+        <ng-container *ngTemplateOutlet="shown" />
         <mat-icon iconPositionEnd>arrow_drop_down</mat-icon>
       </button>
       <mat-menu #switcher="matMenu">
-        @for (b of babies(); track b.id) {
-          <button
-            mat-menu-item
-            type="button"
-            role="menuitemradio"
-            [attr.aria-checked]="b.id === baby.id"
-            (click)="babySelected.emit(b.id)"
-            data-testid="switcher-item"
-          >
-            <mat-icon>{{ b.id === baby.id ? 'check' : '' }}</mat-icon>
-            <span data-testid="switcher-name">{{ b.name }}</span>
-            <span class="menu-age" data-testid="switcher-age">{{ b.birthDate | babyAge }}</span>
-          </button>
+        @for (group of groups(); track group.family.id) {
+          <div role="group" [attr.aria-label]="group.family.name" data-testid="switcher-group">
+            @if (groups().length > 1) {
+              <div class="menu-heading" aria-hidden="true" data-testid="switcher-family">
+                {{ group.family.name }}
+              </div>
+            }
+            @for (b of group.babies; track b.id) {
+              <button
+                mat-menu-item
+                type="button"
+                role="menuitemradio"
+                [attr.aria-checked]="b.id === selected()?.id"
+                (click)="babySelected.emit(b.id)"
+                data-testid="switcher-item"
+              >
+                <mat-icon>{{ b.id === selected()?.id ? 'check' : '' }}</mat-icon>
+                <span data-testid="switcher-name">{{ b.name }}</span>
+                <span class="menu-age" data-testid="switcher-age">{{ b.birthDate | babyAge }}</span>
+              </button>
+            } @empty {
+              <button
+                mat-menu-item
+                type="button"
+                role="menuitemradio"
+                [attr.aria-checked]="group.family.id === current.id && !selected()"
+                (click)="familySelected.emit(group.family.id)"
+                data-testid="switcher-no-baby"
+              >
+                <mat-icon>{{ group.family.id === current.id && !selected() ? 'check' : '' }}</mat-icon>
+                <span data-testid="switcher-name">{{ 'families.noBaby' | transloco }}</span>
+              </button>
+            }
+          </div>
         }
       </mat-menu>
     } @else {
       <div class="baby">
-        <ng-container *ngTemplateOutlet="current; context: { $implicit: baby }" />
+        <ng-container *ngTemplateOutlet="shown" />
       </div>
     }
   }
@@ -40,9 +61,14 @@
   </span>
 </mat-toolbar>
 
-<ng-template #current let-baby>
+<!-- The selected baby (name + age), or the current family's name when it has no baby. -->
+<ng-template #shown>
   <span class="name-age">
-    <span class="name" data-testid="selected-name">{{ baby.name }}</span>
-    <span class="age" data-testid="selected-age">{{ baby.birthDate | babyAge }}</span>
+    @if (selected(); as baby) {
+      <span class="name" data-testid="selected-name">{{ baby.name }}</span>
+      <span class="age" data-testid="selected-age">{{ baby.birthDate | babyAge }}</span>
+    } @else {
+      <span class="name" data-testid="family-name">{{ family()?.name }}</span>
+    }
   </span>
 </ng-template>

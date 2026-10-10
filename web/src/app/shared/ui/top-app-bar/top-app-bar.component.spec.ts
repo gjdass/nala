@@ -2,15 +2,18 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import en from '../../../../../public/i18n/en.json';
 import { Baby } from '../../../core/babies/baby.models';
+import { Family } from '../../../core/families/family.models';
 import { translocoTesting } from '../../../testing/transloco-testing';
 import { TopAppBarComponent } from './top-app-bar.component';
 
 describe('TopAppBarComponent', () => {
   let fixture: ComponentFixture<TopAppBarComponent>;
 
-  const baby = (id: string, name: string, birthDate: string): Baby => ({
+  const martins: Family = { id: 'f1', name: 'Martins', isAdmin: true };
+  const durands: Family = { id: 'f2', name: 'Durands', isAdmin: false };
+  const baby = (id: string, name: string, birthDate: string, familyId = 'f1'): Baby => ({
     id,
-    familyId: 'f1',
+    familyId,
     name,
     birthDate,
     sex: 'unspecified',
@@ -20,11 +23,20 @@ describe('TopAppBarComponent', () => {
   });
   const tom = baby('b1', 'Tom', '2026-05-18');
   const lea = baby('b2', 'Lea', '2026-09-23');
+  const zoe = baby('b3', 'Zoe', '2026-03-02', 'f2');
 
   const host = () => fixture.nativeElement as HTMLElement;
   const find = (testId: string) => document.querySelector(`[data-testid="${testId}"]`);
   const text = (testId: string) => find(testId)?.textContent?.trim();
-  const show = async (babies: Baby[], selected: Baby | null) => {
+  /** One family (Martins, current) unless said otherwise. */
+  const show = async (
+    babies: Baby[],
+    selected: Baby | null,
+    families: Family[] = [martins],
+    family: Family | null = families[0] ?? null,
+  ) => {
+    fixture.componentRef.setInput('families', families);
+    fixture.componentRef.setInput('family', family);
     fixture.componentRef.setInput('babies', babies);
     fixture.componentRef.setInput('selected', selected);
     await fixture.whenStable();
@@ -130,11 +142,77 @@ describe('TopAppBarComponent', () => {
     expect([lion.getAttribute('width'), lion.getAttribute('height')]).toEqual(['40', '40']);
   });
 
-  it('with no baby, shows only the brand', async () => {
-    await show([], null);
+  it('with no family, shows only the brand', async () => {
+    await show([], null, []);
 
     expect(find('selected-name')).toBeNull();
+    expect(find('family-name')).toBeNull();
     expect(find('baby-switcher')).toBeNull();
     expect(find('settings')).toBeNull();
+  });
+
+  it("with one family and no baby, shows the family's name, no switcher", async () => {
+    await show([], null);
+
+    expect(text('family-name')).toBe('Martins');
+    expect(find('selected-name')).toBeNull();
+    expect(find('baby-switcher')).toBeNull();
+  });
+
+  describe('with several families', () => {
+    const headings = () =>
+      [...document.querySelectorAll('[data-testid="switcher-family"]')].map((h) =>
+        h.textContent?.trim(),
+      );
+    /** Each item as "family > label (checked)". */
+    const grouped = () =>
+      [...document.querySelectorAll('[data-testid="switcher-group"]')].flatMap((group) =>
+        [...group.querySelectorAll('[role="menuitemradio"]')].map(
+          (item) =>
+            `${group.getAttribute('aria-label')} > ${
+              item.querySelector('[data-testid="switcher-name"]')?.textContent?.trim() ??
+              item.textContent?.trim()
+            } ${item.getAttribute('aria-checked')}`,
+        ),
+      );
+
+    it('shows the switcher even with one baby', async () => {
+      await show([tom], tom, [martins, durands]);
+
+      expect(find('baby-switcher')).not.toBeNull();
+      expect(text('selected-name')).toBe('Tom');
+    });
+
+    it('lists the babies under their family, in the families order', async () => {
+      await show([zoe, tom, lea], lea, [durands, martins], martins);
+      await openSwitcher();
+
+      expect(headings()).toEqual(['Durands', 'Martins']);
+      expect(grouped()).toEqual([
+        'Durands > Zoe false',
+        'Martins > Tom false',
+        'Martins > Lea true',
+      ]);
+    });
+
+    it('offers "No baby yet" for a family without a baby, emitting that family', async () => {
+      const chosen = vi.fn();
+      fixture.componentInstance.familySelected.subscribe(chosen);
+      await show([tom], tom, [martins, durands], martins);
+      await openSwitcher();
+
+      expect(grouped()).toEqual(['Martins > Tom true', `Durands > ${en.families.noBaby} false`]);
+      document.querySelector<HTMLButtonElement>('[data-testid="switcher-no-baby"]')!.click();
+      expect(chosen).toHaveBeenCalledWith('f2');
+    });
+
+    it('with the current family without a baby, shows its name and ticks its "No baby yet"', async () => {
+      await show([tom], null, [martins, durands], durands);
+
+      expect(text('family-name')).toBe('Durands');
+      expect(find('selected-name')).toBeNull();
+      await openSwitcher();
+      expect(grouped()).toEqual(['Martins > Tom false', `Durands > ${en.families.noBaby} true`]);
+    });
   });
 });
