@@ -112,16 +112,6 @@ public class SessionServiceTests
     }
 
     [Test]
-    public async Task Session_of_a_disabled_user_is_rejected_and_deleted()
-    {
-        var session = await _service.StartAsync(_anna);
-        _anna.IsDisabled = true;
-
-        Assert.That(await _service.ValidateAsync(session.Id), Is.Null);
-        Assert.That(_sessions.Sessions, Is.Empty);
-    }
-
-    [Test]
     public async Task Starting_a_session_sets_last_activity()
     {
         await _service.StartAsync(_anna);

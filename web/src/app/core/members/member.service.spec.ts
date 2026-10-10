@@ -25,9 +25,9 @@ describe('MemberService', () => {
   afterEach(() => http.verify());
 
   describe('list()', () => {
-    it('gets /api/members', async () => {
-      const result = firstValueFrom(service.list());
-      const req = http.expectOne('/api/members');
+    it('gets the members of the family', async () => {
+      const result = firstValueFrom(service.list('f1'));
+      const req = http.expectOne('/api/families/f1/members');
       expect(req.request.method).toBe('GET');
       req.flush([anna]);
 
@@ -35,17 +35,17 @@ describe('MemberService', () => {
     });
 
     it('reports a network failure as unknown', async () => {
-      const result = firstValueFrom(service.list());
-      http.expectOne('/api/members').error(new ProgressEvent('error'));
+      const result = firstValueFrom(service.list('f1'));
+      http.expectOne('/api/families/f1/members').error(new ProgressEvent('error'));
 
       expect(await result).toEqual<MembersResult>({ ok: false, errors: { form: 'unknown' } });
     });
   });
 
   describe('remove()', () => {
-    it('posts to /api/members/{id}/remove and announces the change', async () => {
-      const result = firstValueFrom(service.remove('u2'));
-      const req = http.expectOne('/api/members/u2/remove');
+    it('posts to the family member\'s /remove and announces the change', async () => {
+      const result = firstValueFrom(service.remove('f1', 'u2'));
+      const req = http.expectOne('/api/families/f1/members/u2/remove');
       expect(req.request.method).toBe('POST');
       req.flush(null, { status: 204, statusText: 'No Content' });
 
@@ -54,28 +54,23 @@ describe('MemberService', () => {
     });
 
     it.each([
-      [403, 'adminOnly'],
-      [403, 'adminCannotDisable'],
+      [404, 'familyNotFound'],
+      [403, 'familyAdminOnly'],
       [404, 'userNotFound'],
+      [403, 'adminCannotRemove'],
     ])('maps a %s to its %s code, without announcing a change', async (status, code) => {
-      const result = firstValueFrom(service.remove('u2'));
-      http.expectOne('/api/members/u2/remove').flush({ code }, { status, statusText: 'Error' });
+      const result = firstValueFrom(service.remove('f1', 'u2'));
+      http.expectOne('/api/families/f1/members/u2/remove').flush({ code }, { status, statusText: 'Error' });
 
       expect(await result).toEqual<RemoveMemberResult>({ ok: false, errors: { form: code } });
       expect(changes).toBe(0);
     });
 
     it('reports a network failure as unknown', async () => {
-      const result = firstValueFrom(service.remove('u2'));
-      http.expectOne('/api/members/u2/remove').error(new ProgressEvent('error'));
+      const result = firstValueFrom(service.remove('f1', 'u2'));
+      http.expectOne('/api/families/f1/members/u2/remove').error(new ProgressEvent('error'));
 
       expect(await result).toEqual<RemoveMemberResult>({ ok: false, errors: { form: 'unknown' } });
     });
-  });
-
-  it('notifyChanged() announces a change made elsewhere (admin disable / enable)', () => {
-    service.notifyChanged();
-
-    expect(changes).toBe(1);
   });
 });

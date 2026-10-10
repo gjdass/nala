@@ -11,8 +11,6 @@ public abstract record CreateResetLinkResult
 
     /// <summary>Unknown or deleted user.</summary>
     public sealed record NotFound : CreateResetLinkResult;
-
-    public sealed record AccountDisabled : CreateResetLinkResult;
 }
 
 public abstract record ResetLinkLookup
@@ -20,8 +18,6 @@ public abstract record ResetLinkLookup
     public sealed record Valid(string Email, DateTimeOffset ExpiresAt) : ResetLinkLookup;
 
     public sealed record Unavailable(ResetLinkProblem Problem) : ResetLinkLookup;
-
-    public sealed record AccountDisabled : ResetLinkLookup;
 }
 
 public abstract record RequestResetResult
@@ -40,8 +36,6 @@ public abstract record ResetPasswordResult
     public sealed record Reset(User User) : ResetPasswordResult;
 
     public sealed record Unavailable(ResetLinkProblem Problem) : ResetPasswordResult;
-
-    public sealed record AccountDisabled : ResetPasswordResult;
 
     /// <summary>Field name → error code (<c>password</c>: <c>required</c>, <c>tooShort</c>).</summary>
     public sealed record Invalid(IReadOnlyDictionary<string, string> Errors) : ResetPasswordResult;
@@ -70,11 +64,6 @@ public class PasswordResetService(
         if (user is not { DeletedAt: null })
         {
             return new CreateResetLinkResult.NotFound();
-        }
-
-        if (user.IsDisabled)
-        {
-            return new CreateResetLinkResult.AccountDisabled();
         }
 
         var token = LinkToken.Generate();
@@ -106,7 +95,7 @@ public class PasswordResetService(
         }
 
         var user = await users.GetByEmailAsync(normalized, cancellationToken);
-        if (user is not { DeletedAt: null, IsDisabled: false })
+        if (user is not { DeletedAt: null })
         {
             return new RequestResetResult.Requested();
         }
@@ -136,7 +125,7 @@ public class PasswordResetService(
     public async Task<ResetLinkLookup> LookupAsync(string? token, CancellationToken cancellationToken = default)
     {
         var (reset, user, refusal) = await FindUsableAsync(token, cancellationToken);
-        return refusal ?? new ResetLinkLookup.Valid(user!.Email!, reset!.ExpiresAt);
+        return (ResetLinkLookup?)refusal ?? new ResetLinkLookup.Valid(user!.Email!, reset!.ExpiresAt);
     }
 
     /// <summary>
@@ -146,12 +135,9 @@ public class PasswordResetService(
     public async Task<ResetPasswordResult> ResetAsync(ResetPasswordCommand command, CancellationToken cancellationToken = default)
     {
         var (reset, user, refusal) = await FindUsableAsync(command.Token, cancellationToken);
-        switch (refusal)
+        if (refusal is not null)
         {
-            case ResetLinkLookup.AccountDisabled:
-                return new ResetPasswordResult.AccountDisabled();
-            case ResetLinkLookup.Unavailable unavailable:
-                return new ResetPasswordResult.Unavailable(unavailable.Problem);
+            return new ResetPasswordResult.Unavailable(refusal.Problem);
         }
 
         if (string.IsNullOrEmpty(command.Password))
@@ -178,7 +164,7 @@ public class PasswordResetService(
     }
 
     /// <summary>The link and its user when usable; otherwise why not. A deleted user's link is unknown.</summary>
-    private async Task<(PasswordResetToken? Reset, User? User, ResetLinkLookup? Refusal)> FindUsableAsync(
+    private async Task<(PasswordResetToken? Reset, User? User, ResetLinkLookup.Unavailable? Refusal)> FindUsableAsync(
         string? token, CancellationToken cancellationToken)
     {
         var reset = string.IsNullOrEmpty(token)
@@ -195,6 +181,6 @@ public class PasswordResetService(
             return (null, null, new ResetLinkLookup.Unavailable(problem));
         }
 
-        return user.IsDisabled ? (null, null, new ResetLinkLookup.AccountDisabled()) : (reset, user, null);
+        return (reset, user, null);
     }
 }

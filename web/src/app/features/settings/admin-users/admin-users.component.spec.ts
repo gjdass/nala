@@ -3,15 +3,8 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Subject, of } from 'rxjs';
 import en from '../../../../../public/i18n/en.json';
-import {
-  AdminUser,
-  AdminUserResult,
-  AdminUsersResult,
-  ResetLinkResult,
-} from '../../../core/admin/admin.models';
+import { AdminUser, AdminUsersResult, ResetLinkResult } from '../../../core/admin/admin.models';
 import { AdminService } from '../../../core/admin/admin.service';
-import { MemberService } from '../../../core/members/member.service';
-import { ConfirmDialogComponent } from '../../../shared/ui/confirm-dialog/confirm-dialog.component';
 import { ShareLinkDialogComponent } from '../../../shared/ui/share-link-dialog/share-link-dialog.component';
 import { translocoTesting } from '../../../testing/transloco-testing';
 import { AdminUsersComponent } from './admin-users.component';
@@ -20,22 +13,17 @@ describe('AdminUsersComponent', () => {
   let fixture: ComponentFixture<AdminUsersComponent>;
   let admin: {
     users: ReturnType<typeof vi.fn>;
-    setDisabled: ReturnType<typeof vi.fn>;
     createResetLink: ReturnType<typeof vi.fn>;
   };
-  let updated: Subject<AdminUserResult>;
   let resetLink: Subject<ResetLinkResult>;
-  let dialogClosed: Subject<boolean | undefined>;
   let dialog: { open: ReturnType<typeof vi.fn> };
   let snackBar: { open: ReturnType<typeof vi.fn> };
-  let members: { changed$: Subject<void>; notifyChanged: ReturnType<typeof vi.fn> };
 
   const anna: AdminUser = {
     id: 'u1',
     email: 'anna@mail.com',
     displayName: 'Anna',
     isAdmin: true,
-    isDisabled: false,
     lastActivityAt: '2026-09-27T20:00:00Z',
   };
   const ben: AdminUser = {
@@ -43,7 +31,6 @@ describe('AdminUsersComponent', () => {
     email: 'ben@mail.com',
     displayName: 'Ben',
     isAdmin: false,
-    isDisabled: false,
     lastActivityAt: '2026-09-20T08:30:00Z',
   };
   const chloe: AdminUser = {
@@ -51,7 +38,6 @@ describe('AdminUsersComponent', () => {
     email: 'chloe@mail.com',
     displayName: 'Chloe',
     isAdmin: false,
-    isDisabled: true,
     lastActivityAt: null,
   };
 
@@ -68,6 +54,7 @@ describe('AdminUsersComponent', () => {
     actions(name)!.click();
     await fixture.whenStable();
   };
+  const menuItems = () => [...document.querySelectorAll('.mat-mdc-menu-panel [mat-menu-item]')];
   /** Opens the row's menu and picks an item. */
   const pick = async (name: string, id: string) => {
     await openMenu(name);
@@ -89,29 +76,24 @@ describe('AdminUsersComponent', () => {
   };
 
   beforeEach(async () => {
-    updated = new Subject<AdminUserResult>();
     resetLink = new Subject<ResetLinkResult>();
     admin = {
       users: vi.fn(),
-      setDisabled: vi.fn(() => updated),
       createResetLink: vi.fn(() => resetLink),
     };
-    dialogClosed = new Subject<boolean | undefined>();
-    dialog = { open: vi.fn(() => ({ afterClosed: () => dialogClosed })) };
+    dialog = { open: vi.fn() };
     snackBar = { open: vi.fn() };
-    members = { changed$: new Subject<void>(), notifyChanged: vi.fn() };
     await TestBed.configureTestingModule({
       imports: [AdminUsersComponent, translocoTesting()],
       providers: [
         { provide: AdminService, useValue: admin },
         { provide: MatDialog, useValue: dialog },
         { provide: MatSnackBar, useValue: snackBar },
-        { provide: MemberService, useValue: members },
       ],
     }).compileComponents();
   });
 
-  it('lists every user with name, email, admin badge, disabled status and last activity', async () => {
+  it('lists every user with name, email, admin badge and last activity', async () => {
     await render();
 
     expect(rows().map((r) => r.querySelector('[matListItemTitle]')?.textContent?.trim())).toEqual([
@@ -125,8 +107,6 @@ describe('AdminUsersComponent', () => {
     expect(row('Ben').textContent).toContain(
       en.settings.admin.lastActive.replace('{{date}}', formatted(ben.lastActivityAt!)),
     );
-    expect(row('Ben').textContent).not.toContain(en.settings.admin.disabled);
-    expect(row('Chloe').textContent).toContain(en.settings.admin.disabled);
     expect(row('Chloe').textContent).toContain(en.settings.admin.noActivity);
   });
 
@@ -140,20 +120,13 @@ describe('AdminUsersComponent', () => {
     expect(actions('Chloe')).not.toBeNull();
   });
 
-  it('offers Reset link and Disable for an enabled member', async () => {
+  it('offers only Reset link', async () => {
     await render();
     await openMenu('Ben');
 
-    expect(menuItem('reset-link')?.textContent?.trim()).toBe(en.settings.admin.resetLink);
-    expect(menuItem('toggle')?.textContent?.trim()).toBe(en.settings.admin.disable);
-  });
-
-  it('offers only Enable for a disabled member', async () => {
-    await render();
-    await openMenu('Chloe');
-
-    expect(menuItem('reset-link')).toBeNull();
-    expect(menuItem('toggle')?.textContent?.trim()).toBe(en.settings.admin.enable);
+    expect(menuItems().map((item) => item.textContent?.trim())).toEqual([
+      en.settings.admin.resetLink,
+    ]);
   });
 
   it('shows an error when the list cannot be loaded', async () => {
@@ -163,97 +136,6 @@ describe('AdminUsersComponent', () => {
     expect(host().querySelector('[data-testid="load-error"]')?.textContent?.trim()).toBe(
       en.auth.errors.form.unknown,
     );
-  });
-
-  it('reloads when the members change elsewhere', async () => {
-    await render();
-    admin.users.mockReturnValue(of({ ok: true, users: [anna, { ...ben, isDisabled: true }] }));
-
-    members.changed$.next();
-    await fixture.whenStable();
-
-    expect(rows().length).toBe(2);
-    expect(row('Ben').textContent).toContain(en.settings.admin.disabled);
-  });
-
-  describe('disable', () => {
-    it('asks for confirmation first', async () => {
-      await render();
-      await pick('Ben', 'toggle');
-
-      expect(dialog.open).toHaveBeenCalledWith(ConfirmDialogComponent, {
-        data: {
-          title: en.settings.admin.disableTitle.replace('{{name}}', 'Ben'),
-          text: en.settings.admin.disableText.replace('{{name}}', 'Ben'),
-          confirm: en.settings.admin.confirm,
-          cancel: en.settings.admin.cancel,
-        },
-      });
-      expect(admin.setDisabled).not.toHaveBeenCalled();
-    });
-
-    it('does nothing when cancelled', async () => {
-      await render();
-      await pick('Ben', 'toggle');
-      dialogClosed.next(false);
-      await fixture.whenStable();
-
-      expect(admin.setDisabled).not.toHaveBeenCalled();
-    });
-
-    it('disables once confirmed, updates the row and confirms with a snackbar', async () => {
-      await render();
-      await pick('Ben', 'toggle');
-      dialogClosed.next(true);
-      await fixture.whenStable();
-
-      expect(admin.setDisabled).toHaveBeenCalledWith('u2', true);
-      updated.next({ ok: true, user: { ...ben, isDisabled: true } });
-      await fixture.whenStable();
-
-      expect(row('Ben').textContent).toContain(en.settings.admin.disabled);
-      expect(members.notifyChanged).toHaveBeenCalled();
-      expect(snackBar.open).toHaveBeenCalledWith(
-        en.settings.admin.disabledDone.replace('{{name}}', 'Ben'),
-        undefined,
-        { duration: 3000 },
-      );
-    });
-
-    it('shows the refusal in a snackbar and leaves the row unchanged', async () => {
-      await render();
-      await pick('Ben', 'toggle');
-      dialogClosed.next(true);
-      await fixture.whenStable();
-      updated.next({ ok: false, errors: { form: 'userNotFound' } });
-      await fixture.whenStable();
-
-      expect(row('Ben').textContent).not.toContain(en.settings.admin.disabled);
-      expect(members.notifyChanged).not.toHaveBeenCalled();
-      expect(snackBar.open).toHaveBeenCalledWith(en.auth.errors.form.userNotFound, undefined, {
-        duration: 3000,
-      });
-    });
-  });
-
-  describe('enable', () => {
-    it('enables right away, updates the row and confirms with a snackbar', async () => {
-      await render();
-      await pick('Chloe', 'toggle');
-
-      expect(dialog.open).not.toHaveBeenCalled();
-      expect(admin.setDisabled).toHaveBeenCalledWith('u3', false);
-      updated.next({ ok: true, user: { ...chloe, isDisabled: false } });
-      await fixture.whenStable();
-
-      expect(row('Chloe').textContent).not.toContain(en.settings.admin.disabled);
-      expect(members.notifyChanged).toHaveBeenCalled();
-      expect(snackBar.open).toHaveBeenCalledWith(
-        en.settings.admin.enabledDone.replace('{{name}}', 'Chloe'),
-        undefined,
-        { duration: 3000 },
-      );
-    });
   });
 
   describe('reset link', () => {
@@ -281,11 +163,11 @@ describe('AdminUsersComponent', () => {
     it('shows a refusal in a snackbar', async () => {
       await render();
       await pick('Ben', 'reset-link');
-      resetLink.next({ ok: false, errors: { form: 'accountDisabled' } });
+      resetLink.next({ ok: false, errors: { form: 'userNotFound' } });
       await fixture.whenStable();
 
       expect(dialog.open).not.toHaveBeenCalled();
-      expect(snackBar.open).toHaveBeenCalledWith(en.auth.errors.form.accountDisabled, undefined, {
+      expect(snackBar.open).toHaveBeenCalledWith(en.auth.errors.form.userNotFound, undefined, {
         duration: 3000,
       });
     });

@@ -12,9 +12,6 @@
         [isAdmin]="user.isAdmin"
       >
         <span memberDetail>
-          @if (user.isDisabled) {
-            {{ 'settings.admin.disabled' | transloco }} ·
-          }
           @if (user.lastActivityAt; as at) {
             {{ 'settings.admin.lastActive' | transloco: { date: at | nalaDateTime } }}
           } @else {
@@ -41,13 +38,8 @@
 
 <mat-menu #actions="matMenu" xPosition="before">
   <ng-template matMenuContent let-user="user">
-    @if (!user.isDisabled) {
-      <button mat-menu-item type="button" (click)="resetLink(user)" data-testid="reset-link">
-        {{ 'settings.admin.resetLink' | transloco }}
-      </button>
-    }
-    <button mat-menu-item type="button" (click)="toggle(user)" data-testid="toggle">
-      {{ (user.isDisabled ? 'settings.admin.enable' : 'settings.admin.disable') | transloco }}
+    <button mat-menu-item type="button" (click)="resetLink(user)" data-testid="reset-link">
+      {{ 'settings.admin.resetLink' | transloco }}
     </button>
   </ng-template>
 </mat-menu>

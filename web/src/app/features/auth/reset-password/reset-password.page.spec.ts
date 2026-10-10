@@ -86,7 +86,6 @@ describe('ResetPasswordPage', () => {
     ['resetLinkUnknown', en.auth.errors.form.resetLinkUnknown],
     ['resetLinkExpired', en.auth.errors.form.resetLinkExpired],
     ['resetLinkUsed', en.auth.errors.form.resetLinkUsed],
-    ['accountDisabled', en.auth.errors.form.accountDisabled],
     ['unknown', en.auth.errors.form.unknown],
   ])(
     'an unusable link (%s) shows its message and a way to log in, no form',
@@ -137,7 +136,7 @@ describe('ResetPasswordPage', () => {
     expect(navigateByUrl).not.toHaveBeenCalled();
   });
 
-  it.each(['resetLinkUsed', 'accountDisabled'])(
+  it.each(['resetLinkUsed', 'resetLinkExpired'])(
     'switches to the unusable-link message when the link is refused on submit (%s)',
     async (code) => {
       await found();

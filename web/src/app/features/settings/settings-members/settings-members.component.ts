@@ -7,6 +7,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { filter, take } from 'rxjs';
 import { AuthService } from '../../../core/auth/auth.service';
+import { CurrentFamilyService } from '../../../core/families/current-family.service';
 import { Member } from '../../../core/members/member.models';
 import { MemberService } from '../../../core/members/member.service';
 import {
@@ -17,7 +18,10 @@ import { MemberListItemComponent } from '../../../shared/ui/member-list-item/mem
 
 const SNACK_DURATION = 3000;
 
-/** The family's members; the admin can remove any of them but themselves, after confirming. */
+/**
+ * The current family's members; its family admin can remove any of them but themselves, after
+ * confirming. Removing only ends that membership.
+ */
 @Component({
   selector: 'nala-settings-members',
   imports: [MatButtonModule, MatListModule, MemberListItemComponent, TranslocoPipe],
@@ -31,10 +35,13 @@ export class SettingsMembersComponent {
   private readonly snackBar = inject(MatSnackBar);
   private readonly transloco = inject(TranslocoService);
   private readonly auth = inject(AuthService);
+  /** Settings only shows this section for a current family, and has no switcher to change it. */
+  private readonly family = inject(CurrentFamilyService).current;
 
   protected readonly list = signal<Member[]>([]);
   protected readonly loadError = signal(false);
-  protected readonly isAdmin = computed(() => this.auth.state()?.user?.isAdmin ?? false);
+  protected readonly isFamilyAdmin = computed(() => this.family()?.isAdmin ?? false);
+  protected readonly userId = computed(() => this.auth.state()?.user?.id);
 
   constructor() {
     this.load();
@@ -43,11 +50,12 @@ export class SettingsMembersComponent {
 
   protected remove(member: Member): void {
     const name = { name: member.displayName };
+    const text = { ...name, family: this.family()!.name };
     this.dialog
       .open<ConfirmDialogComponent, ConfirmDialogData, boolean>(ConfirmDialogComponent, {
         data: {
           title: this.transloco.translate('members.removeTitle', name),
-          text: this.transloco.translate('members.removeText', name),
+          text: this.transloco.translate('members.removeText', text),
           confirm: this.transloco.translate('members.confirm'),
           cancel: this.transloco.translate('members.cancel'),
         },
@@ -58,18 +66,23 @@ export class SettingsMembersComponent {
   }
 
   private removeConfirmed(member: Member): void {
-    this.members.remove(member.id).subscribe((result) => {
+    this.members.remove(this.family()!.id, member.id).subscribe((result) => {
       if (result.ok) {
         this.list.update((list) => list.filter((m) => m.id !== member.id));
         this.notify('members.removed', { name: member.displayName });
-      } else {
-        this.notify(`auth.errors.form.${result.errors['form'] ?? 'unknown'}`);
+        return;
+      }
+      const code = result.errors['form'] ?? 'unknown';
+      this.notify(`auth.errors.form.${code}`);
+      if (code === 'userNotFound') {
+        // No longer in the family: show the list as it now is.
+        this.load();
       }
     });
   }
 
   private load(): void {
-    this.members.list().subscribe((result) => {
+    this.members.list(this.family()!.id).subscribe((result) => {
       this.loadError.set(!result.ok);
       if (result.ok) {
         this.list.set(result.members);

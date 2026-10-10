@@ -71,9 +71,6 @@ public class AdminEndpointTests
         return (client, id);
     }
 
-    private static Task<HttpResponseMessage> LoginAsync(HttpClient client, string email) =>
-        client.PostAsJsonAsync("/api/auth/login", new { email, password = Password });
-
     private static async Task<JsonElement[]> UsersAsync(HttpClient client)
     {
         var response = await client.GetAsync("/api/admin/users");
@@ -81,28 +78,29 @@ public class AdminEndpointTests
         return (await response.Content.ReadFromJsonAsync<JsonElement[]>())!;
     }
 
-    private static Task<HttpResponseMessage> DisableAsync(HttpClient client, Guid id) =>
-        client.PostAsync($"/api/admin/users/{id}/disable", null);
-
-    private static Task<HttpResponseMessage> EnableAsync(HttpClient client, Guid id) =>
-        client.PostAsync($"/api/admin/users/{id}/enable", null);
+    private static Task<HttpResponseMessage> ResetLinkAsync(HttpClient client, Guid id) =>
+        client.PostAsync($"/api/admin/users/{id}/reset-link", null);
 
     private static async Task<string?> CodeAsync(HttpResponseMessage response) =>
         (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("code").GetString();
 
     [Test]
-    public async Task Admin_lists_users_with_their_fields()
+    public async Task Admin_lists_the_accounts_of_every_family_without_family_data()
     {
         var (_, benId) = await RegisterAsync("Ben");
+        using var carl = await OtherFamily.CreateAsync(_factory);
 
         var users = await UsersAsync(_admin);
 
-        Assert.That(users.Select(u => u.GetProperty("displayName").GetString()), Is.EqualTo(new[] { "Anna", "Ben" }));
+        Assert.That(users.Select(u => u.GetProperty("displayName").GetString()), Is.EqualTo(new[] { "Anna", "Ben", "Carl" }));
         var ben = users[1];
+        Assert.That(
+            ben.EnumerateObject().Select(p => p.Name),
+            Is.EquivalentTo(new[] { "id", "displayName", "email", "isAdmin", "lastActivityAt" }));
         Assert.That(ben.GetProperty("id").GetGuid(), Is.EqualTo(benId));
         Assert.That(ben.GetProperty("email").GetString(), Is.EqualTo("ben@mail.com"));
         Assert.That(ben.GetProperty("isAdmin").GetBoolean(), Is.False);
-        Assert.That(ben.GetProperty("isDisabled").GetBoolean(), Is.False);
+        Assert.That(users[2].GetProperty("id").GetGuid(), Is.EqualTo(carl.UserId));
         Assert.That(
             ben.GetProperty("lastActivityAt").GetDateTimeOffset(),
             Is.EqualTo(_factory.Time!.GetUtcNow()).Within(TimeSpan.FromMilliseconds(1)),
@@ -142,15 +140,12 @@ public class AdminEndpointTests
         foreach (var response in new[]
                  {
                      await ben.GetAsync("/api/admin/users"),
-                     await DisableAsync(ben, chloeId),
-                     await EnableAsync(ben, chloeId),
+                     await ResetLinkAsync(ben, chloeId),
                  })
         {
             Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Forbidden));
             Assert.That(await CodeAsync(response), Is.EqualTo("adminOnly"));
         }
-
-        Assert.That((await UsersAsync(_admin)).Single(u => u.GetProperty("id").GetGuid() == chloeId).GetProperty("isDisabled").GetBoolean(), Is.False);
     }
 
     [Test]
@@ -159,72 +154,15 @@ public class AdminEndpointTests
         using var anonymous = NewClient();
 
         Assert.That((await anonymous.GetAsync("/api/admin/users")).StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
-        Assert.That((await DisableAsync(anonymous, _annaId)).StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
+        Assert.That((await ResetLinkAsync(anonymous, _annaId)).StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
     }
 
     [Test]
-    public async Task Disabling_ends_the_users_sessions_and_blocks_login()
-    {
-        var (ben, benId) = await RegisterAsync("Ben");
-
-        var response = await DisableAsync(_admin, benId);
-
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
-        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
-        Assert.That(body.GetProperty("id").GetGuid(), Is.EqualTo(benId));
-        Assert.That(body.GetProperty("isDisabled").GetBoolean(), Is.True);
-
-        Assert.That(
-            (await ben.PatchAsJsonAsync("/api/account", new { displayName = "Ben" })).StatusCode,
-            Is.EqualTo(HttpStatusCode.Unauthorized),
-            "the existing session stopped working");
-
-        var login = await LoginAsync(NewClient(), "ben@mail.com");
-        Assert.That(login.StatusCode, Is.EqualTo(HttpStatusCode.Forbidden));
-        Assert.That(await CodeAsync(login), Is.EqualTo("accountDisabled"));
-    }
-
-    [Test]
-    public async Task Disabled_account_with_a_wrong_password_gets_the_generic_error()
+    public async Task Disable_and_enable_endpoints_are_gone()
     {
         var (_, benId) = await RegisterAsync("Ben");
-        await DisableAsync(_admin, benId);
 
-        var login = await NewClient().PostAsJsonAsync("/api/auth/login", new { email = "ben@mail.com", password = "wrong password" });
-
-        Assert.That(login.StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
-        Assert.That(await CodeAsync(login), Is.EqualTo("invalidCredentials"));
-    }
-
-    [Test]
-    public async Task Re_enabling_lets_the_user_log_in_again()
-    {
-        var (_, benId) = await RegisterAsync("Ben");
-        await DisableAsync(_admin, benId);
-
-        var response = await EnableAsync(_admin, benId);
-
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
-        Assert.That((await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("isDisabled").GetBoolean(), Is.False);
-        Assert.That((await LoginAsync(NewClient(), "ben@mail.com")).StatusCode, Is.EqualTo(HttpStatusCode.OK));
-    }
-
-    [Test]
-    public async Task Admin_cannot_disable_themselves()
-    {
-        var response = await DisableAsync(_admin, _annaId);
-
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Forbidden));
-        Assert.That(await CodeAsync(response), Is.EqualTo("adminCannotDisable"));
-        Assert.That((await UsersAsync(_admin)).Single().GetProperty("isDisabled").GetBoolean(), Is.False);
-    }
-
-    [Test]
-    public async Task Unknown_user_is_404()
-    {
-        var response = await DisableAsync(_admin, Guid.NewGuid());
-
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
-        Assert.That(await CodeAsync(response), Is.EqualTo("userNotFound"));
+        Assert.That((await _admin.PostAsync($"/api/admin/users/{benId}/disable", null)).StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
+        Assert.That((await _admin.PostAsync($"/api/admin/users/{benId}/enable", null)).StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
     }
 }

@@ -152,7 +152,6 @@ public class UserRepositoryTests
         deleted.DeletedAt = DateTimeOffset.UtcNow;
         var anna = NewUser("anna@mail.com", isAdmin: true);
         var chloe = NewUser("chloe@mail.com");
-        chloe.IsDisabled = true;
         await AddAsync(deleted);
         await AddAsync(anna);
         await AddAsync(chloe);
@@ -179,21 +178,4 @@ public class UserRepositoryTests
         Assert.That((await new UserRepository(check).GetByIdAsync(user.Id))!.LastActivityAt, Is.EqualTo(at));
     }
 
-    [Test]
-    public async Task Update_saves_the_disabled_flag()
-    {
-        var user = NewUser("anna@mail.com");
-        await AddAsync(user);
-
-        await using (var db = _db())
-        {
-            var repository = new UserRepository(db);
-            var read = (await repository.GetByIdAsync(user.Id))!;
-            read.IsDisabled = true;
-            await repository.UpdateAsync(read);
-        }
-
-        await using var check = _db();
-        Assert.That((await new UserRepository(check).GetByIdAsync(user.Id))!.IsDisabled, Is.True);
-    }
 }

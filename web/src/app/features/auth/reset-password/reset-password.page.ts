@@ -13,11 +13,11 @@ import { errorCode, newPassword } from '../auth.validators';
 type View =
   | { kind: 'loading' }
   | { kind: 'form'; email: string }
-  /** The link can't be used: `code` is a form error (`resetLinkExpired`…, `accountDisabled`, or `unknown` when offline). */
+  /** The link can't be used: `code` is a form error (`resetLinkExpired`…, or `unknown` when offline). */
   | { kind: 'unavailable'; code: string };
 
 /** A form error that means the link itself can no longer be used. */
-const isLinkRefusal = (code: string) => code.startsWith('resetLink') || code === 'accountDisabled';
+const isLinkRefusal = (code: string) => code.startsWith('resetLink');
 
 /** Opened from a password reset link: sets the new password, consumes the link, then opens the app signed in. */
 @Component({
@@ -82,7 +82,7 @@ export class ResetPasswordPage {
       if (result.errors['password']) {
         this.password.setErrors({ server: result.errors['password'] });
       } else if (code && isLinkRefusal(code)) {
-        // Used, expired or disabled since the page opened.
+        // Used or expired since the page opened.
         this.view.set({ kind: 'unavailable', code });
       } else {
         this.formError.set(code ?? 'unknown');

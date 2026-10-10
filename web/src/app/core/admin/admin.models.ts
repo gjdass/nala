@@ -6,15 +6,12 @@ export interface AdminUser {
   email: string;
   displayName: string;
   isAdmin: boolean;
-  isDisabled: boolean;
   /** ISO date-time; null until the user has signed in once. */
   lastActivityAt: string | null;
 }
 
 export type AdminUsersResult =
   { ok: true; users: AdminUser[] } | { ok: false; errors: FieldErrors };
-
-export type AdminUserResult = { ok: true; user: AdminUser } | { ok: false; errors: FieldErrors };
 
 /** A one-time password reset link; the web builds `/reset/{token}` from it. */
 export interface ResetLinkToken {

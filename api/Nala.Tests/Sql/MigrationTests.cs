@@ -8,7 +8,6 @@ using Nala.Core.Sections;
 using Nala.Core.Users;
 using Nala.Sql;
 using Nala.Sql.Babies;
-using Nala.Sql.Users;
 using Nala.Tests.Support;
 
 namespace Nala.Tests.Sql;
@@ -43,21 +42,7 @@ public class MigrationTests
     public async Task Paused_breastfeeds_get_their_end_time_from_their_last_segment()
     {
         var context = await TestDatabase.CreateAsync("20260930161049_AddBreastfeedSegments");
-        var user = new User
-        {
-            Id = Guid.NewGuid(),
-            Email = "anna@mail.com",
-            DisplayName = "Anna",
-            PasswordHash = "hash",
-            PreferredLanguage = "en",
-            IsAdmin = true,
-            CreatedAt = Now,
-        };
-        await using (var db = context())
-        {
-            await new UserRepository(db).AddAsync(user);
-        }
-
+        var user = await SeedUserAsync(context, "anna@mail.com", "Anna", isAdmin: true);
         var baby = await InsertBabyAsync(context, user);
 
         Feed Breastfeed(int startMinutesAgo, int? endMinutesAgo, params (BreastSide Side, int From, int? To)[] segments)
@@ -209,7 +194,7 @@ public class MigrationTests
         var context = await TestDatabase.CreateAsync("20261004154550_AddGrowthMilestones");
         var member = await SeedUserAsync(context, "ben@mail.com", "Ben", createdAt: Now.AddDays(-5));
         var admin = await SeedUserAsync(context, "anna@mail.com", "Anna", createdAt: Now.AddDays(-10), isAdmin: true);
-        var disabled = await SeedUserAsync(context, "carl@mail.com", "Carl", u => u.IsDisabled = true);
+        var disabled = await SeedUserAsync(context, "carl@mail.com", "Carl", isDisabled: true);
         var deleted = await SeedUserAsync(context, "dora@mail.com", "Dora", u =>
         {
             u.Email = null;
@@ -253,6 +238,28 @@ public class MigrationTests
         }
     }
 
+    /// <summary>Spec 03 slice 15: disabling accounts no longer exists; a disabled user is an ordinary account again.</summary>
+    [Test]
+    public async Task Users_lose_the_disabled_column()
+    {
+        var context = await TestDatabase.CreateAsync("20261010200533_AddFamilies");
+        var carl = await SeedUserAsync(context, "carl@mail.com", "Carl", isDisabled: true);
+
+        await using (var db = context())
+        {
+            await db.Database.MigrateAsync();
+        }
+
+        await using (var db = context())
+        {
+            var columns = await db.Database
+                .SqlQuery<string>($"SELECT column_name AS \"Value\" FROM information_schema.columns WHERE table_name = 'users'")
+                .ToListAsync();
+            Assert.That(columns, Does.Not.Contain("is_disabled"));
+            Assert.That(await db.Set<User>().AsNoTracking().AnyAsync(u => u.Id == carl.Id), Is.True);
+        }
+    }
+
     [Test]
     public async Task Empty_instance_gets_no_family()
     {
@@ -262,9 +269,10 @@ public class MigrationTests
         Assert.That(await db.Set<Family>().AnyAsync(), Is.False);
     }
 
+    /// <summary>With SQL: the <see cref="User"/> entity follows the latest schema (no <c>is_disabled</c>), not the one being migrated from.</summary>
     private static async Task<User> SeedUserAsync(
         Func<NalaDbContext> context, string email, string displayName, Action<User>? change = null, DateTimeOffset? createdAt = null,
-        bool isAdmin = false)
+        bool isAdmin = false, bool isDisabled = false)
     {
         var user = new User
         {
@@ -278,7 +286,11 @@ public class MigrationTests
         };
         change?.Invoke(user);
         await using var db = context();
-        await new UserRepository(db).AddAsync(user);
+        await db.Database.ExecuteSqlAsync($"""
+            INSERT INTO users (id, email, display_name, password_hash, preferred_language, is_admin, is_disabled, deleted_at, created_at)
+            VALUES ({user.Id}, {user.Email}, {user.DisplayName}, {user.PasswordHash}, {user.PreferredLanguage}, {user.IsAdmin},
+                    {isDisabled}, {user.DeletedAt}, {user.CreatedAt})
+            """);
         return user;
     }
 

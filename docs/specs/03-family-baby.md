@@ -86,10 +86,10 @@ Each item becomes at least one test, written failing first.
 - [x] Accepting a join invitation (new or existing account, 02) makes the person a member of that family; someone already in it is refused and the link stays usable.
 
 ### Members
-- [ ] Any member can list their family's members (display name, email, family admin badge). Deleted accounts and removed members are not listed.
-- [ ] Only the family admin can remove a member: the membership ends and the person loses access to that family only (their account, sessions and other families are kept); their pending invitations for that family are revoked; their entries are not changed.
-- [ ] A member who isn't the family admin does not see the remove action, and the endpoint refuses them (403).
-- [ ] The family admin cannot remove themselves. A member who wants to leave asks the family admin or deletes their account (02).
+- [x] Any member can list their family's members (display name, email, family admin badge). Deleted accounts and removed members are not listed.
+- [x] Only the family admin can remove a member: the membership ends and the person loses access to that family only (their account, sessions and other families are kept); their pending invitations for that family are revoked; their entries are not changed.
+- [x] A member who isn't the family admin does not see the remove action, and the endpoint refuses them (403).
+- [x] The family admin cannot remove themselves. A member who wants to leave asks the family admin or deletes their account (02).
 - [x] A removed member can only come back through a new join invitation.
 
 ### Family admin account deletion
@@ -98,7 +98,7 @@ Each item becomes at least one test, written failing first.
 
 ### Authorization and isolation
 - [x] Every baby, activity, History and live endpoint only works for members of the baby's family; for anyone else, the baby or entry answers the same 404 and code as an unknown id. Each section's API tests include a user from another family.
-- [ ] Family, member and invitation endpoints of a family the caller isn't in answer 404 `familyNotFound`.
+- [x] Family, member and invitation endpoints of a family the caller isn't in answer 404 `familyNotFound`.
 - [x] `GET /api/babies` and `GET /api/live` only return the babies and live entries of the caller's families.
 - [x] Creating, re-sending or starting an entry with an id that belongs to another family's entry is refused with 404 and leaves that entry unchanged.
 - [x] The instance admin reaches no data of a family they aren't a member of.
@@ -115,8 +115,8 @@ Slices 1–7 (single family) are done; each is a commit "Spec 03 slice N: …" (
 - [x] **Slice 12: rename a family.** `PATCH /api/families/{id}`. Settings gets a Family section (name, plus Rename for the admin, in a dialog). *Covers:* Families 5.
 - [x] **Slice 13: join invitations per family.** Invitation endpoints move under `/api/families/{familyId}/invitations` (link, email with `alreadyMember`, pending list, revoke; `invitationUnknown` across families). Members & invitations shows the current family. *Covers:* Invitations 1, 2, 3; Isolation 2 (invitations).
 - [x] **Slice 14: accepting an invitation with an existing account.** The lookup returns `kind` and `familyName`. `POST /api/auth/invitations/{token}/accept` (409 `alreadyMember`, link stays usable). Signing in from the invite page comes back to it; signed in, an accept card with Accept / Not now selects the family after accepting. When the email is `taken`, the register page offers to sign in and accept instead. *Covers:* Invitations 4; Members 5; 02 Registration 3 (join), 4, 6.
-- [ ] **Slice 15: members per family, removal, no account disable.** `GET /api/families/{id}/members`, `POST …/members/{userId}/remove` (errors in order, pending invitations revoked, entries kept). Disable / enable and `IsDisabled` are removed: column dropped, and login and reset no longer refuse an account for being disabled. The accounts list shows no family data. Web: a Members heading, and for the family admin a Remove button with confirmation; the Instance section loses disable. *Covers:* Members 1, 2, 3, 4; Isolation 2 (members), 6; 02 Instance admin 2, 4.
-- [ ] **Slice 16: new-family invitations.** `/api/admin/invitations` (link, email, pending list, revoke; 403 `adminOnly`). Registering or accepting with `familyName` creates a family with that person as its admin (until then, accepting a new-family invitation answers `invitationUnknown`). Web: "New families" in the Instance section, and the family name field on the invite page. *Covers:* Families 2; 02 Registration 3 (new family); 02 Instance admin 3.
+- [x] **Slice 15: members per family, removal, no account disable.** `GET /api/families/{id}/members`, `POST …/members/{userId}/remove` (errors in order, pending invitations revoked, entries kept). Disable / enable and `IsDisabled` are removed: column dropped, and login and reset no longer refuse an account for being disabled. The accounts list shows no family data. Web: a Members heading, and for the family admin a Remove button with confirmation; the Instance section loses disable. *Covers:* Members 1, 2, 3, 4; Isolation 2 (members); 02 Instance admin 2, 4.
+- [ ] **Slice 16: new-family invitations.** `/api/admin/invitations` (link, email, pending list, revoke; 403 `adminOnly`). Registering or accepting with `familyName` creates a family with that person as its admin (until then, accepting a new-family invitation answers `invitationUnknown`). Web: "New families" in the Instance section, and the family name field on the invite page. *Covers:* Families 2; Isolation 6; 02 Registration 3 (new family); 02 Instance admin 3.
 - [ ] **Slice 17: a family admin deleting their account.** Account deletion ends the user's memberships and deletes the families they administer, with all their data; entries they logged in other families stay. The delete dialog warns about each family it will delete, with its babies, and its button reads "Delete my account and my families". *Covers:* Family admin account deletion 1, 2; 02 Account deletion 4, 5.
 
 ## Data

@@ -1,16 +1,17 @@
 using Nala.Api.Admin;
 using Nala.Api.Auth;
-using Nala.Core.Admin;
+using Nala.Api.Families;
+using Nala.Core.Families;
 using Nala.Core.Members;
-using Nala.Core.Users;
 
 namespace Nala.Api.Members;
 
+/// <summary><c>IsAdmin</c>: the member is the family's admin.</summary>
 public sealed record MemberResponse(Guid Id, string DisplayName, string Email, bool IsAdmin);
 
 /// <summary>
-/// The family's members. Every member may list them (fallback session policy); removing one is the admin disable,
-/// refused to anyone but the admin in Core.
+/// A family's members. Any member lists them (fallback session policy); only the family admin removes one, checked in
+/// Core. A family the caller isn't in is 404 <c>familyNotFound</c>.
 /// </summary>
 public static class MemberEndpoints
 {
@@ -19,25 +20,30 @@ public static class MemberEndpoints
 
     public static IEndpointRouteBuilder MapNalaMembers(this IEndpointRouteBuilder endpoints)
     {
-        var members = endpoints.MapGroup("/api/members");
+        var members = endpoints.MapGroup("/api/families/{familyId:guid}/members");
         members.MapGet("", ListAsync);
-        members.MapPost("/{id:guid}/remove", RemoveAsync);
+        members.MapPost("/{userId:guid}/remove", RemoveAsync);
         return endpoints;
     }
 
-    private static async Task<IResult> ListAsync(MemberService members, CancellationToken cancellationToken) =>
-        Results.Ok((await members.ListAsync(cancellationToken)).Select(ToResponse));
+    private static async Task<IResult> ListAsync(
+        Guid familyId, MemberService members, HttpContext context, CancellationToken cancellationToken) =>
+        await members.ListAsync(AuthEndpoints.CurrentUser(context)!, familyId, cancellationToken) is ListMembersResult.Listed listed
+            ? Results.Ok(listed.Members.Select(ToResponse))
+            : FamilyEndpoints.FamilyNotFound();
 
-    /// <summary>204 when disabled (now or before).</summary>
     private static async Task<IResult> RemoveAsync(
-        Guid id, AdminService admin, HttpContext context, CancellationToken cancellationToken) =>
-        await admin.SetDisabledAsync(AuthEndpoints.CurrentUser(context)!, id, disabled: true, cancellationToken) switch
+        Guid familyId, Guid userId, MemberService members, HttpContext context, CancellationToken cancellationToken) =>
+        await members.RemoveAsync(AuthEndpoints.CurrentUser(context)!, familyId, userId, cancellationToken) switch
         {
-            SetDisabledResult.Updated => Results.NoContent(),
-            SetDisabledResult.NotFound => AdminEndpoints.UserNotFound(),
-            SetDisabledResult.AdminCannotDisable => AdminEndpoints.AdminCannotDisable(),
-            _ => AdminEndpoints.AdminOnly(),
+            RemoveMemberResult.Removed => Results.NoContent(),
+            RemoveMemberResult.Forbidden => FamilyEndpoints.FamilyAdminOnly(),
+            RemoveMemberResult.UserNotFound => AdminEndpoints.UserNotFound(),
+            RemoveMemberResult.AdminCannotRemove =>
+                Results.Json(new ErrorResponse("adminCannotRemove"), statusCode: StatusCodes.Status403Forbidden),
+            _ => FamilyEndpoints.FamilyNotFound(),
         };
 
-    private static MemberResponse ToResponse(User user) => new(user.Id, user.DisplayName, user.Email!, user.IsAdmin);
+    private static MemberResponse ToResponse(FamilyMember member) =>
+        new(member.User.Id, member.User.DisplayName, member.User.Email!, member.Role == FamilyRole.Admin);
 }

@@ -69,9 +69,9 @@ Each item becomes at least one test, written failing first.
 
 ### Instance admin
 - [x] The instance has exactly one instance admin: the account created at first-run setup. No other user can be made instance admin.
-- [ ] The instance admin can list all accounts (display name, email, last activity), whatever their families; deleted accounts are not listed. The list shows no family data.
+- [x] The instance admin can list all accounts (display name, email, last activity), whatever their families; deleted accounts are not listed. The list shows no family data.
 - [ ] Only the instance admin can create (link, or by email when SMTP is configured), list and revoke new-family invitations (single-use, 7 days); anyone else is refused (403).
-- [ ] There is no account disable: the disable / enable actions and endpoints are gone, and no login or reset link is refused for a disabled account.
+- [x] There is no account disable: the disable / enable actions and endpoints are gone, and no login or reset link is refused for a disabled account.
 
 ### Offline interaction
 - Keeping queued entries across a session expiry is specified and tested with the offline queue, in [04 § Offline queue](04-app-layout.md#offline-queue).

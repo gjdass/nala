@@ -31,9 +31,16 @@ public static class FamilyEndpoints
         {
             RenameFamilyResult.Renamed renamed => Results.Ok(ToResponse(renamed.Family)),
             RenameFamilyResult.Invalid invalid => AuthEndpoints.ValidationProblem(invalid.Errors),
-            RenameFamilyResult.Forbidden => Results.Json(new ErrorResponse("familyAdminOnly"), statusCode: StatusCodes.Status403Forbidden),
-            _ => Results.Json(new ErrorResponse("familyNotFound"), statusCode: StatusCodes.Status404NotFound),
+            RenameFamilyResult.Forbidden => FamilyAdminOnly(),
+            _ => FamilyNotFound(),
         };
+
+    /// <summary>A family the caller isn't in answers like an unknown one.</summary>
+    internal static IResult FamilyNotFound() =>
+        Results.Json(new ErrorResponse("familyNotFound"), statusCode: StatusCodes.Status404NotFound);
+
+    internal static IResult FamilyAdminOnly() =>
+        Results.Json(new ErrorResponse("familyAdminOnly"), statusCode: StatusCodes.Status403Forbidden);
 
     private static FamilyResponse ToResponse(UserFamily family) =>
         new(family.Family.Id, family.Family.Name, family.Role == FamilyRole.Admin);

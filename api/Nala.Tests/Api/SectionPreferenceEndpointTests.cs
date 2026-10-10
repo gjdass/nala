@@ -149,16 +149,4 @@ public class SectionPreferenceEndpointTests
         Assert.That((await anonymous.GetAsync(Url)).StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
         Assert.That((await PutAsync(anonymous, Custom)).StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
     }
-
-    [Test]
-    public async Task A_disabled_member_is_refused()
-    {
-        var (ben, benId) = await RegisterBenAsync();
-        Assert.That(
-            (await _admin.PostAsync($"/api/admin/users/{benId}/disable", null)).StatusCode, Is.EqualTo(HttpStatusCode.OK));
-
-        Assert.That((await ben.GetAsync(Url)).StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
-        Assert.That((await PutAsync(ben, Custom)).StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
-        ben.Dispose();
-    }
 }

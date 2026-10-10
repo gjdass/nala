@@ -1,3 +1,4 @@
+using Nala.Api.Families;
 using Nala.Api.Auth;
 using Nala.Api.Email;
 using Nala.Core.Invitations;
@@ -33,16 +34,13 @@ public static class InvitationEndpoints
         return endpoints;
     }
 
-    private static IResult FamilyNotFound() =>
-        Results.Json(new ErrorResponse("familyNotFound"), statusCode: StatusCodes.Status404NotFound);
-
     private static async Task<IResult> CreateAsync(
         Guid familyId, InvitationService invitations, HttpContext context, CancellationToken cancellationToken) =>
         await invitations.CreateAsync(AuthEndpoints.CurrentUser(context)!, familyId, cancellationToken) switch
         {
             CreateInvitationResult.Created created =>
                 Results.Ok(new CreatedInvitationResponse(created.Invitation.Token, created.Invitation.ExpiresAt)),
-            _ => FamilyNotFound(),
+            _ => FamilyEndpoints.FamilyNotFound(),
         };
 
     /// <summary>202 once the email is queued; 404 for the family, then when SMTP is off; 400 validation problem.</summary>
@@ -64,14 +62,14 @@ public static class InvitationEndpoints
             SendInvitationResult.Invalid invalid => AuthEndpoints.ValidationProblem(invalid.Errors),
             SendInvitationResult.Disabled =>
                 Results.Json(new ErrorResponse("emailInviteDisabled"), statusCode: StatusCodes.Status404NotFound),
-            _ => FamilyNotFound(),
+            _ => FamilyEndpoints.FamilyNotFound(),
         };
 
     private static async Task<IResult> ListAsync(
         Guid familyId, InvitationService invitations, HttpContext context, CancellationToken cancellationToken) =>
         await invitations.ListPendingAsync(AuthEndpoints.CurrentUser(context)!, familyId, cancellationToken) is { } pending
             ? Results.Ok(pending.Select(i => new PendingInvitationResponse(i.Id, i.CreatedBy, i.CreatedAt, i.ExpiresAt)))
-            : FamilyNotFound();
+            : FamilyEndpoints.FamilyNotFound();
 
     /// <summary>204 when revoked (now or before); 410 when used or expired; 404 for the family, then the invitation.</summary>
     private static async Task<IResult> RevokeAsync(
@@ -80,7 +78,7 @@ public static class InvitationEndpoints
         {
             RevokeInvitationResult.Revoked => Results.NoContent(),
             RevokeInvitationResult.Unavailable unavailable => AuthEndpoints.InvitationUnavailable(unavailable.Problem),
-            RevokeInvitationResult.FamilyNotFound => FamilyNotFound(),
+            RevokeInvitationResult.FamilyNotFound => FamilyEndpoints.FamilyNotFound(),
             _ => AuthEndpoints.InvitationUnavailable(InvitationProblem.Unknown),
         };
 }

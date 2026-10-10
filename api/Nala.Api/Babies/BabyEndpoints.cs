@@ -1,3 +1,4 @@
+using Nala.Api.Families;
 using Nala.Api.Auth;
 using Nala.Core.Babies;
 
@@ -57,7 +58,7 @@ public static class BabyEndpoints
         {
             CreateBabyResult.Created created => Results.Created($"/api/babies/{created.Baby.Id}", ToResponse(created.Baby)),
             CreateBabyResult.Invalid invalid => AuthEndpoints.ValidationProblem(invalid.Errors),
-            _ => Results.Json(new ErrorResponse("familyNotFound"), statusCode: StatusCodes.Status404NotFound),
+            _ => FamilyEndpoints.FamilyNotFound(),
         };
     }
 
@@ -76,7 +77,7 @@ public static class BabyEndpoints
         {
             DeleteBabyResult.Deleted => Results.NoContent(),
             DeleteBabyResult.NotFound => BabyNotFound(),
-            _ => Results.Json(new ErrorResponse("familyAdminOnly"), statusCode: StatusCodes.Status403Forbidden),
+            _ => FamilyEndpoints.FamilyAdminOnly(),
         };
 
     private static IResult BabyNotFound() =>

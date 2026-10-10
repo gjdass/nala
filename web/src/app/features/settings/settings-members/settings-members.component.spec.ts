@@ -6,6 +6,8 @@ import { Subject, of } from 'rxjs';
 import en from '../../../../../public/i18n/en.json';
 import { AuthState } from '../../../core/auth/auth.models';
 import { AuthService } from '../../../core/auth/auth.service';
+import { CurrentFamilyService } from '../../../core/families/current-family.service';
+import { Family } from '../../../core/families/family.models';
 import { Member, MembersResult, RemoveMemberResult } from '../../../core/members/member.models';
 import { MemberService } from '../../../core/members/member.service';
 import { ConfirmDialogComponent } from '../../../shared/ui/confirm-dialog/confirm-dialog.component';
@@ -24,6 +26,7 @@ describe('SettingsMembersComponent', () => {
   let dialog: { open: ReturnType<typeof vi.fn> };
   let snackBar: { open: ReturnType<typeof vi.fn> };
   let auth: { state: ReturnType<typeof signal<AuthState | null>> };
+  let current: ReturnType<typeof signal<Family | null>>;
 
   const anna: Member = { id: 'u1', displayName: 'Anna', email: 'anna@mail.com', isAdmin: true };
   const ben: Member = { id: 'u2', displayName: 'Ben', email: 'ben@mail.com', isAdmin: false };
@@ -36,18 +39,24 @@ describe('SettingsMembersComponent', () => {
     row(name).querySelector<HTMLButtonElement>('[data-testid="remove"]');
   const settle = () => fixture.whenStable();
 
-  const signIn = (isAdmin: boolean) =>
+  /**
+   * Signs in Anna (the family admin of Martins) or Ben (a member). `instanceAdmin` only sets the
+   * account-level role, which gives nothing in a family.
+   */
+  const signIn = (familyAdmin: boolean, instanceAdmin = familyAdmin) => {
     auth.state.set({
       setupRequired: false,
       smtpEnabled: false,
       user: {
-        id: isAdmin ? 'u1' : 'u2',
-        email: isAdmin ? 'anna@mail.com' : 'ben@mail.com',
-        displayName: isAdmin ? 'Anna' : 'Ben',
+        id: familyAdmin ? 'u1' : 'u2',
+        email: familyAdmin ? 'anna@mail.com' : 'ben@mail.com',
+        displayName: familyAdmin ? 'Anna' : 'Ben',
         language: 'en',
-        isAdmin,
+        isAdmin: instanceAdmin,
       },
     });
+    current.set({ id: 'f1', name: 'Martins', isAdmin: familyAdmin });
+  };
 
   const render = async (result: MembersResult = { ok: true, members: [anna, ben, chloe] }) => {
     members.list.mockReturnValue(of(result));
@@ -70,6 +79,7 @@ describe('SettingsMembersComponent', () => {
     dialog = { open: vi.fn(() => ({ afterClosed: () => dialogClosed })) };
     snackBar = { open: vi.fn() };
     auth = { state: signal<AuthState | null>(null) };
+    current = signal<Family | null>(null);
     signIn(true);
     await TestBed.configureTestingModule({
       imports: [SettingsMembersComponent, translocoTesting()],
@@ -78,12 +88,15 @@ describe('SettingsMembersComponent', () => {
         { provide: MatDialog, useValue: dialog },
         { provide: MatSnackBar, useValue: snackBar },
         { provide: AuthService, useValue: auth },
+        { provide: CurrentFamilyService, useValue: { current } },
       ],
     }).compileComponents();
   });
 
   it('lists the members under a Members heading, with name, email and admin badge', async () => {
     await render();
+
+    expect(members.list).toHaveBeenCalledWith('f1');
 
     expect(host().querySelector('h3')?.textContent?.trim()).toBe(en.members.title);
     expect(rows().map((r) => r.querySelector('[matListItemTitle]')?.textContent?.trim())).toEqual([
@@ -96,14 +109,15 @@ describe('SettingsMembersComponent', () => {
     expect(row('Ben').querySelector('[data-testid="admin-badge"]')).toBeNull();
   });
 
-  it('shows no Remove action to a non-admin member', async () => {
-    signIn(false);
+  it('shows no Remove action to a member who is not the family admin, even the instance admin', async () => {
+    signIn(false, true);
     await render();
 
     expect(host().querySelector('[data-testid="remove"]')).toBeNull();
   });
 
-  it('shows Remove to the admin on every row but their own', async () => {
+  it('shows Remove to the family admin on every row but their own', async () => {
+    signIn(true, false);
     await render();
 
     expect(removeButton('Anna')).toBeNull();
@@ -140,7 +154,7 @@ describe('SettingsMembersComponent', () => {
       expect(dialog.open).toHaveBeenCalledWith(ConfirmDialogComponent, {
         data: {
           title: en.members.removeTitle.replace('{{name}}', 'Ben'),
-          text: en.members.removeText.replace(/{{name}}/g, 'Ben'),
+          text: en.members.removeText.replace(/{{name}}/g, 'Ben').replace(/{{family}}/g, 'Martins'),
           confirm: en.members.confirm,
           cancel: en.members.cancel,
         },
@@ -162,7 +176,7 @@ describe('SettingsMembersComponent', () => {
       await render();
       await confirmRemoveBen();
 
-      expect(members.remove).toHaveBeenCalledWith('u2');
+      expect(members.remove).toHaveBeenCalledWith('f1', 'u2');
       removed.next({ ok: true });
       await settle();
 
@@ -177,11 +191,35 @@ describe('SettingsMembersComponent', () => {
     it('shows a refusal in a snackbar and keeps the row', async () => {
       await render();
       await confirmRemoveBen();
-      removed.next({ ok: false, errors: { form: 'adminOnly' } });
+      removed.next({ ok: false, errors: { form: 'familyAdminOnly' } });
       await settle();
 
       expect(row('Ben')).toBeDefined();
-      expect(snackBar.open).toHaveBeenCalledWith(en.auth.errors.form.adminOnly, undefined, {
+      expect(snackBar.open).toHaveBeenCalledWith(en.auth.errors.form.familyAdminOnly, undefined, {
+        duration: 3000,
+      });
+    });
+
+    it('shows that the family admin cannot be removed', async () => {
+      await render();
+      await confirmRemoveBen();
+      removed.next({ ok: false, errors: { form: 'adminCannotRemove' } });
+      await settle();
+
+      expect(snackBar.open).toHaveBeenCalledWith(en.auth.errors.form.adminCannotRemove, undefined, {
+        duration: 3000,
+      });
+    });
+
+    it('reloads the list when the member was already gone', async () => {
+      await render();
+      await confirmRemoveBen();
+      members.list.mockReturnValue(of({ ok: true, members: [anna, chloe] }));
+      removed.next({ ok: false, errors: { form: 'userNotFound' } });
+      await settle();
+
+      expect(rows().some((r) => r.textContent?.includes('Ben'))).toBe(false);
+      expect(snackBar.open).toHaveBeenCalledWith(en.auth.errors.form.userNotFound, undefined, {
         duration: 3000,
       });
     });

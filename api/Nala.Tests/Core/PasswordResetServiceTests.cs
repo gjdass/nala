@@ -122,15 +122,6 @@ public class PasswordResetServiceTests
     }
 
     [Test]
-    public async Task Creating_a_link_for_a_disabled_user_is_refused()
-    {
-        _ben.IsDisabled = true;
-
-        Assert.That(await _service.CreateLinkAsync(_anna, _ben.Id), Is.InstanceOf<CreateResetLinkResult.AccountDisabled>());
-        Assert.That(_resets.Tokens, Is.Empty);
-    }
-
-    [Test]
     public async Task Lookup_of_a_valid_link_returns_the_email_and_expiry()
     {
         var result = await _service.LookupAsync(await CreateLinkAsync());
@@ -169,15 +160,6 @@ public class PasswordResetServiceTests
         _ben.DeletedAt = Now;
 
         Assert.That(await _service.LookupAsync(token), Is.EqualTo(new ResetLinkLookup.Unavailable(ResetLinkProblem.Unknown)));
-    }
-
-    [Test]
-    public async Task Lookup_for_a_disabled_user_is_refused()
-    {
-        var token = await CreateLinkAsync();
-        _ben.IsDisabled = true;
-
-        Assert.That(await _service.LookupAsync(token), Is.InstanceOf<ResetLinkLookup.AccountDisabled>());
     }
 
     [Test]
@@ -239,18 +221,6 @@ public class PasswordResetServiceTests
     }
 
     [Test]
-    public async Task Reset_for_a_disabled_user_is_refused()
-    {
-        var token = await CreateLinkAsync();
-        _ben.IsDisabled = true;
-
-        Assert.That(
-            await _service.ResetAsync(new ResetPasswordCommand(token, "new password")),
-            Is.InstanceOf<ResetPasswordResult.AccountDisabled>());
-        Assert.That(_ben.PasswordHash, Is.EqualTo("hashed:old password"));
-    }
-
-    [Test]
     public async Task Reset_losing_the_race_for_the_link_is_used_and_changes_nothing()
     {
         var token = await CreateLinkAsync();
@@ -298,15 +268,11 @@ public class PasswordResetServiceTests
     }
 
     [TestCase("unknown")]
-    [TestCase("disabled")]
     [TestCase("deleted")]
-    public async Task Request_for_an_unknown_disabled_or_deleted_account_sends_nothing_and_succeeds(string account)
+    public async Task Request_for_an_unknown_or_deleted_account_sends_nothing_and_succeeds(string account)
     {
         switch (account)
         {
-            case "disabled":
-                _ben.IsDisabled = true;
-                break;
             case "deleted":
                 _ben.DeletedAt = Now;
                 _ben.Email = null;

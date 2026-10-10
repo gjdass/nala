@@ -1,6 +1,6 @@
 import { FieldErrors } from '../auth/auth.models';
 
-/** A family member: an enabled, non-deleted account. */
+/** A member of a family; `isAdmin`: they are its family admin. */
 export interface Member {
   id: string;
   displayName: string;

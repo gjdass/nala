@@ -2,7 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { firstValueFrom } from 'rxjs';
-import { AdminUser, AdminUserResult, AdminUsersResult, ResetLinkResult } from './admin.models';
+import { AdminUser, AdminUsersResult, ResetLinkResult } from './admin.models';
 import { AdminService } from './admin.service';
 
 describe('AdminService', () => {
@@ -14,7 +14,6 @@ describe('AdminService', () => {
     email: 'ben@mail.com',
     displayName: 'Ben',
     isAdmin: false,
-    isDisabled: false,
     lastActivityAt: '2026-09-27T20:00:00Z',
   };
 
@@ -45,42 +44,6 @@ describe('AdminService', () => {
         .flush({ code: 'adminOnly' }, { status: 403, statusText: 'Forbidden' });
 
       expect(await result).toEqual<AdminUsersResult>({ ok: false, errors: { form: 'adminOnly' } });
-    });
-  });
-
-  describe('setDisabled()', () => {
-    it.each([
-      [true, 'disable'],
-      [false, 'enable'],
-    ])('with %s posts to /%s and returns the updated user', async (disabled, action) => {
-      const result = firstValueFrom(service.setDisabled('u2', disabled));
-      const req = http.expectOne(`/api/admin/users/u2/${action}`);
-      expect(req.request.method).toBe('POST');
-      req.flush({ ...ben, isDisabled: disabled });
-
-      expect(await result).toEqual<AdminUserResult>({
-        ok: true,
-        user: { ...ben, isDisabled: disabled },
-      });
-    });
-
-    it.each([
-      [403, 'adminCannotDisable'],
-      [404, 'userNotFound'],
-    ])('maps a %s to its code', async (status, code) => {
-      const result = firstValueFrom(service.setDisabled('u2', true));
-      http
-        .expectOne('/api/admin/users/u2/disable')
-        .flush({ code }, { status, statusText: 'Error' });
-
-      expect(await result).toEqual<AdminUserResult>({ ok: false, errors: { form: code } });
-    });
-
-    it('reports a network failure as unknown', async () => {
-      const result = firstValueFrom(service.setDisabled('u2', true));
-      http.expectOne('/api/admin/users/u2/disable').error(new ProgressEvent('error'));
-
-      expect(await result).toEqual<AdminUserResult>({ ok: false, errors: { form: 'unknown' } });
     });
   });
 

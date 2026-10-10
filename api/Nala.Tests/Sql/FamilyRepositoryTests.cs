@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Nala.Core.Families;
+using Nala.Core.Invitations;
 using Nala.Core.Users;
 using Nala.Sql;
 using Nala.Sql.Families;
@@ -193,5 +194,108 @@ public class FamilyRepositoryTests
         await using var db = _db();
 
         Assert.That(await new FamilyRepository(db).RenameAsync(Guid.NewGuid(), "The Martins"), Is.Null);
+    }
+
+    private async Task<Family> SeedFamilyAsync(User admin, string name, params User[] members)
+    {
+        var (family, membership) = NewFamily(admin, name);
+        await AddWithNewAdminAsync(admin, family, membership);
+        foreach (var member in members)
+        {
+            await AddMembershipAsync(family, member, FamilyRole.Member);
+        }
+
+        return family;
+    }
+
+    private async Task<Guid> AddInvitationAsync(User creator, Family family, Action<Invitation>? change = null)
+    {
+        var invitation = new Invitation
+        {
+            Id = Guid.NewGuid(),
+            TokenHash = Guid.NewGuid().ToString(),
+            FamilyId = family.Id,
+            CreatedByUserId = creator.Id,
+            CreatedAt = Now,
+            ExpiresAt = Now.AddDays(7),
+        };
+        change?.Invoke(invitation);
+        await using var db = _db();
+        db.Set<Invitation>().Add(invitation);
+        await db.SaveChangesAsync();
+        return invitation.Id;
+    }
+
+    [Test]
+    public async Task ListMembers_returns_the_familys_non_deleted_members_with_their_role()
+    {
+        var anna = NewUser("Anna", isAdmin: true);
+        var ben = NewUser("Ben");
+        var dan = NewUser("Dan");
+        var carl = NewUser("Carl");
+        await AddUserAsync(ben);
+        await AddUserAsync(dan);
+        var family = await SeedFamilyAsync(anna, "Martins", ben, dan);
+        await SeedFamilyAsync(carl, "Others");
+        await using (var db = _db())
+        {
+            await db.Set<User>().Where(u => u.Id == dan.Id).ExecuteUpdateAsync(u => u.SetProperty(x => x.DeletedAt, Now));
+        }
+
+        await using var read = _db();
+        var members = await new FamilyRepository(read).ListMembersAsync(family.Id);
+
+        Assert.That(
+            members.Select(m => (m.User.Id, m.User.DisplayName, m.Role)),
+            Is.EquivalentTo(new[] { (anna.Id, "Anna", FamilyRole.Admin), (ben.Id, "Ben", FamilyRole.Member) }));
+    }
+
+    [Test]
+    public async Task RemoveMember_ends_that_membership_and_revokes_only_its_pending_invitations_to_that_family()
+    {
+        var anna = NewUser("Anna", isAdmin: true);
+        var ben = NewUser("Ben");
+        var carl = NewUser("Carl");
+        await AddUserAsync(ben);
+        var family = await SeedFamilyAsync(anna, "Martins", ben);
+        var others = await SeedFamilyAsync(carl, "Others", ben);
+        var pending = await AddInvitationAsync(ben, family);
+        var used = await AddInvitationAsync(ben, family, i => (i.UsedAt, i.UsedByUserId) = (Now.AddHours(-1), anna.Id));
+        var expired = await AddInvitationAsync(ben, family, i => i.ExpiresAt = Now);
+        var elsewhere = await AddInvitationAsync(ben, others);
+        var annas = await AddInvitationAsync(anna, family);
+
+        bool removed;
+        await using (var db = _db())
+        {
+            removed = await new FamilyRepository(db).RemoveMemberAsync(family.Id, ben.Id, Now);
+        }
+
+        await using var read = _db();
+        var memberships = await read.Set<Membership>().AsNoTracking().ToListAsync();
+        var revoked = await read.Set<Invitation>().AsNoTracking().ToDictionaryAsync(i => i.Id, i => i.RevokedAt);
+        Assert.Multiple(() =>
+        {
+            Assert.That(removed, Is.True);
+            Assert.That(
+                memberships.Select(m => (m.FamilyId, m.UserId)),
+                Is.EquivalentTo(new[] { (family.Id, anna.Id), (others.Id, carl.Id), (others.Id, ben.Id) }));
+            Assert.That(revoked[pending], Is.EqualTo(Now));
+            Assert.That(new[] { revoked[used], revoked[expired], revoked[elsewhere], revoked[annas] }, Is.All.Null);
+        });
+    }
+
+    [Test]
+    public async Task RemoveMember_without_a_membership_returns_false()
+    {
+        var anna = NewUser("Anna", isAdmin: true);
+        var carl = NewUser("Carl");
+        var family = await SeedFamilyAsync(anna, "Martins");
+        await SeedFamilyAsync(carl, "Others");
+
+        await using var db = _db();
+        var repository = new FamilyRepository(db);
+        Assert.That(await repository.RemoveMemberAsync(family.Id, carl.Id, Now), Is.False);
+        Assert.That(await repository.RemoveMemberAsync(Guid.NewGuid(), anna.Id, Now), Is.False);
     }
 }

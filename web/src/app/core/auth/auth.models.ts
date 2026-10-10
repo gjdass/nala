@@ -65,7 +65,7 @@ export interface ResetLink {
   expiresAt: string;
 }
 
-/** `code`: `resetLinkUnknown`, `resetLinkExpired`, `resetLinkUsed`, `accountDisabled` or `unknown`. */
+/** `code`: `resetLinkUnknown`, `resetLinkExpired`, `resetLinkUsed` or `unknown`. */
 export type ResetLinkLookup = { ok: true; link: ResetLink } | { ok: false; code: string };
 
 export interface ForgotPasswordRequest {

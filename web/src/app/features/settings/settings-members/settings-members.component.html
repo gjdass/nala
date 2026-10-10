@@ -11,7 +11,7 @@
         [email]="member.email"
         [isAdmin]="member.isAdmin"
       >
-        @if (isAdmin() && !member.isAdmin) {
+        @if (isFamilyAdmin() && member.id !== userId()) {
           <button
             memberAction
             mat-button

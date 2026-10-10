@@ -133,18 +133,6 @@ public class PasswordResetEndpointTests
     }
 
     [Test]
-    public async Task A_reset_link_for_a_disabled_user_is_refused()
-    {
-        var (_, benId) = await RegisterBenAsync();
-        await _admin.PostAsync($"/api/admin/users/{benId}/disable", null);
-
-        var response = await CreateLinkAsync(_admin, benId);
-
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Forbidden));
-        Assert.That(await CodeAsync(response), Is.EqualTo("accountDisabled"));
-    }
-
-    [Test]
     public async Task Anyone_with_the_link_can_look_it_up()
     {
         var (_, benId) = await RegisterBenAsync();
@@ -237,17 +225,4 @@ public class PasswordResetEndpointTests
         Assert.That((await LookupAsync(phone, token)).StatusCode, Is.EqualTo(HttpStatusCode.OK), "link not consumed");
     }
 
-    [Test]
-    public async Task Reset_for_a_user_disabled_since_is_refused()
-    {
-        var (_, benId) = await RegisterBenAsync();
-        var token = await ResetTokenAsync(benId);
-        await _admin.PostAsync($"/api/admin/users/{benId}/disable", null);
-        using var phone = NewClient();
-
-        var response = await ResetAsync(phone, token);
-
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Forbidden));
-        Assert.That(await CodeAsync(response), Is.EqualTo("accountDisabled"));
-    }
 }

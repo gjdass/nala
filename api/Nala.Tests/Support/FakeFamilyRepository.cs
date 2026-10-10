@@ -44,6 +44,28 @@ public class FakeFamilyRepository(FakeUserRepository? users = null) : IFamilyRep
             .Select(m => new UserFamily(Families.Single(f => f.Id == m.FamilyId), m.Role))
             .ToList());
 
+    /// <summary>When the last membership was removed (invitations are revoked by the real repository only).</summary>
+    public DateTimeOffset? RemovedAt { get; private set; }
+
+    /// <summary>Needs the user repository given to the constructor.</summary>
+    public Task<IReadOnlyList<FamilyMember>> ListMembersAsync(Guid familyId, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<FamilyMember>>(Memberships
+            .Where(m => m.FamilyId == familyId)
+            .Select(m => new FamilyMember(users!.Users.Single(u => u.Id == m.UserId), m.Role))
+            .Where(m => m.User.DeletedAt is null)
+            .ToList());
+
+    public Task<bool> RemoveMemberAsync(Guid familyId, Guid userId, DateTimeOffset now, CancellationToken cancellationToken = default)
+    {
+        var removed = Memberships.RemoveAll(m => m.FamilyId == familyId && m.UserId == userId) > 0;
+        if (removed)
+        {
+            RemovedAt = now;
+        }
+
+        return Task.FromResult(removed);
+    }
+
     /// <summary>Seeds a family with its members (the first one its admin).</summary>
     public Family Seed(string name, DateTimeOffset createdAt, params User[] members)
     {

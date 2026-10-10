@@ -13,9 +13,6 @@ public abstract record LoginResult
 
     public sealed record LockedOut : LoginResult;
 
-    /// <summary>Right password on a disabled account; only told to someone who knows the password.</summary>
-    public sealed record AccountDisabled : LoginResult;
-
     /// <summary>Field name → error code (<c>required</c>).</summary>
     public sealed record Invalid(IReadOnlyDictionary<string, string> Errors) : LoginResult;
 }
@@ -61,13 +58,8 @@ public class LoginService(
             return new LoginResult.InvalidCredentials();
         }
 
-        if (user!.IsDisabled)
-        {
-            return new LoginResult.AccountDisabled();
-        }
-
         await failures.ClearAsync(email, cancellationToken);
-        return new LoginResult.Success(user);
+        return new LoginResult.Success(user!);
     }
 
     /// <summary>An unknown email costs as much as a wrong password, so response time doesn't tell them apart.</summary>

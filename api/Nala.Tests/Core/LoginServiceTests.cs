@@ -80,23 +80,6 @@ public class LoginServiceTests
     }
 
     [Test]
-    public async Task Disabled_account_with_the_right_password_is_refused_as_disabled()
-    {
-        _anna.IsDisabled = true;
-
-        Assert.That(await LoginAsync(), Is.InstanceOf<LoginResult.AccountDisabled>());
-        Assert.That(_failures.Failures, Is.Empty, "not counted as a failure");
-    }
-
-    [Test]
-    public async Task Disabled_account_with_a_wrong_password_gets_the_generic_error()
-    {
-        _anna.IsDisabled = true;
-
-        Assert.That(await LoginAsync(password: "wrong password"), Is.InstanceOf<LoginResult.InvalidCredentials>());
-    }
-
-    [Test]
     public async Task Missing_fields_are_required()
     {
         var result = await LoginAsync(" ", "");

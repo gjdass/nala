@@ -17,8 +17,6 @@ public class User
 
     public bool IsAdmin { get; init; }
 
-    public bool IsDisabled { get; set; }
-
     public DateTimeOffset? DeletedAt { get; set; }
 
     public DateTimeOffset CreatedAt { get; init; }

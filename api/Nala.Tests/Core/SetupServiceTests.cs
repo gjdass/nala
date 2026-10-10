@@ -31,7 +31,6 @@ public class SetupServiceTests
         var user = _users.Users.Single();
         Assert.That(((SetupResult.Created)result).User, Is.SameAs(user));
         Assert.That(user.IsAdmin, Is.True);
-        Assert.That(user.IsDisabled, Is.False);
         Assert.That(user.Email, Is.EqualTo("anna@mail.com"));
         Assert.That(user.DisplayName, Is.EqualTo("Anna"));
         Assert.That(user.PasswordHash, Is.EqualTo("hashed:correct horse"));

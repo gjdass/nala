@@ -56,7 +56,7 @@ export class SettingsInvitationsComponent {
 
   constructor() {
     this.load();
-    // Removing or disabling a member revokes their pending invitations.
+    // Removing a member revokes their pending invitations to the family.
     inject(MemberService)
       .changed$.pipe(takeUntilDestroyed())
       .subscribe(() => this.load());

@@ -17,7 +17,6 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         user.Property(u => u.PasswordHash).HasColumnName("password_hash");
         user.Property(u => u.PreferredLanguage).HasColumnName("preferred_language").HasMaxLength(8);
         user.Property(u => u.IsAdmin).HasColumnName("is_admin");
-        user.Property(u => u.IsDisabled).HasColumnName("is_disabled");
         user.Property(u => u.DeletedAt).HasColumnName("deleted_at");
         user.Property(u => u.CreatedAt).HasColumnName("created_at");
         user.Property(u => u.LastActivityAt).HasColumnName("last_activity_at");

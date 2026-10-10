@@ -17,7 +17,7 @@ public class SessionService(ISessionRepository sessions, IUserRepository users, 
         return session;
     }
 
-    /// <summary>The session's user, extending the session; null when it is unknown, expired or its user is deleted or disabled.</summary>
+    /// <summary>The session's user, extending the session; null when it is unknown, expired or its user is deleted.</summary>
     public async Task<SessionValidation?> ValidateAsync(Guid sessionId, CancellationToken cancellationToken = default)
     {
         var session = await sessions.GetAsync(sessionId, cancellationToken);
@@ -28,7 +28,7 @@ public class SessionService(ISessionRepository sessions, IUserRepository users, 
 
         var now = time.GetUtcNow();
         var user = await users.GetByIdAsync(session.UserId, cancellationToken);
-        if (now - session.LastSeenAt >= SessionPolicy.IdleTimeout || user is not { DeletedAt: null, IsDisabled: false })
+        if (now - session.LastSeenAt >= SessionPolicy.IdleTimeout || user is not { DeletedAt: null })
         {
             await sessions.DeleteAsync(sessionId, cancellationToken);
             return null;

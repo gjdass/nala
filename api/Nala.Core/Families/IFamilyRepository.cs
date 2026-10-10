@@ -19,6 +19,15 @@ public interface IFamilyRepository
     /// <summary>The user's families with their role, in no particular order.</summary>
     Task<IReadOnlyList<UserFamily>> ListForUserAsync(Guid userId, CancellationToken cancellationToken = default);
 
+    /// <summary>The family's members whose account isn't deleted, with their role, in no particular order.</summary>
+    Task<IReadOnlyList<FamilyMember>> ListMembersAsync(Guid familyId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Ends the user's membership of the family and revokes, at <paramref name="now"/>, the invitations to that family they
+    /// created that are still usable then, together. False when they have no membership in it (nothing saved).
+    /// </summary>
+    Task<bool> RemoveMemberAsync(Guid familyId, Guid userId, DateTimeOffset now, CancellationToken cancellationToken = default);
+
     /// <summary>Saves the family's new name; null when the family is unknown.</summary>
     Task<Family?> RenameAsync(Guid familyId, string name, CancellationToken cancellationToken = default);
 }

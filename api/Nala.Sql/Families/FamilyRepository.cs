@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Nala.Core.Families;
+using Nala.Core.Invitations;
 using Nala.Core.Users;
 using Npgsql;
 
@@ -54,4 +55,31 @@ public class FamilyRepository(NalaDbContext db) : IFamilyRepository
             .ToListAsync(cancellationToken))
         .Select(r => new UserFamily(r.Family, r.Role))
         .ToList();
+
+    public async Task<IReadOnlyList<FamilyMember>> ListMembersAsync(Guid familyId, CancellationToken cancellationToken = default) =>
+        (await db.Set<Membership>().AsNoTracking()
+            .Where(m => m.FamilyId == familyId)
+            .Join(db.Set<User>().Where(u => u.DeletedAt == null), m => m.UserId, u => u.Id, (m, u) => new { User = u, m.Role })
+            .ToListAsync(cancellationToken))
+        .Select(r => new FamilyMember(r.User, r.Role))
+        .ToList();
+
+    public async Task<bool> RemoveMemberAsync(Guid familyId, Guid userId, DateTimeOffset now, CancellationToken cancellationToken = default)
+    {
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+        var removed = await db.Set<Membership>()
+            .Where(m => m.FamilyId == familyId && m.UserId == userId)
+            .ExecuteDeleteAsync(cancellationToken);
+        if (removed == 0)
+        {
+            return false;
+        }
+
+        await db.Set<Invitation>()
+            .Where(i => i.FamilyId == familyId && i.CreatedByUserId == userId
+                && i.UsedAt == null && i.RevokedAt == null && i.ExpiresAt > now)
+            .ExecuteUpdateAsync(s => s.SetProperty(i => i.RevokedAt, now), cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return true;
+    }
 }

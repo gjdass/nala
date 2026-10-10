@@ -213,19 +213,18 @@ public class BabyEndpointTests
     }
 
     [Test]
-    public async Task A_disabled_member_is_refused()
+    public async Task A_removed_member_no_longer_reaches_the_familys_babies()
     {
         var (ben, benId) = await RegisterBenAsync();
+        var lea = await AddLeaAsync();
         Assert.That(
-            (await _admin.PostAsync($"/api/admin/users/{benId}/disable", null)).StatusCode, Is.EqualTo(HttpStatusCode.OK));
+            (await _admin.PostAsync($"/api/families/{_familyId}/members/{benId}/remove", null)).StatusCode,
+            Is.EqualTo(HttpStatusCode.NoContent));
 
-        Assert.That((await ben.GetAsync("/api/babies")).StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
-        Assert.That(
-            (await AddAsync(ben, new { name = "Lea", birthDate = "2026-09-01" })).StatusCode,
-            Is.EqualTo(HttpStatusCode.Unauthorized));
-        Assert.That(
-            (await EditAsync(ben, Guid.NewGuid(), new { name = "Lea", birthDate = "2026-09-01" })).StatusCode,
-            Is.EqualTo(HttpStatusCode.Unauthorized));
+        Assert.That(await ben.GetFromJsonAsync<JsonElement[]>("/api/babies"), Is.Empty);
+        var add = await AddAsync(ben, new { name = "Tom", birthDate = "2026-09-01" });
+        Assert.That(add.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
+        Assert.That((await EditAsync(ben, lea, new { name = "Lou", birthDate = "2026-09-01" })).StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
         ben.Dispose();
     }
 

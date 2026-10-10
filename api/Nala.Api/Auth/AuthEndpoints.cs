@@ -30,7 +30,7 @@ public sealed record PasswordResetLookupResponse(string Email, DateTimeOffset Ex
 public sealed record ResetPasswordRequest(string? Password);
 
 /// <summary>
-/// A failure not tied to a field (<c>invalidCredentials</c>, <c>tooManyAttempts</c>, <c>accountDisabled</c>, <c>invitation…</c>,
+/// A failure not tied to a field (<c>invalidCredentials</c>, <c>tooManyAttempts</c>, <c>invitation…</c>,
 /// <c>resetLink…</c>, <c>emailResetDisabled</c>).
 /// </summary>
 public sealed record ErrorResponse(string Code);
@@ -147,8 +147,6 @@ public static class AuthEndpoints
                 return SignedIn(context, success.User);
             case LoginResult.Invalid invalid:
                 return ValidationProblem(invalid.Errors);
-            case LoginResult.AccountDisabled:
-                return AccountDisabled();
             case LoginResult.LockedOut:
                 return Results.Json(new ErrorResponse("tooManyAttempts"), statusCode: StatusCodes.Status429TooManyRequests);
             default:
@@ -226,8 +224,7 @@ public static class AuthEndpoints
         await resets.LookupAsync(token, cancellationToken) switch
         {
             ResetLinkLookup.Valid valid => Results.Ok(new PasswordResetLookupResponse(valid.Email, valid.ExpiresAt)),
-            ResetLinkLookup.Unavailable unavailable => Unavailable(unavailable.Problem),
-            _ => AccountDisabled(),
+            var refused => Unavailable(((ResetLinkLookup.Unavailable)refused).Problem),
         };
 
     /// <summary>Sets the new password, ends every session of the user, then signs them in on this device.</summary>
@@ -248,10 +245,8 @@ public static class AuthEndpoints
                 return SignedIn(context, reset.User);
             case ResetPasswordResult.Invalid invalid:
                 return ValidationProblem(invalid.Errors);
-            case ResetPasswordResult.Unavailable unavailable:
-                return Unavailable(unavailable.Problem);
             default:
-                return AccountDisabled();
+                return Unavailable(((ResetPasswordResult.Unavailable)result).Problem);
         }
     }
 
@@ -260,9 +255,6 @@ public static class AuthEndpoints
         Results.Json(
             new ErrorResponse($"resetLink{problem}"),
             statusCode: problem == ResetLinkProblem.Unknown ? StatusCodes.Status404NotFound : StatusCodes.Status410Gone);
-
-    internal static IResult AccountDisabled() =>
-        Results.Json(new ErrorResponse("accountDisabled"), statusCode: StatusCodes.Status403Forbidden);
 
     /// <summary>Ends this device's session only.</summary>
     private static async Task<IResult> LogoutAsync(
