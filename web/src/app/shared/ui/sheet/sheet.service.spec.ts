@@ -21,18 +21,34 @@ describe('SheetService', () => {
   let dialog: { open: ReturnType<typeof vi.fn> };
   let dismissed: Subject<string | undefined>;
   let closed: Subject<string | undefined>;
+  let backdrop: Subject<MouseEvent>;
+  let keydown: Subject<KeyboardEvent>;
   const nativeRef = { dismiss: vi.fn(), close: vi.fn() };
 
   beforeEach(() => {
     phone = true;
     dismissed = new Subject();
     closed = new Subject();
+    backdrop = new Subject();
+    keydown = new Subject();
     nativeRef.dismiss.mockClear();
     nativeRef.close.mockClear();
     bottomSheet = {
-      open: vi.fn(() => ({ dismiss: nativeRef.dismiss, afterDismissed: () => dismissed })),
+      open: vi.fn(() => ({
+        dismiss: nativeRef.dismiss,
+        afterDismissed: () => dismissed,
+        backdropClick: () => backdrop,
+        keydownEvents: () => keydown,
+      })),
     };
-    dialog = { open: vi.fn(() => ({ close: nativeRef.close, afterClosed: () => closed })) };
+    dialog = {
+      open: vi.fn(() => ({
+        close: nativeRef.close,
+        afterClosed: () => closed,
+        backdropClick: () => backdrop,
+        keydownEvents: () => keydown,
+      })),
+    };
     TestBed.configureTestingModule({
       providers: [
         { provide: BreakpointObserver, useValue: { isMatched: () => phone } },
@@ -46,7 +62,7 @@ describe('SheetService', () => {
   const injectedRef = (open: ReturnType<typeof vi.fn>): SheetRef<string> =>
     open.mock.calls[0][1].injector.get(SheetRef);
 
-  it('opens a bottom sheet on a phone, only closable from inside', () => {
+  it('opens a bottom sheet on a phone, closed by the service, not by Material', () => {
     TestBed.inject(SheetService).open(SheetBodyComponent);
 
     expect(dialog.open).not.toHaveBeenCalled();
@@ -56,7 +72,7 @@ describe('SheetService', () => {
     );
   });
 
-  it('opens a dialog on a wide screen, only closable from inside', () => {
+  it('opens a dialog on a wide screen, closed by the service, not by Material', () => {
     phone = false;
     TestBed.inject(SheetService).open(SheetBodyComponent);
 
@@ -134,5 +150,64 @@ describe('SheetService', () => {
     TestBed.inject(SheetService).open(SheetBodyComponent);
 
     expect(injectedData(bottomSheet.open)).toBeNull();
+  });
+
+  describe('tapping outside or Escape', () => {
+    const escape = () => new KeyboardEvent('keydown', { key: 'Escape' });
+
+    it('closes the bottom sheet without a result on a tap outside', () => {
+      TestBed.inject(SheetService).open(SheetBodyComponent);
+
+      backdrop.next(new MouseEvent('click'));
+
+      expect(nativeRef.dismiss).toHaveBeenCalledWith(undefined);
+    });
+
+    it('closes the bottom sheet without a result on Escape', () => {
+      TestBed.inject(SheetService).open(SheetBodyComponent);
+
+      keydown.next(escape());
+
+      expect(nativeRef.dismiss).toHaveBeenCalledWith(undefined);
+    });
+
+    it('closes the dialog without a result on a tap outside', () => {
+      phone = false;
+      TestBed.inject(SheetService).open(SheetBodyComponent);
+
+      backdrop.next(new MouseEvent('click'));
+
+      expect(nativeRef.close).toHaveBeenCalledWith(undefined);
+    });
+
+    it('closes the dialog without a result on Escape', () => {
+      phone = false;
+      TestBed.inject(SheetService).open(SheetBodyComponent);
+
+      keydown.next(escape());
+
+      expect(nativeRef.close).toHaveBeenCalledWith(undefined);
+    });
+
+    it('ignores other keys', () => {
+      TestBed.inject(SheetService).open(SheetBodyComponent);
+
+      keydown.next(new KeyboardEvent('keydown', { key: 'Enter' }));
+      keydown.next(new KeyboardEvent('keydown', { key: 'Escape', shiftKey: true }));
+
+      expect(nativeRef.dismiss).not.toHaveBeenCalled();
+    });
+
+    it("runs the sheet's dismiss hook instead of closing, when it set one", () => {
+      TestBed.inject(SheetService).open(SheetBodyComponent);
+      const hook = vi.fn();
+      injectedRef(bottomSheet.open).onDismiss = hook;
+
+      backdrop.next(new MouseEvent('click'));
+      keydown.next(escape());
+
+      expect(hook).toHaveBeenCalledTimes(2);
+      expect(nativeRef.dismiss).not.toHaveBeenCalled();
+    });
   });
 });

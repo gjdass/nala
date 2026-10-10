@@ -59,7 +59,7 @@ class FakeKindSheet {
 
 describe('EntrySheetComponent', () => {
   let fixture: ComponentFixture<FakeKindSheet>;
-  let sheetRef: { close: ReturnType<typeof vi.fn> };
+  let sheetRef: { close: ReturnType<typeof vi.fn>; onDismiss?: (() => void) | null };
   let confirmed: Subject<boolean | undefined>;
   let dialog: { open: ReturnType<typeof vi.fn> };
 
@@ -238,6 +238,14 @@ describe('EntrySheetComponent', () => {
       expect(dialog.open).not.toHaveBeenCalled();
       expect(discard).toHaveBeenCalledOnce();
       expect(sheetRef.close).not.toHaveBeenCalled();
+    });
+
+    it("leaves a tap outside to the sheet service, which closes without asking (changes and the kind's discard aside)", async () => {
+      fixture.componentInstance.discard.set(vi.fn());
+      await typeAmount('90');
+
+      expect(sheetRef.onDismiss ?? null).toBeNull();
+      expect(dialog.open).not.toHaveBeenCalled();
     });
   });
 

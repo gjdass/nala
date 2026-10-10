@@ -51,7 +51,7 @@ describe('BreastfeedSheetComponent', () => {
     'breastfeedState' | 'startSide' | 'stopSide' | 'get' | 'create' | 'update' | 'delete',
     ReturnType<typeof vi.fn>
   >;
-  let sheetRef: { close: ReturnType<typeof vi.fn> };
+  let sheetRef: { close: ReturnType<typeof vi.fn>; onDismiss?: (() => void) | null };
   let confirmed: Subject<boolean | undefined>;
   let typed: Subject<number | undefined>;
   let dialog: { open: ReturnType<typeof vi.fn> };
@@ -252,6 +252,23 @@ describe('BreastfeedSheetComponent', () => {
         expect(feeds.delete).not.toHaveBeenCalled();
         expect(sheetRef.close).not.toHaveBeenCalled();
       });
+    });
+
+    it('keeps the feed its Start created live on a tap outside, without asking', async () => {
+      await click('split-left-toggle');
+      const feedId = feeds.startSide.mock.calls[0][0];
+      await respondTimer({
+        ok: true,
+        feed: running({ id: feedId, segments: [aSegment('left', NOW.toISOString(), null)] }),
+      });
+
+      (sheetRef.onDismiss ?? (() => (sheetRef.close as () => void)()))();
+      await settle();
+
+      expect(dialog.open).not.toHaveBeenCalled();
+      expect(feeds.delete).not.toHaveBeenCalled();
+      expect(feeds.stopSide).not.toHaveBeenCalled();
+      expect(sheetRef.close).toHaveBeenCalledWith();
     });
 
     it('keeps the same feed id when starting again after a failure', async () => {

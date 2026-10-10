@@ -107,7 +107,8 @@ const onlyWhen =
  * never starts or stops the timer. ×
  * discards the form: on a sheet opened to add whose Start created the entry, it deletes it (after
  * confirming); on an entry whose timer was tapped here, it closes with the entry as the taps left it,
- * so lists show it.
+ * so lists show it. A tap outside the sheet (or Escape) discards the form without asking and never
+ * deletes: it closes with the entry as the taps left it (a live entry a Start created stays live).
  *
  * Taps, Save and Delete apply to the shared live state (`sync`) at once. The sheet follows what other
  * devices do to its live entry: new values (unless edited here), and once it leaves the live list, it
@@ -189,6 +190,9 @@ export class LiveEntrySheet<T extends TimedEntry, F extends TimedEntryFields> {
   constructor(private readonly config: LiveEntrySheetConfig<T, F>) {
     this.api = config.api;
     this.sync = config.sync;
+    // A tap outside never deletes the entry: it keeps the taps (and a live entry a Start created).
+    this.sheetRef.onDismiss = () =>
+      this.tapped() ? this.sheetRef.close({ saved: this.entry()! }) : this.sheetRef.close();
     const entry = config.entry;
     this.entry.set(entry);
     this.startTime = new FormControl<Date | null>(

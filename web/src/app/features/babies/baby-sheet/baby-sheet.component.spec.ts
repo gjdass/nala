@@ -27,7 +27,7 @@ describe('BabySheetComponent', () => {
   let fixture: ComponentFixture<BabySheetComponent>;
   let created: Subject<BabyResult>;
   let babies: { create: ReturnType<typeof vi.fn> };
-  let sheetRef: { close: ReturnType<typeof vi.fn> };
+  let sheetRef: { close: ReturnType<typeof vi.fn>; onDismiss?: (() => void) | null };
   let confirmed: Subject<boolean | undefined>;
   let dialog: { open: ReturnType<typeof vi.fn> };
 
@@ -171,6 +171,13 @@ describe('BabySheetComponent', () => {
     confirmed.next(true);
     await fixture.whenStable();
     expect(sheetRef.close).toHaveBeenCalledWith();
+  });
+
+  it('leaves a tap outside to the sheet service, which discards what was entered without asking', async () => {
+    await type('name', 'Lea');
+
+    expect(sheetRef.onDismiss ?? null).toBeNull();
+    expect(dialog.open).not.toHaveBeenCalled();
   });
 });
 

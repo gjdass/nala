@@ -1,9 +1,10 @@
+import { hasModifierKey } from '@angular/cdk/keycodes';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { ComponentType } from '@angular/cdk/portal';
 import { Injectable, Injector, inject } from '@angular/core';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatDialog } from '@angular/material/dialog';
-import { Observable } from 'rxjs';
+import { Observable, filter, merge } from 'rxjs';
 import { SHEET_DATA, SheetRef } from './sheet-ref';
 
 /** Below this width the sheet slides up from the bottom; above, it is a dialog. */
@@ -15,12 +16,32 @@ class DelegatingSheetRef<R> extends SheetRef<R> {
   close(result?: R): void {
     this.closeWith(result);
   }
+
+  /** A tap outside the sheet or Escape: the sheet's hook, else closing without a result. */
+  dismiss(): void {
+    (this.onDismiss ?? (() => this.close()))();
+  }
 }
+
+/** What Material reports on an open bottom sheet or dialog. */
+interface OutsideEvents {
+  backdropClick(): Observable<MouseEvent>;
+  keydownEvents(): Observable<KeyboardEvent>;
+}
+
+/** Taps outside the sheet (on its backdrop) and Escape. */
+const dismissals = (ref: OutsideEvents): Observable<unknown> =>
+  merge(
+    ref.backdropClick(),
+    ref.keydownEvents().pipe(filter((e) => e.key === 'Escape' && !hasModifierKey(e))),
+  );
 
 /**
  * Opens a form sheet (add / edit): a bottom sheet on phones, a dialog on wide screens.
  * The component injects `SheetRef` to close itself and `SHEET_DATA` for the data it was opened
- * with; backdrop and Escape don't close it, so it can ask before discarding changes.
+ * with. A tap outside the sheet or Escape discards it at once, without asking (spec 04): it closes
+ * without a result, unless the component set `SheetRef.onDismiss` (e.g. a timer sheet closing with
+ * the entry its taps changed). Material never closes it by itself, so × can ask first.
  */
 @Injectable({ providedIn: 'root' })
 export class SheetService {
@@ -54,6 +75,7 @@ export class SheetService {
         panelClass,
       });
       ref.closeWith = (result) => sheet.dismiss(result);
+      dismissals(sheet).subscribe(() => ref.dismiss());
       return sheet.afterDismissed();
     }
 
@@ -65,6 +87,7 @@ export class SheetService {
       maxWidth: '100vw',
     });
     ref.closeWith = (result) => dialog.close(result);
+    dismissals(dialog).subscribe(() => ref.dismiss());
     return dialog.afterClosed();
   }
 }

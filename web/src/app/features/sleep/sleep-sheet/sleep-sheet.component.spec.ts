@@ -34,7 +34,7 @@ describe('SleepSheetComponent', () => {
     'create' | 'update' | 'delete' | 'start' | 'stop' | 'get',
     ReturnType<typeof vi.fn>
   >;
-  let sheetRef: { close: ReturnType<typeof vi.fn> };
+  let sheetRef: { close: ReturnType<typeof vi.fn>; onDismiss?: (() => void) | null };
   let confirmed: Subject<boolean | undefined>;
   let typed: Subject<number | undefined>;
   let dialog: { open: ReturnType<typeof vi.fn> };
@@ -70,6 +70,11 @@ describe('SleepSheetComponent', () => {
     await settle();
   };
   const form = () => fixture.componentInstance.form;
+  /** A tap outside the sheet, or Escape, as `SheetService` handles it. */
+  const tapOutside = async () => {
+    (sheetRef.onDismiss ?? (() => (sheetRef.close as () => void)()))();
+    await settle();
+  };
   const rows = () => [...host().querySelectorAll('nala-time-row')];
   const alerts = () =>
     [...host().querySelectorAll('[role="alert"]')].map((e) => e.textContent?.trim());
@@ -498,6 +503,22 @@ describe('SleepSheetComponent', () => {
           expect(sheetRef.close).not.toHaveBeenCalled();
         });
       });
+
+      it('keeps the sleep its Start created live on a tap outside, without asking', async () => {
+        await click('timer-toggle');
+        const live = liveSleep(0, { id: sleeps.start.mock.calls[0][0] });
+        await respondTimer({ ok: true, entry: live });
+        form().controls.notes.setValue('typed');
+        form().controls.notes.markAsDirty();
+
+        await tapOutside();
+
+        expect(dialog.open).not.toHaveBeenCalled();
+        expect(sleeps.delete).not.toHaveBeenCalled();
+        expect(sleeps.stop).not.toHaveBeenCalled();
+        expect(sleeps.update).not.toHaveBeenCalled();
+        expect(sheetRef.close).toHaveBeenCalledWith({ saved: live });
+      });
     });
 
     describe('opened to add while the baby has a live sleep', () => {
@@ -564,6 +585,31 @@ describe('SleepSheetComponent', () => {
       it('closes on × without a result when no timer was tapped', async () => {
         await click('sheet-close');
 
+        expect(sheetRef.close).toHaveBeenCalledWith();
+      });
+
+      it('closes on a tap outside with the sleep as the taps left it, discarding the form edits', async () => {
+        await click('timer-toggle');
+        const stopped = { ...sleep, endTime: NOW.toISOString() };
+        await respondTimer({ ok: true, entry: stopped });
+        form().controls.notes.setValue('typed');
+        form().controls.notes.markAsDirty();
+
+        await tapOutside();
+
+        expect(dialog.open).not.toHaveBeenCalled();
+        expect(sleeps.update).not.toHaveBeenCalled();
+        expect(sheetRef.close).toHaveBeenCalledWith({ saved: stopped });
+      });
+
+      it('closes on a tap outside without a result and without asking when no timer was tapped', async () => {
+        form().controls.notes.setValue('typed');
+        form().controls.notes.markAsDirty();
+
+        await tapOutside();
+
+        expect(dialog.open).not.toHaveBeenCalled();
+        expect(sleeps.update).not.toHaveBeenCalled();
         expect(sheetRef.close).toHaveBeenCalledWith();
       });
     });

@@ -1,6 +1,6 @@
 # 04 — App layout & section pattern
 
-Status: in progress
+Status: done
 
 ## Goal
 
@@ -228,7 +228,7 @@ Each item becomes at least one test, written failing first.
 - [x] + opens the kind picker when the section has several kinds, the entry sheet directly otherwise.
 - [x] The entry sheet header uses the section colour and has ×, the kind title and Save.
 - [x] × closes the sheet without saving changes; if there are unsaved changes, it asks for confirmation first.
-- [ ] Tapping outside the sheet or dialog, or Escape, discards the changes and closes it without asking; the same for every sheet opened with `SheetService` (entry sheets, baby sheet).
+- [x] Tapping outside the sheet or dialog, or Escape, discards the changes and closes it without asking; the same for every sheet opened with `SheetService` (entry sheets, baby sheet).
 - [x] Save is disabled while required fields are missing or invalid, and shows field errors.
 - [x] Tapping an entry list item opens the same sheet pre-filled, with a Delete action.
 - [x] A read-only row's trailing text (e.g. "Sleeping…", Duration, Total) has the same type style as a tappable row's value, in every section.
@@ -265,7 +265,7 @@ Hold for every section with timers (Feed's breastfeed, Sleep, Pump); each covers
 - [x] Save on a live entry saves the form and leaves its timers running.
 - [x] × on a sheet opened to add, after a Start, deletes the entry that Start created (after confirmation), online and offline.
 - [x] × on an existing live entry discards the form edits and keeps the timer taps made in the sheet.
-- [ ] Tapping outside a timer sheet (or Escape) discards the form edits without asking and keeps the timer taps; on a sheet opened to add, the entry a Start created stays live.
+- [x] Tapping outside a timer sheet (or Escape) discards the form edits without asking and keeps the timer taps; on a sheet opened to add, the entry a Start created stays live.
 - [x] Delete (live or stopped entry) deletes it after confirmation.
 - [x] Only a live entry (a timer runs) shows the timer button and a mini-bar row; once its timers are stopped it is an ordinary entry.
 - [x] A section card never shows a timer or timer controls: while an entry is live it keeps its normal highlight (or empty state).
@@ -334,9 +334,7 @@ Hold for every section with timers (Feed's breastfeed, Sleep, Pump); each covers
 
 ## Build slices
 
-Slices 1–21 built; each is a commit "Spec 04 slice N: …" (`git log --grep "Spec 04 slice"`).
-
-- [ ] **Slice 22: tapping outside a sheet discards it.** `SheetService` passes a backdrop tap or Escape (bottom sheet and dialog) to a dismiss hook on `SheetRef`, closing without a result when none is set; `nala-entry-sheet` discards without asking; timer sheets (`LiveEntrySheet`, Breastfeed) keep the taps and a live entry their Start created; the baby sheet discards. Covers: the two tapping-outside criteria.
+Built in 22 slices, all done; each is a commit "Spec 04 slice N: …" (`git log --grep "Spec 04 slice"`).
 
 ## Material 3 mapping
 

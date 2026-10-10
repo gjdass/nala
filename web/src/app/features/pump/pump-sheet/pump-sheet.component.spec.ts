@@ -34,7 +34,7 @@ describe('PumpSheetComponent', () => {
     'create' | 'update' | 'delete' | 'start' | 'stop' | 'get',
     ReturnType<typeof vi.fn>
   >;
-  let sheetRef: { close: ReturnType<typeof vi.fn> };
+  let sheetRef: { close: ReturnType<typeof vi.fn>; onDismiss?: (() => void) | null };
   let confirmed: Subject<boolean | undefined>;
   let typed: Subject<number | undefined>;
   let sync: ReturnType<typeof fakePumpSync>;
@@ -65,6 +65,11 @@ describe('PumpSheetComponent', () => {
     });
   const settle = () => fixture.whenStable();
   const form = () => fixture.componentInstance.form;
+  /** A tap outside the sheet, or Escape, as `SheetService` handles it. */
+  const tapOutside = async () => {
+    (sheetRef.onDismiss ?? (() => (sheetRef.close as () => void)()))();
+    await settle();
+  };
   const rows = () => [...host().querySelectorAll('nala-time-row')];
   const alerts = () =>
     [...host().querySelectorAll('[role="alert"]')].map((e) => e.textContent?.trim());
@@ -545,6 +550,21 @@ describe('PumpSheetComponent', () => {
           expect(sheetRef.close).not.toHaveBeenCalled();
         });
       });
+
+      it('keeps the session its Start created live on a tap outside, without asking', async () => {
+        await click('timer-toggle');
+        const live = livePump(0, { id: pumps.start.mock.calls[0][0] });
+        await respondTimer({ ok: true, entry: live });
+        form().controls.notes.setValue('typed');
+        form().controls.notes.markAsDirty();
+
+        await tapOutside();
+
+        expect(pumps.delete).not.toHaveBeenCalled();
+        expect(pumps.stop).not.toHaveBeenCalled();
+        expect(pumps.update).not.toHaveBeenCalled();
+        expect(sheetRef.close).toHaveBeenCalledWith({ saved: live });
+      });
     });
 
     describe('opened to add while the baby has a live session', () => {
@@ -642,6 +662,19 @@ describe('PumpSheetComponent', () => {
         await respondTimer({ ok: true, entry: stopped });
 
         await click('sheet-close');
+
+        expect(pumps.update).not.toHaveBeenCalled();
+        expect(sheetRef.close).toHaveBeenCalledWith({ saved: stopped });
+      });
+
+      it('closes on a tap outside with the session as the taps left it, discarding the form edits', async () => {
+        await click('timer-toggle');
+        const stopped = { ...pump, endTime: NOW.toISOString() };
+        await respondTimer({ ok: true, entry: stopped });
+        form().controls.notes.setValue('typed');
+        form().controls.notes.markAsDirty();
+
+        await tapOutside();
 
         expect(pumps.update).not.toHaveBeenCalled();
         expect(sheetRef.close).toHaveBeenCalledWith({ saved: stopped });

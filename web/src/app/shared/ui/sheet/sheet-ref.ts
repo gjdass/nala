@@ -3,6 +3,8 @@ import { InjectionToken } from '@angular/core';
 /** Injected into a component opened by `SheetService`, to close it with a result. */
 export abstract class SheetRef<R = unknown> {
   abstract close(result?: R): void;
+  /** What a tap outside the sheet or Escape does; unset, the sheet closes without a result. */
+  onDismiss: (() => void) | null = null;
 }
 
 /** The data given to `SheetService.open`, or null. */
