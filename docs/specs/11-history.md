@@ -1,6 +1,6 @@
 # 11 — History
 
-Status: done
+Status: in progress
 
 Builds on [04 — App layout](04-app-layout.md): the app shell, the section registry, the entry list items, the entry sheets, `nala-history-list` paging and the reload signal apply. Each section's list item and sheet come from its own spec (05–10). This spec only adds what is specific to the History destination.
 
@@ -17,8 +17,9 @@ On the History tab, show the selected baby's entries from several sections in on
 
 ### Filter bar
 - At the top of the page, under the top app bar, **sticky** (it stays under the top edge guard while the list scrolls; the top app bar scrolls away). Not shown without a baby.
-- **Time window:** an M3 segmented button (`mat-button-toggle-group`) with **24 h** (default), **7 days** and **30 days**, each a rolling window: the entries whose time is at or after now − 24 h / 7 × 24 h / 30 × 24 h. The window is taken when the list loads and doesn't move while the page stays open, as the card's Show more; a list loaded again (filter change, baby switch, reload signal) takes a new one.
-- **Sections:** an M3 filter chip with a dropdown (`mat-chip` opening a `mat-menu`), reading "Sections" with the number selected ("Sections · 3"). Its menu lists **every registered section**, each with its icon, title and a checkbox:
+- Two M3 filter chips with a dropdown, side by side and the same size (`mat-chip` in one `mat-chip-set`, each opening a `mat-menu`): the time window on the left, then Sections.
+- **Time window:** the chip reads the current window and its menu offers **24 h** (default), **7 days** and **30 days**, each a menu item radio (`menuitemradio`) with the current one checked (Material's pseudo-checkbox, minimal appearance). Picking one applies it and closes the menu. Each is a rolling window: the entries whose time is at or after now − 24 h / 7 × 24 h / 30 × 24 h. The window is taken when the list loads and doesn't move while the page stays open, as the card's Show more; a list loaded again (filter change, baby switch, reload signal) takes a new one.
+- **Sections:** the chip reads "Sections" with the number selected ("Sections · 3"). Its menu lists **every registered section**, each with its icon, title and a checkbox:
   - first the sections **visible on home**, in the user's home order (04's section preferences);
   - then, after a divider, the sections **hidden from home**, in the same order;
   - while the home order is not loaded (or failed to load), every section in the default order, as visible.
@@ -63,7 +64,7 @@ Each item becomes at least one test, written failing first.
 
 ### Filter bar
 - [x] By default (nothing remembered) the window is 24 h and Feed, Sleep and Diaper are selected.
-- [x] The time window offers 24 h, 7 days and 30 days (rolling), as a segmented button.
+- [ ] The time window is a dropdown chip, left of the Sections chip and the same size, reading the current window; its menu offers 24 h, 7 days and 30 days (rolling), the current one checked, and picking one applies it and closes the menu.
 - [x] The sections menu lists the sections visible on home in home order, a divider, then the hidden ones in home order; the chip shows how many are selected.
 - [x] Selecting or unselecting a section updates the list; the last selected one can't be unselected.
 - [x] Changing a filter loads the list again from the first page.
@@ -89,7 +90,9 @@ Each item becomes at least one test, written failing first.
 
 ## Build slices
 
-Built in 4 slices, all done; each is a commit "Spec 11 slice N: …" (`git log --grep "Spec 11 slice"`).
+Slices 1–4 built; each is a commit "Spec 11 slice N: …" (`git log --grep "Spec 11 slice"`).
+
+- [ ] **Slice 5: time window as a dropdown chip.** The segmented button becomes a filter chip with a menu, left of the Sections chip. Covers: the time window criterion.
 
 ## Data
 
@@ -98,7 +101,7 @@ Nothing new on the server. On the device: `nala.historyFilters` (`localStorage`)
 ## UI notes
 
 - Reused: `nala-top-app-bar`, `nala-history-list` (its `emptyTitle` input gives the period's empty state), each section's list item component, `EntrySheetService`, 03's no-baby empty state (`nala-no-baby`, `features/babies/`, shared with home).
-- New, in `features/history/`: `nala-history-entry` (renders an item's section list item from its History source, in the section's scheme) and `nala-history-filter-bar` (segmented button + sections dropdown chip).
+- New, in `features/history/`: `nala-history-entry` (renders an item's section list item from its History source, in the section's scheme) and `nala-history-filter-bar` (time window and sections dropdown chips).
 - Labels (EN / FR): "24 h" / "24 h", "7 days" / "7 jours", "30 days" / "30 jours", "Sections" / "Sections", "Sections · 3" / "Sections · 3", "Nothing logged in this period" / "Rien de noté sur cette période". Section titles reuse `sections.<key>`.
 
 ## Out of scope

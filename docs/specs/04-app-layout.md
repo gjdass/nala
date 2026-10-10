@@ -1,6 +1,6 @@
 # 04 — App layout & section pattern
 
-Status: done
+Status: in progress
 
 ## Goal
 
@@ -87,7 +87,7 @@ Every section card has the same frame (shared `nala-section-card`), filled with 
 ### Entry sheet (add / edit form)
 - A Material **bottom sheet** sliding up over the dimmed page, expanded to most of the screen height (a standard dialog on wide screens), through the shared `SheetService`.
 - Each kind's sheet wraps the shared `nala-entry-sheet` frame and is opened with `{ section, kind, entry }` (entry null when adding); it closes with `{ saved }` or `{ deleted: id }`. A section card opens an entry for editing with `EntrySheetService.edit(section, kind, entry)`. The same sheet is used to add and to edit an entry.
-- Header (`nala-sheet-header`) in the section's colour, laid out like an M3 top app bar: close icon button on the left, the entry kind as title, **Save** text button on the right. Save is disabled while required fields are missing or invalid, and the fields show their errors. × closes without saving; with unsaved changes it asks for confirmation first. (Entries with timers: see Timers.)
+- Header (`nala-sheet-header`) in the section's colour, laid out like an M3 top app bar: close icon button on the left, the entry kind as title, **Save** text button on the right. Save is disabled while required fields are missing or invalid, and the fields show their errors. × closes without saving; with unsaved changes it asks for confirmation first. **Tapping outside the sheet** (the dimmed page, or outside the dialog on wide screens) **or Escape discards and closes it at once**, without asking, whatever was changed. (Entries with timers: see Timers.)
 - Body as a list of **form rows** (shared `nala-form-row`, M3 list items): label as headline, current value or action as trailing text ("Today 2:37 PM", "Add") or a trailing switch. Every trailing text uses the same `label-large` type style, whether the row is tappable or read-only (e.g. "Sleeping…", a duration, a total); only tappable values take the primary colour. Tapping a row edits it with the standard Material control.
 - Optional **suggestion row** under a field (shared `nala-suggestion-row`: "Use last breast milk amount: 90 ml? [Yes]").
 - A **Notes** row on every kind (shared `nala-notes-row`): "Notes … Add" until tapped, then an inline multi-line text field (already open when the entry has notes, also when they arrive after the sheet opened). At most 1000 characters.
@@ -170,6 +170,7 @@ Rules for every section with timers: Feed's breastfeed (two per-side timers, `na
 ### Entry sheet with timers
 - **Save saves the form and never starts or stops a timer:** a live entry stays live after Save.
 - **× discards what Save would have saved.** On a sheet opened to add, it deletes the entry its Start created (after the unsaved-changes confirmation: a Start counts as a change; queued offline like any delete). On an existing entry it discards the form edits only; timer taps made in the sheet stay (they are live actions, already seen by other devices), and the sheet closes with the entry as the taps left it.
+- **Tapping outside (or Escape) discards the form edits without asking and never deletes the entry:** timer taps made in the sheet stay, and the sheet closes with the entry as the taps left it. On a sheet opened to add whose Start created the entry, the entry stays live (it shows in the mini-bar and on the card); with no Start, nothing was created.
 - Delete is offered for a live or stopped entry.
 - **Typing a timer's duration:** the duration shown by a timer (`nala-timer`, each side of `nala-split-timer`) is itself the button that edits it (primary colour, "Edit duration" accessible name): tapping it opens the duration dialog (`nala-duration-dialog` around `nala-duration-field`: minutes and seconds, typed with the device's numeric keypad, each field selecting its content when focused, 4 h at most), filled with the duration shown. There is no separate pencil. A typed duration corrects the timer and never stops it: on a **live** entry the start time moves to now − typed duration (a split timer: now − both sides) and the timer keeps running from the typed value; on an entry that **isn't live** the end time moves to start + typed duration (a split timer: start + both sides). Save stores the corrected times, and a live entry stays live; × discards them.
 - **Start / Stop is never disabled** by typed values (a typed duration, start time or end time): the timers can be started or stopped at any time. A tap while the sheet has changes Save would accept saves them first (like Save, but the sheet stays open), then is sent, so a correction is never lost to the tap (e.g. a stopped sleep corrected to 32 min, then Start: it is saved, then runs again from its start time; Left typed at 5 min on a live breastfeed, then Start Right: Left keeps its 5 min). With changes Save would refuse, the tap is sent alone and the changes stay in the form.
@@ -227,6 +228,7 @@ Each item becomes at least one test, written failing first.
 - [x] + opens the kind picker when the section has several kinds, the entry sheet directly otherwise.
 - [x] The entry sheet header uses the section colour and has ×, the kind title and Save.
 - [x] × closes the sheet without saving changes; if there are unsaved changes, it asks for confirmation first.
+- [ ] Tapping outside the sheet or dialog, or Escape, discards the changes and closes it without asking; the same for every sheet opened with `SheetService` (entry sheets, baby sheet).
 - [x] Save is disabled while required fields are missing or invalid, and shows field errors.
 - [x] Tapping an entry list item opens the same sheet pre-filled, with a Delete action.
 - [x] A read-only row's trailing text (e.g. "Sleeping…", Duration, Total) has the same type style as a tappable row's value, in every section.
@@ -263,6 +265,7 @@ Hold for every section with timers (Feed's breastfeed, Sleep, Pump); each covers
 - [x] Save on a live entry saves the form and leaves its timers running.
 - [x] × on a sheet opened to add, after a Start, deletes the entry that Start created (after confirmation), online and offline.
 - [x] × on an existing live entry discards the form edits and keeps the timer taps made in the sheet.
+- [ ] Tapping outside a timer sheet (or Escape) discards the form edits without asking and keeps the timer taps; on a sheet opened to add, the entry a Start created stays live.
 - [x] Delete (live or stopped entry) deletes it after confirmation.
 - [x] Only a live entry (a timer runs) shows the timer button and a mini-bar row; once its timers are stopped it is an ordinary entry.
 - [x] A section card never shows a timer or timer controls: while an entry is live it keeps its normal highlight (or empty state).
@@ -331,7 +334,9 @@ Hold for every section with timers (Feed's breastfeed, Sleep, Pump); each covers
 
 ## Build slices
 
-Built in 21 slices, all done; each is a commit "Spec 04 slice N: …" (`git log --grep "Spec 04 slice"`).
+Slices 1–21 built; each is a commit "Spec 04 slice N: …" (`git log --grep "Spec 04 slice"`).
+
+- [ ] **Slice 22: tapping outside a sheet discards it.** `SheetService` passes a backdrop tap or Escape (bottom sheet and dialog) to a dismiss hook on `SheetRef`, closing without a result when none is set; `nala-entry-sheet` discards without asking; timer sheets (`LiveEntrySheet`, Breastfeed) keep the taps and a live entry their Start created; the baby sheet discards. Covers: the two tapping-outside criteria.
 
 ## Material 3 mapping
 

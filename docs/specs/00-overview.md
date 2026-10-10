@@ -29,14 +29,14 @@ Status: `idea` → `specified` → `in progress` → `done`. A feature moves to 
 | 01 | Project skeleton (solution, Angular PWA, Docker Compose, test setups) | [01-project-skeleton.md](01-project-skeleton.md) | done | |
 | 02 | Authentication (login, register, sessions) | [02-auth.md](02-auth.md) | done | |
 | 03 | Family & baby profile | [03-family-baby.md](03-family-baby.md) | done | |
-| 04 | App layout & section pattern (home cards, entry sheet, mini-bar, bottom navigation, timers) | [04-app-layout.md](04-app-layout.md) | done | Shared by every section: app shell, section pattern, entry API conventions, offline queue, timers, live sync and refresh on return (the reload signal). |
+| 04 | App layout & section pattern (home cards, entry sheet, mini-bar, bottom navigation, timers) | [04-app-layout.md](04-app-layout.md) | in progress | Shared by every section: app shell, section pattern, entry API conventions, offline queue, timers, live sync and refresh on return (the reload signal). |
 | 05 | Feed | [05-feed.md](05-feed.md) | done | **Hard requirement:** breast feeding has two independent per-side timers (left/right), side by side in the Breastfeed sheet. A single timer with a "side" field is not acceptable. |
 | 06 | Sleep | [06-sleep.md](06-sleep.md) | done | One kind, single Start/Stop timer, start/end times, notes. |
 | 07 | Diaper | [07-diaper.md](07-diaper.md) | done | Time, Wet and Dirty as two independent toggles (neither = dry), diaper-rash toggle, notes; a dirty diaper has optional colour and consistency. No timer. |
 | 08 | Pump | [08-pump.md](08-pump.md) | done | **Hard requirement:** pumping sessions with volume and history. One Start/Stop timer (like Sleep), Left ml and Right ml, notes. |
 | 09 | Health | [09-health.md](09-health.md) | done | Built as Medication, then renamed Health. Medicine name (recent names as chips), optional dose, optional temperature °C; at least a name or a temperature. Never gives dose advice nor interprets temperatures. |
 | 10 | Growth | [10-growth.md](10-growth.md) | done | **Hard requirement:** simple measurement entries over time — weight, height, head circumference, milestones. Raw logging only, no percentile/trend charts. Birth measurements (03) are the starting point of the growth history. |
-| 11 | History (all sections) | [11-history.md](11-history.md) | done | The bottom bar's History destination: every selected section's entries together, newest first, filtered by time window (24 h / 7 days / 30 days) and sections, remembered per device. Replaces the per-section history pages: a card's All activities opens it for that section. |
+| 11 | History (all sections) | [11-history.md](11-history.md) | in progress | The bottom bar's History destination: every selected section's entries together, newest first, filtered by time window (24 h / 7 days / 30 days) and sections, remembered per device. Replaces the per-section history pages: a card's All activities opens it for that section. |
 | 12 | Trends | — | idea | The bottom bar's Trends destination (placeholder built in 04). Content to decide in its spec: today totals, statistics and charts are out of scope everywhere else. |
 
 ## Build plan
