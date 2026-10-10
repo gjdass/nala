@@ -1,13 +1,13 @@
 # 04 — App layout & section pattern
 
-Status: done
+Status: in progress
 
 ## Goal
 
 Give every activity section (Feed, Sleep, Diaper, Pump, Growth, Health) the same structure, so the app is predictable and each new section is mostly built from shared components. Feature specs only describe what is specific to their section, using the vocabulary defined here.
 
 This spec has four parts:
-- **App shell:** safe areas, top app bar, bottom navigation bar, home and its per-user section order.
+- **App shell:** safe areas, zoom and orientation, top app bar, bottom navigation bar, home and its per-user section order.
 - **Section pattern:** section card, kind picker, entry sheet, entry list item, history list, formats, colours.
 - **Entries:** the API conventions, offline queue and rules every section's entries share.
 - **Timers:** the rules, API, mini-bar and live sync shared by every section with timers (Feed's breastfeed, Sleep, Pump).
@@ -20,6 +20,14 @@ This spec has four parts:
 - The app draws edge to edge (`viewport-fit=cover`) and keeps clear of the iPhone's status bar, notch / Dynamic Island and home indicator itself: every screen starts below the top safe area plus 8 px (so iOS's blur under the status bar never touches the content), the bottom navigation bar and the bottom sheets end above the bottom safe area. Off iOS (no safe area) nothing changes. The top offset is the global `--nala-safe-top` (`_layout.scss`).
 - iOS 26 lays its own blur (the "scroll edge effect") over the top of a home screen web app unless a fixed box with a solid background covers the top edge, even when it reports no top safe area (`default` status bar style). So the app shell holds an edge guard: a fixed strip across the top edge, as tall as the top offset, in the page background colour (`--mat-sys-surface`); iOS then tints the edge with that colour instead of blurring. On iOS the top offset is at least 12 px so the guard is tall enough for iOS to take it (more than 10 px); elsewhere the guard is 0 px tall and nothing changes. Content scrolls under the guard, never over it.
 - The page never rubber-bands (`overscroll-behavior-y: none` on the document): pulling past the top or bottom doesn't drag the page, so the bottom navigation bar never moves.
+
+### Zoom and orientation
+- **The app never zooms**: no pinch zoom, no double-tap zoom, no automatic zoom when a text field gets focus. Three layers, because each platform honours a different one:
+  - the viewport meta tag sets `maximum-scale=1, user-scalable=no`: enough on Android; on iOS it stops the focus zoom only (Safari ignores `user-scalable=no` since iOS 10);
+  - the document has `touch-action: pan-x pan-y` (`_layout.scss`): scrolling works, pinch and double-tap zoom don't;
+  - the app shell cancels iOS's `gesturestart` events (`preventDefault`), which catches the pinch iOS still lets through.
+  The iOS layers are a known workaround, not an API Apple supports: a future iOS may break them (checked by hand on an iPhone). iOS's system Zoom accessibility feature (three-finger double tap) can't be blocked and isn't meant to be.
+- **Phones are portrait only.** iOS can't lock a web app's orientation (it ignores the manifest's `orientation`, and has no Screen Orientation `lock()`), and the manifest lock on Android would lock tablets too. So the app doesn't lock: on a phone in landscape (`orientation: landscape` and at most 500 px tall), the app shell covers the whole screen, above everything (sheets and dialogs included), with a "Turn your phone upright" message (a rotate icon and the translated text, centred, on `--mat-sys-surface`). Back in portrait it disappears and the app is exactly as it was: nothing is closed or lost. Tablets and desktop (taller than 500 px in landscape) keep both orientations.
 
 ### Top app bar
 - Selected baby (name + age) with the baby switcher (03). Shared `nala-top-app-bar`. No settings button: Settings is a destination of the bottom navigation bar.
@@ -310,6 +318,8 @@ Hold for every section with timers (Feed's breastfeed, Sleep, Pump); each covers
 - [x] Every screen starts below the top safe area plus 8 px, nothing when there is no safe area; the bottom sheets end above the bottom safe area.
 - [x] The app shell has a fixed edge guard across the top edge, as tall as the top offset, in the page background colour; on iOS the top offset is at least 12 px. *(Tests check the markup and CSS; the missing blur is checked by hand on an iPhone.)*
 - [x] The document doesn't rubber-band when pulled past its top or bottom (`overscroll-behavior-y: none`), so the bottom navigation bar stays in place.
+- [ ] The app can't be zoomed: `index.html`'s viewport sets `maximum-scale=1, user-scalable=no`, the document has `touch-action: pan-x pan-y`, and the app shell cancels `gesturestart`. *(Tests check the markup, CSS and listener; pinch, double tap and field focus are checked by hand on an iPhone and an Android phone.)*
+- [ ] On a phone in landscape (landscape and at most 500 px tall), a full-screen "Turn your phone upright" message (icon and text, EN/FR) covers the app, sheets and dialogs included; in portrait, and on screens taller than 500 px in landscape, it doesn't show. Rotating back leaves the app as it was.
 - [x] The top app bar shows the Nala brand on the right, with one baby, several babies or none.
 - [x] The brand shows "Nala" first and the lion's head after it, on the far right; the lion's head is 40 px, as tall as the baby's name + age block, and "Nala" uses `headline-small`.
 
@@ -334,7 +344,9 @@ Hold for every section with timers (Feed's breastfeed, Sleep, Pump); each covers
 
 ## Build slices
 
-Built in 22 slices, all done; each is a commit "Spec 04 slice N: …" (`git log --grep "Spec 04 slice"`).
+Slices 1–22 built; each is a commit "Spec 04 slice N: …" (`git log --grep "Spec 04 slice"`).
+
+- [ ] **Slice 23: no zoom, portrait on phones.** Viewport meta, `touch-action` and the `gesturestart` listener; the landscape message in the app shell with its EN/FR strings.
 
 ## Material 3 mapping
 
