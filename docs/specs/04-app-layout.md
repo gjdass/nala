@@ -43,7 +43,7 @@ This spec has four parts:
 ### Home and section preferences
 - Home is a **single column of section cards**, one above the other, scrollable, once there is a baby (without one, 03's empty state).
 - The order and visibility of the cards are chosen **per user** and saved on the server (same on all their devices). Default order: Feed, Sleep, Diaper, Pump, Growth, Health; all visible.
-- **Endpoints:** `GET /api/account/sections` → 200 `[{ key, visible }]` in the user's order: the default order until they save one; keys added later are appended visible, stored keys no longer known are dropped. `PUT /api/account/sections` with the whole list → 200 with it; 400 validation problem `sections`: `invalid` (not every known key exactly once, or an item without key/visible) / `noneVisible`. Any enabled member, for their own preferences only (session fallback policy).
+- **Endpoints:** `GET /api/account/sections` → 200 `[{ key, visible }]` in the user's order: the default order until they save one; keys added later are appended visible, stored keys no longer known are dropped. `PUT /api/account/sections` with the whole list → 200 with it; 400 validation problem `sections`: `invalid` (not every known key exactly once, or an item without key/visible) / `noneVisible`. Any signed-in user, for their own preferences only (the same for all their families) (session fallback policy).
 - **Home sections in settings:** a "Home sections" section after Members & invitations. One list item per registered section: drag handle, title, visibility switch; the switch of the last visible one is disabled. Each drop or switch saves at once (like the language and theme), shown right away and put back with a snackbar if saving fails. The web always sends every known key: a key with no registered section keeps its slot and visibility.
 - Hiding a section only hides its card; its data is kept.
 
@@ -127,8 +127,8 @@ Rules every section's entries follow. Section specs only list their own fields, 
 
 ### Entry model
 - Every entry has a client-generated UUID, its baby, its time(s) in UTC (or a calendar date for date-only entries), notes, who logged it, created at, updated at and who updated it. The server sets created at / updated at (arrival times).
-- Each section has its own entity, table and endpoints (overview, activity model). Entries are deleted with their baby (`ON DELETE CASCADE`, 03). Deleting an account never changes the entries it logged: they keep showing that person's display name.
-- Any member can edit or delete any entry; each change records who made it and when.
+- Each section has its own entity, table and endpoints (overview, activity model). Entries are deleted with their baby (`ON DELETE CASCADE`, 03). Deleting an account never changes the entries it logged: they keep showing that person's display name (a family admin's deletion deletes their families instead, 03).
+- Any member of the baby's family can edit or delete any of its entries; each change records who made it and when.
 
 ### Entry API conventions
 For a section with resource `/api/<entries>` (e.g. `/api/diapers`):
@@ -137,7 +137,7 @@ For a section with resource `/api/<entries>` (e.g. `/api/diapers`):
 - `GET /api/babies/{babyId}/<entries>?cursor=&limit=` → `{ entries, next }`, newest first (by the section's time, then id), 20 per page by default, 1–50; the cursor is opaque, a malformed one → 400 `cursor: invalid`. An unknown baby → 404 `{ code: "babyNotFound" }`.
 - Each entry carries `loggedBy` and `updatedBy` (`{ id, displayName }`). Fields of another kind are ignored and returned null.
 - Validation problems (400) are keyed by field, with codes. Every section has `id` / `babyId` `required`, its time `required`, `notes` `tooLong` (over 1000).
-- Any signed-in, enabled member (session fallback policy).
+- Any signed-in member of the baby's family (session fallback policy, then 03's shared family check). For anyone else, the baby or entry answers as unknown: the same 404 and code (03, Family isolation); an id belonging to another family's entry is never re-sent, edited, started or stopped.
 - Shared Core code in `Nala.Core/Entries` (`UserName`, `EntryCursor`, `EntryFields`, `EntryPaging`), `Nala.Api/Entries` (`UserNameResponse`); web `core/entries` (`UserName`, `EntryResult` / `EntryDeleteResult`, `toEntryResult` / `toDeleteResult`).
 
 ### Times
@@ -199,12 +199,12 @@ Rules for every section with timers: Feed's breastfeed (two per-side timers, `na
 ### Running timers mini-bar
 - When any entry is live, the timers show **inside the bottom navigation bar's pill**, above the destinations and separated from them by a divider: one row per live entry with the section icon (in a small circle in the section's container colours), label, live duration (Durations format) and a chevron. The rows sit on the pill's translucent surface (no surface of their own); while they show, the pill widens and takes the M3 large corner. It is one surface: no separate bar above the navigation bar.
 - The rows are a separate shared component (`nala-running-timers-bar`), projected into `nala-bottom-nav` by the app shell and loaded only once a timer runs (deferred, out of the initial bundle).
-- When the family has more than one baby, each row also shows the baby's name, and timers of all babies are listed.
+- When the user's families have more than one baby in all, each row also shows the baby's name, and timers of all those babies are listed.
 - Tapping a row opens that timer's entry sheet (`EntrySheetService.edit`).
 - **Running timer sources:** a section with timers provides a source through `RUNNING_TIMER_SOURCES` (registered with `provideRunningTimerSource`): a signal of its live entries, each with an id, section, kind and the live entry, the baby, a label translation key (+ params) and its live duration in seconds at a given time. `RunningTimersService` merges them in registration order.
 
 ### Live sync
-- Devices learn about other devices' timers by polling one endpoint for every section: `GET /api/live` → `{ feeds: [...], sleeps: [...], pumps: [...] }`, every baby's live entries per section, oldest start first, each in the section's usual JSON. Any signed-in member. A new timer section adds its own list there (`Nala.Api/Live/LiveEndpoints.cs`). No `ETag` / `304`: the answers are small, so they are always sent in full.
+- Devices learn about other devices' timers by polling one endpoint for every section: `GET /api/live` → `{ feeds: [...], sleeps: [...], pumps: [...] }`, the live entries of every baby of the caller's families (never another family's, 03) per section, oldest start first, each in the section's usual JSON. Any signed-in user. A new timer section adds its own list there (`Nala.Api/Live/LiveEndpoints.cs`). No `ETag` / `304`: the answers are small, so they are always sent in full.
 - The web app has **one shared poller** (`LiveSyncService`, `core/timers/`) that calls `/api/live` and hands each section's sync its list. Each section's sync (`LiveEntriesSync`, which `BreastfeedSyncService`, `SleepSyncService` and `PumpSyncService` extend) registers under its list's name; a section registering while the poller runs gets a poll at once (sections registering together share it).
 - Own actions are applied at once; a response started before an own change is ignored (per-section version guard); changes waiting in the offline queue are applied on top by the section's overlay, following the server's rules (a tap already applied changes nothing), so an entry started offline runs, ticks and can be stopped or saved offline, also after the app is reopened. Sleep and Pump share their overlay (`applyQueuedTimedEntries`, `core/timers/queued-timed-entries.ts`).
 - A failed call keeps the last lists. Polling pauses while the app is hidden and polls again as soon as it is shown, at once after sign-in and once the offline queue has been sent, and is cleared on sign-out.

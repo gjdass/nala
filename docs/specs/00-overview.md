@@ -11,9 +11,9 @@ Self-hosted baby tracker PWA for parents: log a baby's feedings, sleep, diapers,
 These change the data model or architecture. Changing one later means updating this section first.
 
 - **Offline:** offline logging queue. Entries created without a network are queued on the device and sent when back online. Reading history needs the network. The PWA caches the app shell. Implication: entries get a client-generated UUID so re-sending a queued entry is idempotent.
-- **Accounts & sharing:** one account per caregiver. **One instance = one family**: every user on the instance is a member of that family, joins it by invitation. Members have the same rights except destructive family actions (deleting a baby, removing a member), which only the admin can do. There is no family table in the data model. Every entry records who logged it; deleting an account never changes the entries it logged.
-- **Registration on a self-hosted instance:** the first account created becomes the instance's only admin. After that, public sign-up is closed; new users join through invitation links sent by a family member.
-- **Multiple babies:** a family has one or more babies. The app shows one selected baby at a time, with a quick switcher.
+- **Accounts & sharing:** one account per caregiver. **One instance hosts several families**, fully isolated: nobody reaches another family's data, the instance admin included. A person can belong to several families (one membership per family). Each family has exactly one **family admin**, the person who created it, with no handover; members have the same rights except destructive family actions (renaming the family, deleting a baby, removing a member), which only the family admin can do. Babies belong to a family; entries reach their family through their baby. Every entry records who logged it; deleting an account never changes the entries it logged, except that a family admin deleting their account deletes the families they administer, with all their data.
+- **Registration on a self-hosted instance:** the first account created becomes the **instance admin** and the admin of the first family. After that, public sign-up is closed. The instance admin creates families by sending new-family invitations: whoever accepts one creates a family and becomes its admin. People join a family through invitation links sent by any of its members; an existing account can accept them too. The instance admin manages accounts only (list, reset links), sees no family data and can't delete their account. There is no account disable.
+- **Multiple babies:** a family has one or more babies. The app shows one selected baby at a time, with a quick switcher across all the user's families.
 - **Time zones:** all times stored in UTC; each device displays them in its own local time zone.
 - **Units:** metric only (ml, g/kg, cm).
 - **Languages:** English and French at launch. Angular i18n from day one: no user-facing string is hard-coded outside translation files.
@@ -27,8 +27,8 @@ Status: `idea` → `specified` → `in progress` → `done`. A feature moves to 
 | # | Feature | Spec | Status | Notes |
 |---|---------|------|--------|-------|
 | 01 | Project skeleton (solution, Angular PWA, Docker Compose, test setups) | [01-project-skeleton.md](01-project-skeleton.md) | done | |
-| 02 | Authentication (login, register, sessions) | [02-auth.md](02-auth.md) | done | |
-| 03 | Family & baby profile | [03-family-baby.md](03-family-baby.md) | done | |
+| 02 | Authentication (login, register, sessions) | [02-auth.md](02-auth.md) | specified | Reopened for multi-family: setup creates the first family, invitations accepted by existing accounts, instance admin (new-family invitations, accounts, reset links; no disable), family admin's account deletion. Built with 03's slices. |
+| 03 | Family & baby profile | [03-family-baby.md](03-family-baby.md) | specified | Reopened for multi-family: families, memberships, family admin, family isolation (404 across families everywhere), switcher across families. Its build slices cover 02's changes too. |
 | 04 | App layout & section pattern (home cards, entry sheet, mini-bar, bottom navigation, timers) | [04-app-layout.md](04-app-layout.md) | done | Shared by every section: app shell, section pattern, entry API conventions, offline queue, timers, live sync and refresh on return (the reload signal), no zoom and portrait-only phones. |
 | 05 | Feed | [05-feed.md](05-feed.md) | done | **Hard requirement:** breast feeding has two independent per-side timers (left/right), side by side in the Breastfeed sheet. A single timer with a "side" field is not acceptable. |
 | 06 | Sleep | [06-sleep.md](06-sleep.md) | done | One kind, single Start/Stop timer, start/end times, notes. |
@@ -40,6 +40,7 @@ Status: `idea` → `specified` → `in progress` → `done`. A feature moves to 
 | 12 | Trends | [12-trends.md](12-trends.md) | specified | The bottom bar's Trends destination: one section at a time (Feed, Sleep, Diaper, Pump, Growth; no Health), metric cards with daily / weekly / monthly charts over a preset range with period navigation. Statistics and charts live only here. |
 | 13 | Sleep pattern chart | — | idea | In Trends: one row per day, sleep blocks across the 24 hours, to see a rhythm forming. |
 | 14 | Foods tried | — | idea | In Trends or Feed: the solids foods introduced, with their reactions (allergic reactions flagged). |
+| 15 | Family admin handover | — | idea | Let a family admin pass the role to another member (today the role never changes, and deleting the admin's account deletes the family). |
 
 ## Build plan
 
@@ -47,4 +48,4 @@ Specs are numbered in build order: build 01, then 02, and so on. If the order of
 
 When a spec is done, keep it describing the app as it is, not how it got there: fold every change into its Decisions and Acceptance criteria (rewrite or remove what changed, never append a contradicting paragraph) and collapse its Build slices to one line pointing at the commits (`git log --grep "Spec NN slice"`). Rules shared by several sections go into spec 04, not into each section spec.
 
-Spec each remaining feature (12–14) before building it.
+Spec each remaining feature (12–15) before building it. Reopened specs (02 and 03, multi-family) are built before the next new one.
