@@ -1,5 +1,5 @@
-using Nala.Core.Babies;
 using Nala.Core.Entries;
+using Nala.Core.Families;
 using Nala.Core.Users;
 
 namespace Nala.Core.Feeds;
@@ -10,6 +10,9 @@ public abstract record CreateFeedResult
 
     /// <summary>A feed with this id exists already (a re-sent request): it is returned unchanged.</summary>
     public sealed record AlreadyExists(FeedEntry Entry) : CreateFeedResult;
+
+    /// <summary>The id belongs to a feed of a baby outside the caller's families: it is left unchanged.</summary>
+    public sealed record NotFound : CreateFeedResult;
 
     public sealed record BabyNotFound : CreateFeedResult;
 
@@ -60,7 +63,7 @@ public abstract record BreastfeedResult
     /// <summary>The feed after the action, also when it changed nothing (a re-sent action).</summary>
     public sealed record Updated(FeedEntry Entry) : BreastfeedResult;
 
-    /// <summary>Unknown feed, or not a breastfeed.</summary>
+    /// <summary>Unknown feed, not a breastfeed, or a feed of a baby outside the caller's families (left unchanged).</summary>
     public sealed record NotFound : BreastfeedResult;
 
     public sealed record BabyNotFound : BreastfeedResult;
@@ -79,8 +82,8 @@ public abstract record BreastfeedStateResult
     public sealed record BabyNotFound : BreastfeedStateResult;
 }
 
-/// <summary>A baby's feeds (spec 05). Any member can add, edit and delete any feed.</summary>
-public class FeedService(IFeedRepository feeds, IBabyRepository babies, TimeProvider time)
+/// <summary>A baby's feeds (spec 05). Any member of the baby's family can add, edit and delete any feed; outside the caller's families, babies and entries answer as unknown (<see cref="FamilyAccess"/>).</summary>
+public class FeedService(IFeedRepository feeds, FamilyAccess access, TimeProvider time)
 {
     public const int DefaultPageSize = EntryPaging.DefaultPageSize;
 
@@ -94,7 +97,9 @@ public class FeedService(IFeedRepository feeds, IBabyRepository babies, TimeProv
     {
         if (await feeds.GetEntryAsync(id, cancellationToken) is { } existing)
         {
-            return new CreateFeedResult.AlreadyExists(existing);
+            return await access.ReachesBabyAsync(actor, existing.Feed.BabyId, cancellationToken)
+                ? new CreateFeedResult.AlreadyExists(existing)
+                : new CreateFeedResult.NotFound();
         }
 
         var now = time.GetUtcNow();
@@ -110,7 +115,7 @@ public class FeedService(IFeedRepository feeds, IBabyRepository babies, TimeProv
             return new CreateFeedResult.Invalid(errors);
         }
 
-        if (await babies.GetAsync(babyId, cancellationToken) is null)
+        if (!await access.ReachesBabyAsync(actor, babyId, cancellationToken))
         {
             return new CreateFeedResult.BabyNotFound();
         }
@@ -135,7 +140,7 @@ public class FeedService(IFeedRepository feeds, IBabyRepository babies, TimeProv
     public async Task<UpdateFeedResult> UpdateAsync(User actor, Guid id, FeedInput input, CancellationToken cancellationToken = default)
     {
         var feed = await feeds.GetAsync(id, cancellationToken);
-        if (feed is null)
+        if (feed is null || !await access.ReachesBabyAsync(actor, feed.BabyId, cancellationToken))
         {
             return new UpdateFeedResult.NotFound();
         }
@@ -158,14 +163,16 @@ public class FeedService(IFeedRepository feeds, IBabyRepository babies, TimeProv
         return new UpdateFeedResult.Updated((await feeds.GetEntryAsync(id, cancellationToken))!);
     }
 
-    /// <summary>The feed with who logged and last edited it; null when unknown.</summary>
-    public Task<FeedEntry?> GetAsync(Guid id, CancellationToken cancellationToken = default) =>
-        feeds.GetEntryAsync(id, cancellationToken);
+    /// <summary>The feed with who logged and last edited it; null when unknown or outside the caller's families.</summary>
+    public async Task<FeedEntry?> GetAsync(User user, Guid id, CancellationToken cancellationToken = default) =>
+        await feeds.GetEntryAsync(id, cancellationToken) is { } entry && await access.ReachesBabyAsync(user, entry.Feed.BabyId, cancellationToken)
+            ? entry
+            : null;
 
-    public async Task<DeleteFeedResult> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<DeleteFeedResult> DeleteAsync(User actor, Guid id, CancellationToken cancellationToken = default)
     {
         var feed = await feeds.GetAsync(id, cancellationToken);
-        if (feed is null)
+        if (feed is null || !await access.ReachesBabyAsync(actor, feed.BabyId, cancellationToken))
         {
             return new DeleteFeedResult.NotFound();
         }
@@ -178,7 +185,7 @@ public class FeedService(IFeedRepository feeds, IBabyRepository babies, TimeProv
     /// One page of the baby's feeds, newest first. <paramref name="limit"/> defaults to <see cref="DefaultPageSize"/> and is
     /// kept within 1–<see cref="MaxPageSize"/>.
     /// </summary>
-    public async Task<ListFeedsResult> ListAsync(Guid babyId, string? cursor, int? limit, CancellationToken cancellationToken = default)
+    public async Task<ListFeedsResult> ListAsync(User user, Guid babyId, string? cursor, int? limit, CancellationToken cancellationToken = default)
     {
         EntryCursor? after = null;
         if (cursor is not null && (after = EntryCursor.TryDecode(cursor)) is null)
@@ -186,7 +193,7 @@ public class FeedService(IFeedRepository feeds, IBabyRepository babies, TimeProv
             return new ListFeedsResult.InvalidCursor();
         }
 
-        if (await babies.GetAsync(babyId, cancellationToken) is null)
+        if (!await access.ReachesBabyAsync(user, babyId, cancellationToken))
         {
             return new ListFeedsResult.BabyNotFound();
         }
@@ -199,8 +206,8 @@ public class FeedService(IFeedRepository feeds, IBabyRepository babies, TimeProv
         return new ListFeedsResult.Page(page, next);
     }
 
-    public async Task<BottleDefaultsResult> GetBottleDefaultsAsync(Guid babyId, CancellationToken cancellationToken = default) =>
-        await babies.GetAsync(babyId, cancellationToken) is null
+    public async Task<BottleDefaultsResult> GetBottleDefaultsAsync(User user, Guid babyId, CancellationToken cancellationToken = default) =>
+        !await access.ReachesBabyAsync(user, babyId, cancellationToken)
             ? new BottleDefaultsResult.BabyNotFound()
             : new BottleDefaultsResult.Found(await feeds.GetBottleDefaultsAsync(babyId, cancellationToken));
 
@@ -228,12 +235,13 @@ public class FeedService(IFeedRepository feeds, IBabyRepository babies, TimeProv
         }
 
         var feed = await feeds.GetAsync(feedId, cancellationToken);
-        if (feed is not null && feed.Kind != FeedKind.Breastfeed)
+        if (feed is not null
+            && (feed.Kind != FeedKind.Breastfeed || !await access.ReachesBabyAsync(actor, feed.BabyId, cancellationToken)))
         {
             return new BreastfeedResult.NotFound();
         }
 
-        if (feed is null && await babies.GetAsync(babyId, cancellationToken) is null)
+        if (feed is null && !await access.ReachesBabyAsync(actor, babyId, cancellationToken))
         {
             return new BreastfeedResult.BabyNotFound();
         }
@@ -295,7 +303,8 @@ public class FeedService(IFeedRepository feeds, IBabyRepository babies, TimeProv
             return new BreastfeedResult.Invalid(errors);
         }
 
-        if (await GetBreastfeedAsync(feedId, cancellationToken) is not { } feed)
+        if (await GetBreastfeedAsync(feedId, cancellationToken) is not { } feed
+            || !await access.ReachesBabyAsync(actor, feed.BabyId, cancellationToken))
         {
             return new BreastfeedResult.NotFound();
         }
@@ -317,9 +326,9 @@ public class FeedService(IFeedRepository feeds, IBabyRepository babies, TimeProv
         return await UpdatedAsync(feed, cancellationToken);
     }
 
-    public async Task<BreastfeedStateResult> GetBreastfeedStateAsync(Guid babyId, CancellationToken cancellationToken = default)
+    public async Task<BreastfeedStateResult> GetBreastfeedStateAsync(User user, Guid babyId, CancellationToken cancellationToken = default)
     {
-        if (await babies.GetAsync(babyId, cancellationToken) is null)
+        if (!await access.ReachesBabyAsync(user, babyId, cancellationToken))
         {
             return new BreastfeedStateResult.BabyNotFound();
         }
@@ -329,9 +338,9 @@ public class FeedService(IFeedRepository feeds, IBabyRepository babies, TimeProv
             await feeds.GetLastBreastSideAsync(babyId, cancellationToken)));
     }
 
-    /// <summary>Every live breastfeed, of every baby (one instance is one family), oldest start first.</summary>
-    public Task<IReadOnlyList<FeedEntry>> ListInProgressBreastfeedsAsync(CancellationToken cancellationToken = default) =>
-        feeds.ListInProgressBreastfeedsAsync(cancellationToken);
+    /// <summary>The live breastfeeds of the babies of the caller's families, oldest start first.</summary>
+    public async Task<IReadOnlyList<FeedEntry>> ListInProgressBreastfeedsAsync(User user, CancellationToken cancellationToken = default) =>
+        await feeds.ListInProgressBreastfeedsAsync(await access.BabyIdsAsync(user, cancellationToken), cancellationToken);
 
     private async Task<Feed?> GetBreastfeedAsync(Guid id, CancellationToken cancellationToken) =>
         await feeds.GetAsync(id, cancellationToken) is { Kind: FeedKind.Breastfeed } feed ? feed : null;

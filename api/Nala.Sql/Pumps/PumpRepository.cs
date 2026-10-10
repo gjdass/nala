@@ -46,8 +46,8 @@ public class PumpRepository(NalaDbContext db) : IPumpRepository
     public Task<PumpEntry?> GetLiveAsync(Guid babyId, CancellationToken cancellationToken = default) =>
         Entries(Live().Where(p => p.BabyId == babyId)).FirstOrDefaultAsync(cancellationToken);
 
-    public async Task<IReadOnlyList<PumpEntry>> ListLiveAsync(CancellationToken cancellationToken = default) =>
-        await Entries(Live()).ToListAsync(cancellationToken);
+    public async Task<IReadOnlyList<PumpEntry>> ListLiveAsync(IReadOnlyCollection<Guid> babyIds, CancellationToken cancellationToken = default) =>
+        await Entries(Live().Where(p => babyIds.Contains(p.BabyId))).ToListAsync(cancellationToken);
 
     /// <summary>Sessions without an end time, oldest start first.</summary>
     private IQueryable<Pump> Live() =>

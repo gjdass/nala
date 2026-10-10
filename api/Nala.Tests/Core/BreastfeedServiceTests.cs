@@ -1,4 +1,5 @@
 using Nala.Core.Babies;
+using Nala.Core.Families;
 using Nala.Core.Feeds;
 using Nala.Core.Users;
 using Nala.Tests.Support;
@@ -11,24 +12,33 @@ public class BreastfeedServiceTests
     private static readonly DateTimeOffset Now = new(2026, 9, 30, 12, 0, 0, TimeSpan.Zero);
 
     private FakeFeedRepository _feeds = null!;
+    private FakeFamilyRepository _families = null!;
     private FakeBabyRepository _babies = null!;
     private FixedTimeProvider _time = null!;
     private FeedService _service = null!;
     private User _anna = null!;
     private User _ben = null!;
+    private User _carl = null!;
     private Baby _lea = null!;
+    private Baby _max = null!;
 
     [SetUp]
     public void SetUp()
     {
         _feeds = new FakeFeedRepository();
-        _babies = new FakeBabyRepository();
+        _families = new FakeFamilyRepository();
+        _babies = new FakeBabyRepository(_families);
         _time = new FixedTimeProvider(Now);
-        _service = new FeedService(_feeds, _babies, _time);
+        _service = new FeedService(_feeds, new FamilyAccess(_families, _babies), _time);
         _anna = NewUser("Anna");
         _ben = NewUser("Ben");
-        _lea = new Baby { Id = Guid.NewGuid(), Name = "Lea", BirthDate = new DateOnly(2026, 9, 1), CreatedAt = Now };
+        _carl = NewUser("Carl");
+        var martins = _families.Seed("Martins", Now, _anna, _ben);
+        var others = _families.Seed("Others", Now, _carl);
+        _lea = new Baby { Id = Guid.NewGuid(), FamilyId = martins.Id, Name = "Lea", BirthDate = new DateOnly(2026, 9, 1), CreatedAt = Now };
+        _max = new Baby { Id = Guid.NewGuid(), FamilyId = others.Id, Name = "Max", BirthDate = new DateOnly(2026, 9, 1), CreatedAt = Now };
         _babies.Babies.Add(_lea);
+        _babies.Babies.Add(_max);
     }
 
     private User NewUser(string name)
@@ -483,7 +493,7 @@ public class BreastfeedServiceTests
     {
         await _service.CreateAsync(_anna, Guid.NewGuid(), _lea.Id, Typed(300, 180, "left"));
 
-        var state = ((BreastfeedStateResult.Found)await _service.GetBreastfeedStateAsync(_lea.Id)).State;
+        var state = ((BreastfeedStateResult.Found)await _service.GetBreastfeedStateAsync(_anna, _lea.Id)).State;
 
         Assert.That(state.LastSide, Is.EqualTo(BreastSide.Left));
     }
@@ -496,7 +506,7 @@ public class BreastfeedServiceTests
         var current = Guid.NewGuid();
         await StartAsync(current, "right", At(5));
 
-        var state = ((BreastfeedStateResult.Found)await _service.GetBreastfeedStateAsync(_lea.Id)).State;
+        var state = ((BreastfeedStateResult.Found)await _service.GetBreastfeedStateAsync(_anna, _lea.Id)).State;
 
         Assert.That(state.InProgress?.Feed.Id, Is.EqualTo(current));
         Assert.That(state.LastSide, Is.EqualTo(BreastSide.Left));
@@ -505,7 +515,7 @@ public class BreastfeedServiceTests
     [Test]
     public async Task Every_breastfeed_in_progress_is_listed_with_its_segments()
     {
-        var tom = new Baby { Id = Guid.NewGuid(), Name = "Tom", BirthDate = new DateOnly(2026, 9, 1), CreatedAt = Now };
+        var tom = new Baby { Id = Guid.NewGuid(), FamilyId = _lea.FamilyId, Name = "Tom", BirthDate = new DateOnly(2026, 9, 1), CreatedAt = Now };
         _babies.Babies.Add(tom);
         await FinishedAsync("left", 30);
         var lea = Guid.NewGuid();
@@ -513,7 +523,7 @@ public class BreastfeedServiceTests
         var toms = Guid.NewGuid();
         await _service.StartSideAsync(_ben, toms, tom.Id, Guid.NewGuid(), "left", At(4));
 
-        var entries = await _service.ListInProgressBreastfeedsAsync();
+        var entries = await _service.ListInProgressBreastfeedsAsync(_anna);
 
         Assert.Multiple(() =>
         {
@@ -525,12 +535,49 @@ public class BreastfeedServiceTests
     [Test]
     public async Task The_breastfeed_state_is_empty_without_a_breastfeed()
     {
-        var state = ((BreastfeedStateResult.Found)await _service.GetBreastfeedStateAsync(_lea.Id)).State;
+        var state = ((BreastfeedStateResult.Found)await _service.GetBreastfeedStateAsync(_anna, _lea.Id)).State;
 
         Assert.That(state, Is.EqualTo(new BreastfeedState(null, null)));
     }
 
     [Test]
     public async Task The_breastfeed_state_of_an_unknown_baby_is_refused() =>
-        Assert.That(await _service.GetBreastfeedStateAsync(Guid.NewGuid()), Is.InstanceOf<BreastfeedStateResult.BabyNotFound>());
+        Assert.That(await _service.GetBreastfeedStateAsync(_anna, Guid.NewGuid()), Is.InstanceOf<BreastfeedStateResult.BabyNotFound>());
+
+    [Test]
+    public async Task Another_family_reaches_neither_the_baby_nor_its_breastfeeds()
+    {
+        var stopped = await FinishedAsync("left", 30);
+        var live = Guid.NewGuid();
+        await StartAsync(live, "right", At(10));
+
+        Assert.That(
+            await _service.StartSideAsync(_carl, Guid.NewGuid(), _lea.Id, Guid.NewGuid(), "left", Now), Is.TypeOf<BreastfeedResult.BabyNotFound>());
+        Assert.That(await _service.GetBreastfeedStateAsync(_carl, _lea.Id), Is.TypeOf<BreastfeedStateResult.BabyNotFound>());
+        Assert.That(
+            await _service.StartSideAsync(_carl, stopped, _max.Id, Guid.NewGuid(), "right", Now), Is.TypeOf<BreastfeedResult.NotFound>());
+        Assert.That(
+            await _service.StartSideAsync(_carl, live, _max.Id, Guid.NewGuid(), "left", Now), Is.TypeOf<BreastfeedResult.NotFound>());
+        Assert.That(await _service.StopSideAsync(_carl, live, Now), Is.TypeOf<BreastfeedResult.NotFound>());
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(_feeds.Feeds.Single(f => f.Id == stopped).Segments, Has.Count.EqualTo(1));
+            Assert.That(_feeds.Feeds.Single(f => f.Id == stopped).EndTime, Is.Not.Null);
+            Assert.That(_feeds.Feeds.Single(f => f.Id == live).Segments.Single().Side, Is.EqualTo(BreastSide.Right));
+            Assert.That(_feeds.Feeds.Single(f => f.Id == live).EndTime, Is.Null);
+        });
+    }
+
+    [Test]
+    public async Task Live_breastfeeds_are_only_those_of_the_callers_families()
+    {
+        var ours = Guid.NewGuid();
+        var theirs = Guid.NewGuid();
+        await StartAsync(ours, "left", At(10));
+        await _service.StartSideAsync(_carl, theirs, _max.Id, Guid.NewGuid(), "left", At(5));
+
+        Assert.That((await _service.ListInProgressBreastfeedsAsync(_anna)).Select(e => e.Feed.Id), Is.EqualTo(new[] { ours }));
+        Assert.That((await _service.ListInProgressBreastfeedsAsync(_carl)).Select(e => e.Feed.Id), Is.EqualTo(new[] { theirs }));
+    }
 }

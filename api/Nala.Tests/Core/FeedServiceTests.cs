@@ -1,5 +1,6 @@
 using Nala.Core.Babies;
 using Nala.Core.Entries;
+using Nala.Core.Families;
 using Nala.Core.Feeds;
 using Nala.Core.Users;
 using Nala.Tests.Support;
@@ -11,24 +12,33 @@ public class FeedServiceTests
     private static readonly DateTimeOffset Now = new(2026, 9, 30, 12, 0, 0, TimeSpan.Zero);
 
     private FakeFeedRepository _feeds = null!;
+    private FakeFamilyRepository _families = null!;
     private FakeBabyRepository _babies = null!;
     private FixedTimeProvider _time = null!;
     private FeedService _service = null!;
     private User _anna = null!;
     private User _ben = null!;
+    private User _carl = null!;
     private Baby _lea = null!;
+    private Baby _max = null!;
 
     [SetUp]
     public void SetUp()
     {
         _feeds = new FakeFeedRepository();
-        _babies = new FakeBabyRepository();
+        _families = new FakeFamilyRepository();
+        _babies = new FakeBabyRepository(_families);
         _time = new FixedTimeProvider(Now);
-        _service = new FeedService(_feeds, _babies, _time);
+        _service = new FeedService(_feeds, new FamilyAccess(_families, _babies), _time);
         _anna = NewUser("Anna");
         _ben = NewUser("Ben");
-        _lea = new Baby { Id = Guid.NewGuid(), Name = "Lea", BirthDate = new DateOnly(2026, 9, 1), CreatedAt = Now };
+        _carl = NewUser("Carl");
+        var martins = _families.Seed("Martins", Now, _anna, _ben);
+        var others = _families.Seed("Others", Now, _carl);
+        _lea = new Baby { Id = Guid.NewGuid(), FamilyId = martins.Id, Name = "Lea", BirthDate = new DateOnly(2026, 9, 1), CreatedAt = Now };
+        _max = new Baby { Id = Guid.NewGuid(), FamilyId = others.Id, Name = "Max", BirthDate = new DateOnly(2026, 9, 1), CreatedAt = Now };
         _babies.Babies.Add(_lea);
+        _babies.Babies.Add(_max);
     }
 
     private User NewUser(string name)
@@ -201,20 +211,20 @@ public class FeedServiceTests
     {
         var created = await CreateAsync(_anna, Bottle());
 
-        Assert.That(await _service.DeleteAsync(created.Feed.Id), Is.InstanceOf<DeleteFeedResult.Deleted>());
+        Assert.That(await _service.DeleteAsync(_anna, created.Feed.Id), Is.InstanceOf<DeleteFeedResult.Deleted>());
         Assert.That(_feeds.Feeds, Is.Empty);
     }
 
     [Test]
     public async Task Deleting_an_unknown_feed_is_not_found() =>
-        Assert.That(await _service.DeleteAsync(Guid.NewGuid()), Is.InstanceOf<DeleteFeedResult.NotFound>());
+        Assert.That(await _service.DeleteAsync(_anna, Guid.NewGuid()), Is.InstanceOf<DeleteFeedResult.NotFound>());
 
     [Test]
     public async Task Getting_a_feed_returns_it_with_who_logged_it()
     {
         var created = await CreateAsync(_anna, Bottle());
 
-        var entry = await _service.GetAsync(created.Feed.Id);
+        var entry = await _service.GetAsync(_anna, created.Feed.Id);
 
         Assert.That(entry?.Feed.Id, Is.EqualTo(created.Feed.Id));
         Assert.That(entry?.LoggedBy.DisplayName, Is.EqualTo("Anna"));
@@ -222,7 +232,7 @@ public class FeedServiceTests
 
     [Test]
     public async Task Getting_an_unknown_feed_gives_nothing() =>
-        Assert.That(await _service.GetAsync(Guid.NewGuid()), Is.Null);
+        Assert.That(await _service.GetAsync(_anna, Guid.NewGuid()), Is.Null);
 
     [Test]
     public async Task Listing_pages_newest_first_with_a_cursor()
@@ -232,9 +242,9 @@ public class FeedServiceTests
             await CreateAsync(_anna, Bottle(startTime: Now.AddHours(-i)));
         }
 
-        var first = (ListFeedsResult.Page)await _service.ListAsync(_lea.Id, null, 2);
-        var second = (ListFeedsResult.Page)await _service.ListAsync(_lea.Id, first.Next, 2);
-        var last = (ListFeedsResult.Page)await _service.ListAsync(_lea.Id, second.Next, 2);
+        var first = (ListFeedsResult.Page)await _service.ListAsync(_anna, _lea.Id, null, 2);
+        var second = (ListFeedsResult.Page)await _service.ListAsync(_anna, _lea.Id, first.Next, 2);
+        var last = (ListFeedsResult.Page)await _service.ListAsync(_anna, _lea.Id, second.Next, 2);
 
         Assert.That(first.Entries.Select(e => e.Feed.StartTime), Is.EqualTo(new[] { Now, Now.AddHours(-1) }));
         Assert.That(second.Entries.Select(e => e.Feed.StartTime), Is.EqualTo(new[] { Now.AddHours(-2), Now.AddHours(-3) }));
@@ -249,7 +259,7 @@ public class FeedServiceTests
         await CreateAsync(_anna, Bottle());
         await CreateAsync(_anna, Bottle());
 
-        var page = (ListFeedsResult.Page)await _service.ListAsync(_lea.Id, null, 2);
+        var page = (ListFeedsResult.Page)await _service.ListAsync(_anna, _lea.Id, null, 2);
 
         Assert.That(page.Entries, Has.Count.EqualTo(2));
         Assert.That(page.Next, Is.Null);
@@ -265,19 +275,19 @@ public class FeedServiceTests
             await CreateAsync(_anna, Bottle(startTime: Now.AddMinutes(-i)));
         }
 
-        var page = (ListFeedsResult.Page)await _service.ListAsync(_lea.Id, null, limit);
+        var page = (ListFeedsResult.Page)await _service.ListAsync(_anna, _lea.Id, null, limit);
 
         Assert.That(page.Entries, Has.Count.EqualTo(expected));
     }
 
     [Test]
     public async Task Listing_an_unknown_baby_is_refused() =>
-        Assert.That(await _service.ListAsync(Guid.NewGuid(), null, null), Is.InstanceOf<ListFeedsResult.BabyNotFound>());
+        Assert.That(await _service.ListAsync(_anna, Guid.NewGuid(), null, null), Is.InstanceOf<ListFeedsResult.BabyNotFound>());
 
     [TestCase("garbage")]
     [TestCase("")]
     public async Task A_malformed_cursor_is_refused(string cursor) =>
-        Assert.That(await _service.ListAsync(_lea.Id, cursor, null), Is.InstanceOf<ListFeedsResult.InvalidCursor>());
+        Assert.That(await _service.ListAsync(_anna, _lea.Id, cursor, null), Is.InstanceOf<ListFeedsResult.InvalidCursor>());
 
     [Test]
     public void A_cursor_round_trips()
@@ -294,7 +304,7 @@ public class FeedServiceTests
         await CreateAsync(_anna, Bottle("formula", 120, Now.AddHours(-2)));
         await CreateAsync(_anna, Bottle("breastMilk", 100, Now.AddHours(-1)));
 
-        var result = (BottleDefaultsResult.Found)await _service.GetBottleDefaultsAsync(_lea.Id);
+        var result = (BottleDefaultsResult.Found)await _service.GetBottleDefaultsAsync(_anna, _lea.Id);
 
         Assert.That(result.Defaults, Is.EqualTo(new BottleDefaults(MilkType.BreastMilk, 100, 120)));
     }
@@ -302,12 +312,29 @@ public class FeedServiceTests
     [Test]
     public async Task Bottle_defaults_are_empty_without_a_bottle()
     {
-        var result = (BottleDefaultsResult.Found)await _service.GetBottleDefaultsAsync(_lea.Id);
+        var result = (BottleDefaultsResult.Found)await _service.GetBottleDefaultsAsync(_anna, _lea.Id);
 
         Assert.That(result.Defaults, Is.EqualTo(new BottleDefaults(null, null, null)));
     }
 
     [Test]
     public async Task Bottle_defaults_of_an_unknown_baby_are_refused() =>
-        Assert.That(await _service.GetBottleDefaultsAsync(Guid.NewGuid()), Is.InstanceOf<BottleDefaultsResult.BabyNotFound>());
+        Assert.That(await _service.GetBottleDefaultsAsync(_anna, Guid.NewGuid()), Is.InstanceOf<BottleDefaultsResult.BabyNotFound>());
+
+    [Test]
+    public async Task Another_family_reaches_neither_the_baby_nor_its_feeds()
+    {
+        var stored = await CreateAsync(_anna, Bottle(notes: "ours"));
+        var id = stored.Feed.Id;
+
+        Assert.That(await _service.CreateAsync(_carl, Guid.NewGuid(), _lea.Id, Bottle()), Is.TypeOf<CreateFeedResult.BabyNotFound>());
+        Assert.That(await _service.ListAsync(_carl, _lea.Id, null, null), Is.TypeOf<ListFeedsResult.BabyNotFound>());
+        Assert.That(await _service.GetBottleDefaultsAsync(_carl, _lea.Id), Is.TypeOf<BottleDefaultsResult.BabyNotFound>());
+        Assert.That(await _service.GetAsync(_carl, id), Is.Null);
+        Assert.That(await _service.UpdateAsync(_carl, id, Bottle(notes: "theirs")), Is.TypeOf<UpdateFeedResult.NotFound>());
+        Assert.That(await _service.DeleteAsync(_carl, id), Is.TypeOf<DeleteFeedResult.NotFound>());
+        Assert.That(await _service.CreateAsync(_carl, id, _max.Id, Bottle(notes: "theirs")), Is.TypeOf<CreateFeedResult.NotFound>());
+
+        Assert.That(_feeds.Feeds.Single().Notes, Is.EqualTo("ours"));
+    }
 }

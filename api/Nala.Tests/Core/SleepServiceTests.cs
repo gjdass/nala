@@ -1,5 +1,6 @@
 using Nala.Core.Babies;
 using Nala.Core.Entries;
+using Nala.Core.Families;
 using Nala.Core.Sleeps;
 using Nala.Core.Users;
 using Nala.Tests.Support;
@@ -12,24 +13,33 @@ public class SleepServiceTests
     private static readonly DateTimeOffset Now = new(2026, 9, 30, 12, 0, 0, TimeSpan.Zero);
 
     private FakeSleepRepository _sleeps = null!;
+    private FakeFamilyRepository _families = null!;
     private FakeBabyRepository _babies = null!;
     private FixedTimeProvider _time = null!;
     private SleepService _service = null!;
     private User _anna = null!;
     private User _ben = null!;
+    private User _carl = null!;
     private Baby _lea = null!;
+    private Baby _max = null!;
 
     [SetUp]
     public void SetUp()
     {
         _sleeps = new FakeSleepRepository();
-        _babies = new FakeBabyRepository();
+        _families = new FakeFamilyRepository();
+        _babies = new FakeBabyRepository(_families);
         _time = new FixedTimeProvider(Now);
-        _service = new SleepService(_sleeps, _babies, _time);
+        _service = new SleepService(_sleeps, new FamilyAccess(_families, _babies), _time);
         _anna = NewUser("Anna");
         _ben = NewUser("Ben");
-        _lea = new Baby { Id = Guid.NewGuid(), Name = "Lea", BirthDate = new DateOnly(2026, 9, 1), CreatedAt = Now };
+        _carl = NewUser("Carl");
+        var martins = _families.Seed("Martins", Now, _anna, _ben);
+        var others = _families.Seed("Others", Now, _carl);
+        _lea = new Baby { Id = Guid.NewGuid(), FamilyId = martins.Id, Name = "Lea", BirthDate = new DateOnly(2026, 9, 1), CreatedAt = Now };
+        _max = new Baby { Id = Guid.NewGuid(), FamilyId = others.Id, Name = "Max", BirthDate = new DateOnly(2026, 9, 1), CreatedAt = Now };
         _babies.Babies.Add(_lea);
+        _babies.Babies.Add(_max);
     }
 
     private User NewUser(string name)
@@ -149,9 +159,9 @@ public class SleepServiceTests
     {
         var created = await CreateAsync(_anna, Sleep());
 
-        Assert.That(await _service.DeleteAsync(created.Sleep.Id), Is.TypeOf<DeleteSleepResult.Deleted>());
+        Assert.That(await _service.DeleteAsync(_anna, created.Sleep.Id), Is.TypeOf<DeleteSleepResult.Deleted>());
         Assert.That(_sleeps.Sleeps, Is.Empty);
-        Assert.That(await _service.DeleteAsync(created.Sleep.Id), Is.TypeOf<DeleteSleepResult.NotFound>());
+        Assert.That(await _service.DeleteAsync(_anna, created.Sleep.Id), Is.TypeOf<DeleteSleepResult.NotFound>());
     }
 
     [Test]
@@ -159,8 +169,8 @@ public class SleepServiceTests
     {
         var created = await CreateAsync(_anna, Sleep());
 
-        Assert.That((await _service.GetAsync(created.Sleep.Id))?.Sleep.Id, Is.EqualTo(created.Sleep.Id));
-        Assert.That(await _service.GetAsync(Guid.NewGuid()), Is.Null);
+        Assert.That((await _service.GetAsync(_anna, created.Sleep.Id))?.Sleep.Id, Is.EqualTo(created.Sleep.Id));
+        Assert.That(await _service.GetAsync(_anna, Guid.NewGuid()), Is.Null);
     }
 
     [Test]
@@ -171,9 +181,9 @@ public class SleepServiceTests
             await CreateAsync(_anna, Sleep(startMinutesAgo: i * 100, endMinutesAgo: i * 100 - 30));
         }
 
-        var first = (ListSleepsResult.Page)await _service.ListAsync(_lea.Id, null, 2);
-        var second = (ListSleepsResult.Page)await _service.ListAsync(_lea.Id, first.Next, 2);
-        var last = (ListSleepsResult.Page)await _service.ListAsync(_lea.Id, second.Next, 2);
+        var first = (ListSleepsResult.Page)await _service.ListAsync(_anna, _lea.Id, null, 2);
+        var second = (ListSleepsResult.Page)await _service.ListAsync(_anna, _lea.Id, first.Next, 2);
+        var last = (ListSleepsResult.Page)await _service.ListAsync(_anna, _lea.Id, second.Next, 2);
 
         Assert.Multiple(() =>
         {
@@ -194,18 +204,18 @@ public class SleepServiceTests
             await CreateAsync(_anna, Sleep(startMinutesAgo: i * 10 + 5, endMinutesAgo: i * 10));
         }
 
-        var page = (ListSleepsResult.Page)await _service.ListAsync(_lea.Id, null, limit);
+        var page = (ListSleepsResult.Page)await _service.ListAsync(_anna, _lea.Id, null, limit);
 
         Assert.That(page.Entries, Has.Count.EqualTo(expected));
     }
 
     [Test]
     public async Task A_malformed_cursor_is_refused() =>
-        Assert.That(await _service.ListAsync(_lea.Id, "not a cursor", null), Is.TypeOf<ListSleepsResult.InvalidCursor>());
+        Assert.That(await _service.ListAsync(_anna, _lea.Id, "not a cursor", null), Is.TypeOf<ListSleepsResult.InvalidCursor>());
 
     [Test]
     public async Task Listing_an_unknown_baby_is_refused() =>
-        Assert.That(await _service.ListAsync(Guid.NewGuid(), null, null), Is.TypeOf<ListSleepsResult.BabyNotFound>());
+        Assert.That(await _service.ListAsync(_anna, Guid.NewGuid(), null, null), Is.TypeOf<ListSleepsResult.BabyNotFound>());
 
     private async Task<SleepTimerResult> StartAsync(Guid id, DateTimeOffset? at = null, Baby? baby = null, bool queued = false, User? actor = null) =>
         await _service.StartAsync(actor ?? _anna, id, (baby ?? _lea).Id, at ?? Now, queued);
@@ -329,7 +339,7 @@ public class SleepServiceTests
     [Test]
     public async Task Another_babys_live_sleep_does_not_stop_a_start()
     {
-        var tom = new Baby { Id = Guid.NewGuid(), Name = "Tom", BirthDate = new DateOnly(2026, 9, 1), CreatedAt = Now };
+        var tom = new Baby { Id = Guid.NewGuid(), FamilyId = _lea.FamilyId, Name = "Tom", BirthDate = new DateOnly(2026, 9, 1), CreatedAt = Now };
         _babies.Babies.Add(tom);
         await StartAsync(Guid.NewGuid(), baby: tom);
 
@@ -440,15 +450,54 @@ public class SleepServiceTests
     [Test]
     public async Task Live_sleeps_of_every_baby_are_listed_oldest_first()
     {
-        var tom = new Baby { Id = Guid.NewGuid(), Name = "Tom", BirthDate = new DateOnly(2026, 9, 1), CreatedAt = Now };
+        var tom = new Baby { Id = Guid.NewGuid(), FamilyId = _lea.FamilyId, Name = "Tom", BirthDate = new DateOnly(2026, 9, 1), CreatedAt = Now };
         _babies.Babies.Add(tom);
         var recent = await StartLiveAsync(minutesAgo: 10);
         var tomId = Guid.NewGuid();
         await StartAsync(tomId, Now.AddMinutes(-50), baby: tom);
         await CreateAsync(_anna, Sleep());
 
-        var live = await _service.ListLiveAsync();
+        var live = await _service.ListLiveAsync(_anna);
 
         Assert.That(live.Select(e => e.Sleep.Id), Is.EqualTo(new[] { tomId, recent.Id }));
+    }
+
+    [Test]
+    public async Task Another_family_reaches_neither_the_baby_nor_its_sleeps()
+    {
+        var stopped = await CreateAsync(_anna, Sleep(notes: "ours"));
+        var liveId = Guid.NewGuid();
+        await _service.StartAsync(_anna, liveId, _lea.Id, Now.AddMinutes(-5));
+        var id = stopped.Sleep.Id;
+
+        Assert.That(await _service.CreateAsync(_carl, Guid.NewGuid(), _lea.Id, Sleep()), Is.TypeOf<CreateSleepResult.BabyNotFound>());
+        Assert.That(await _service.ListAsync(_carl, _lea.Id, null, null), Is.TypeOf<ListSleepsResult.BabyNotFound>());
+        Assert.That(await _service.StartAsync(_carl, Guid.NewGuid(), _lea.Id, Now), Is.TypeOf<SleepTimerResult.BabyNotFound>());
+        Assert.That(await _service.GetAsync(_carl, id), Is.Null);
+        Assert.That(await _service.UpdateAsync(_carl, id, Sleep(notes: "theirs")), Is.TypeOf<UpdateSleepResult.NotFound>());
+        Assert.That(await _service.DeleteAsync(_carl, id), Is.TypeOf<DeleteSleepResult.NotFound>());
+        Assert.That(await _service.CreateAsync(_carl, id, _max.Id, Sleep(notes: "theirs")), Is.TypeOf<CreateSleepResult.NotFound>());
+        Assert.That(await _service.StartAsync(_carl, id, _max.Id, Now), Is.TypeOf<SleepTimerResult.NotFound>());
+        Assert.That(await _service.StopAsync(_carl, liveId, Now), Is.TypeOf<SleepTimerResult.NotFound>());
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(_sleeps.Sleeps, Has.Count.EqualTo(2));
+            Assert.That(_sleeps.Sleeps.Single(e => e.Id == id).Notes, Is.EqualTo("ours"));
+            Assert.That(_sleeps.Sleeps.Single(e => e.Id == id).EndTime, Is.Not.Null);
+            Assert.That(_sleeps.Sleeps.Single(e => e.Id == liveId).EndTime, Is.Null);
+        });
+    }
+
+    [Test]
+    public async Task Live_sleeps_are_only_those_of_the_callers_families()
+    {
+        var ours = Guid.NewGuid();
+        var theirs = Guid.NewGuid();
+        await _service.StartAsync(_anna, ours, _lea.Id, Now.AddMinutes(-5));
+        await _service.StartAsync(_carl, theirs, _max.Id, Now.AddMinutes(-3));
+
+        Assert.That((await _service.ListLiveAsync(_anna)).Select(e => e.Sleep.Id), Is.EqualTo(new[] { ours }));
+        Assert.That((await _service.ListLiveAsync(_carl)).Select(e => e.Sleep.Id), Is.EqualTo(new[] { theirs }));
     }
 }

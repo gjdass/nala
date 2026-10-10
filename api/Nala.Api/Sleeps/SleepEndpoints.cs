@@ -35,7 +35,7 @@ public sealed record SleepResponse(
 /// <summary>Newest first; <c>Next</c> is the cursor of the following page, null after the last one.</summary>
 public sealed record SleepPageResponse(IEnumerable<SleepResponse> Entries, string? Next);
 
-/// <summary>A baby's sleeps (spec 06). Every member may add, edit and delete any sleep (fallback session policy).</summary>
+/// <summary>A baby's sleeps (spec 06). Every member of the baby's family may add, edit and delete any sleep (fallback session policy, family check in Core).</summary>
 public static class SleepEndpoints
 {
     public static IServiceCollection AddNalaSleeps(this IServiceCollection services) =>
@@ -80,13 +80,14 @@ public static class SleepEndpoints
         {
             CreateSleepResult.Created created => Results.Created($"/api/sleeps/{created.Entry.Sleep.Id}", ToResponse(created.Entry)),
             CreateSleepResult.AlreadyExists existing => Results.Ok(ToResponse(existing.Entry)),
+            CreateSleepResult.NotFound => SleepNotFound(),
             CreateSleepResult.Invalid invalid => AuthEndpoints.ValidationProblem(invalid.Errors),
             _ => BabyNotFound(),
         };
     }
 
-    private static async Task<IResult> GetAsync(Guid id, SleepService sleeps, CancellationToken cancellationToken) =>
-        await sleeps.GetAsync(id, cancellationToken) is { } entry ? Results.Ok(ToResponse(entry)) : SleepNotFound();
+    private static async Task<IResult> GetAsync(Guid id, SleepService sleeps, HttpContext context, CancellationToken cancellationToken) =>
+        await sleeps.GetAsync(AuthEndpoints.CurrentUser(context)!, id, cancellationToken) is { } entry ? Results.Ok(ToResponse(entry)) : SleepNotFound();
 
     private static async Task<IResult> UpdateAsync(
         Guid id, UpdateSleepRequest request, SleepService sleeps, HttpContext context, CancellationToken cancellationToken) =>
@@ -98,12 +99,12 @@ public static class SleepEndpoints
             _ => SleepNotFound(),
         };
 
-    private static async Task<IResult> DeleteAsync(Guid id, SleepService sleeps, CancellationToken cancellationToken) =>
-        await sleeps.DeleteAsync(id, cancellationToken) is DeleteSleepResult.Deleted ? Results.NoContent() : SleepNotFound();
+    private static async Task<IResult> DeleteAsync(Guid id, SleepService sleeps, HttpContext context, CancellationToken cancellationToken) =>
+        await sleeps.DeleteAsync(AuthEndpoints.CurrentUser(context)!, id, cancellationToken) is DeleteSleepResult.Deleted ? Results.NoContent() : SleepNotFound();
 
     private static async Task<IResult> ListAsync(
-        Guid babyId, string? cursor, int? limit, SleepService sleeps, CancellationToken cancellationToken) =>
-        await sleeps.ListAsync(babyId, cursor, limit, cancellationToken) switch
+        Guid babyId, string? cursor, int? limit, SleepService sleeps, HttpContext context, CancellationToken cancellationToken) =>
+        await sleeps.ListAsync(AuthEndpoints.CurrentUser(context)!, babyId, cursor, limit, cancellationToken) switch
         {
             ListSleepsResult.Page page => Results.Ok(new SleepPageResponse(page.Entries.Select(ToResponse), page.Next)),
             ListSleepsResult.InvalidCursor => AuthEndpoints.ValidationProblem(new Dictionary<string, string> { ["cursor"] = "invalid" }),

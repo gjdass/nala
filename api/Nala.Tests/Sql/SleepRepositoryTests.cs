@@ -226,19 +226,31 @@ public class SleepRepositoryTests
     }
 
     [Test]
-    public async Task Live_sleeps_of_every_baby_are_listed_oldest_start_first()
+    public async Task Live_sleeps_of_the_given_babies_are_listed_oldest_start_first()
     {
         await AddAsync(startTime: Now.AddHours(-5));
         var lea = await AddAsync(startTime: Now.AddMinutes(-10), live: true);
         var tom = await AddAsync(_tom, startTime: Now.AddMinutes(-50), live: true);
 
         await using var db = _db();
-        var live = await new SleepRepository(db).ListLiveAsync();
+        var live = await new SleepRepository(db).ListLiveAsync([_lea.Id, _tom.Id]);
 
         Assert.Multiple(() =>
         {
             Assert.That(live.Select(e => e.Sleep.Id), Is.EqualTo(new[] { tom.Id, lea.Id }));
             Assert.That(live.Select(e => e.LoggedBy.DisplayName), Is.All.EqualTo("Anna"));
         });
+    }
+
+    [Test]
+    public async Task Live_sleeps_of_other_babies_are_left_out()
+    {
+        var lea = await AddAsync(startTime: Now.AddMinutes(-10), live: true);
+        await AddAsync(_tom, startTime: Now.AddMinutes(-50), live: true);
+
+        await using var db = _db();
+        var live = await new SleepRepository(db).ListLiveAsync([_lea.Id]);
+
+        Assert.That(live.Select(e => e.Sleep.Id), Is.EqualTo(new[] { lea.Id }));
     }
 }

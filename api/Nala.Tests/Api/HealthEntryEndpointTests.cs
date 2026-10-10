@@ -46,16 +46,18 @@ public class HealthEntryEndpointTests
         await _factory.DisposeAsync();
     }
 
-    /// <summary>Ben joins through an invitation seeded from Anna and is signed in on the returned client.</summary>
+    /// <summary>Ben joins Anna's family through an invitation seeded from Anna and is signed in on the returned client.</summary>
     private async Task<(HttpClient Client, Guid Id)> RegisterBenAsync()
     {
         var token = LinkToken.Generate();
+        var familyId = (await _admin.GetFromJsonAsync<JsonElement[]>("/api/families"))![0].GetProperty("id").GetGuid();
         using (var scope = _factory.Services.CreateScope())
         {
             await scope.ServiceProvider.GetRequiredService<IInvitationRepository>().AddAsync(new Invitation
             {
                 Id = Guid.NewGuid(),
                 TokenHash = LinkToken.Hash(token),
+                FamilyId = familyId,
                 CreatedByUserId = _annaId,
                 CreatedAt = _now,
                 ExpiresAt = _now + InvitationPolicy.Lifetime,
@@ -376,6 +378,29 @@ public class HealthEntryEndpointTests
 
         Assert.That((await anonymous.GetAsync($"/api/babies/{_leaId}/health-entries")).StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
         Assert.That((await anonymous.PostAsJsonAsync("/api/health-entries", HealthEntry())).StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
+    }
+
+    [Test]
+    public async Task Another_family_reaches_neither_the_baby_nor_its_health_entries()
+    {
+        var id = Guid.NewGuid();
+        await _admin.PostAsJsonAsync("/api/health-entries", HealthEntry(id, notes: "ours"));
+        var stored = await JsonAsync(await _admin.GetAsync($"/api/health-entries/{id}"));
+        using var carl = await OtherFamily.CreateAsync(_factory);
+        var maxId = await Isolation.AddBabyAsync(carl);
+        var client = carl.Client;
+
+        await Isolation.AssertNotFoundAsync(client.PostAsJsonAsync("/api/health-entries", HealthEntry()), "babyNotFound", "create on Lea");
+        await Isolation.AssertNotFoundAsync(client.GetAsync($"/api/babies/{_leaId}/health-entries"), "babyNotFound", "list");
+        await Isolation.AssertNotFoundAsync(client.GetAsync($"/api/babies/{_leaId}/health-entries/recent"), "babyNotFound", "recent");
+        await Isolation.AssertNotFoundAsync(client.GetAsync($"/api/health-entries/{id}"), "healthEntryNotFound", "get");
+        await Isolation.AssertNotFoundAsync(
+            client.PutAsJsonAsync($"/api/health-entries/{id}", new { time = _now, name = "Ibuprofen", notes = "theirs" }), "healthEntryNotFound", "edit");
+        await Isolation.AssertNotFoundAsync(client.DeleteAsync($"/api/health-entries/{id}"), "healthEntryNotFound", "delete");
+        await Isolation.AssertNotFoundAsync(
+            client.PostAsJsonAsync("/api/health-entries", HealthEntry(id, babyId: maxId, notes: "theirs")), "healthEntryNotFound", "re-send with our id");
+
+        Assert.That((await JsonAsync(await _admin.GetAsync($"/api/health-entries/{id}"))).GetRawText(), Is.EqualTo(stored.GetRawText()));
     }
 
     /// <summary>Spec 09 slice 3: the section was renamed Health, and the Medication routes were removed without an alias.</summary>

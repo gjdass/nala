@@ -1,5 +1,5 @@
-using Nala.Core.Babies;
 using Nala.Core.Entries;
+using Nala.Core.Families;
 using Nala.Core.Users;
 
 namespace Nala.Core.HealthEntries;
@@ -10,6 +10,9 @@ public abstract record CreateHealthEntryResult
 
     /// <summary>A health entry with this id exists already (a re-sent request): it is returned unchanged.</summary>
     public sealed record AlreadyExists(HealthEntryDetails Entry) : CreateHealthEntryResult;
+
+    /// <summary>The id belongs to an entry of a baby outside the caller's families: it is left unchanged.</summary>
+    public sealed record NotFound : CreateHealthEntryResult;
 
     public sealed record BabyNotFound : CreateHealthEntryResult;
 
@@ -51,8 +54,8 @@ public abstract record RecentMedicinesResult
     public sealed record BabyNotFound : RecentMedicinesResult;
 }
 
-/// <summary>A baby's health entries (spec 09). Any member can add, edit and delete any dose.</summary>
-public class HealthEntryService(IHealthEntryRepository healthEntries, IBabyRepository babies, TimeProvider time)
+/// <summary>A baby's health entries (spec 09). Any member of the baby's family can add, edit and delete any dose; outside the caller's families, babies and entries answer as unknown (<see cref="FamilyAccess"/>).</summary>
+public class HealthEntryService(IHealthEntryRepository healthEntries, FamilyAccess access, TimeProvider time)
 {
     /// <summary>
     /// Adds a health entry under the client's id. Re-sending an id that exists already (e.g. a queued request sent twice)
@@ -62,7 +65,9 @@ public class HealthEntryService(IHealthEntryRepository healthEntries, IBabyRepos
     {
         if (await healthEntries.GetEntryAsync(id, cancellationToken) is { } existing)
         {
-            return new CreateHealthEntryResult.AlreadyExists(existing);
+            return await access.ReachesBabyAsync(actor, existing.HealthEntry.BabyId, cancellationToken)
+                ? new CreateHealthEntryResult.AlreadyExists(existing)
+                : new CreateHealthEntryResult.NotFound();
         }
 
         var now = time.GetUtcNow();
@@ -72,7 +77,7 @@ public class HealthEntryService(IHealthEntryRepository healthEntries, IBabyRepos
             return new CreateHealthEntryResult.Invalid(errors);
         }
 
-        if (await babies.GetAsync(babyId, cancellationToken) is null)
+        if (!await access.ReachesBabyAsync(actor, babyId, cancellationToken))
         {
             return new CreateHealthEntryResult.BabyNotFound();
         }
@@ -87,7 +92,7 @@ public class HealthEntryService(IHealthEntryRepository healthEntries, IBabyRepos
     public async Task<UpdateHealthEntryResult> UpdateAsync(User actor, Guid id, HealthEntryInput input, CancellationToken cancellationToken = default)
     {
         var healthEntry = await healthEntries.GetAsync(id, cancellationToken);
-        if (healthEntry is null)
+        if (healthEntry is null || !await access.ReachesBabyAsync(actor, healthEntry.BabyId, cancellationToken))
         {
             return new UpdateHealthEntryResult.NotFound();
         }
@@ -104,14 +109,16 @@ public class HealthEntryService(IHealthEntryRepository healthEntries, IBabyRepos
         return new UpdateHealthEntryResult.Updated((await healthEntries.GetEntryAsync(id, cancellationToken))!);
     }
 
-    /// <summary>The health entry with who logged and last edited it; null when unknown.</summary>
-    public Task<HealthEntryDetails?> GetAsync(Guid id, CancellationToken cancellationToken = default) =>
-        healthEntries.GetEntryAsync(id, cancellationToken);
+    /// <summary>The health entry with who logged and last edited it; null when unknown or outside the caller's families.</summary>
+    public async Task<HealthEntryDetails?> GetAsync(User user, Guid id, CancellationToken cancellationToken = default) =>
+        await healthEntries.GetEntryAsync(id, cancellationToken) is { } entry && await access.ReachesBabyAsync(user, entry.HealthEntry.BabyId, cancellationToken)
+            ? entry
+            : null;
 
-    public async Task<DeleteHealthEntryResult> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<DeleteHealthEntryResult> DeleteAsync(User actor, Guid id, CancellationToken cancellationToken = default)
     {
         var healthEntry = await healthEntries.GetAsync(id, cancellationToken);
-        if (healthEntry is null)
+        if (healthEntry is null || !await access.ReachesBabyAsync(actor, healthEntry.BabyId, cancellationToken))
         {
             return new DeleteHealthEntryResult.NotFound();
         }
@@ -121,7 +128,7 @@ public class HealthEntryService(IHealthEntryRepository healthEntries, IBabyRepos
     }
 
     /// <summary>One page of the baby's health entries, newest first (see <see cref="EntryPaging"/>).</summary>
-    public async Task<ListHealthEntriesResult> ListAsync(Guid babyId, string? cursor, int? limit, CancellationToken cancellationToken = default)
+    public async Task<ListHealthEntriesResult> ListAsync(User user, Guid babyId, string? cursor, int? limit, CancellationToken cancellationToken = default)
     {
         EntryCursor? after = null;
         if (cursor is not null && (after = EntryCursor.TryDecode(cursor)) is null)
@@ -129,7 +136,7 @@ public class HealthEntryService(IHealthEntryRepository healthEntries, IBabyRepos
             return new ListHealthEntriesResult.InvalidCursor();
         }
 
-        if (await babies.GetAsync(babyId, cancellationToken) is null)
+        if (!await access.ReachesBabyAsync(user, babyId, cancellationToken))
         {
             return new ListHealthEntriesResult.BabyNotFound();
         }
@@ -144,8 +151,8 @@ public class HealthEntryService(IHealthEntryRepository healthEntries, IBabyRepos
     public const int RecentLimit = 5;
 
     /// <summary>The baby's recently given names, most recent first, each with its latest dose.</summary>
-    public async Task<RecentMedicinesResult> RecentAsync(Guid babyId, CancellationToken cancellationToken = default) =>
-        await babies.GetAsync(babyId, cancellationToken) is null
+    public async Task<RecentMedicinesResult> RecentAsync(User user, Guid babyId, CancellationToken cancellationToken = default) =>
+        !await access.ReachesBabyAsync(user, babyId, cancellationToken)
             ? new RecentMedicinesResult.BabyNotFound()
             : new RecentMedicinesResult.Found(await healthEntries.ListRecentAsync(babyId, RecentLimit, cancellationToken));
 

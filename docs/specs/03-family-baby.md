@@ -97,11 +97,11 @@ Each item becomes at least one test, written failing first.
 - [ ] Entries the deleted person logged in families where they were a member are kept.
 
 ### Authorization and isolation
-- [ ] Every baby, activity, History and live endpoint only works for members of the baby's family; for anyone else, the baby or entry answers the same 404 and code as an unknown id. Each section's API tests include a user from another family.
+- [x] Every baby, activity, History and live endpoint only works for members of the baby's family; for anyone else, the baby or entry answers the same 404 and code as an unknown id. Each section's API tests include a user from another family.
 - [ ] Family, member and invitation endpoints of a family the caller isn't in answer 404 `familyNotFound`.
-- [ ] `GET /api/babies` and `GET /api/live` only return the babies and live entries of the caller's families.
-- [ ] Creating, re-sending or starting an entry with an id that belongs to another family's entry is refused with 404 and leaves that entry unchanged.
-- [ ] The instance admin reaches no data of a family they aren't a member of.
+- [x] `GET /api/babies` and `GET /api/live` only return the babies and live entries of the caller's families.
+- [x] Creating, re-sending or starting an entry with an id that belongs to another family's entry is refused with 404 and leaves that entry unchanged.
+- [x] The instance admin reaches no data of a family they aren't a member of.
 - [ ] Family-admin-only actions (rename the family, delete a baby, remove a member) and instance-admin-only actions (02) are enforced by the API, not only hidden in the UI.
 
 ## Build slices
@@ -110,7 +110,7 @@ Slices 1–7 (single family) are done; each is a commit "Spec 03 slice N: …" (
 
 - [x] **Slice 8: families, memberships and setup.** `Family` and `Membership` entities and tables (one admin per family, enforced by a unique partial index); `Baby.FamilyId`; nullable `Invitation.FamilyId`. Migration for existing instances (one family "Family": the instance admin as its admin, every other non-deleted, enabled user as a member, every baby and invitation in it). Setup asks for `familyName` and creates the account, the family and the admin membership together (API and web form). Registering through a join invitation adds a membership in its family. `GET /api/families`. *Covers:* Families 1, 4, 6; 02 First-run setup 2.
 - [x] **Slice 9: shared family check, babies scoped to families.** `Nala.Core/Families` access check (family or baby → the caller's membership and role, 404 before any role check). Baby endpoints use it: `GET` returns the caller's families' babies, `POST` takes `familyId`, `PUT` never changes the family, and `DELETE` answers 403 `familyAdminOnly` to members who aren't the admin. Web: `familyId` on the baby model, a new baby goes to the current family, and only the family admin sees Delete. *Covers:* Babies 3, 5, 6; Isolation 3 (babies).
-- [ ] **Slice 10: isolation for every activity endpoint and Live.** Feed, Sleep, Diaper, Pump, Growth, Health and `/api/live` go through the shared check. Another family's baby or entry answers the same 404 as an unknown one, and an id that belongs to another family's entry is never created over, re-sent, started or stopped. Each section's API tests add a user from another family. *Covers:* Isolation 1, 3 (live), 4, 5.
+- [x] **Slice 10: isolation for every activity endpoint and Live.** Feed, Sleep, Diaper, Pump, Growth, Health and `/api/live` go through the shared check. Another family's baby or entry answers the same 404 as an unknown one, and an id that belongs to another family's entry is never created over, re-sent, started or stopped. Each section's API tests add a user from another family. *Covers:* Isolation 1, 3 (live), 4, 5.
 - [ ] **Slice 11: current family on the web, switcher across families, empty states.** The device remembers the current family and baby, with the fallbacks above. The switcher is grouped by family, with "No baby yet" items. The top bar shows the family name when the family has no baby. Home, History and Trends show the no-family empty state. Settings hides the family sections for a user in no family. *Covers:* First baby 1, 2; Baby switcher 1, 2, 3; Families 3.
 - [ ] **Slice 12: rename a family.** `PATCH /api/families/{id}`. Settings gets a Family section (name, plus Rename for the admin, in a dialog). *Covers:* Families 5.
 - [ ] **Slice 13: join invitations per family.** Invitation endpoints move under `/api/families/{familyId}/invitations` (link, email with `alreadyMember`, pending list, revoke; `invitationUnknown` across families). Members & invitations shows the current family. *Covers:* Invitations 1, 2, 3; Isolation 2 (invitations).

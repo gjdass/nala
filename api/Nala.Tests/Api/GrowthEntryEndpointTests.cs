@@ -56,16 +56,18 @@ public class GrowthEntryEndpointTests
         await _factory.DisposeAsync();
     }
 
-    /// <summary>Ben joins through an invitation seeded from Anna and is signed in on the returned client.</summary>
+    /// <summary>Ben joins Anna's family through an invitation seeded from Anna and is signed in on the returned client.</summary>
     private async Task<(HttpClient Client, Guid Id)> RegisterBenAsync()
     {
         var token = LinkToken.Generate();
+        var familyId = (await _admin.GetFromJsonAsync<JsonElement[]>("/api/families"))![0].GetProperty("id").GetGuid();
         using (var scope = _factory.Services.CreateScope())
         {
             await scope.ServiceProvider.GetRequiredService<IInvitationRepository>().AddAsync(new Invitation
             {
                 Id = Guid.NewGuid(),
                 TokenHash = LinkToken.Hash(token),
+                FamilyId = familyId,
                 CreatedByUserId = _annaId,
                 CreatedAt = _now,
                 ExpiresAt = _now + InvitationPolicy.Lifetime,
@@ -351,6 +353,29 @@ public class GrowthEntryEndpointTests
         AssertCode(await JsonAsync(again), "growthEntryNotFound");
         Assert.That((await PageAsync(_admin)).GetProperty("entries").GetArrayLength(), Is.EqualTo(0));
         ben.Dispose();
+    }
+
+    [Test]
+    public async Task Another_family_reaches_neither_the_baby_nor_its_entries()
+    {
+        var id = Guid.NewGuid();
+        await _admin.PostAsJsonAsync("/api/growth-entries", Measurement(id, notes: "ours"));
+        var stored = await JsonAsync(await _admin.GetAsync($"/api/growth-entries/{id}"));
+        using var carl = await OtherFamily.CreateAsync(_factory);
+        var maxId = await Isolation.AddBabyAsync(carl);
+        var client = carl.Client;
+
+        await Isolation.AssertNotFoundAsync(client.PostAsJsonAsync("/api/growth-entries", Measurement()), "babyNotFound", "create on Lea");
+        await Isolation.AssertNotFoundAsync(client.GetAsync($"/api/babies/{_leaId}/growth-entries"), "babyNotFound", "list");
+        await Isolation.AssertNotFoundAsync(client.GetAsync($"/api/babies/{_leaId}/growth-entries/latest"), "babyNotFound", "latest");
+        await Isolation.AssertNotFoundAsync(client.GetAsync($"/api/growth-entries/{id}"), "growthEntryNotFound", "get");
+        await Isolation.AssertNotFoundAsync(
+            client.PutAsJsonAsync($"/api/growth-entries/{id}", new { date = DaysAgo(1), weightG = 4000, notes = "theirs" }), "growthEntryNotFound", "edit");
+        await Isolation.AssertNotFoundAsync(client.DeleteAsync($"/api/growth-entries/{id}"), "growthEntryNotFound", "delete");
+        await Isolation.AssertNotFoundAsync(
+            client.PostAsJsonAsync("/api/growth-entries", Measurement(id, babyId: maxId, notes: "theirs")), "growthEntryNotFound", "re-send with our id");
+
+        Assert.That((await JsonAsync(await _admin.GetAsync($"/api/growth-entries/{id}"))).GetRawText(), Is.EqualTo(stored.GetRawText()));
     }
 
     [Test]

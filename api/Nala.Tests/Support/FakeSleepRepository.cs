@@ -43,8 +43,8 @@ public class FakeSleepRepository : ISleepRepository
     public Task<SleepEntry?> GetLiveAsync(Guid babyId, CancellationToken cancellationToken = default) =>
         Task.FromResult(Live().Where(s => s.BabyId == babyId).Select(ToEntry).FirstOrDefault());
 
-    public Task<IReadOnlyList<SleepEntry>> ListLiveAsync(CancellationToken cancellationToken = default) =>
-        Task.FromResult<IReadOnlyList<SleepEntry>>(Live().Select(ToEntry).ToList());
+    public Task<IReadOnlyList<SleepEntry>> ListLiveAsync(IReadOnlyCollection<Guid> babyIds, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<SleepEntry>>(Live().Where(s => babyIds.Contains(s.BabyId)).Select(ToEntry).ToList());
 
     private IEnumerable<Sleep> Live() => Sleeps.Where(s => s.EndTime is null).OrderBy(s => s.StartTime).ThenBy(s => s.Id);
 

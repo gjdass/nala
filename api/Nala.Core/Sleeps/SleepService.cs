@@ -1,4 +1,4 @@
-using Nala.Core.Babies;
+using Nala.Core.Families;
 using Nala.Core.Entries;
 using Nala.Core.Users;
 
@@ -10,6 +10,9 @@ public abstract record CreateSleepResult
 
     /// <summary>A sleep with this id exists already (a re-sent request): it is returned unchanged.</summary>
     public sealed record AlreadyExists(SleepEntry Entry) : CreateSleepResult;
+
+    /// <summary>The id belongs to a sleep of a baby outside the caller's families: it is left unchanged.</summary>
+    public sealed record NotFound : CreateSleepResult;
 
     public sealed record BabyNotFound : CreateSleepResult;
 
@@ -44,12 +47,12 @@ public abstract record ListSleepsResult
     public sealed record InvalidCursor : ListSleepsResult;
 }
 
-/// <summary>A baby's sleeps (spec 06). Any member can add, edit and delete any sleep.</summary>
-public class SleepService(ISleepRepository sleeps, IBabyRepository babies, TimeProvider time)
+/// <summary>A baby's sleeps (spec 06). Any member of the baby's family can add, edit and delete any sleep; outside the caller's families, babies and entries answer as unknown (<see cref="FamilyAccess"/>).</summary>
+public class SleepService(ISleepRepository sleeps, FamilyAccess access, TimeProvider time)
 {
     private readonly EntryTimer<Sleep, SleepEntry> _timer = new(
         sleeps,
-        babies,
+        access,
         time,
         e => e.Sleep,
         n => new Sleep { Id = n.Id, BabyId = n.BabyId, StartTime = n.StartTime, LoggedByUserId = n.LoggedByUserId, CreatedAt = n.CreatedAt });
@@ -62,7 +65,9 @@ public class SleepService(ISleepRepository sleeps, IBabyRepository babies, TimeP
     {
         if (await sleeps.GetEntryAsync(id, cancellationToken) is { } existing)
         {
-            return new CreateSleepResult.AlreadyExists(existing);
+            return await access.ReachesBabyAsync(actor, existing.Sleep.BabyId, cancellationToken)
+                ? new CreateSleepResult.AlreadyExists(existing)
+                : new CreateSleepResult.NotFound();
         }
 
         var now = time.GetUtcNow();
@@ -72,7 +77,7 @@ public class SleepService(ISleepRepository sleeps, IBabyRepository babies, TimeP
             return new CreateSleepResult.Invalid(errors);
         }
 
-        if (await babies.GetAsync(babyId, cancellationToken) is null)
+        if (!await access.ReachesBabyAsync(actor, babyId, cancellationToken))
         {
             return new CreateSleepResult.BabyNotFound();
         }
@@ -90,7 +95,7 @@ public class SleepService(ISleepRepository sleeps, IBabyRepository babies, TimeP
     public async Task<UpdateSleepResult> UpdateAsync(User actor, Guid id, SleepInput input, CancellationToken cancellationToken = default)
     {
         var sleep = await sleeps.GetAsync(id, cancellationToken);
-        if (sleep is null)
+        if (sleep is null || !await access.ReachesBabyAsync(actor, sleep.BabyId, cancellationToken))
         {
             return new UpdateSleepResult.NotFound();
         }
@@ -107,14 +112,16 @@ public class SleepService(ISleepRepository sleeps, IBabyRepository babies, TimeP
         return new UpdateSleepResult.Updated((await sleeps.GetEntryAsync(id, cancellationToken))!);
     }
 
-    /// <summary>The sleep with who logged and last edited it; null when unknown.</summary>
-    public Task<SleepEntry?> GetAsync(Guid id, CancellationToken cancellationToken = default) =>
-        sleeps.GetEntryAsync(id, cancellationToken);
+    /// <summary>The sleep with who logged and last edited it; null when unknown or outside the caller's families.</summary>
+    public async Task<SleepEntry?> GetAsync(User user, Guid id, CancellationToken cancellationToken = default) =>
+        await sleeps.GetEntryAsync(id, cancellationToken) is { } entry && await access.ReachesBabyAsync(user, entry.Sleep.BabyId, cancellationToken)
+            ? entry
+            : null;
 
-    public async Task<DeleteSleepResult> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<DeleteSleepResult> DeleteAsync(User actor, Guid id, CancellationToken cancellationToken = default)
     {
         var sleep = await sleeps.GetAsync(id, cancellationToken);
-        if (sleep is null)
+        if (sleep is null || !await access.ReachesBabyAsync(actor, sleep.BabyId, cancellationToken))
         {
             return new DeleteSleepResult.NotFound();
         }
@@ -124,7 +131,7 @@ public class SleepService(ISleepRepository sleeps, IBabyRepository babies, TimeP
     }
 
     /// <summary>One page of the baby's sleeps, newest first (see <see cref="EntryPaging"/>).</summary>
-    public async Task<ListSleepsResult> ListAsync(Guid babyId, string? cursor, int? limit, CancellationToken cancellationToken = default)
+    public async Task<ListSleepsResult> ListAsync(User user, Guid babyId, string? cursor, int? limit, CancellationToken cancellationToken = default)
     {
         EntryCursor? after = null;
         if (cursor is not null && (after = EntryCursor.TryDecode(cursor)) is null)
@@ -132,7 +139,7 @@ public class SleepService(ISleepRepository sleeps, IBabyRepository babies, TimeP
             return new ListSleepsResult.InvalidCursor();
         }
 
-        if (await babies.GetAsync(babyId, cancellationToken) is null)
+        if (!await access.ReachesBabyAsync(user, babyId, cancellationToken))
         {
             return new ListSleepsResult.BabyNotFound();
         }
@@ -152,9 +159,9 @@ public class SleepService(ISleepRepository sleeps, IBabyRepository babies, TimeP
     public Task<TimerResult<SleepEntry>> StopAsync(User actor, Guid id, DateTimeOffset? at, CancellationToken cancellationToken = default) =>
         _timer.StopAsync(actor, id, at, cancellationToken);
 
-    /// <summary>Every live sleep, of every baby (one instance is one family), oldest start first.</summary>
-    public Task<IReadOnlyList<SleepEntry>> ListLiveAsync(CancellationToken cancellationToken = default) =>
-        sleeps.ListLiveAsync(cancellationToken);
+    /// <summary>The live sleeps of the babies of the caller's families, oldest start first.</summary>
+    public Task<IReadOnlyList<SleepEntry>> ListLiveAsync(User user, CancellationToken cancellationToken = default) =>
+        _timer.ListLiveAsync(user, cancellationToken);
 
     /// <summary>Call only on validated input.</summary>
     private static void Apply(Sleep sleep, SleepInput input, User actor, DateTimeOffset now)

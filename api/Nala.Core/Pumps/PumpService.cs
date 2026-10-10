@@ -1,5 +1,5 @@
-using Nala.Core.Babies;
 using Nala.Core.Entries;
+using Nala.Core.Families;
 using Nala.Core.Users;
 
 namespace Nala.Core.Pumps;
@@ -10,6 +10,9 @@ public abstract record CreatePumpResult
 
     /// <summary>A session with this id exists already (a re-sent request): it is returned unchanged.</summary>
     public sealed record AlreadyExists(PumpEntry Entry) : CreatePumpResult;
+
+    /// <summary>The id belongs to an entry of a baby outside the caller's families: it is left unchanged.</summary>
+    public sealed record NotFound : CreatePumpResult;
 
     public sealed record BabyNotFound : CreatePumpResult;
 
@@ -45,14 +48,15 @@ public abstract record ListPumpsResult
 }
 
 /// <summary>
-/// A baby's pumping sessions (spec 08), each with a single Start / Stop timer (one live session per baby). Any member can add,
-/// edit and delete any session.
+/// A baby's pumping sessions (spec 08), each with a single Start / Stop timer (one live session per baby). Any member of the baby's
+/// family can add, edit and delete any session; outside the caller's families, babies and sessions answer as unknown
+/// (<see cref="FamilyAccess"/>).
 /// </summary>
-public class PumpService(IPumpRepository pumps, IBabyRepository babies, TimeProvider time)
+public class PumpService(IPumpRepository pumps, FamilyAccess access, TimeProvider time)
 {
     private readonly EntryTimer<Pump, PumpEntry> _timer = new(
         pumps,
-        babies,
+        access,
         time,
         e => e.Pump,
         n => new Pump { Id = n.Id, BabyId = n.BabyId, StartTime = n.StartTime, LoggedByUserId = n.LoggedByUserId, CreatedAt = n.CreatedAt });
@@ -65,7 +69,9 @@ public class PumpService(IPumpRepository pumps, IBabyRepository babies, TimeProv
     {
         if (await pumps.GetEntryAsync(id, cancellationToken) is { } existing)
         {
-            return new CreatePumpResult.AlreadyExists(existing);
+            return await access.ReachesBabyAsync(actor, existing.Pump.BabyId, cancellationToken)
+                ? new CreatePumpResult.AlreadyExists(existing)
+                : new CreatePumpResult.NotFound();
         }
 
         var now = time.GetUtcNow();
@@ -75,7 +81,7 @@ public class PumpService(IPumpRepository pumps, IBabyRepository babies, TimeProv
             return new CreatePumpResult.Invalid(errors);
         }
 
-        if (await babies.GetAsync(babyId, cancellationToken) is null)
+        if (!await access.ReachesBabyAsync(actor, babyId, cancellationToken))
         {
             return new CreatePumpResult.BabyNotFound();
         }
@@ -93,7 +99,7 @@ public class PumpService(IPumpRepository pumps, IBabyRepository babies, TimeProv
     public async Task<UpdatePumpResult> UpdateAsync(User actor, Guid id, PumpInput input, CancellationToken cancellationToken = default)
     {
         var pump = await pumps.GetAsync(id, cancellationToken);
-        if (pump is null)
+        if (pump is null || !await access.ReachesBabyAsync(actor, pump.BabyId, cancellationToken))
         {
             return new UpdatePumpResult.NotFound();
         }
@@ -110,14 +116,16 @@ public class PumpService(IPumpRepository pumps, IBabyRepository babies, TimeProv
         return new UpdatePumpResult.Updated((await pumps.GetEntryAsync(id, cancellationToken))!);
     }
 
-    /// <summary>The session with who logged and last edited it; null when unknown.</summary>
-    public Task<PumpEntry?> GetAsync(Guid id, CancellationToken cancellationToken = default) =>
-        pumps.GetEntryAsync(id, cancellationToken);
+    /// <summary>The session with who logged and last edited it; null when unknown or outside the caller's families.</summary>
+    public async Task<PumpEntry?> GetAsync(User user, Guid id, CancellationToken cancellationToken = default) =>
+        await pumps.GetEntryAsync(id, cancellationToken) is { } entry && await access.ReachesBabyAsync(user, entry.Pump.BabyId, cancellationToken)
+            ? entry
+            : null;
 
-    public async Task<DeletePumpResult> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<DeletePumpResult> DeleteAsync(User actor, Guid id, CancellationToken cancellationToken = default)
     {
         var pump = await pumps.GetAsync(id, cancellationToken);
-        if (pump is null)
+        if (pump is null || !await access.ReachesBabyAsync(actor, pump.BabyId, cancellationToken))
         {
             return new DeletePumpResult.NotFound();
         }
@@ -127,7 +135,7 @@ public class PumpService(IPumpRepository pumps, IBabyRepository babies, TimeProv
     }
 
     /// <summary>One page of the baby's sessions, newest first (see <see cref="EntryPaging"/>).</summary>
-    public async Task<ListPumpsResult> ListAsync(Guid babyId, string? cursor, int? limit, CancellationToken cancellationToken = default)
+    public async Task<ListPumpsResult> ListAsync(User user, Guid babyId, string? cursor, int? limit, CancellationToken cancellationToken = default)
     {
         EntryCursor? after = null;
         if (cursor is not null && (after = EntryCursor.TryDecode(cursor)) is null)
@@ -135,7 +143,7 @@ public class PumpService(IPumpRepository pumps, IBabyRepository babies, TimeProv
             return new ListPumpsResult.InvalidCursor();
         }
 
-        if (await babies.GetAsync(babyId, cancellationToken) is null)
+        if (!await access.ReachesBabyAsync(user, babyId, cancellationToken))
         {
             return new ListPumpsResult.BabyNotFound();
         }
@@ -155,9 +163,9 @@ public class PumpService(IPumpRepository pumps, IBabyRepository babies, TimeProv
     public Task<TimerResult<PumpEntry>> StopAsync(User actor, Guid id, DateTimeOffset? at, CancellationToken cancellationToken = default) =>
         _timer.StopAsync(actor, id, at, cancellationToken);
 
-    /// <summary>Every live session, of every baby (one instance is one family), oldest start first.</summary>
-    public Task<IReadOnlyList<PumpEntry>> ListLiveAsync(CancellationToken cancellationToken = default) =>
-        pumps.ListLiveAsync(cancellationToken);
+    /// <summary>The live sessions of the babies of the caller's families, oldest start first.</summary>
+    public Task<IReadOnlyList<PumpEntry>> ListLiveAsync(User user, CancellationToken cancellationToken = default) =>
+        _timer.ListLiveAsync(user, cancellationToken);
 
     /// <summary>Call only on validated input.</summary>
     private static void Apply(Pump pump, PumpInput input, User actor, DateTimeOffset now)

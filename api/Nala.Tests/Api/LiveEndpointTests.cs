@@ -191,4 +191,52 @@ public class LiveEndpointTests
         Assert.That(feeds.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
         Assert.That(sleeps.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
     }
+
+    [Test]
+    public async Task Live_only_lists_the_callers_families()
+    {
+        var feedId = Guid.NewGuid();
+        var sleepId = Guid.NewGuid();
+        var pumpId = Guid.NewGuid();
+        await StartBreastfeedAsync(feedId, _leaId, 30);
+        await StartSleepAsync(sleepId, _leaId, 20);
+        await StartPumpAsync(pumpId, _leaId, 10);
+        using var carl = await OtherFamily.CreateAsync(_factory);
+        var maxId = await Isolation.AddBabyAsync(carl);
+        var carlsSleep = Guid.NewGuid();
+        var started = await carl.Client.PostAsJsonAsync($"/api/sleeps/{carlsSleep}/start", new { babyId = maxId, at = _now.AddMinutes(-5) });
+        Assert.That(started.StatusCode, Is.EqualTo(HttpStatusCode.Created));
+
+        var ours = await LiveAsync();
+        var theirs = await JsonAsync(await carl.Client.GetAsync("/api/live"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(Ids(ours, "feeds"), Is.EqualTo(new[] { feedId }));
+            Assert.That(Ids(ours, "sleeps"), Is.EqualTo(new[] { sleepId }));
+            Assert.That(Ids(ours, "pumps"), Is.EqualTo(new[] { pumpId }));
+            Assert.That(Ids(theirs, "feeds"), Is.Empty);
+            Assert.That(Ids(theirs, "sleeps"), Is.EqualTo(new[] { carlsSleep }));
+            Assert.That(Ids(theirs, "pumps"), Is.Empty);
+        });
+    }
+
+    /// <summary>Anna, the instance admin, gets nothing more than any user (spec 03, Isolation).</summary>
+    [Test]
+    public async Task The_instance_admin_reaches_no_data_of_another_family()
+    {
+        using var carl = await OtherFamily.CreateAsync(_factory);
+        var maxId = await Isolation.AddBabyAsync(carl);
+        var carlsSleep = Guid.NewGuid();
+        await carl.Client.PostAsJsonAsync($"/api/sleeps/{carlsSleep}/start", new { babyId = maxId, at = _now.AddMinutes(-5) });
+
+        var babies = await JsonAsync(await _admin.GetAsync("/api/babies"));
+
+        Assert.That(babies.EnumerateArray().Select(b => b.GetProperty("id").GetGuid()), Is.EqualTo(new[] { _leaId }));
+        Assert.That(Ids(await LiveAsync(), "sleeps"), Is.Empty);
+        await Isolation.AssertNotFoundAsync(_admin.GetAsync($"/api/babies/{maxId}/sleeps"), "babyNotFound", "list");
+        await Isolation.AssertNotFoundAsync(_admin.GetAsync($"/api/sleeps/{carlsSleep}"), "sleepNotFound", "get");
+        await Isolation.AssertNotFoundAsync(
+            _admin.PostAsJsonAsync($"/api/sleeps/{carlsSleep}/stop", new { at = _now }), "sleepNotFound", "stop");
+    }
 }

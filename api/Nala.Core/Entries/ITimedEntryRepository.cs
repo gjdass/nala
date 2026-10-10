@@ -21,6 +21,6 @@ public interface ITimedEntryRepository<T, TEntry>
     /// <summary>The baby's live entry (no end time); the oldest one when several are live; null when none.</summary>
     Task<TEntry?> GetLiveAsync(Guid babyId, CancellationToken cancellationToken = default);
 
-    /// <summary>Every live entry, of every baby, oldest start first.</summary>
-    Task<IReadOnlyList<TEntry>> ListLiveAsync(CancellationToken cancellationToken = default);
+    /// <summary>The live entries of the given babies, oldest start first.</summary>
+    Task<IReadOnlyList<TEntry>> ListLiveAsync(IReadOnlyCollection<Guid> babyIds, CancellationToken cancellationToken = default);
 }

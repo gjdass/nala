@@ -33,7 +33,7 @@ public sealed record DiaperResponse(
 /// <summary>Newest first; <c>Next</c> is the cursor of the following page, null after the last one.</summary>
 public sealed record DiaperPageResponse(IEnumerable<DiaperResponse> Entries, string? Next);
 
-/// <summary>A baby's diapers (spec 07). Every member may add, edit and delete any diaper (fallback session policy).</summary>
+/// <summary>A baby's diapers (spec 07). Every member of the baby's family may add, edit and delete any diaper (fallback session policy, family check in Core).</summary>
 public static class DiaperEndpoints
 {
     public static IServiceCollection AddNalaDiapers(this IServiceCollection services) =>
@@ -76,13 +76,14 @@ public static class DiaperEndpoints
         {
             CreateDiaperResult.Created created => Results.Created($"/api/diapers/{created.Entry.Diaper.Id}", ToResponse(created.Entry)),
             CreateDiaperResult.AlreadyExists existing => Results.Ok(ToResponse(existing.Entry)),
+            CreateDiaperResult.NotFound => DiaperNotFound(),
             CreateDiaperResult.Invalid invalid => AuthEndpoints.ValidationProblem(invalid.Errors),
             _ => BabyNotFound(),
         };
     }
 
-    private static async Task<IResult> GetAsync(Guid id, DiaperService diapers, CancellationToken cancellationToken) =>
-        await diapers.GetAsync(id, cancellationToken) is { } entry ? Results.Ok(ToResponse(entry)) : DiaperNotFound();
+    private static async Task<IResult> GetAsync(Guid id, DiaperService diapers, HttpContext context, CancellationToken cancellationToken) =>
+        await diapers.GetAsync(AuthEndpoints.CurrentUser(context)!, id, cancellationToken) is { } entry ? Results.Ok(ToResponse(entry)) : DiaperNotFound();
 
     private static async Task<IResult> UpdateAsync(
         Guid id, UpdateDiaperRequest request, DiaperService diapers, HttpContext context, CancellationToken cancellationToken) =>
@@ -97,12 +98,12 @@ public static class DiaperEndpoints
             _ => DiaperNotFound(),
         };
 
-    private static async Task<IResult> DeleteAsync(Guid id, DiaperService diapers, CancellationToken cancellationToken) =>
-        await diapers.DeleteAsync(id, cancellationToken) is DeleteDiaperResult.Deleted ? Results.NoContent() : DiaperNotFound();
+    private static async Task<IResult> DeleteAsync(Guid id, DiaperService diapers, HttpContext context, CancellationToken cancellationToken) =>
+        await diapers.DeleteAsync(AuthEndpoints.CurrentUser(context)!, id, cancellationToken) is DeleteDiaperResult.Deleted ? Results.NoContent() : DiaperNotFound();
 
     private static async Task<IResult> ListAsync(
-        Guid babyId, string? cursor, int? limit, DiaperService diapers, CancellationToken cancellationToken) =>
-        await diapers.ListAsync(babyId, cursor, limit, cancellationToken) switch
+        Guid babyId, string? cursor, int? limit, DiaperService diapers, HttpContext context, CancellationToken cancellationToken) =>
+        await diapers.ListAsync(AuthEndpoints.CurrentUser(context)!, babyId, cursor, limit, cancellationToken) switch
         {
             ListDiapersResult.Page page => Results.Ok(new DiaperPageResponse(page.Entries.Select(ToResponse), page.Next)),
             ListDiapersResult.InvalidCursor => AuthEndpoints.ValidationProblem(new Dictionary<string, string> { ["cursor"] = "invalid" }),

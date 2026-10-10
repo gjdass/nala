@@ -31,7 +31,7 @@ public sealed record HealthEntryPageResponse(IEnumerable<HealthEntryResponse> En
 /// <summary>A recently given name with the dose of its latest entry (no dose when that entry had none).</summary>
 public sealed record RecentMedicineResponse(string Name, decimal? Amount, string? Unit);
 
-/// <summary>A baby's health entries (spec 09). Every member may add, edit and delete any dose (fallback session policy).</summary>
+/// <summary>A baby's health entries (spec 09). Every member of the baby's family may add, edit and delete any dose (fallback session policy, family check in Core).</summary>
 public static class HealthEntryEndpoints
 {
     public static IServiceCollection AddNalaHealthEntries(this IServiceCollection services) =>
@@ -75,13 +75,14 @@ public static class HealthEntryEndpoints
         {
             CreateHealthEntryResult.Created created => Results.Created($"/api/health-entries/{created.Entry.HealthEntry.Id}", ToResponse(created.Entry)),
             CreateHealthEntryResult.AlreadyExists existing => Results.Ok(ToResponse(existing.Entry)),
+            CreateHealthEntryResult.NotFound => HealthEntryNotFound(),
             CreateHealthEntryResult.Invalid invalid => AuthEndpoints.ValidationProblem(invalid.Errors),
             _ => BabyNotFound(),
         };
     }
 
-    private static async Task<IResult> GetAsync(Guid id, HealthEntryService healthEntries, CancellationToken cancellationToken) =>
-        await healthEntries.GetAsync(id, cancellationToken) is { } entry ? Results.Ok(ToResponse(entry)) : HealthEntryNotFound();
+    private static async Task<IResult> GetAsync(Guid id, HealthEntryService healthEntries, HttpContext context, CancellationToken cancellationToken) =>
+        await healthEntries.GetAsync(AuthEndpoints.CurrentUser(context)!, id, cancellationToken) is { } entry ? Results.Ok(ToResponse(entry)) : HealthEntryNotFound();
 
     private static async Task<IResult> UpdateAsync(
         Guid id, UpdateHealthEntryRequest request, HealthEntryService healthEntries, HttpContext context, CancellationToken cancellationToken) =>
@@ -96,12 +97,12 @@ public static class HealthEntryEndpoints
             _ => HealthEntryNotFound(),
         };
 
-    private static async Task<IResult> DeleteAsync(Guid id, HealthEntryService healthEntries, CancellationToken cancellationToken) =>
-        await healthEntries.DeleteAsync(id, cancellationToken) is DeleteHealthEntryResult.Deleted ? Results.NoContent() : HealthEntryNotFound();
+    private static async Task<IResult> DeleteAsync(Guid id, HealthEntryService healthEntries, HttpContext context, CancellationToken cancellationToken) =>
+        await healthEntries.DeleteAsync(AuthEndpoints.CurrentUser(context)!, id, cancellationToken) is DeleteHealthEntryResult.Deleted ? Results.NoContent() : HealthEntryNotFound();
 
     private static async Task<IResult> ListAsync(
-        Guid babyId, string? cursor, int? limit, HealthEntryService healthEntries, CancellationToken cancellationToken) =>
-        await healthEntries.ListAsync(babyId, cursor, limit, cancellationToken) switch
+        Guid babyId, string? cursor, int? limit, HealthEntryService healthEntries, HttpContext context, CancellationToken cancellationToken) =>
+        await healthEntries.ListAsync(AuthEndpoints.CurrentUser(context)!, babyId, cursor, limit, cancellationToken) switch
         {
             ListHealthEntriesResult.Page page => Results.Ok(new HealthEntryPageResponse(page.Entries.Select(ToResponse), page.Next)),
             ListHealthEntriesResult.InvalidCursor => AuthEndpoints.ValidationProblem(new Dictionary<string, string> { ["cursor"] = "invalid" }),
@@ -109,8 +110,8 @@ public static class HealthEntryEndpoints
         };
 
     /// <summary>At most 5 names, distinct whatever their case, most recently given first.</summary>
-    private static async Task<IResult> RecentAsync(Guid babyId, HealthEntryService healthEntries, CancellationToken cancellationToken) =>
-        await healthEntries.RecentAsync(babyId, cancellationToken) is RecentMedicinesResult.Found found
+    private static async Task<IResult> RecentAsync(Guid babyId, HealthEntryService healthEntries, HttpContext context, CancellationToken cancellationToken) =>
+        await healthEntries.RecentAsync(AuthEndpoints.CurrentUser(context)!, babyId, cancellationToken) is RecentMedicinesResult.Found found
             ? Results.Ok(found.HealthEntries.Select(m => new RecentMedicineResponse(
                 m.Name, m.Amount, m.Unit is { } unit ? HealthEntryFields.Format(unit) : null)))
             : BabyNotFound();

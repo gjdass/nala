@@ -137,7 +137,7 @@ For a section with resource `/api/<entries>` (e.g. `/api/diapers`):
 - `GET /api/babies/{babyId}/<entries>?cursor=&limit=` → `{ entries, next }`, newest first (by the section's time, then id), 20 per page by default, 1–50; the cursor is opaque, a malformed one → 400 `cursor: invalid`. An unknown baby → 404 `{ code: "babyNotFound" }`.
 - Each entry carries `loggedBy` and `updatedBy` (`{ id, displayName }`). Fields of another kind are ignored and returned null.
 - Validation problems (400) are keyed by field, with codes. Every section has `id` / `babyId` `required`, its time `required`, `notes` `tooLong` (over 1000).
-- Any signed-in member of the baby's family (session fallback policy, then 03's shared family check). For anyone else, the baby or entry answers as unknown: the same 404 and code (03, Family isolation); an id belonging to another family's entry is never re-sent, edited, started or stopped.
+- Any signed-in member of the baby's family (session fallback policy, then 03's shared family check). For anyone else, the baby or entry answers as unknown: the same 404 and code (03, Family isolation). An id belonging to another family's entry is never re-sent, edited, started or stopped: creating, re-sending or starting with it answers 404 `{ code: "<entry>NotFound" }` and leaves that entry unchanged.
 - Shared Core code in `Nala.Core/Entries` (`UserName`, `EntryCursor`, `EntryFields`, `EntryPaging`), `Nala.Api/Entries` (`UserNameResponse`); web `core/entries` (`UserName`, `EntryResult` / `EntryDeleteResult`, `toEntryResult` / `toDeleteResult`).
 
 ### Times

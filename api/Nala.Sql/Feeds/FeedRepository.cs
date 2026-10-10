@@ -74,9 +74,10 @@ public class FeedRepository(NalaDbContext db) : IFeedRepository
             .Select(f => f.Segments.OrderByDescending(s => s.StartedAt).Select(s => (BreastSide?)s.Side).FirstOrDefault())
             .FirstOrDefaultAsync(cancellationToken);
 
-    public async Task<IReadOnlyList<FeedEntry>> ListInProgressBreastfeedsAsync(CancellationToken cancellationToken = default) =>
+    public async Task<IReadOnlyList<FeedEntry>> ListInProgressBreastfeedsAsync(
+        IReadOnlyCollection<Guid> babyIds, CancellationToken cancellationToken = default) =>
         await Entries(db.Set<Feed>()
-                .Where(f => f.Kind == FeedKind.Breastfeed && f.EndTime == null)
+                .Where(f => f.Kind == FeedKind.Breastfeed && f.EndTime == null && babyIds.Contains(f.BabyId))
                 .OrderBy(f => f.StartTime)
                 .ThenBy(f => f.Id))
             .ToListAsync(cancellationToken);

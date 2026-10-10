@@ -28,4 +28,15 @@ public class FamilyAccess(IFamilyRepository families, IBabyRepository babies)
             ? new BabyAccess(baby, role)
             : null;
     }
+
+    /// <summary>
+    /// Whether the baby is one of the caller's families' babies. Entries reach their family through their baby: an entry
+    /// whose baby the caller doesn't reach answers as unknown.
+    /// </summary>
+    public async Task<bool> ReachesBabyAsync(User user, Guid babyId, CancellationToken cancellationToken = default) =>
+        await ForBabyAsync(user, babyId, cancellationToken) is not null;
+
+    /// <summary>The ids of every baby of the caller's families.</summary>
+    public async Task<IReadOnlyList<Guid>> BabyIdsAsync(User user, CancellationToken cancellationToken = default) =>
+        (await babies.ListForUserAsync(user.Id, cancellationToken)).Select(b => b.Id).ToList();
 }

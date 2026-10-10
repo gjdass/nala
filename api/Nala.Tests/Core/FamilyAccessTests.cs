@@ -22,7 +22,7 @@ public class FamilyAccessTests
     public void SetUp()
     {
         _families = new FakeFamilyRepository();
-        _babies = new FakeBabyRepository();
+        _babies = new FakeBabyRepository(_families);
         _access = new FamilyAccess(_families, _babies);
         _anna = NewUser("Anna");
         _ben = NewUser("Ben");
@@ -86,5 +86,27 @@ public class FamilyAccessTests
             Assert.That(await _access.ForBabyAsync(_anna, zoe.Id), Is.Null);
             Assert.That(await _access.ForBabyAsync(_anna, Guid.NewGuid()), Is.Null);
         });
+    }
+
+    [Test]
+    public async Task ReachesBaby_only_for_the_babies_of_the_callers_families()
+    {
+        var lea = AddBaby(_martins);
+        var max = AddBaby(_others);
+
+        Assert.That(await _access.ReachesBabyAsync(_ben, lea.Id), Is.True);
+        Assert.That(await _access.ReachesBabyAsync(_ben, max.Id), Is.False);
+        Assert.That(await _access.ReachesBabyAsync(_ben, Guid.NewGuid()), Is.False);
+    }
+
+    [Test]
+    public async Task BabyIds_are_the_babies_of_the_callers_families()
+    {
+        var lea = AddBaby(_martins);
+        AddBaby(_others);
+        var tom = AddBaby(_families.Seed("Grandparents", Now, _carl, _anna));
+
+        Assert.That(await _access.BabyIdsAsync(_anna), Is.EquivalentTo(new[] { lea.Id, tom.Id }));
+        Assert.That(await _access.BabyIdsAsync(_ben), Is.EqualTo(new[] { lea.Id }));
     }
 }

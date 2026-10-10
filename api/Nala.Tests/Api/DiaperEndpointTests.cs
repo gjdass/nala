@@ -46,16 +46,18 @@ public class DiaperEndpointTests
         await _factory.DisposeAsync();
     }
 
-    /// <summary>Ben joins through an invitation seeded from Anna and is signed in on the returned client.</summary>
+    /// <summary>Ben joins Anna's family through an invitation seeded from Anna and is signed in on the returned client.</summary>
     private async Task<(HttpClient Client, Guid Id)> RegisterBenAsync()
     {
         var token = LinkToken.Generate();
+        var familyId = (await _admin.GetFromJsonAsync<JsonElement[]>("/api/families"))![0].GetProperty("id").GetGuid();
         using (var scope = _factory.Services.CreateScope())
         {
             await scope.ServiceProvider.GetRequiredService<IInvitationRepository>().AddAsync(new Invitation
             {
                 Id = Guid.NewGuid(),
                 TokenHash = LinkToken.Hash(token),
+                FamilyId = familyId,
                 CreatedByUserId = _annaId,
                 CreatedAt = _now,
                 ExpiresAt = _now + InvitationPolicy.Lifetime,
@@ -390,5 +392,27 @@ public class DiaperEndpointTests
 
         Assert.That((await anonymous.GetAsync($"/api/babies/{_leaId}/diapers")).StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
         Assert.That((await anonymous.PostAsJsonAsync("/api/diapers", Diaper())).StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
+    }
+
+    [Test]
+    public async Task Another_family_reaches_neither_the_baby_nor_its_diapers()
+    {
+        var id = Guid.NewGuid();
+        await _admin.PostAsJsonAsync("/api/diapers", Diaper(id, notes: "ours"));
+        var stored = await JsonAsync(await _admin.GetAsync($"/api/diapers/{id}"));
+        using var carl = await OtherFamily.CreateAsync(_factory);
+        var maxId = await Isolation.AddBabyAsync(carl);
+        var client = carl.Client;
+
+        await Isolation.AssertNotFoundAsync(client.PostAsJsonAsync("/api/diapers", Diaper()), "babyNotFound", "create on Lea");
+        await Isolation.AssertNotFoundAsync(client.GetAsync($"/api/babies/{_leaId}/diapers"), "babyNotFound", "list");
+        await Isolation.AssertNotFoundAsync(client.GetAsync($"/api/diapers/{id}"), "diaperNotFound", "get");
+        await Isolation.AssertNotFoundAsync(
+            client.PutAsJsonAsync($"/api/diapers/{id}", new { time = _now, wet = true, notes = "theirs" }), "diaperNotFound", "edit");
+        await Isolation.AssertNotFoundAsync(client.DeleteAsync($"/api/diapers/{id}"), "diaperNotFound", "delete");
+        await Isolation.AssertNotFoundAsync(
+            client.PostAsJsonAsync("/api/diapers", Diaper(id, babyId: maxId, notes: "theirs")), "diaperNotFound", "re-send with our id");
+
+        Assert.That((await JsonAsync(await _admin.GetAsync($"/api/diapers/{id}"))).GetRawText(), Is.EqualTo(stored.GetRawText()));
     }
 }

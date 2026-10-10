@@ -1,5 +1,6 @@
 using Nala.Core.Babies;
 using Nala.Core.Entries;
+using Nala.Core.Families;
 using Nala.Core.Users;
 
 namespace Nala.Core.GrowthEntries;
@@ -10,6 +11,9 @@ public abstract record CreateGrowthEntryResult
 
     /// <summary>A growth entry with this id exists already (a re-sent request): it is returned unchanged.</summary>
     public sealed record AlreadyExists(GrowthEntryDetails Entry) : CreateGrowthEntryResult;
+
+    /// <summary>The id belongs to an entry of a baby outside the caller's families: it is left unchanged.</summary>
+    public sealed record NotFound : CreateGrowthEntryResult;
 
     public sealed record BabyNotFound : CreateGrowthEntryResult;
 
@@ -51,8 +55,8 @@ public abstract record LatestGrowthResult
     public sealed record BabyNotFound : LatestGrowthResult;
 }
 
-/// <summary>A baby's growth entries (spec 10). Any member can add, edit and delete any entry.</summary>
-public class GrowthEntryService(IGrowthEntryRepository growthEntries, IBabyRepository babies, TimeProvider time)
+/// <summary>A baby's growth entries (spec 10). Any member of the baby's family can add, edit and delete any entry; outside the caller's families, babies and entries answer as unknown (<see cref="FamilyAccess"/>).</summary>
+public class GrowthEntryService(IGrowthEntryRepository growthEntries, FamilyAccess access, TimeProvider time)
 {
     /// <summary>
     /// Adds a growth entry under the client's id. Re-sending an id that exists already (e.g. a queued request sent twice)
@@ -63,7 +67,9 @@ public class GrowthEntryService(IGrowthEntryRepository growthEntries, IBabyRepos
     {
         if (await growthEntries.GetEntryAsync(id, cancellationToken) is { } existing)
         {
-            return new CreateGrowthEntryResult.AlreadyExists(existing);
+            return await access.ReachesBabyAsync(actor, existing.GrowthEntry.BabyId, cancellationToken)
+                ? new CreateGrowthEntryResult.AlreadyExists(existing)
+                : new CreateGrowthEntryResult.NotFound();
         }
 
         var kindErrors = GrowthEntryFields.ValidateKind(kind);
@@ -73,7 +79,7 @@ public class GrowthEntryService(IGrowthEntryRepository growthEntries, IBabyRepos
         }
 
         // The date is checked against the baby's birth date, so the baby is needed first.
-        if (await babies.GetAsync(babyId, cancellationToken) is not { } baby)
+        if (await access.ForBabyAsync(actor, babyId, cancellationToken) is not { Baby: var baby })
         {
             return new CreateGrowthEntryResult.BabyNotFound();
         }
@@ -96,13 +102,11 @@ public class GrowthEntryService(IGrowthEntryRepository growthEntries, IBabyRepos
     public async Task<UpdateGrowthEntryResult> UpdateAsync(User actor, Guid id, GrowthEntryInput input, CancellationToken cancellationToken = default)
     {
         var growthEntry = await growthEntries.GetAsync(id, cancellationToken);
-        if (growthEntry is null)
+        if (growthEntry is null || await access.ForBabyAsync(actor, growthEntry.BabyId, cancellationToken) is not { Baby: var baby })
         {
             return new UpdateGrowthEntryResult.NotFound();
         }
 
-        // A baby's entries are deleted with it, so the baby of an entry always exists.
-        var baby = (await babies.GetAsync(growthEntry.BabyId, cancellationToken))!;
         var now = time.GetUtcNow();
         var errors = GrowthEntryFields.Validate(growthEntry.Kind, input, baby.BirthDate);
         if (errors.Count > 0)
@@ -115,14 +119,16 @@ public class GrowthEntryService(IGrowthEntryRepository growthEntries, IBabyRepos
         return new UpdateGrowthEntryResult.Updated((await growthEntries.GetEntryAsync(id, cancellationToken))!);
     }
 
-    /// <summary>The growth entry with who logged and last edited it; null when unknown.</summary>
-    public Task<GrowthEntryDetails?> GetAsync(Guid id, CancellationToken cancellationToken = default) =>
-        growthEntries.GetEntryAsync(id, cancellationToken);
+    /// <summary>The growth entry with who logged and last edited it; null when unknown or outside the caller's families.</summary>
+    public async Task<GrowthEntryDetails?> GetAsync(User user, Guid id, CancellationToken cancellationToken = default) =>
+        await growthEntries.GetEntryAsync(id, cancellationToken) is { } entry && await access.ReachesBabyAsync(user, entry.GrowthEntry.BabyId, cancellationToken)
+            ? entry
+            : null;
 
-    public async Task<DeleteGrowthEntryResult> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<DeleteGrowthEntryResult> DeleteAsync(User actor, Guid id, CancellationToken cancellationToken = default)
     {
         var growthEntry = await growthEntries.GetAsync(id, cancellationToken);
-        if (growthEntry is null)
+        if (growthEntry is null || !await access.ReachesBabyAsync(actor, growthEntry.BabyId, cancellationToken))
         {
             return new DeleteGrowthEntryResult.NotFound();
         }
@@ -132,7 +138,7 @@ public class GrowthEntryService(IGrowthEntryRepository growthEntries, IBabyRepos
     }
 
     /// <summary>One page of the baby's growth entries, newest date first, then newest created (see <see cref="EntryPaging"/>).</summary>
-    public async Task<ListGrowthEntriesResult> ListAsync(Guid babyId, string? cursor, int? limit, CancellationToken cancellationToken = default)
+    public async Task<ListGrowthEntriesResult> ListAsync(User user, Guid babyId, string? cursor, int? limit, CancellationToken cancellationToken = default)
     {
         GrowthEntryCursor? after = null;
         if (cursor is not null && (after = GrowthEntryCursor.TryDecode(cursor)) is null)
@@ -140,7 +146,7 @@ public class GrowthEntryService(IGrowthEntryRepository growthEntries, IBabyRepos
             return new ListGrowthEntriesResult.InvalidCursor();
         }
 
-        if (await babies.GetAsync(babyId, cancellationToken) is null)
+        if (!await access.ReachesBabyAsync(user, babyId, cancellationToken))
         {
             return new ListGrowthEntriesResult.BabyNotFound();
         }
@@ -157,9 +163,9 @@ public class GrowthEntryService(IGrowthEntryRepository growthEntries, IBabyRepos
     /// Each measure from the baby's most recent entry that has it, else from its birth fields (dated with the birth date,
     /// <see cref="LatestMeasure.Birth"/> true), else null.
     /// </summary>
-    public async Task<LatestGrowthResult> LatestAsync(Guid babyId, CancellationToken cancellationToken = default)
+    public async Task<LatestGrowthResult> LatestAsync(User user, Guid babyId, CancellationToken cancellationToken = default)
     {
-        if (await babies.GetAsync(babyId, cancellationToken) is not { } baby)
+        if (await access.ForBabyAsync(user, babyId, cancellationToken) is not { Baby: var baby })
         {
             return new LatestGrowthResult.BabyNotFound();
         }

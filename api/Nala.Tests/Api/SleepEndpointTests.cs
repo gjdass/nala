@@ -46,16 +46,18 @@ public class SleepEndpointTests
         await _factory.DisposeAsync();
     }
 
-    /// <summary>Ben joins through an invitation seeded from Anna and is signed in on the returned client.</summary>
+    /// <summary>Ben joins Anna's family through an invitation seeded from Anna and is signed in on the returned client.</summary>
     private async Task<(HttpClient Client, Guid Id)> RegisterBenAsync()
     {
         var token = LinkToken.Generate();
+        var familyId = (await _admin.GetFromJsonAsync<JsonElement[]>("/api/families"))![0].GetProperty("id").GetGuid();
         using (var scope = _factory.Services.CreateScope())
         {
             await scope.ServiceProvider.GetRequiredService<IInvitationRepository>().AddAsync(new Invitation
             {
                 Id = Guid.NewGuid(),
                 TokenHash = LinkToken.Hash(token),
+                FamilyId = familyId,
                 CreatedByUserId = _annaId,
                 CreatedAt = _now,
                 ExpiresAt = _now + InvitationPolicy.Lifetime,
@@ -311,6 +313,38 @@ public class SleepEndpointTests
 
         Assert.That((await anonymous.GetAsync($"/api/babies/{_leaId}/sleeps")).StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
         Assert.That((await anonymous.PostAsJsonAsync("/api/sleeps", Sleep())).StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
+    }
+
+    [Test]
+    public async Task Another_family_reaches_neither_the_baby_nor_its_sleeps()
+    {
+        var id = Guid.NewGuid();
+        await _admin.PostAsJsonAsync("/api/sleeps", Sleep(id, notes: "ours"));
+        var liveId = Guid.NewGuid();
+        await StartAsync(liveId, minutesAgo: 30);
+        var stored = await JsonAsync(await _admin.GetAsync($"/api/sleeps/{id}"));
+        var live = await JsonAsync(await _admin.GetAsync($"/api/sleeps/{liveId}"));
+        using var carl = await OtherFamily.CreateAsync(_factory);
+        var maxId = await Isolation.AddBabyAsync(carl);
+        var client = carl.Client;
+
+        await Isolation.AssertNotFoundAsync(client.PostAsJsonAsync("/api/sleeps", Sleep()), "babyNotFound", "create on Lea");
+        await Isolation.AssertNotFoundAsync(client.GetAsync($"/api/babies/{_leaId}/sleeps"), "babyNotFound", "list");
+        await Isolation.AssertNotFoundAsync(
+            client.PostAsJsonAsync($"/api/sleeps/{Guid.NewGuid()}/start", new { babyId = _leaId, at = _now }), "babyNotFound", "start on Lea");
+        await Isolation.AssertNotFoundAsync(client.GetAsync($"/api/sleeps/{id}"), "sleepNotFound", "get");
+        await Isolation.AssertNotFoundAsync(
+            client.PutAsJsonAsync($"/api/sleeps/{id}", new { startTime = _now.AddMinutes(-90), endTime = _now, notes = "theirs" }), "sleepNotFound", "edit");
+        await Isolation.AssertNotFoundAsync(client.DeleteAsync($"/api/sleeps/{id}"), "sleepNotFound", "delete");
+        await Isolation.AssertNotFoundAsync(
+            client.PostAsJsonAsync("/api/sleeps", Sleep(id, babyId: maxId, notes: "theirs")), "sleepNotFound", "re-send with our id");
+        await Isolation.AssertNotFoundAsync(
+            client.PostAsJsonAsync($"/api/sleeps/{id}/start", new { babyId = maxId, at = _now }), "sleepNotFound", "start our stopped sleep");
+        await Isolation.AssertNotFoundAsync(
+            client.PostAsJsonAsync($"/api/sleeps/{liveId}/stop", new { at = _now }), "sleepNotFound", "stop our live sleep");
+
+        Assert.That((await JsonAsync(await _admin.GetAsync($"/api/sleeps/{id}"))).GetRawText(), Is.EqualTo(stored.GetRawText()));
+        Assert.That((await JsonAsync(await _admin.GetAsync($"/api/sleeps/{liveId}"))).GetRawText(), Is.EqualTo(live.GetRawText()));
     }
 
     private Task<HttpResponseMessage> StartAsync(Guid id, int minutesAgo = 0, Guid? babyId = null, bool? queued = null) =>

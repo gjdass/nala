@@ -56,9 +56,10 @@ public class FakeFeedRepository : IFeedRepository
     public Task<BreastSide?> GetLastBreastSideAsync(Guid babyId, CancellationToken cancellationToken = default) =>
         Task.FromResult(Breastfeeds(babyId).Where(f => f.EndTime is not null).Select(Breastfeed.EndedOnSide).FirstOrDefault());
 
-    public Task<IReadOnlyList<FeedEntry>> ListInProgressBreastfeedsAsync(CancellationToken cancellationToken = default) =>
+    public Task<IReadOnlyList<FeedEntry>> ListInProgressBreastfeedsAsync(
+        IReadOnlyCollection<Guid> babyIds, CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<FeedEntry>>(Feeds
-            .Where(f => f.Kind == FeedKind.Breastfeed && f.EndTime is null)
+            .Where(f => f.Kind == FeedKind.Breastfeed && f.EndTime is null && babyIds.Contains(f.BabyId))
             .OrderBy(f => f.StartTime)
             .Select(ToEntry)
             .ToList());

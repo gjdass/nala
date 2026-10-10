@@ -1,5 +1,6 @@
 using Nala.Core.Babies;
 using Nala.Core.Entries;
+using Nala.Core.Families;
 using Nala.Core.Pumps;
 using Nala.Core.Users;
 using Nala.Tests.Support;
@@ -12,24 +13,33 @@ public class PumpServiceTests
     private static readonly DateTimeOffset Now = new(2026, 10, 3, 12, 0, 0, TimeSpan.Zero);
 
     private FakePumpRepository _pumps = null!;
+    private FakeFamilyRepository _families = null!;
     private FakeBabyRepository _babies = null!;
     private FixedTimeProvider _time = null!;
     private PumpService _service = null!;
     private User _anna = null!;
     private User _ben = null!;
+    private User _carl = null!;
     private Baby _lea = null!;
+    private Baby _max = null!;
 
     [SetUp]
     public void SetUp()
     {
         _pumps = new FakePumpRepository();
-        _babies = new FakeBabyRepository();
+        _families = new FakeFamilyRepository();
+        _babies = new FakeBabyRepository(_families);
         _time = new FixedTimeProvider(Now);
-        _service = new PumpService(_pumps, _babies, _time);
+        _service = new PumpService(_pumps, new FamilyAccess(_families, _babies), _time);
         _anna = NewUser("Anna");
         _ben = NewUser("Ben");
-        _lea = new Baby { Id = Guid.NewGuid(), Name = "Lea", BirthDate = new DateOnly(2026, 9, 1), CreatedAt = Now };
+        _carl = NewUser("Carl");
+        var martins = _families.Seed("Martins", Now, _anna, _ben);
+        var others = _families.Seed("Others", Now, _carl);
+        _lea = new Baby { Id = Guid.NewGuid(), FamilyId = martins.Id, Name = "Lea", BirthDate = new DateOnly(2026, 9, 1), CreatedAt = Now };
+        _max = new Baby { Id = Guid.NewGuid(), FamilyId = others.Id, Name = "Max", BirthDate = new DateOnly(2026, 9, 1), CreatedAt = Now };
         _babies.Babies.Add(_lea);
+        _babies.Babies.Add(_max);
     }
 
     private User NewUser(string name)
@@ -154,9 +164,9 @@ public class PumpServiceTests
     {
         var created = await CreateAsync(_anna, Pump());
 
-        Assert.That(await _service.DeleteAsync(created.Pump.Id), Is.TypeOf<DeletePumpResult.Deleted>());
+        Assert.That(await _service.DeleteAsync(_anna, created.Pump.Id), Is.TypeOf<DeletePumpResult.Deleted>());
         Assert.That(_pumps.Pumps, Is.Empty);
-        Assert.That(await _service.DeleteAsync(created.Pump.Id), Is.TypeOf<DeletePumpResult.NotFound>());
+        Assert.That(await _service.DeleteAsync(_anna, created.Pump.Id), Is.TypeOf<DeletePumpResult.NotFound>());
     }
 
     [Test]
@@ -164,8 +174,8 @@ public class PumpServiceTests
     {
         var created = await CreateAsync(_anna, Pump());
 
-        Assert.That((await _service.GetAsync(created.Pump.Id))?.Pump.Id, Is.EqualTo(created.Pump.Id));
-        Assert.That(await _service.GetAsync(Guid.NewGuid()), Is.Null);
+        Assert.That((await _service.GetAsync(_anna, created.Pump.Id))?.Pump.Id, Is.EqualTo(created.Pump.Id));
+        Assert.That(await _service.GetAsync(_anna, Guid.NewGuid()), Is.Null);
     }
 
     [Test]
@@ -176,9 +186,9 @@ public class PumpServiceTests
             await CreateAsync(_anna, Pump(startMinutesAgo: i * 100, endMinutesAgo: i * 100 - 20));
         }
 
-        var first = (ListPumpsResult.Page)await _service.ListAsync(_lea.Id, null, 2);
-        var second = (ListPumpsResult.Page)await _service.ListAsync(_lea.Id, first.Next, 2);
-        var last = (ListPumpsResult.Page)await _service.ListAsync(_lea.Id, second.Next, 2);
+        var first = (ListPumpsResult.Page)await _service.ListAsync(_anna, _lea.Id, null, 2);
+        var second = (ListPumpsResult.Page)await _service.ListAsync(_anna, _lea.Id, first.Next, 2);
+        var last = (ListPumpsResult.Page)await _service.ListAsync(_anna, _lea.Id, second.Next, 2);
 
         Assert.Multiple(() =>
         {
@@ -199,18 +209,18 @@ public class PumpServiceTests
             await CreateAsync(_anna, Pump(startMinutesAgo: i * 10 + 5, endMinutesAgo: i * 10));
         }
 
-        var page = (ListPumpsResult.Page)await _service.ListAsync(_lea.Id, null, limit);
+        var page = (ListPumpsResult.Page)await _service.ListAsync(_anna, _lea.Id, null, limit);
 
         Assert.That(page.Entries, Has.Count.EqualTo(expected));
     }
 
     [Test]
     public async Task A_malformed_cursor_is_refused() =>
-        Assert.That(await _service.ListAsync(_lea.Id, "not a cursor", null), Is.TypeOf<ListPumpsResult.InvalidCursor>());
+        Assert.That(await _service.ListAsync(_anna, _lea.Id, "not a cursor", null), Is.TypeOf<ListPumpsResult.InvalidCursor>());
 
     [Test]
     public async Task Listing_an_unknown_baby_is_refused() =>
-        Assert.That(await _service.ListAsync(Guid.NewGuid(), null, null), Is.TypeOf<ListPumpsResult.BabyNotFound>());
+        Assert.That(await _service.ListAsync(_anna, Guid.NewGuid(), null, null), Is.TypeOf<ListPumpsResult.BabyNotFound>());
 
     private async Task<PumpTimerResult> StartAsync(Guid id, DateTimeOffset? at = null, Baby? baby = null, bool queued = false, User? actor = null) =>
         await _service.StartAsync(actor ?? _anna, id, (baby ?? _lea).Id, at ?? Now, queued);
@@ -224,7 +234,7 @@ public class PumpServiceTests
 
     private Baby NewBaby(string name)
     {
-        var baby = new Baby { Id = Guid.NewGuid(), Name = name, BirthDate = new DateOnly(2026, 9, 1), CreatedAt = Now };
+        var baby = new Baby { Id = Guid.NewGuid(), FamilyId = _lea.FamilyId, Name = name, BirthDate = new DateOnly(2026, 9, 1), CreatedAt = Now };
         _babies.Babies.Add(baby);
         return baby;
     }
@@ -460,8 +470,47 @@ public class PumpServiceTests
         await StartAsync(tomId, Now.AddMinutes(-50), baby: NewBaby("Tom"));
         await CreateAsync(_anna, Pump());
 
-        var live = await _service.ListLiveAsync();
+        var live = await _service.ListLiveAsync(_anna);
 
         Assert.That(live.Select(e => e.Pump.Id), Is.EqualTo(new[] { tomId, recent.Id }));
+    }
+
+    [Test]
+    public async Task Another_family_reaches_neither_the_baby_nor_its_sessions()
+    {
+        var stopped = await CreateAsync(_anna, Pump(notes: "ours"));
+        var liveId = Guid.NewGuid();
+        await _service.StartAsync(_anna, liveId, _lea.Id, Now.AddMinutes(-5));
+        var id = stopped.Pump.Id;
+
+        Assert.That(await _service.CreateAsync(_carl, Guid.NewGuid(), _lea.Id, Pump()), Is.TypeOf<CreatePumpResult.BabyNotFound>());
+        Assert.That(await _service.ListAsync(_carl, _lea.Id, null, null), Is.TypeOf<ListPumpsResult.BabyNotFound>());
+        Assert.That(await _service.StartAsync(_carl, Guid.NewGuid(), _lea.Id, Now), Is.TypeOf<PumpTimerResult.BabyNotFound>());
+        Assert.That(await _service.GetAsync(_carl, id), Is.Null);
+        Assert.That(await _service.UpdateAsync(_carl, id, Pump(notes: "theirs")), Is.TypeOf<UpdatePumpResult.NotFound>());
+        Assert.That(await _service.DeleteAsync(_carl, id), Is.TypeOf<DeletePumpResult.NotFound>());
+        Assert.That(await _service.CreateAsync(_carl, id, _max.Id, Pump(notes: "theirs")), Is.TypeOf<CreatePumpResult.NotFound>());
+        Assert.That(await _service.StartAsync(_carl, id, _max.Id, Now), Is.TypeOf<PumpTimerResult.NotFound>());
+        Assert.That(await _service.StopAsync(_carl, liveId, Now), Is.TypeOf<PumpTimerResult.NotFound>());
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(_pumps.Pumps, Has.Count.EqualTo(2));
+            Assert.That(_pumps.Pumps.Single(e => e.Id == id).Notes, Is.EqualTo("ours"));
+            Assert.That(_pumps.Pumps.Single(e => e.Id == id).EndTime, Is.Not.Null);
+            Assert.That(_pumps.Pumps.Single(e => e.Id == liveId).EndTime, Is.Null);
+        });
+    }
+
+    [Test]
+    public async Task Live_sessions_are_only_those_of_the_callers_families()
+    {
+        var ours = Guid.NewGuid();
+        var theirs = Guid.NewGuid();
+        await _service.StartAsync(_anna, ours, _lea.Id, Now.AddMinutes(-5));
+        await _service.StartAsync(_carl, theirs, _max.Id, Now.AddMinutes(-3));
+
+        Assert.That((await _service.ListLiveAsync(_anna)).Select(e => e.Pump.Id), Is.EqualTo(new[] { ours }));
+        Assert.That((await _service.ListLiveAsync(_carl)).Select(e => e.Pump.Id), Is.EqualTo(new[] { theirs }));
     }
 }

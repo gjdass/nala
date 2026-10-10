@@ -1,4 +1,4 @@
-using Nala.Core.Babies;
+using Nala.Core.Families;
 using Nala.Core.Users;
 
 namespace Nala.Core.Entries;
@@ -26,7 +26,7 @@ public abstract record TimerResult<TEntry>
 /// </summary>
 public class EntryTimer<T, TEntry>(
     ITimedEntryRepository<T, TEntry> entries,
-    IBabyRepository babies,
+    FamilyAccess access,
     TimeProvider time,
     Func<TEntry, T> entity,
     Func<NewTimedEntry, T> create)
@@ -38,7 +38,7 @@ public class EntryTimer<T, TEntry>(
     /// time = <paramref name="at"/>); a stopped one becomes live again (its end time is cleared, so its duration runs from its
     /// start time again); a live one is unchanged. Making an entry live is refused while another entry of the baby is live,
     /// unless the start was <paramref name="queued"/> offline: it is then kept as a separate entry, so nothing logged
-    /// offline is lost.
+    /// offline is lost. An entry of a baby outside the caller's families is not found, and stays unchanged.
     /// </summary>
     public async Task<TimerResult<TEntry>> StartAsync(
         User actor, Guid id, Guid babyId, DateTimeOffset? at, bool queued = false, CancellationToken cancellationToken = default)
@@ -51,7 +51,12 @@ public class EntryTimer<T, TEntry>(
         }
 
         var entry = await entries.GetAsync(id, cancellationToken);
-        if (entry is null && await babies.GetAsync(babyId, cancellationToken) is null)
+        if (entry is not null && !await access.ReachesBabyAsync(actor, entry.BabyId, cancellationToken))
+        {
+            return new TimerResult<TEntry>.NotFound();
+        }
+
+        if (entry is null && !await access.ReachesBabyAsync(actor, babyId, cancellationToken))
         {
             return new TimerResult<TEntry>.BabyNotFound();
         }
@@ -101,7 +106,8 @@ public class EntryTimer<T, TEntry>(
             return new TimerResult<TEntry>.Invalid(errors);
         }
 
-        if (await entries.GetAsync(id, cancellationToken) is not { } entry)
+        if (await entries.GetAsync(id, cancellationToken) is not { } entry
+            || !await access.ReachesBabyAsync(actor, entry.BabyId, cancellationToken))
         {
             return new TimerResult<TEntry>.NotFound();
         }
@@ -121,6 +127,10 @@ public class EntryTimer<T, TEntry>(
         await entries.UpdateAsync(entry, cancellationToken);
         return await UpdatedAsync(entry, cancellationToken);
     }
+
+    /// <summary>The live entries of the babies of the caller's families, oldest start first.</summary>
+    public async Task<IReadOnlyList<TEntry>> ListLiveAsync(User user, CancellationToken cancellationToken = default) =>
+        await entries.ListLiveAsync(await access.BabyIdsAsync(user, cancellationToken), cancellationToken);
 
     private static TimerResult<TEntry>.Invalid InvalidAt() => new(new Dictionary<string, string> { ["at"] = "invalid" });
 

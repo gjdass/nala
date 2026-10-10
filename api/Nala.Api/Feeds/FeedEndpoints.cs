@@ -85,7 +85,7 @@ public sealed record BottleDefaultsResponse(string? MilkType, LastAmountsRespons
 /// <summary>The live breastfeed (<c>InProgress</c>, null when none) and the side the latest one that isn't live ended on.</summary>
 public sealed record BreastfeedStateResponse(FeedResponse? InProgress, string? LastSide);
 
-/// <summary>A baby's feeds (spec 05). Every member may add, edit and delete any feed (fallback session policy).</summary>
+/// <summary>A baby's feeds (spec 05). Every member of the baby's family may add, edit and delete any feed (fallback session policy, family check in Core).</summary>
 public static class FeedEndpoints
 {
     public static IServiceCollection AddNalaFeeds(this IServiceCollection services) =>
@@ -135,14 +135,15 @@ public static class FeedEndpoints
         {
             CreateFeedResult.Created created => Results.Created($"/api/feeds/{created.Entry.Feed.Id}", ToResponse(created.Entry)),
             CreateFeedResult.AlreadyExists existing => Results.Ok(ToResponse(existing.Entry)),
+            CreateFeedResult.NotFound => FeedNotFound(),
             CreateFeedResult.Invalid invalid => AuthEndpoints.ValidationProblem(invalid.Errors),
             _ => BabyNotFound(),
         };
     }
 
     /// <summary>One feed, e.g. for a sheet whose live breastfeed was stopped or deleted on another device.</summary>
-    private static async Task<IResult> GetAsync(Guid id, FeedService feeds, CancellationToken cancellationToken) =>
-        await feeds.GetAsync(id, cancellationToken) is { } entry ? Results.Ok(ToResponse(entry)) : FeedNotFound();
+    private static async Task<IResult> GetAsync(Guid id, FeedService feeds, HttpContext context, CancellationToken cancellationToken) =>
+        await feeds.GetAsync(AuthEndpoints.CurrentUser(context)!, id, cancellationToken) is { } entry ? Results.Ok(ToResponse(entry)) : FeedNotFound();
 
     private static async Task<IResult> UpdateAsync(
         Guid id, UpdateFeedRequest request, FeedService feeds, HttpContext context, CancellationToken cancellationToken)
@@ -158,20 +159,20 @@ public static class FeedEndpoints
         };
     }
 
-    private static async Task<IResult> DeleteAsync(Guid id, FeedService feeds, CancellationToken cancellationToken) =>
-        await feeds.DeleteAsync(id, cancellationToken) is DeleteFeedResult.Deleted ? Results.NoContent() : FeedNotFound();
+    private static async Task<IResult> DeleteAsync(Guid id, FeedService feeds, HttpContext context, CancellationToken cancellationToken) =>
+        await feeds.DeleteAsync(AuthEndpoints.CurrentUser(context)!, id, cancellationToken) is DeleteFeedResult.Deleted ? Results.NoContent() : FeedNotFound();
 
     private static async Task<IResult> ListAsync(
-        Guid babyId, string? cursor, int? limit, FeedService feeds, CancellationToken cancellationToken) =>
-        await feeds.ListAsync(babyId, cursor, limit, cancellationToken) switch
+        Guid babyId, string? cursor, int? limit, FeedService feeds, HttpContext context, CancellationToken cancellationToken) =>
+        await feeds.ListAsync(AuthEndpoints.CurrentUser(context)!, babyId, cursor, limit, cancellationToken) switch
         {
             ListFeedsResult.Page page => Results.Ok(new FeedPageResponse(page.Entries.Select(ToResponse), page.Next)),
             ListFeedsResult.InvalidCursor => AuthEndpoints.ValidationProblem(new Dictionary<string, string> { ["cursor"] = "invalid" }),
             _ => BabyNotFound(),
         };
 
-    private static async Task<IResult> BottleDefaultsAsync(Guid babyId, FeedService feeds, CancellationToken cancellationToken) =>
-        await feeds.GetBottleDefaultsAsync(babyId, cancellationToken) is BottleDefaultsResult.Found { Defaults: var defaults }
+    private static async Task<IResult> BottleDefaultsAsync(Guid babyId, FeedService feeds, HttpContext context, CancellationToken cancellationToken) =>
+        await feeds.GetBottleDefaultsAsync(AuthEndpoints.CurrentUser(context)!, babyId, cancellationToken) is BottleDefaultsResult.Found { Defaults: var defaults }
             ? Results.Ok(new BottleDefaultsResponse(
                 defaults.MilkType is { } milkType ? FeedFields.Format(milkType) : null,
                 new LastAmountsResponse(defaults.LastBreastMilkMl, defaults.LastFormulaMl)))
@@ -207,8 +208,8 @@ public static class FeedEndpoints
         Guid id, StopSideRequest request, FeedService feeds, HttpContext context, CancellationToken cancellationToken) =>
         BreastfeedResponse(await feeds.StopSideAsync(AuthEndpoints.CurrentUser(context)!, id, request.At, cancellationToken));
 
-    private static async Task<IResult> BreastfeedStateAsync(Guid babyId, FeedService feeds, CancellationToken cancellationToken) =>
-        await feeds.GetBreastfeedStateAsync(babyId, cancellationToken) is BreastfeedStateResult.Found { State: var state }
+    private static async Task<IResult> BreastfeedStateAsync(Guid babyId, FeedService feeds, HttpContext context, CancellationToken cancellationToken) =>
+        await feeds.GetBreastfeedStateAsync(AuthEndpoints.CurrentUser(context)!, babyId, cancellationToken) is BreastfeedStateResult.Found { State: var state }
             ? Results.Ok(new BreastfeedStateResponse(
                 state.InProgress is { } inProgress ? ToResponse(inProgress) : null,
                 state.LastSide is { } side ? FeedFields.Format(side) : null))

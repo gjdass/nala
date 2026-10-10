@@ -46,16 +46,18 @@ public class FeedEndpointTests
         await _factory.DisposeAsync();
     }
 
-    /// <summary>Ben joins through an invitation seeded from Anna and is signed in on the returned client.</summary>
+    /// <summary>Ben joins Anna's family through an invitation seeded from Anna and is signed in on the returned client.</summary>
     private async Task<(HttpClient Client, Guid Id)> RegisterBenAsync()
     {
         var token = LinkToken.Generate();
+        var familyId = (await _admin.GetFromJsonAsync<JsonElement[]>("/api/families"))![0].GetProperty("id").GetGuid();
         using (var scope = _factory.Services.CreateScope())
         {
             await scope.ServiceProvider.GetRequiredService<IInvitationRepository>().AddAsync(new Invitation
             {
                 Id = Guid.NewGuid(),
                 TokenHash = LinkToken.Hash(token),
+                FamilyId = familyId,
                 CreatedByUserId = _annaId,
                 CreatedAt = _now,
                 ExpiresAt = _now + InvitationPolicy.Lifetime,
@@ -390,6 +392,52 @@ public class FeedEndpointTests
 
         Assert.That((await anonymous.GetAsync($"/api/babies/{_leaId}/feeds")).StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
         Assert.That((await anonymous.PostAsJsonAsync("/api/feeds", Bottle())).StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
+    }
+
+    [Test]
+    public async Task Another_family_reaches_neither_the_baby_nor_its_feeds()
+    {
+        var id = Guid.NewGuid();
+        await _admin.PostAsJsonAsync("/api/feeds", Bottle(id, notes: "ours"));
+        var stoppedId = Guid.NewGuid();
+        await StartSideAsync(_admin, stoppedId, "left", _now.AddMinutes(-90));
+        await _admin.PostAsJsonAsync($"/api/feeds/{stoppedId}/breastfeed/stop", new { at = _now.AddMinutes(-80) });
+        var liveId = Guid.NewGuid();
+        await StartSideAsync(_admin, liveId, "left", _now.AddMinutes(-20));
+        var stored = await JsonAsync(await _admin.GetAsync($"/api/feeds/{id}"));
+        var live = await JsonAsync(await _admin.GetAsync($"/api/feeds/{liveId}"));
+        var stopped = await JsonAsync(await _admin.GetAsync($"/api/feeds/{stoppedId}"));
+        using var carl = await OtherFamily.CreateAsync(_factory);
+        var maxId = await Isolation.AddBabyAsync(carl);
+        var client = carl.Client;
+
+        await Isolation.AssertNotFoundAsync(client.PostAsJsonAsync("/api/feeds", Bottle()), "babyNotFound", "create on Lea");
+        await Isolation.AssertNotFoundAsync(client.GetAsync($"/api/babies/{_leaId}/feeds"), "babyNotFound", "list");
+        await Isolation.AssertNotFoundAsync(client.GetAsync($"/api/babies/{_leaId}/feeds/bottle-defaults"), "babyNotFound", "bottle defaults");
+        await Isolation.AssertNotFoundAsync(client.GetAsync($"/api/babies/{_leaId}/feeds/breastfeed"), "babyNotFound", "breastfeed state");
+        await Isolation.AssertNotFoundAsync(StartSideAsync(client, Guid.NewGuid(), "left", _now), "babyNotFound", "start on Lea");
+        await Isolation.AssertNotFoundAsync(client.GetAsync($"/api/feeds/{id}"), "feedNotFound", "get");
+        await Isolation.AssertNotFoundAsync(
+            client.PutAsJsonAsync($"/api/feeds/{id}", new { startTime = _now, milkType = "formula", amountMl = 10, notes = "theirs" }), "feedNotFound", "edit");
+        await Isolation.AssertNotFoundAsync(client.DeleteAsync($"/api/feeds/{id}"), "feedNotFound", "delete");
+        await Isolation.AssertNotFoundAsync(
+            client.PostAsJsonAsync("/api/feeds", Bottle(id, babyId: maxId, notes: "theirs")), "feedNotFound", "re-send with our id");
+        await Isolation.AssertNotFoundAsync(
+            client.PostAsJsonAsync(
+                $"/api/feeds/{stoppedId}/breastfeed/start", new { babyId = maxId, segmentId = Guid.NewGuid(), side = "right", at = _now }),
+            "feedNotFound",
+            "start our stopped breastfeed");
+        await Isolation.AssertNotFoundAsync(
+            client.PostAsJsonAsync(
+                $"/api/feeds/{liveId}/breastfeed/start", new { babyId = maxId, segmentId = Guid.NewGuid(), side = "right", at = _now }),
+            "feedNotFound",
+            "switch side of our live breastfeed");
+        await Isolation.AssertNotFoundAsync(
+            client.PostAsJsonAsync($"/api/feeds/{liveId}/breastfeed/stop", new { at = _now }), "feedNotFound", "stop our live breastfeed");
+
+        Assert.That((await JsonAsync(await _admin.GetAsync($"/api/feeds/{id}"))).GetRawText(), Is.EqualTo(stored.GetRawText()));
+        Assert.That((await JsonAsync(await _admin.GetAsync($"/api/feeds/{liveId}"))).GetRawText(), Is.EqualTo(live.GetRawText()));
+        Assert.That((await JsonAsync(await _admin.GetAsync($"/api/feeds/{stoppedId}"))).GetRawText(), Is.EqualTo(stopped.GetRawText()));
     }
 
     private Task<HttpResponseMessage> StartSideAsync(

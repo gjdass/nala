@@ -41,7 +41,7 @@ public sealed record PumpResponse(
 /// <summary>Newest first; <c>Next</c> is the cursor of the following page, null after the last one.</summary>
 public sealed record PumpPageResponse(IEnumerable<PumpResponse> Entries, string? Next);
 
-/// <summary>A baby's pumping sessions (spec 08). Every member may add, edit and delete any session (fallback session policy).</summary>
+/// <summary>A baby's pumping sessions (spec 08). Every member of the baby's family may add, edit and delete any session (fallback session policy, family check in Core).</summary>
 public static class PumpEndpoints
 {
     public static IServiceCollection AddNalaPumps(this IServiceCollection services) =>
@@ -86,13 +86,14 @@ public static class PumpEndpoints
         {
             CreatePumpResult.Created created => Results.Created($"/api/pumps/{created.Entry.Pump.Id}", ToResponse(created.Entry)),
             CreatePumpResult.AlreadyExists existing => Results.Ok(ToResponse(existing.Entry)),
+            CreatePumpResult.NotFound => PumpNotFound(),
             CreatePumpResult.Invalid invalid => AuthEndpoints.ValidationProblem(invalid.Errors),
             _ => BabyNotFound(),
         };
     }
 
-    private static async Task<IResult> GetAsync(Guid id, PumpService pumps, CancellationToken cancellationToken) =>
-        await pumps.GetAsync(id, cancellationToken) is { } entry ? Results.Ok(ToResponse(entry)) : PumpNotFound();
+    private static async Task<IResult> GetAsync(Guid id, PumpService pumps, HttpContext context, CancellationToken cancellationToken) =>
+        await pumps.GetAsync(AuthEndpoints.CurrentUser(context)!, id, cancellationToken) is { } entry ? Results.Ok(ToResponse(entry)) : PumpNotFound();
 
     private static async Task<IResult> UpdateAsync(
         Guid id, UpdatePumpRequest request, PumpService pumps, HttpContext context, CancellationToken cancellationToken) =>
@@ -107,12 +108,12 @@ public static class PumpEndpoints
             _ => PumpNotFound(),
         };
 
-    private static async Task<IResult> DeleteAsync(Guid id, PumpService pumps, CancellationToken cancellationToken) =>
-        await pumps.DeleteAsync(id, cancellationToken) is DeletePumpResult.Deleted ? Results.NoContent() : PumpNotFound();
+    private static async Task<IResult> DeleteAsync(Guid id, PumpService pumps, HttpContext context, CancellationToken cancellationToken) =>
+        await pumps.DeleteAsync(AuthEndpoints.CurrentUser(context)!, id, cancellationToken) is DeletePumpResult.Deleted ? Results.NoContent() : PumpNotFound();
 
     private static async Task<IResult> ListAsync(
-        Guid babyId, string? cursor, int? limit, PumpService pumps, CancellationToken cancellationToken) =>
-        await pumps.ListAsync(babyId, cursor, limit, cancellationToken) switch
+        Guid babyId, string? cursor, int? limit, PumpService pumps, HttpContext context, CancellationToken cancellationToken) =>
+        await pumps.ListAsync(AuthEndpoints.CurrentUser(context)!, babyId, cursor, limit, cancellationToken) switch
         {
             ListPumpsResult.Page page => Results.Ok(new PumpPageResponse(page.Entries.Select(ToResponse), page.Next)),
             ListPumpsResult.InvalidCursor => AuthEndpoints.ValidationProblem(new Dictionary<string, string> { ["cursor"] = "invalid" }),

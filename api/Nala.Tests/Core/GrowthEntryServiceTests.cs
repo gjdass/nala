@@ -1,5 +1,6 @@
 using Nala.Core.Babies;
 using Nala.Core.Entries;
+using Nala.Core.Families;
 using Nala.Core.GrowthEntries;
 using Nala.Core.Users;
 using Nala.Tests.Support;
@@ -11,24 +12,33 @@ public class GrowthEntryServiceTests
     private static readonly DateTimeOffset Now = new(2026, 10, 3, 12, 0, 0, TimeSpan.Zero);
 
     private FakeGrowthEntryRepository _growthEntries = null!;
+    private FakeFamilyRepository _families = null!;
     private FakeBabyRepository _babies = null!;
     private FixedTimeProvider _time = null!;
     private GrowthEntryService _service = null!;
     private User _anna = null!;
     private User _ben = null!;
+    private User _carl = null!;
     private Baby _lea = null!;
+    private Baby _max = null!;
 
     [SetUp]
     public void SetUp()
     {
         _growthEntries = new FakeGrowthEntryRepository();
-        _babies = new FakeBabyRepository();
+        _families = new FakeFamilyRepository();
+        _babies = new FakeBabyRepository(_families);
         _time = new FixedTimeProvider(Now);
-        _service = new GrowthEntryService(_growthEntries, _babies, _time);
+        _service = new GrowthEntryService(_growthEntries, new FamilyAccess(_families, _babies), _time);
         _anna = NewUser("Anna");
         _ben = NewUser("Ben");
-        _lea = new Baby { Id = Guid.NewGuid(), Name = "Lea", BirthDate = new DateOnly(2026, 9, 1), CreatedAt = Now };
+        _carl = NewUser("Carl");
+        var martins = _families.Seed("Martins", Now, _anna, _ben);
+        var others = _families.Seed("Others", Now, _carl);
+        _lea = new Baby { Id = Guid.NewGuid(), FamilyId = martins.Id, Name = "Lea", BirthDate = new DateOnly(2026, 9, 1), CreatedAt = Now };
+        _max = new Baby { Id = Guid.NewGuid(), FamilyId = others.Id, Name = "Max", BirthDate = new DateOnly(2026, 9, 1), CreatedAt = Now };
         _babies.Babies.Add(_lea);
+        _babies.Babies.Add(_max);
     }
 
     private User NewUser(string name)
@@ -188,9 +198,9 @@ public class GrowthEntryServiceTests
     {
         var created = await CreateAsync(_anna, Measurement());
 
-        Assert.That(await _service.DeleteAsync(created.GrowthEntry.Id), Is.TypeOf<DeleteGrowthEntryResult.Deleted>());
+        Assert.That(await _service.DeleteAsync(_anna, created.GrowthEntry.Id), Is.TypeOf<DeleteGrowthEntryResult.Deleted>());
         Assert.That(_growthEntries.GrowthEntries, Is.Empty);
-        Assert.That(await _service.DeleteAsync(created.GrowthEntry.Id), Is.TypeOf<DeleteGrowthEntryResult.NotFound>());
+        Assert.That(await _service.DeleteAsync(_anna, created.GrowthEntry.Id), Is.TypeOf<DeleteGrowthEntryResult.NotFound>());
     }
 
     [Test]
@@ -198,8 +208,8 @@ public class GrowthEntryServiceTests
     {
         var created = await CreateAsync(_anna, Measurement());
 
-        Assert.That((await _service.GetAsync(created.GrowthEntry.Id))?.GrowthEntry.Id, Is.EqualTo(created.GrowthEntry.Id));
-        Assert.That(await _service.GetAsync(Guid.NewGuid()), Is.Null);
+        Assert.That((await _service.GetAsync(_anna, created.GrowthEntry.Id))?.GrowthEntry.Id, Is.EqualTo(created.GrowthEntry.Id));
+        Assert.That(await _service.GetAsync(_anna, Guid.NewGuid()), Is.Null);
     }
 
     [Test]
@@ -211,8 +221,8 @@ public class GrowthEntryServiceTests
         var latest = await CreateAsync(_anna, Measurement(day: 25));
         var oldest = await CreateAsync(_anna, Measurement(day: 2));
 
-        var first = (ListGrowthEntriesResult.Page)await _service.ListAsync(_lea.Id, null, 2);
-        var second = (ListGrowthEntriesResult.Page)await _service.ListAsync(_lea.Id, first.Next, 2);
+        var first = (ListGrowthEntriesResult.Page)await _service.ListAsync(_anna, _lea.Id, null, 2);
+        var second = (ListGrowthEntriesResult.Page)await _service.ListAsync(_anna, _lea.Id, first.Next, 2);
 
         Assert.Multiple(() =>
         {
@@ -232,18 +242,18 @@ public class GrowthEntryServiceTests
             await CreateAsync(_anna, Measurement(day: 1 + (i % 30)));
         }
 
-        var page = (ListGrowthEntriesResult.Page)await _service.ListAsync(_lea.Id, null, limit);
+        var page = (ListGrowthEntriesResult.Page)await _service.ListAsync(_anna, _lea.Id, null, limit);
 
         Assert.That(page.Entries, Has.Count.EqualTo(expected));
     }
 
     [Test]
     public async Task A_malformed_cursor_is_refused() =>
-        Assert.That(await _service.ListAsync(_lea.Id, "not a cursor", null), Is.TypeOf<ListGrowthEntriesResult.InvalidCursor>());
+        Assert.That(await _service.ListAsync(_anna, _lea.Id, "not a cursor", null), Is.TypeOf<ListGrowthEntriesResult.InvalidCursor>());
 
     [Test]
     public async Task Listing_an_unknown_baby_is_refused() =>
-        Assert.That(await _service.ListAsync(Guid.NewGuid(), null, null), Is.TypeOf<ListGrowthEntriesResult.BabyNotFound>());
+        Assert.That(await _service.ListAsync(_anna, Guid.NewGuid(), null, null), Is.TypeOf<ListGrowthEntriesResult.BabyNotFound>());
 
     [Test]
     public async Task Latest_takes_each_measure_from_its_most_recent_measurement()
@@ -251,7 +261,7 @@ public class GrowthEntryServiceTests
         await CreateAsync(_anna, Measurement(day: 10, weightG: 3800m, lengthCm: 52m, headCircumferenceCm: 36m));
         await CreateAsync(_anna, Measurement(day: 20, weightG: 4100m, lengthCm: null, headCircumferenceCm: null));
 
-        var latest = ((LatestGrowthResult.Found)await _service.LatestAsync(_lea.Id)).Latest;
+        var latest = ((LatestGrowthResult.Found)await _service.LatestAsync(_anna, _lea.Id)).Latest;
 
         Assert.That(latest, Is.EqualTo(new GrowthLatest(
             new LatestMeasure(4100m, new DateOnly(2026, 9, 20), false),
@@ -266,7 +276,7 @@ public class GrowthEntryServiceTests
         _lea.BirthLengthCm = 49.5m;
         await CreateAsync(_anna, Measurement(weightG: null, lengthCm: 54m, headCircumferenceCm: null));
 
-        var latest = ((LatestGrowthResult.Found)await _service.LatestAsync(_lea.Id)).Latest;
+        var latest = ((LatestGrowthResult.Found)await _service.LatestAsync(_anna, _lea.Id)).Latest;
 
         Assert.That(latest, Is.EqualTo(new GrowthLatest(
             new LatestMeasure(3200m, _lea.BirthDate, true),
@@ -276,7 +286,7 @@ public class GrowthEntryServiceTests
 
     [Test]
     public async Task Latest_of_an_unknown_baby_is_refused() =>
-        Assert.That(await _service.LatestAsync(Guid.NewGuid()), Is.TypeOf<LatestGrowthResult.BabyNotFound>());
+        Assert.That(await _service.LatestAsync(_anna, Guid.NewGuid()), Is.TypeOf<LatestGrowthResult.BabyNotFound>());
 
     private static GrowthEntryInput Milestone(string milestone = "firstTooth", string? title = null, int day = 28, string? notes = null) =>
         new(new DateOnly(2026, 9, day), null, null, null, notes, milestone, title);
@@ -360,8 +370,25 @@ public class GrowthEntryServiceTests
         await CreateAsync(_anna, Measurement(day: 10, weightG: 3800m, lengthCm: null, headCircumferenceCm: null));
         await CreateMilestoneAsync(Milestone(day: 20));
 
-        var latest = ((LatestGrowthResult.Found)await _service.LatestAsync(_lea.Id)).Latest;
+        var latest = ((LatestGrowthResult.Found)await _service.LatestAsync(_anna, _lea.Id)).Latest;
 
         Assert.That(latest, Is.EqualTo(new GrowthLatest(new LatestMeasure(3800m, new DateOnly(2026, 9, 10), false), null, null)));
+    }
+
+    [Test]
+    public async Task Another_family_reaches_neither_the_baby_nor_its_entries()
+    {
+        var stored = await CreateAsync(_anna, Measurement(notes: "ours"));
+        var id = stored.GrowthEntry.Id;
+
+        Assert.That(await _service.CreateAsync(_carl, Guid.NewGuid(), _lea.Id, "measurement", Measurement()), Is.TypeOf<CreateGrowthEntryResult.BabyNotFound>());
+        Assert.That(await _service.ListAsync(_carl, _lea.Id, null, null), Is.TypeOf<ListGrowthEntriesResult.BabyNotFound>());
+        Assert.That(await _service.LatestAsync(_carl, _lea.Id), Is.TypeOf<LatestGrowthResult.BabyNotFound>());
+        Assert.That(await _service.GetAsync(_carl, id), Is.Null);
+        Assert.That(await _service.UpdateAsync(_carl, id, Measurement(notes: "theirs")), Is.TypeOf<UpdateGrowthEntryResult.NotFound>());
+        Assert.That(await _service.DeleteAsync(_carl, id), Is.TypeOf<DeleteGrowthEntryResult.NotFound>());
+        Assert.That(await _service.CreateAsync(_carl, id, _max.Id, "measurement", Measurement(notes: "theirs")), Is.TypeOf<CreateGrowthEntryResult.NotFound>());
+
+        Assert.That(_growthEntries.GrowthEntries.Single().Notes, Is.EqualTo("ours"));
     }
 }

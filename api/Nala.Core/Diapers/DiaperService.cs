@@ -1,5 +1,5 @@
-using Nala.Core.Babies;
 using Nala.Core.Entries;
+using Nala.Core.Families;
 using Nala.Core.Users;
 
 namespace Nala.Core.Diapers;
@@ -10,6 +10,9 @@ public abstract record CreateDiaperResult
 
     /// <summary>A diaper with this id exists already (a re-sent request): it is returned unchanged.</summary>
     public sealed record AlreadyExists(DiaperEntry Entry) : CreateDiaperResult;
+
+    /// <summary>The id belongs to an entry of a baby outside the caller's families: it is left unchanged.</summary>
+    public sealed record NotFound : CreateDiaperResult;
 
     public sealed record BabyNotFound : CreateDiaperResult;
 
@@ -44,8 +47,8 @@ public abstract record ListDiapersResult
     public sealed record InvalidCursor : ListDiapersResult;
 }
 
-/// <summary>A baby's diapers (spec 07). Any member can add, edit and delete any diaper.</summary>
-public class DiaperService(IDiaperRepository diapers, IBabyRepository babies, TimeProvider time)
+/// <summary>A baby's diapers (spec 07). Any member of the baby's family can add, edit and delete any diaper; outside the caller's families, babies and entries answer as unknown (<see cref="FamilyAccess"/>).</summary>
+public class DiaperService(IDiaperRepository diapers, FamilyAccess access, TimeProvider time)
 {
     /// <summary>
     /// Adds a diaper under the client's id. Re-sending an id that exists already (e.g. a queued request sent twice)
@@ -55,7 +58,9 @@ public class DiaperService(IDiaperRepository diapers, IBabyRepository babies, Ti
     {
         if (await diapers.GetEntryAsync(id, cancellationToken) is { } existing)
         {
-            return new CreateDiaperResult.AlreadyExists(existing);
+            return await access.ReachesBabyAsync(actor, existing.Diaper.BabyId, cancellationToken)
+                ? new CreateDiaperResult.AlreadyExists(existing)
+                : new CreateDiaperResult.NotFound();
         }
 
         var now = time.GetUtcNow();
@@ -65,7 +70,7 @@ public class DiaperService(IDiaperRepository diapers, IBabyRepository babies, Ti
             return new CreateDiaperResult.Invalid(errors);
         }
 
-        if (await babies.GetAsync(babyId, cancellationToken) is null)
+        if (!await access.ReachesBabyAsync(actor, babyId, cancellationToken))
         {
             return new CreateDiaperResult.BabyNotFound();
         }
@@ -80,7 +85,7 @@ public class DiaperService(IDiaperRepository diapers, IBabyRepository babies, Ti
     public async Task<UpdateDiaperResult> UpdateAsync(User actor, Guid id, DiaperInput input, CancellationToken cancellationToken = default)
     {
         var diaper = await diapers.GetAsync(id, cancellationToken);
-        if (diaper is null)
+        if (diaper is null || !await access.ReachesBabyAsync(actor, diaper.BabyId, cancellationToken))
         {
             return new UpdateDiaperResult.NotFound();
         }
@@ -97,14 +102,16 @@ public class DiaperService(IDiaperRepository diapers, IBabyRepository babies, Ti
         return new UpdateDiaperResult.Updated((await diapers.GetEntryAsync(id, cancellationToken))!);
     }
 
-    /// <summary>The diaper with who logged and last edited it; null when unknown.</summary>
-    public Task<DiaperEntry?> GetAsync(Guid id, CancellationToken cancellationToken = default) =>
-        diapers.GetEntryAsync(id, cancellationToken);
+    /// <summary>The diaper with who logged and last edited it; null when unknown or outside the caller's families.</summary>
+    public async Task<DiaperEntry?> GetAsync(User user, Guid id, CancellationToken cancellationToken = default) =>
+        await diapers.GetEntryAsync(id, cancellationToken) is { } entry && await access.ReachesBabyAsync(user, entry.Diaper.BabyId, cancellationToken)
+            ? entry
+            : null;
 
-    public async Task<DeleteDiaperResult> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<DeleteDiaperResult> DeleteAsync(User actor, Guid id, CancellationToken cancellationToken = default)
     {
         var diaper = await diapers.GetAsync(id, cancellationToken);
-        if (diaper is null)
+        if (diaper is null || !await access.ReachesBabyAsync(actor, diaper.BabyId, cancellationToken))
         {
             return new DeleteDiaperResult.NotFound();
         }
@@ -114,7 +121,7 @@ public class DiaperService(IDiaperRepository diapers, IBabyRepository babies, Ti
     }
 
     /// <summary>One page of the baby's diapers, newest first (see <see cref="EntryPaging"/>).</summary>
-    public async Task<ListDiapersResult> ListAsync(Guid babyId, string? cursor, int? limit, CancellationToken cancellationToken = default)
+    public async Task<ListDiapersResult> ListAsync(User user, Guid babyId, string? cursor, int? limit, CancellationToken cancellationToken = default)
     {
         EntryCursor? after = null;
         if (cursor is not null && (after = EntryCursor.TryDecode(cursor)) is null)
@@ -122,7 +129,7 @@ public class DiaperService(IDiaperRepository diapers, IBabyRepository babies, Ti
             return new ListDiapersResult.InvalidCursor();
         }
 
-        if (await babies.GetAsync(babyId, cancellationToken) is null)
+        if (!await access.ReachesBabyAsync(user, babyId, cancellationToken))
         {
             return new ListDiapersResult.BabyNotFound();
         }

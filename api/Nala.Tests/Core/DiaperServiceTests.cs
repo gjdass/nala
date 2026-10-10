@@ -1,6 +1,7 @@
 using Nala.Core.Babies;
 using Nala.Core.Diapers;
 using Nala.Core.Entries;
+using Nala.Core.Families;
 using Nala.Core.Users;
 using Nala.Tests.Support;
 
@@ -11,24 +12,33 @@ public class DiaperServiceTests
     private static readonly DateTimeOffset Now = new(2026, 10, 3, 12, 0, 0, TimeSpan.Zero);
 
     private FakeDiaperRepository _diapers = null!;
+    private FakeFamilyRepository _families = null!;
     private FakeBabyRepository _babies = null!;
     private FixedTimeProvider _time = null!;
     private DiaperService _service = null!;
     private User _anna = null!;
     private User _ben = null!;
+    private User _carl = null!;
     private Baby _lea = null!;
+    private Baby _max = null!;
 
     [SetUp]
     public void SetUp()
     {
         _diapers = new FakeDiaperRepository();
-        _babies = new FakeBabyRepository();
+        _families = new FakeFamilyRepository();
+        _babies = new FakeBabyRepository(_families);
         _time = new FixedTimeProvider(Now);
-        _service = new DiaperService(_diapers, _babies, _time);
+        _service = new DiaperService(_diapers, new FamilyAccess(_families, _babies), _time);
         _anna = NewUser("Anna");
         _ben = NewUser("Ben");
-        _lea = new Baby { Id = Guid.NewGuid(), Name = "Lea", BirthDate = new DateOnly(2026, 9, 1), CreatedAt = Now };
+        _carl = NewUser("Carl");
+        var martins = _families.Seed("Martins", Now, _anna, _ben);
+        var others = _families.Seed("Others", Now, _carl);
+        _lea = new Baby { Id = Guid.NewGuid(), FamilyId = martins.Id, Name = "Lea", BirthDate = new DateOnly(2026, 9, 1), CreatedAt = Now };
+        _max = new Baby { Id = Guid.NewGuid(), FamilyId = others.Id, Name = "Max", BirthDate = new DateOnly(2026, 9, 1), CreatedAt = Now };
         _babies.Babies.Add(_lea);
+        _babies.Babies.Add(_max);
     }
 
     private User NewUser(string name)
@@ -182,9 +192,9 @@ public class DiaperServiceTests
     {
         var created = await CreateAsync(_anna, Diaper());
 
-        Assert.That(await _service.DeleteAsync(created.Diaper.Id), Is.TypeOf<DeleteDiaperResult.Deleted>());
+        Assert.That(await _service.DeleteAsync(_anna, created.Diaper.Id), Is.TypeOf<DeleteDiaperResult.Deleted>());
         Assert.That(_diapers.Diapers, Is.Empty);
-        Assert.That(await _service.DeleteAsync(created.Diaper.Id), Is.TypeOf<DeleteDiaperResult.NotFound>());
+        Assert.That(await _service.DeleteAsync(_anna, created.Diaper.Id), Is.TypeOf<DeleteDiaperResult.NotFound>());
     }
 
     [Test]
@@ -192,8 +202,8 @@ public class DiaperServiceTests
     {
         var created = await CreateAsync(_anna, Diaper());
 
-        Assert.That((await _service.GetAsync(created.Diaper.Id))?.Diaper.Id, Is.EqualTo(created.Diaper.Id));
-        Assert.That(await _service.GetAsync(Guid.NewGuid()), Is.Null);
+        Assert.That((await _service.GetAsync(_anna, created.Diaper.Id))?.Diaper.Id, Is.EqualTo(created.Diaper.Id));
+        Assert.That(await _service.GetAsync(_anna, Guid.NewGuid()), Is.Null);
     }
 
     [Test]
@@ -204,9 +214,9 @@ public class DiaperServiceTests
             await CreateAsync(_anna, Diaper(minutesAgo: i * 100));
         }
 
-        var first = (ListDiapersResult.Page)await _service.ListAsync(_lea.Id, null, 2);
-        var second = (ListDiapersResult.Page)await _service.ListAsync(_lea.Id, first.Next, 2);
-        var last = (ListDiapersResult.Page)await _service.ListAsync(_lea.Id, second.Next, 2);
+        var first = (ListDiapersResult.Page)await _service.ListAsync(_anna, _lea.Id, null, 2);
+        var second = (ListDiapersResult.Page)await _service.ListAsync(_anna, _lea.Id, first.Next, 2);
+        var last = (ListDiapersResult.Page)await _service.ListAsync(_anna, _lea.Id, second.Next, 2);
 
         Assert.Multiple(() =>
         {
@@ -227,16 +237,32 @@ public class DiaperServiceTests
             await CreateAsync(_anna, Diaper(minutesAgo: i * 10));
         }
 
-        var page = (ListDiapersResult.Page)await _service.ListAsync(_lea.Id, null, limit);
+        var page = (ListDiapersResult.Page)await _service.ListAsync(_anna, _lea.Id, null, limit);
 
         Assert.That(page.Entries, Has.Count.EqualTo(expected));
     }
 
     [Test]
     public async Task A_malformed_cursor_is_refused() =>
-        Assert.That(await _service.ListAsync(_lea.Id, "not a cursor", null), Is.TypeOf<ListDiapersResult.InvalidCursor>());
+        Assert.That(await _service.ListAsync(_anna, _lea.Id, "not a cursor", null), Is.TypeOf<ListDiapersResult.InvalidCursor>());
 
     [Test]
     public async Task Listing_an_unknown_baby_is_refused() =>
-        Assert.That(await _service.ListAsync(Guid.NewGuid(), null, null), Is.TypeOf<ListDiapersResult.BabyNotFound>());
+        Assert.That(await _service.ListAsync(_anna, Guid.NewGuid(), null, null), Is.TypeOf<ListDiapersResult.BabyNotFound>());
+
+    [Test]
+    public async Task Another_family_reaches_neither_the_baby_nor_its_diapers()
+    {
+        var stored = await CreateAsync(_anna, Diaper(notes: "ours"));
+        var id = stored.Diaper.Id;
+
+        Assert.That(await _service.CreateAsync(_carl, Guid.NewGuid(), _lea.Id, Diaper()), Is.TypeOf<CreateDiaperResult.BabyNotFound>());
+        Assert.That(await _service.ListAsync(_carl, _lea.Id, null, null), Is.TypeOf<ListDiapersResult.BabyNotFound>());
+        Assert.That(await _service.GetAsync(_carl, id), Is.Null);
+        Assert.That(await _service.UpdateAsync(_carl, id, Diaper(notes: "theirs")), Is.TypeOf<UpdateDiaperResult.NotFound>());
+        Assert.That(await _service.DeleteAsync(_carl, id), Is.TypeOf<DeleteDiaperResult.NotFound>());
+        Assert.That(await _service.CreateAsync(_carl, id, _max.Id, Diaper(notes: "theirs")), Is.TypeOf<CreateDiaperResult.NotFound>());
+
+        Assert.That(_diapers.Diapers.Single().Notes, Is.EqualTo("ours"));
+    }
 }

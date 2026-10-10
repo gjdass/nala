@@ -54,7 +54,7 @@ public sealed record LatestMeasureResponse(decimal Value, DateOnly Date, bool Bi
 
 public sealed record GrowthLatestResponse(LatestMeasureResponse? Weight, LatestMeasureResponse? Length, LatestMeasureResponse? HeadCircumference);
 
-/// <summary>A baby's growth entries (spec 10). Every member may add, edit and delete any entry (fallback session policy).</summary>
+/// <summary>A baby's growth entries (spec 10). Every member of the baby's family may add, edit and delete any entry (fallback session policy, family check in Core).</summary>
 public static class GrowthEntryEndpoints
 {
     public static IServiceCollection AddNalaGrowthEntries(this IServiceCollection services) =>
@@ -98,13 +98,14 @@ public static class GrowthEntryEndpoints
         {
             CreateGrowthEntryResult.Created created => Results.Created($"/api/growth-entries/{created.Entry.GrowthEntry.Id}", ToResponse(created.Entry)),
             CreateGrowthEntryResult.AlreadyExists existing => Results.Ok(ToResponse(existing.Entry)),
+            CreateGrowthEntryResult.NotFound => GrowthEntryNotFound(),
             CreateGrowthEntryResult.Invalid invalid => AuthEndpoints.ValidationProblem(invalid.Errors),
             _ => BabyNotFound(),
         };
     }
 
-    private static async Task<IResult> GetAsync(Guid id, GrowthEntryService growthEntries, CancellationToken cancellationToken) =>
-        await growthEntries.GetAsync(id, cancellationToken) is { } entry ? Results.Ok(ToResponse(entry)) : GrowthEntryNotFound();
+    private static async Task<IResult> GetAsync(Guid id, GrowthEntryService growthEntries, HttpContext context, CancellationToken cancellationToken) =>
+        await growthEntries.GetAsync(AuthEndpoints.CurrentUser(context)!, id, cancellationToken) is { } entry ? Results.Ok(ToResponse(entry)) : GrowthEntryNotFound();
 
     private static async Task<IResult> UpdateAsync(
         Guid id, UpdateGrowthEntryRequest request, GrowthEntryService growthEntries, HttpContext context, CancellationToken cancellationToken) =>
@@ -115,12 +116,12 @@ public static class GrowthEntryEndpoints
             _ => GrowthEntryNotFound(),
         };
 
-    private static async Task<IResult> DeleteAsync(Guid id, GrowthEntryService growthEntries, CancellationToken cancellationToken) =>
-        await growthEntries.DeleteAsync(id, cancellationToken) is DeleteGrowthEntryResult.Deleted ? Results.NoContent() : GrowthEntryNotFound();
+    private static async Task<IResult> DeleteAsync(Guid id, GrowthEntryService growthEntries, HttpContext context, CancellationToken cancellationToken) =>
+        await growthEntries.DeleteAsync(AuthEndpoints.CurrentUser(context)!, id, cancellationToken) is DeleteGrowthEntryResult.Deleted ? Results.NoContent() : GrowthEntryNotFound();
 
     private static async Task<IResult> ListAsync(
-        Guid babyId, string? cursor, int? limit, GrowthEntryService growthEntries, CancellationToken cancellationToken) =>
-        await growthEntries.ListAsync(babyId, cursor, limit, cancellationToken) switch
+        Guid babyId, string? cursor, int? limit, GrowthEntryService growthEntries, HttpContext context, CancellationToken cancellationToken) =>
+        await growthEntries.ListAsync(AuthEndpoints.CurrentUser(context)!, babyId, cursor, limit, cancellationToken) switch
         {
             ListGrowthEntriesResult.Page page => Results.Ok(new GrowthEntryPageResponse(page.Entries.Select(ToResponse), page.Next)),
             ListGrowthEntriesResult.InvalidCursor => AuthEndpoints.ValidationProblem(new Dictionary<string, string> { ["cursor"] = "invalid" }),
@@ -128,8 +129,8 @@ public static class GrowthEntryEndpoints
         };
 
     /// <summary>Each measure from its most recent measurement, else from the birth fields (<c>birth: true</c>), else null.</summary>
-    private static async Task<IResult> LatestAsync(Guid babyId, GrowthEntryService growthEntries, CancellationToken cancellationToken) =>
-        await growthEntries.LatestAsync(babyId, cancellationToken) is LatestGrowthResult.Found { Latest: var latest }
+    private static async Task<IResult> LatestAsync(Guid babyId, GrowthEntryService growthEntries, HttpContext context, CancellationToken cancellationToken) =>
+        await growthEntries.LatestAsync(AuthEndpoints.CurrentUser(context)!, babyId, cancellationToken) is LatestGrowthResult.Found { Latest: var latest }
             ? Results.Ok(new GrowthLatestResponse(ToResponse(latest.Weight), ToResponse(latest.Length), ToResponse(latest.HeadCircumference)))
             : BabyNotFound();
 

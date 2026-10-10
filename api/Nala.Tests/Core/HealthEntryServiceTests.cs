@@ -1,5 +1,6 @@
 using Nala.Core.Babies;
 using Nala.Core.Entries;
+using Nala.Core.Families;
 using Nala.Core.HealthEntries;
 using Nala.Core.Users;
 using Nala.Tests.Support;
@@ -11,24 +12,33 @@ public class HealthEntryServiceTests
     private static readonly DateTimeOffset Now = new(2026, 10, 3, 12, 0, 0, TimeSpan.Zero);
 
     private FakeHealthEntryRepository _healthEntries = null!;
+    private FakeFamilyRepository _families = null!;
     private FakeBabyRepository _babies = null!;
     private FixedTimeProvider _time = null!;
     private HealthEntryService _service = null!;
     private User _anna = null!;
     private User _ben = null!;
+    private User _carl = null!;
     private Baby _lea = null!;
+    private Baby _max = null!;
 
     [SetUp]
     public void SetUp()
     {
         _healthEntries = new FakeHealthEntryRepository();
-        _babies = new FakeBabyRepository();
+        _families = new FakeFamilyRepository();
+        _babies = new FakeBabyRepository(_families);
         _time = new FixedTimeProvider(Now);
-        _service = new HealthEntryService(_healthEntries, _babies, _time);
+        _service = new HealthEntryService(_healthEntries, new FamilyAccess(_families, _babies), _time);
         _anna = NewUser("Anna");
         _ben = NewUser("Ben");
-        _lea = new Baby { Id = Guid.NewGuid(), Name = "Lea", BirthDate = new DateOnly(2026, 9, 1), CreatedAt = Now };
+        _carl = NewUser("Carl");
+        var martins = _families.Seed("Martins", Now, _anna, _ben);
+        var others = _families.Seed("Others", Now, _carl);
+        _lea = new Baby { Id = Guid.NewGuid(), FamilyId = martins.Id, Name = "Lea", BirthDate = new DateOnly(2026, 9, 1), CreatedAt = Now };
+        _max = new Baby { Id = Guid.NewGuid(), FamilyId = others.Id, Name = "Max", BirthDate = new DateOnly(2026, 9, 1), CreatedAt = Now };
         _babies.Babies.Add(_lea);
+        _babies.Babies.Add(_max);
     }
 
     private User NewUser(string name)
@@ -187,9 +197,9 @@ public class HealthEntryServiceTests
     {
         var created = await CreateAsync(_anna, HealthEntry());
 
-        Assert.That(await _service.DeleteAsync(created.HealthEntry.Id), Is.TypeOf<DeleteHealthEntryResult.Deleted>());
+        Assert.That(await _service.DeleteAsync(_anna, created.HealthEntry.Id), Is.TypeOf<DeleteHealthEntryResult.Deleted>());
         Assert.That(_healthEntries.HealthEntries, Is.Empty);
-        Assert.That(await _service.DeleteAsync(created.HealthEntry.Id), Is.TypeOf<DeleteHealthEntryResult.NotFound>());
+        Assert.That(await _service.DeleteAsync(_anna, created.HealthEntry.Id), Is.TypeOf<DeleteHealthEntryResult.NotFound>());
     }
 
     [Test]
@@ -197,8 +207,8 @@ public class HealthEntryServiceTests
     {
         var created = await CreateAsync(_anna, HealthEntry());
 
-        Assert.That((await _service.GetAsync(created.HealthEntry.Id))?.HealthEntry.Id, Is.EqualTo(created.HealthEntry.Id));
-        Assert.That(await _service.GetAsync(Guid.NewGuid()), Is.Null);
+        Assert.That((await _service.GetAsync(_anna, created.HealthEntry.Id))?.HealthEntry.Id, Is.EqualTo(created.HealthEntry.Id));
+        Assert.That(await _service.GetAsync(_anna, Guid.NewGuid()), Is.Null);
     }
 
     [Test]
@@ -209,9 +219,9 @@ public class HealthEntryServiceTests
             await CreateAsync(_anna, HealthEntry(minutesAgo: i * 100));
         }
 
-        var first = (ListHealthEntriesResult.Page)await _service.ListAsync(_lea.Id, null, 2);
-        var second = (ListHealthEntriesResult.Page)await _service.ListAsync(_lea.Id, first.Next, 2);
-        var last = (ListHealthEntriesResult.Page)await _service.ListAsync(_lea.Id, second.Next, 2);
+        var first = (ListHealthEntriesResult.Page)await _service.ListAsync(_anna, _lea.Id, null, 2);
+        var second = (ListHealthEntriesResult.Page)await _service.ListAsync(_anna, _lea.Id, first.Next, 2);
+        var last = (ListHealthEntriesResult.Page)await _service.ListAsync(_anna, _lea.Id, second.Next, 2);
 
         Assert.Multiple(() =>
         {
@@ -232,34 +242,51 @@ public class HealthEntryServiceTests
             await CreateAsync(_anna, HealthEntry(minutesAgo: i * 10));
         }
 
-        var page = (ListHealthEntriesResult.Page)await _service.ListAsync(_lea.Id, null, limit);
+        var page = (ListHealthEntriesResult.Page)await _service.ListAsync(_anna, _lea.Id, null, limit);
 
         Assert.That(page.Entries, Has.Count.EqualTo(expected));
     }
 
     [Test]
     public async Task A_malformed_cursor_is_refused() =>
-        Assert.That(await _service.ListAsync(_lea.Id, "not a cursor", null), Is.TypeOf<ListHealthEntriesResult.InvalidCursor>());
+        Assert.That(await _service.ListAsync(_anna, _lea.Id, "not a cursor", null), Is.TypeOf<ListHealthEntriesResult.InvalidCursor>());
 
     [Test]
     public async Task Listing_an_unknown_baby_is_refused() =>
-        Assert.That(await _service.ListAsync(Guid.NewGuid(), null, null), Is.TypeOf<ListHealthEntriesResult.BabyNotFound>());
+        Assert.That(await _service.ListAsync(_anna, Guid.NewGuid(), null, null), Is.TypeOf<ListHealthEntriesResult.BabyNotFound>());
 
     [Test]
     public async Task Recent_doses_of_an_unknown_baby_are_refused() =>
-        Assert.That(await _service.RecentAsync(Guid.NewGuid()), Is.TypeOf<RecentMedicinesResult.BabyNotFound>());
+        Assert.That(await _service.RecentAsync(_anna, Guid.NewGuid()), Is.TypeOf<RecentMedicinesResult.BabyNotFound>());
 
     [Test]
     public async Task Recent_doses_are_the_5_latest_names_of_the_baby()
     {
         await CreateAsync(_anna, HealthEntry(name: "Paracetamol", amount: 2.5m, unit: "ml"));
 
-        var found = (RecentMedicinesResult.Found)await _service.RecentAsync(_lea.Id);
+        var found = (RecentMedicinesResult.Found)await _service.RecentAsync(_anna, _lea.Id);
 
         Assert.Multiple(() =>
         {
             Assert.That(_healthEntries.LastRecentLimit, Is.EqualTo(5));
             Assert.That(found.HealthEntries, Is.EqualTo(new[] { new RecentMedicine("Paracetamol", 2.5m, DoseUnit.Ml) }));
         });
+    }
+
+    [Test]
+    public async Task Another_family_reaches_neither_the_baby_nor_its_health_entries()
+    {
+        var stored = await CreateAsync(_anna, HealthEntry(notes: "ours"));
+        var id = stored.HealthEntry.Id;
+
+        Assert.That(await _service.CreateAsync(_carl, Guid.NewGuid(), _lea.Id, HealthEntry()), Is.TypeOf<CreateHealthEntryResult.BabyNotFound>());
+        Assert.That(await _service.ListAsync(_carl, _lea.Id, null, null), Is.TypeOf<ListHealthEntriesResult.BabyNotFound>());
+        Assert.That(await _service.RecentAsync(_carl, _lea.Id), Is.TypeOf<RecentMedicinesResult.BabyNotFound>());
+        Assert.That(await _service.GetAsync(_carl, id), Is.Null);
+        Assert.That(await _service.UpdateAsync(_carl, id, HealthEntry(notes: "theirs")), Is.TypeOf<UpdateHealthEntryResult.NotFound>());
+        Assert.That(await _service.DeleteAsync(_carl, id), Is.TypeOf<DeleteHealthEntryResult.NotFound>());
+        Assert.That(await _service.CreateAsync(_carl, id, _max.Id, HealthEntry(notes: "theirs")), Is.TypeOf<CreateHealthEntryResult.NotFound>());
+
+        Assert.That(_healthEntries.HealthEntries.Single().Notes, Is.EqualTo("ours"));
     }
 }
