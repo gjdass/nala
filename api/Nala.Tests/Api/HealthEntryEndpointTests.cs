@@ -34,7 +34,7 @@ public class HealthEntryEndpointTests
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
         _annaId = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("user").GetProperty("id").GetGuid();
 
-        response = await _admin.PostAsJsonAsync("/api/babies", new { name = "Lea", birthDate = "2026-09-01" });
+        response = await TestBabies.PostAsync(_admin, new { name = "Lea", birthDate = "2026-09-01" });
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Created));
         _leaId = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
     }

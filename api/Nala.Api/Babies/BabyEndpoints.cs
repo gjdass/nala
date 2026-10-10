@@ -3,8 +3,12 @@ using Nala.Core.Babies;
 
 namespace Nala.Api.Babies;
 
-/// <summary>Measurements are decimals so a fractional weight gets a validation code rather than a binding error.</summary>
+/// <summary>
+/// Measurements are decimals so a fractional weight gets a validation code rather than a binding error.
+/// <c>FamilyId</c> is only read when adding: a baby never changes family.
+/// </summary>
 public sealed record BabyRequest(
+    Guid? FamilyId,
     string? Name,
     DateOnly? BirthDate,
     string? Sex,
@@ -15,6 +19,7 @@ public sealed record BabyRequest(
 /// <summary><c>BirthDate</c> is <c>yyyy-MM-dd</c>; <c>Sex</c> is <c>girl</c>, <c>boy</c> or <c>unspecified</c>.</summary>
 public sealed record BabyResponse(
     Guid Id,
+    Guid FamilyId,
     string Name,
     DateOnly BirthDate,
     string Sex,
@@ -22,7 +27,10 @@ public sealed record BabyResponse(
     decimal? BirthLengthCm,
     decimal? BirthHeadCircumferenceCm);
 
-/// <summary>The family's babies. Every member may use them (fallback session policy); there is no per-baby access. Deleting is admin only (checked in Core).</summary>
+/// <summary>
+/// The babies of the caller's families (fallback session policy, family check in Core); there is no per-baby access.
+/// Deleting is for the family admin only.
+/// </summary>
 public static class BabyEndpoints
 {
     public static IServiceCollection AddNalaBabies(this IServiceCollection services) =>
@@ -38,16 +46,19 @@ public static class BabyEndpoints
         return endpoints;
     }
 
-    private static async Task<IResult> ListAsync(BabyService babies, CancellationToken cancellationToken) =>
-        Results.Ok((await babies.ListAsync(cancellationToken)).Select(ToResponse));
+    private static async Task<IResult> ListAsync(BabyService babies, HttpContext context, CancellationToken cancellationToken) =>
+        Results.Ok((await babies.ListAsync(AuthEndpoints.CurrentUser(context)!, cancellationToken)).Select(ToResponse));
 
     private static async Task<IResult> CreateAsync(
         BabyRequest request, BabyService babies, HttpContext context, CancellationToken cancellationToken)
     {
-        var result = await babies.CreateAsync(AuthEndpoints.CurrentUser(context)!, ToInput(request), cancellationToken);
-        return result is CreateBabyResult.Created created
-            ? Results.Created($"/api/babies/{created.Baby.Id}", ToResponse(created.Baby))
-            : AuthEndpoints.ValidationProblem(((CreateBabyResult.Invalid)result).Errors);
+        var result = await babies.CreateAsync(AuthEndpoints.CurrentUser(context)!, request.FamilyId, ToInput(request), cancellationToken);
+        return result switch
+        {
+            CreateBabyResult.Created created => Results.Created($"/api/babies/{created.Baby.Id}", ToResponse(created.Baby)),
+            CreateBabyResult.Invalid invalid => AuthEndpoints.ValidationProblem(invalid.Errors),
+            _ => Results.Json(new ErrorResponse("familyNotFound"), statusCode: StatusCodes.Status404NotFound),
+        };
     }
 
     private static async Task<IResult> UpdateAsync(
@@ -65,7 +76,7 @@ public static class BabyEndpoints
         {
             DeleteBabyResult.Deleted => Results.NoContent(),
             DeleteBabyResult.NotFound => BabyNotFound(),
-            _ => Results.Json(new ErrorResponse("adminOnly"), statusCode: StatusCodes.Status403Forbidden),
+            _ => Results.Json(new ErrorResponse("familyAdminOnly"), statusCode: StatusCodes.Status403Forbidden),
         };
 
     private static IResult BabyNotFound() =>
@@ -75,5 +86,5 @@ public static class BabyEndpoints
         new(request.Name, request.BirthDate, request.Sex, request.BirthWeightG, request.BirthLengthCm, request.BirthHeadCircumferenceCm);
 
     private static BabyResponse ToResponse(Baby baby) =>
-        new(baby.Id, baby.Name, baby.BirthDate, BabyFields.Format(baby.Sex), baby.BirthWeightG, baby.BirthLengthCm, baby.BirthHeadCircumferenceCm);
+        new(baby.Id, baby.FamilyId, baby.Name, baby.BirthDate, BabyFields.Format(baby.Sex), baby.BirthWeightG, baby.BirthLengthCm, baby.BirthHeadCircumferenceCm);
 }

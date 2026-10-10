@@ -130,4 +130,28 @@ public class FamilyRepositoryTests
             listed.Select(f => (f.Family.Id, f.Family.Name, f.Role)),
             Is.EquivalentTo(new[] { (annas.Id, "Martins", FamilyRole.Admin), (bens.Id, "Durands", FamilyRole.Member) }));
     }
+
+    [Test]
+    public async Task GetRole_returns_the_users_role_in_the_family_or_null()
+    {
+        var anna = NewUser("Anna");
+        var (martins, annaAdmin) = NewFamily(anna, "Martins");
+        await AddWithNewAdminAsync(anna, martins, annaAdmin);
+        var ben = NewUser("Ben");
+        await AddUserAsync(ben);
+        await AddMembershipAsync(martins, ben, FamilyRole.Member);
+        var carl = NewUser("Carl");
+        var (others, carlAdmin) = NewFamily(carl, "Others");
+        await AddWithNewAdminAsync(carl, others, carlAdmin);
+
+        await using var db = _db();
+        var repository = new FamilyRepository(db);
+        Assert.Multiple(async () =>
+        {
+            Assert.That(await repository.GetRoleAsync(martins.Id, anna.Id), Is.EqualTo(FamilyRole.Admin));
+            Assert.That(await repository.GetRoleAsync(martins.Id, ben.Id), Is.EqualTo(FamilyRole.Member));
+            Assert.That(await repository.GetRoleAsync(others.Id, anna.Id), Is.Null);
+            Assert.That(await repository.GetRoleAsync(Guid.NewGuid(), anna.Id), Is.Null);
+        });
+    }
 }

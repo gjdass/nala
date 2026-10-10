@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Nala.Core.Auth;
@@ -18,6 +19,7 @@ public class BabyEndpointTests
     private NalaApiFactory _factory = null!;
     private HttpClient _admin = null!;
     private Guid _annaId;
+    private Guid _familyId;
 
     [SetUp]
     public async Task SetUp()
@@ -34,6 +36,7 @@ public class BabyEndpointTests
             "/api/auth/setup", new { email = "anna@mail.com", displayName = "Anna", password = Password, language = "en", familyName = "Martins" });
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
         _annaId = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("user").GetProperty("id").GetGuid();
+        _familyId = (await _admin.GetFromJsonAsync<JsonElement[]>("/api/families"))!.Single().GetProperty("id").GetGuid();
     }
 
     [TearDown]
@@ -74,8 +77,13 @@ public class BabyEndpointTests
         return (client, id);
     }
 
-    private static Task<HttpResponseMessage> AddAsync(HttpClient client, object body) =>
-        client.PostAsJsonAsync("/api/babies", body);
+    /// <summary>Adds a baby to <paramref name="familyId"/>, Anna's family by default.</summary>
+    private Task<HttpResponseMessage> AddAsync(HttpClient client, object body, Guid? familyId = null)
+    {
+        var json = JsonSerializer.SerializeToNode(body)!.AsObject();
+        json["familyId"] = familyId ?? _familyId;
+        return client.PostAsJsonAsync("/api/babies", json);
+    }
 
     private static async Task<JsonElement[]> ListAsync(HttpClient client)
     {
@@ -108,6 +116,7 @@ public class BabyEndpointTests
         Assert.Multiple(() =>
         {
             Assert.That(baby.GetProperty("id").GetGuid(), Is.Not.EqualTo(Guid.Empty));
+            Assert.That(baby.GetProperty("familyId").GetGuid(), Is.EqualTo(_familyId));
             Assert.That(baby.GetProperty("name").GetString(), Is.EqualTo("Lea"));
             Assert.That(baby.GetProperty("birthDate").GetString(), Is.EqualTo("2026-09-01"));
             Assert.That(baby.GetProperty("sex").GetString(), Is.EqualTo("girl"));
@@ -338,7 +347,7 @@ public class BabyEndpointTests
         var response = await ben.DeleteAsync($"/api/babies/{id}");
 
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Forbidden));
-        Assert.That((await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("code").GetString(), Is.EqualTo("adminOnly"));
+        Assert.That((await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("code").GetString(), Is.EqualTo("familyAdminOnly"));
         Assert.That(await ListAsync(_admin), Has.Length.EqualTo(1));
         ben.Dispose();
     }
@@ -359,6 +368,72 @@ public class BabyEndpointTests
         using var anonymous = NewClient();
 
         Assert.That((await anonymous.DeleteAsync($"/api/babies/{id}")).StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
+        Assert.That(await ListAsync(_admin), Has.Length.EqualTo(1));
+    }
+
+    private static async Task<string?> CodeAsync(HttpResponseMessage response) =>
+        (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("code").GetString();
+
+    [Test]
+    public async Task Adding_without_a_family_is_a_validation_problem()
+    {
+        var response = await _admin.PostAsJsonAsync("/api/babies", new { name = "Lea", birthDate = "2026-09-01" });
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
+        var errors = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("errors");
+        Assert.That(errors.GetProperty("familyId")[0].GetString(), Is.EqualTo("required"));
+        Assert.That(await ListAsync(_admin), Is.Empty);
+    }
+
+    [Test]
+    public async Task Adding_to_another_family_is_family_not_found()
+    {
+        using var others = await OtherFamily.CreateAsync(_factory);
+
+        var response = await AddAsync(_admin, new { name = "Lea", birthDate = "2026-09-01" }, others.FamilyId);
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
+        Assert.That(await CodeAsync(response), Is.EqualTo("familyNotFound"));
+        Assert.That(await ListAsync(others.Client), Is.Empty);
+    }
+
+    [Test]
+    public async Task The_list_has_only_the_callers_families_babies()
+    {
+        using var others = await OtherFamily.CreateAsync(_factory);
+        await AddLeaAsync();
+        await AddAsync(others.Client, new { name = "Zoe", birthDate = "2025-01-01" }, others.FamilyId);
+
+        Assert.Multiple(async () =>
+        {
+            Assert.That((await ListAsync(_admin)).Select(b => b.GetProperty("name").GetString()), Is.EqualTo(new[] { "Lea" }));
+            Assert.That((await ListAsync(others.Client)).Select(b => b.GetProperty("name").GetString()), Is.EqualTo(new[] { "Zoe" }));
+        });
+    }
+
+    [Test]
+    public async Task Editing_another_familys_baby_is_baby_not_found_and_changes_nothing()
+    {
+        using var others = await OtherFamily.CreateAsync(_factory);
+        var id = await AddLeaAsync();
+
+        var response = await EditAsync(others.Client, id, new { name = "Zoe", birthDate = "2025-01-01" });
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
+        Assert.That(await CodeAsync(response), Is.EqualTo("babyNotFound"));
+        Assert.That((await ListAsync(_admin)).Single().GetProperty("name").GetString(), Is.EqualTo("Lea"));
+    }
+
+    [Test]
+    public async Task Deleting_another_familys_baby_is_baby_not_found_even_for_a_family_admin()
+    {
+        using var others = await OtherFamily.CreateAsync(_factory);
+        var id = await AddLeaAsync();
+
+        var response = await others.Client.DeleteAsync($"/api/babies/{id}");
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
+        Assert.That(await CodeAsync(response), Is.EqualTo("babyNotFound"));
         Assert.That(await ListAsync(_admin), Has.Length.EqualTo(1));
     }
 }

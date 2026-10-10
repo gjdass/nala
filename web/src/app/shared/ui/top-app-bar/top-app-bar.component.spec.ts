@@ -10,6 +10,7 @@ describe('TopAppBarComponent', () => {
 
   const baby = (id: string, name: string, birthDate: string): Baby => ({
     id,
+    familyId: 'f1',
     name,
     birthDate,
     sex: 'unspecified',
@@ -102,17 +103,20 @@ describe('TopAppBarComponent', () => {
     ['one baby', [lea], lea],
     ['several babies', [tom, lea], lea],
     ['no baby', [], null],
-  ] as const)('shows the Nala brand (lion head + name), decorative, with %s', async (_, babies, selected) => {
-    await show([...babies], selected);
+  ] as const)(
+    'shows the Nala brand (lion head + name), decorative, with %s',
+    async (_, babies, selected) => {
+      await show([...babies], selected);
 
-    const brand = find('brand') as HTMLElement;
-    expect(brand).not.toBeNull();
-    expect(brand.textContent?.trim()).toBe('Nala');
-    const lion = brand.querySelector('img') as HTMLImageElement;
-    expect(lion.getAttribute('src')).toBe('icons/brand-mark.png');
-    expect(lion.getAttribute('alt')).toBe('');
-    expect(brand.closest('button, a')).toBeNull();
-  });
+      const brand = find('brand') as HTMLElement;
+      expect(brand).not.toBeNull();
+      expect(brand.textContent?.trim()).toBe('Nala');
+      const lion = brand.querySelector('img') as HTMLImageElement;
+      expect(lion.getAttribute('src')).toBe('icons/brand-mark.png');
+      expect(lion.getAttribute('alt')).toBe('');
+      expect(brand.closest('button, a')).toBeNull();
+    },
+  );
 
   it('shows "Nala" first, then the lion\'s head at 40 px, as tall as the name + age block', async () => {
     await show([lea], lea);

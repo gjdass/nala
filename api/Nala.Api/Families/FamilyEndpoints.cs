@@ -10,7 +10,7 @@ public sealed record FamilyResponse(Guid Id, string Name, bool IsAdmin);
 public static class FamilyEndpoints
 {
     public static IServiceCollection AddNalaFamilies(this IServiceCollection services) =>
-        services.AddScoped<FamilyService>();
+        services.AddScoped<FamilyService>().AddScoped<FamilyAccess>();
 
     public static IEndpointRouteBuilder MapNalaFamilies(this IEndpointRouteBuilder endpoints)
     {

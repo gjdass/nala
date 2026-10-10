@@ -7,10 +7,11 @@ import { BabyAgePipe } from '../../../core/babies/baby-age.pipe';
 import { Baby, BabySheetResult } from '../../../core/babies/baby.models';
 import { BabyService } from '../../../core/babies/baby.service';
 import { byBirthDate } from '../../../core/babies/selected-baby.service';
+import { CurrentFamilyService } from '../../../core/families/current-family.service';
 import { SheetService } from '../../../shared/ui/sheet/sheet.service';
 import { BabySheetComponent } from '../../babies/baby-sheet/baby-sheet.component';
 
-/** The family's babies (name + age), added, edited and deleted (admin) through the baby sheet. */
+/** The family's babies (name + age), added, edited and deleted (family admin) through the baby sheet. */
 @Component({
   selector: 'nala-settings-babies',
   imports: [BabyAgePipe, MatButtonModule, MatIconModule, MatListModule, TranslocoPipe],
@@ -25,6 +26,8 @@ export class SettingsBabiesComponent {
   protected readonly loadError = signal(false);
 
   constructor() {
+    // The baby sheet needs them (current family, family admin), and settings can be opened first.
+    inject(CurrentFamilyService).refresh();
     inject(BabyService)
       .list()
       .subscribe((result) => {

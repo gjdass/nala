@@ -38,7 +38,7 @@ public class GrowthEntryEndpointTests
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
         _annaId = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("user").GetProperty("id").GetGuid();
 
-        response = await _admin.PostAsJsonAsync("/api/babies", new
+        response = await TestBabies.PostAsync(_admin, new
         {
             name = "Lea",
             birthDate = _birthDate.ToString("yyyy-MM-dd"),
@@ -513,7 +513,7 @@ public class GrowthEntryEndpointTests
     [Test]
     public async Task Latest_without_any_value_is_null_for_each_measure()
     {
-        var response = await _admin.PostAsJsonAsync("/api/babies", new { name = "Tom", birthDate = DaysAgo(5) });
+        var response = await TestBabies.PostAsync(_admin, new { name = "Tom", birthDate = DaysAgo(5) });
         var tomId = (await JsonAsync(response)).GetProperty("id").GetGuid();
 
         var latest = await JsonAsync(await _admin.GetAsync($"/api/babies/{tomId}/growth-entries/latest"));

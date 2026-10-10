@@ -94,7 +94,9 @@
         "resetLinkExpired": "This reset link has expired. Ask the admin for a new one.",
         "resetLinkUsed": "This reset link has already been used. Log in, or ask the admin for a new one.",
         "emailResetDisabled": "This Nala can't send emails. Ask your family's admin for a reset link.",
-        "babyNotFound": "This baby no longer exists. It may have been deleted."
+        "babyNotFound": "This baby no longer exists. It may have been deleted.",
+        "familyNotFound": "This family no longer exists, or you're no longer part of it.",
+        "familyAdminOnly": "Only the family admin can do this."
       }
     }
   },

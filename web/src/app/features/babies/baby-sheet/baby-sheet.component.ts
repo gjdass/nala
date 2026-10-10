@@ -4,9 +4,9 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { filter, map } from 'rxjs';
-import { AuthService } from '../../../core/auth/auth.service';
 import { Baby, BabySheetResult } from '../../../core/babies/baby.models';
 import { BabyService } from '../../../core/babies/baby.service';
+import { CurrentFamilyService } from '../../../core/families/current-family.service';
 import {
   BabyFormComponent,
   babyFields,
@@ -24,8 +24,8 @@ import {
 } from '../../../shared/ui/type-to-confirm-dialog/type-to-confirm-dialog.component';
 
 /**
- * Adds a baby, or edits the baby given as sheet data; opened with `SheetService`, closes with the
- * added or updated baby, or, when the admin deletes it, its id.
+ * Adds a baby to the current family, or edits the baby given as sheet data; opened with `SheetService`,
+ * closes with the added or updated baby, or, when the family admin deletes it, its id.
  */
 @Component({
   selector: 'nala-baby-sheet',
@@ -41,10 +41,13 @@ export class BabySheetComponent {
   private readonly transloco = inject(TranslocoService);
   /** Null when adding. */
   protected readonly baby = inject<Baby | null>(SHEET_DATA, { optional: true });
-  private readonly auth = inject(AuthService);
+  private readonly families = inject(CurrentFamilyService);
+  /** For the admin of the baby's family only. */
   protected readonly canDelete = computed(
-    () => !!this.baby && (this.auth.state()?.user?.isAdmin ?? false),
+    () => !!this.baby && this.families.isAdminOf(this.baby.familyId),
   );
+  /** A new baby can't be saved until the family it goes to is known. */
+  protected readonly noFamily = computed(() => !this.baby && !this.families.current());
 
   readonly form = createBabyForm(this.baby ?? undefined);
   /** Saving or deleting. */
@@ -55,13 +58,15 @@ export class BabySheetComponent {
   });
 
   protected save(): void {
-    if (this.form.invalid || this.saving()) {
+    if (this.form.invalid || this.saving() || this.noFamily()) {
       return;
     }
     this.saving.set(true);
     this.formError.set(null);
     const fields = babyFields(this.form);
-    const saved = this.baby ? this.babies.update(this.baby.id, fields) : this.babies.create(fields);
+    const saved = this.baby
+      ? this.babies.update(this.baby.id, fields)
+      : this.babies.create(this.families.current()!.id, fields);
     saved.subscribe((result) => {
       this.saving.set(false);
       if (result.ok) {
@@ -97,7 +102,7 @@ export class BabySheetComponent {
       .subscribe(() => this.sheetRef.close());
   }
 
-  /** Admin only: asks to type the baby's name, then deletes it. */
+  /** Family admin only: asks to type the baby's name, then deletes it. */
   protected delete(): void {
     const baby = this.baby!;
     const t = (key: string) =>

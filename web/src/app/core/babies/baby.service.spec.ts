@@ -17,7 +17,7 @@ describe('BabyService', () => {
     birthLengthCm: 50.5,
     birthHeadCircumferenceCm: null,
   };
-  const lea: Baby = { id: 'b1', ...fields };
+  const lea: Baby = { id: 'b1', familyId: 'f1', ...fields };
 
   beforeEach(() => {
     TestBed.configureTestingModule({
@@ -48,18 +48,18 @@ describe('BabyService', () => {
   });
 
   describe('create()', () => {
-    it('posts the fields and returns the created baby', async () => {
-      const result = firstValueFrom(service.create(fields));
+    it('posts the fields to the given family and returns the created baby', async () => {
+      const result = firstValueFrom(service.create('f1', fields));
       const req = http.expectOne('/api/babies');
       expect(req.request.method).toBe('POST');
-      expect(req.request.body).toEqual(fields);
+      expect(req.request.body).toEqual({ familyId: 'f1', ...fields });
       req.flush(lea, { status: 201, statusText: 'Created' });
 
       expect(await result).toEqual<BabyResult>({ ok: true, baby: lea });
     });
 
     it('maps a validation problem to field errors', async () => {
-      const result = firstValueFrom(service.create(fields));
+      const result = firstValueFrom(service.create('f1', fields));
       http
         .expectOne('/api/babies')
         .flush(

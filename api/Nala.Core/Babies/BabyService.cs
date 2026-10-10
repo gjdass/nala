@@ -7,6 +7,9 @@ public abstract record CreateBabyResult
 {
     public sealed record Created(Baby Baby) : CreateBabyResult;
 
+    /// <summary>The family is unknown, or the caller isn't in it.</summary>
+    public sealed record FamilyNotFound : CreateBabyResult;
+
     /// <summary>Field name → error code, see <see cref="BabyFields.Validate"/>.</summary>
     public sealed record Invalid(IReadOnlyDictionary<string, string> Errors) : CreateBabyResult;
 }
@@ -30,13 +33,27 @@ public abstract record DeleteBabyResult
     public sealed record NotFound : DeleteBabyResult;
 }
 
-/// <summary>The family's babies. Every member can list, add and edit them; only the admin can delete one.</summary>
-public class BabyService(IBabyRepository babies, IFamilyRepository families, TimeProvider time)
+/// <summary>
+/// The babies of the caller's families (checked through <see cref="FamilyAccess"/>). Every member can list, add and edit
+/// them; only the family admin can delete one. A baby never changes family.
+/// </summary>
+public class BabyService(IBabyRepository babies, FamilyAccess access, TimeProvider time)
 {
-    public async Task<CreateBabyResult> CreateAsync(User actor, BabyInput input, CancellationToken cancellationToken = default)
+    /// <summary>A family the caller isn't in is not found, before the fields; a missing one is a <c>familyId</c> field error.</summary>
+    public async Task<CreateBabyResult> CreateAsync(User actor, Guid? familyId, BabyInput input, CancellationToken cancellationToken = default)
     {
+        if (familyId is { } id && await access.RoleInAsync(actor, id, cancellationToken) is null)
+        {
+            return new CreateBabyResult.FamilyNotFound();
+        }
+
         var now = time.GetUtcNow();
         var errors = BabyFields.Validate(input, now);
+        if (familyId is null)
+        {
+            errors["familyId"] = "required";
+        }
+
         if (errors.Count > 0)
         {
             return new CreateBabyResult.Invalid(errors);
@@ -45,8 +62,7 @@ public class BabyService(IBabyRepository babies, IFamilyRepository families, Tim
         var baby = new Baby
         {
             Id = Guid.NewGuid(),
-            FamilyId = await FamilyService.FirstFamilyIdAsync(families, actor, cancellationToken)
-                ?? throw new InvalidOperationException("The user is in no family."),
+            FamilyId = familyId!.Value,
             Name = string.Empty,
             CreatedByUserId = actor.Id,
             CreatedAt = now,
@@ -56,11 +72,10 @@ public class BabyService(IBabyRepository babies, IFamilyRepository families, Tim
         return new CreateBabyResult.Created(baby);
     }
 
-    /// <summary>Replaces every field: an omitted sex or measurement is cleared. Any member may edit any baby.</summary>
+    /// <summary>Replaces every field: an omitted sex or measurement is cleared. Any member may edit any baby of their families.</summary>
     public async Task<UpdateBabyResult> UpdateAsync(User actor, Guid id, BabyInput input, CancellationToken cancellationToken = default)
     {
-        var baby = await babies.GetAsync(id, cancellationToken);
-        if (baby is null)
+        if (await access.ForBabyAsync(actor, id, cancellationToken) is not { Baby: var baby })
         {
             return new UpdateBabyResult.NotFound();
         }
@@ -77,27 +92,26 @@ public class BabyService(IBabyRepository babies, IFamilyRepository families, Tim
         return new UpdateBabyResult.Updated(baby);
     }
 
-    /// <summary>Admin only, checked before the lookup. The baby's entries go with it (database cascade).</summary>
+    /// <summary>Family admin only, checked after the family check. The baby's entries go with it (database cascade).</summary>
     public async Task<DeleteBabyResult> DeleteAsync(User actor, Guid id, CancellationToken cancellationToken = default)
     {
-        if (!actor.IsAdmin)
-        {
-            return new DeleteBabyResult.Forbidden();
-        }
-
-        var baby = await babies.GetAsync(id, cancellationToken);
-        if (baby is null)
+        if (await access.ForBabyAsync(actor, id, cancellationToken) is not { } found)
         {
             return new DeleteBabyResult.NotFound();
         }
 
-        await babies.DeleteAsync(baby, cancellationToken);
+        if (found.Role != FamilyRole.Admin)
+        {
+            return new DeleteBabyResult.Forbidden();
+        }
+
+        await babies.DeleteAsync(found.Baby, cancellationToken);
         return new DeleteBabyResult.Deleted();
     }
 
-    /// <summary>Oldest first.</summary>
-    public Task<IReadOnlyList<Baby>> ListAsync(CancellationToken cancellationToken = default) =>
-        babies.ListAsync(cancellationToken);
+    /// <summary>The babies of every family of the caller, oldest first.</summary>
+    public Task<IReadOnlyList<Baby>> ListAsync(User user, CancellationToken cancellationToken = default) =>
+        babies.ListForUserAsync(user.Id, cancellationToken);
 
     /// <summary>Call only on validated input.</summary>
     private static void Apply(Baby baby, BabyInput input, DateTimeOffset now)

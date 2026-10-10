@@ -34,7 +34,7 @@ public class SleepEndpointTests
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
         _annaId = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("user").GetProperty("id").GetGuid();
 
-        response = await _admin.PostAsJsonAsync("/api/babies", new { name = "Lea", birthDate = "2026-09-01" });
+        response = await TestBabies.PostAsync(_admin, new { name = "Lea", birthDate = "2026-09-01" });
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Created));
         _leaId = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
     }
@@ -318,7 +318,7 @@ public class SleepEndpointTests
 
     private async Task<Guid> AddBabyAsync(string name)
     {
-        var response = await _admin.PostAsJsonAsync("/api/babies", new { name, birthDate = "2026-09-01" });
+        var response = await TestBabies.PostAsync(_admin, new { name, birthDate = "2026-09-01" });
         return (await JsonAsync(response)).GetProperty("id").GetGuid();
     }
 

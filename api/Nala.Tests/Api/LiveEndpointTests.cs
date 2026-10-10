@@ -44,7 +44,7 @@ public class LiveEndpointTests
 
     private async Task<Guid> AddBabyAsync(string name)
     {
-        var response = await _admin.PostAsJsonAsync("/api/babies", new { name, birthDate = "2026-09-01" });
+        var response = await TestBabies.PostAsync(_admin, new { name, birthDate = "2026-09-01" });
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Created));
         return (await JsonAsync(response)).GetProperty("id").GetGuid();
     }

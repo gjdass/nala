@@ -33,12 +33,12 @@ public class BabyRepositoryTests
         _familyId = (await TestFamilies.SeedAsync(db, _anna)).Id;
     }
 
-    private async Task<Baby> AddAsync(string name, DateOnly birthDate, DateTimeOffset? createdAt = null, Action<Baby>? change = null)
+    private async Task<Baby> AddAsync(string name, DateOnly birthDate, DateTimeOffset? createdAt = null, Action<Baby>? change = null, Guid? familyId = null)
     {
         var baby = new Baby
         {
             Id = Guid.NewGuid(),
-            FamilyId = _familyId,
+            FamilyId = familyId ?? _familyId,
             Name = name,
             BirthDate = birthDate,
             CreatedByUserId = _anna.Id,
@@ -54,7 +54,34 @@ public class BabyRepositoryTests
     private async Task<IReadOnlyList<Baby>> ListAsync()
     {
         await using var db = _db();
-        return await new BabyRepository(db).ListAsync();
+        return await new BabyRepository(db).ListForUserAsync(_anna.Id);
+    }
+
+    [Test]
+    public async Task ListForUser_returns_only_the_babies_of_the_users_families()
+    {
+        var carl = new User
+        {
+            Id = Guid.NewGuid(),
+            Email = "carl@mail.com",
+            DisplayName = "Carl",
+            PasswordHash = "hash",
+            PreferredLanguage = "en",
+            CreatedAt = Now,
+        };
+        Guid othersId;
+        await using (var db = _db())
+        {
+            await new UserRepository(db).AddAsync(carl);
+            othersId = (await TestFamilies.SeedAsync(db, carl)).Id;
+        }
+
+        await AddAsync("Lea", new DateOnly(2026, 9, 1));
+        await AddAsync("Zoe", new DateOnly(2025, 1, 1), familyId: othersId);
+
+        Assert.That((await ListAsync()).Select(b => b.Name), Is.EqualTo(new[] { "Lea" }));
+        await using var check = _db();
+        Assert.That((await new BabyRepository(check).ListForUserAsync(carl.Id)).Select(b => b.Name), Is.EqualTo(new[] { "Zoe" }));
     }
 
     [Test]

@@ -11,5 +11,8 @@ public interface IFamilyRepository
     Task AddWithNewAdminAsync(User admin, Family family, Membership membership, CancellationToken cancellationToken = default);
 
     /// <summary>The user's families with their role, in no particular order.</summary>
+    /// <summary>The user's role in the family; null when they have no membership in it.</summary>
+    Task<FamilyRole?> GetRoleAsync(Guid familyId, Guid userId, CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<UserFamily>> ListForUserAsync(Guid userId, CancellationToken cancellationToken = default);
 }

@@ -2,7 +2,8 @@ using Nala.Core.Babies;
 
 namespace Nala.Tests.Support;
 
-public class FakeBabyRepository : IBabyRepository
+/// <summary>Lists through the given family repository's memberships, like the real join; without one, every baby.</summary>
+public class FakeBabyRepository(FakeFamilyRepository? families = null) : IBabyRepository
 {
     public List<Baby> Babies { get; } = [];
 
@@ -12,8 +13,12 @@ public class FakeBabyRepository : IBabyRepository
         return Task.CompletedTask;
     }
 
-    public Task<IReadOnlyList<Baby>> ListAsync(CancellationToken cancellationToken = default) =>
-        Task.FromResult<IReadOnlyList<Baby>>(Babies.OrderBy(b => b.BirthDate).ThenBy(b => b.CreatedAt).ToList());
+    public Task<IReadOnlyList<Baby>> ListForUserAsync(Guid userId, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<Baby>>(Babies
+            .Where(b => families is null || families.Memberships.Any(m => m.FamilyId == b.FamilyId && m.UserId == userId))
+            .OrderBy(b => b.BirthDate)
+            .ThenBy(b => b.CreatedAt)
+            .ToList());
 
     public Task<Baby?> GetAsync(Guid id, CancellationToken cancellationToken = default) =>
         Task.FromResult(Babies.SingleOrDefault(b => b.Id == id));

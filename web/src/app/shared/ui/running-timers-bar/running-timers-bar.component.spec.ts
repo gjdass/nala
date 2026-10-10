@@ -15,6 +15,7 @@ import { RunningTimersBarComponent } from './running-timers-bar.component';
 
 const baby = (id: string, name: string): Baby => ({
   id,
+  familyId: 'f1',
   name,
   birthDate: '2026-01-01',
   sex: 'unspecified',

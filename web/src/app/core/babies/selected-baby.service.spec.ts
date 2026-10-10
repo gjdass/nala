@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { Subject } from 'rxjs';
 import { BabiesResult, Baby } from './baby.models';
+import { CurrentFamilyService } from '../families/current-family.service';
 import { BabyService } from './baby.service';
 import { SelectedBabyService } from './selected-baby.service';
 
@@ -8,9 +9,11 @@ const KEY = 'nala.baby';
 
 describe('SelectedBabyService', () => {
   let listed: Subject<BabiesResult>;
+  let families: { refresh: ReturnType<typeof vi.fn> };
 
   const baby = (id: string, name: string, birthDate: string): Baby => ({
     id,
+    familyId: 'f1',
     name,
     birthDate,
     sex: 'unspecified',
@@ -31,9 +34,13 @@ describe('SelectedBabyService', () => {
   beforeEach(() => {
     localStorage.clear();
     listed = new Subject<BabiesResult>();
+    families = { refresh: vi.fn() };
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
-      providers: [{ provide: BabyService, useValue: { list: () => listed } }],
+      providers: [
+        { provide: BabyService, useValue: { list: () => listed } },
+        { provide: CurrentFamilyService, useValue: families },
+      ],
     });
   });
 
@@ -44,6 +51,12 @@ describe('SelectedBabyService', () => {
 
     expect(store.babies()).toEqual([tom, lea]);
     expect(store.selected()).toEqual(tom);
+  });
+
+  it('refreshes the families along with the babies', () => {
+    loaded({ ok: true, babies: [tom] });
+
+    expect(families.refresh).toHaveBeenCalledOnce();
   });
 
   it('has no babies before they are loaded', () => {

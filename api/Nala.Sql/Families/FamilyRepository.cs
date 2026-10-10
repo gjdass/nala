@@ -26,6 +26,12 @@ public class FamilyRepository(NalaDbContext db) : IFamilyRepository
         }
     }
 
+    public Task<FamilyRole?> GetRoleAsync(Guid familyId, Guid userId, CancellationToken cancellationToken = default) =>
+        db.Set<Membership>().AsNoTracking()
+            .Where(m => m.FamilyId == familyId && m.UserId == userId)
+            .Select(m => (FamilyRole?)m.Role)
+            .SingleOrDefaultAsync(cancellationToken);
+
     public async Task<IReadOnlyList<UserFamily>> ListForUserAsync(Guid userId, CancellationToken cancellationToken = default) =>
         (await db.Set<Membership>().AsNoTracking()
             .Where(m => m.UserId == userId)

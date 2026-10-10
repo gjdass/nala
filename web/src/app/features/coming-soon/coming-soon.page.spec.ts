@@ -14,6 +14,7 @@ describe('ComingSoonPage', () => {
 
   const lea: Baby = {
     id: 'b1',
+    familyId: 'f1',
     name: 'Lea',
     birthDate: '2026-09-01',
     sex: 'girl',
@@ -45,15 +46,18 @@ describe('ComingSoonPage', () => {
   it.each([
     ['history', en.nav.history],
     ['trends', en.nav.trends],
-  ])('/%s shows the top app bar with the selected baby and a "Coming soon" empty state', async (path, title) => {
-    await harness.navigateByUrl(`/${path}`, ComingSoonPage);
-    await harness.fixture.whenStable();
+  ])(
+    '/%s shows the top app bar with the selected baby and a "Coming soon" empty state',
+    async (path, title) => {
+      await harness.navigateByUrl(`/${path}`, ComingSoonPage);
+      await harness.fixture.whenStable();
 
-    expect(list).toHaveBeenCalled();
-    expect(host().querySelector('nala-top-app-bar')).not.toBeNull();
-    expect(text('selected-name')).toBe('Lea');
-    expect(text('destination-title')).toBe(title);
-    expect(text('empty-title')).toBe(en.comingSoon.title);
-    expect(text('empty-text')).toBe(en.comingSoon.text);
-  });
+      expect(list).toHaveBeenCalled();
+      expect(host().querySelector('nala-top-app-bar')).not.toBeNull();
+      expect(text('selected-name')).toBe('Lea');
+      expect(text('destination-title')).toBe(title);
+      expect(text('empty-title')).toBe(en.comingSoon.title);
+      expect(text('empty-text')).toBe(en.comingSoon.text);
+    },
+  );
 });

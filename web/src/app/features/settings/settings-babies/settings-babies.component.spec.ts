@@ -3,6 +3,7 @@ import { Subject } from 'rxjs';
 import en from '../../../../../public/i18n/en.json';
 import { BabiesResult, Baby, BabySheetResult } from '../../../core/babies/baby.models';
 import { BabyService } from '../../../core/babies/baby.service';
+import { CurrentFamilyService } from '../../../core/families/current-family.service';
 import { SheetService } from '../../../shared/ui/sheet/sheet.service';
 import { translocoTesting } from '../../../testing/transloco-testing';
 import { BabySheetComponent } from '../../babies/baby-sheet/baby-sheet.component';
@@ -13,9 +14,11 @@ describe('SettingsBabiesComponent', () => {
   let listed: Subject<BabiesResult>;
   let sheetClosed: Subject<BabySheetResult | undefined>;
   let sheet: { open: ReturnType<typeof vi.fn> };
+  let families: { refresh: ReturnType<typeof vi.fn> };
 
   const baby = (id: string, name: string, birthDate: string): Baby => ({
     id,
+    familyId: 'f1',
     name,
     birthDate,
     sex: 'unspecified',
@@ -49,11 +52,13 @@ describe('SettingsBabiesComponent', () => {
     listed = new Subject<BabiesResult>();
     sheetClosed = new Subject<BabySheetResult | undefined>();
     sheet = { open: vi.fn(() => sheetClosed) };
+    families = { refresh: vi.fn() };
     await TestBed.configureTestingModule({
       imports: [SettingsBabiesComponent, translocoTesting()],
       providers: [
         { provide: BabyService, useValue: { list: vi.fn(() => listed) } },
         { provide: SheetService, useValue: sheet },
+        { provide: CurrentFamilyService, useValue: families },
       ],
     }).compileComponents();
     fixture = TestBed.createComponent(SettingsBabiesComponent);
@@ -61,6 +66,10 @@ describe('SettingsBabiesComponent', () => {
   });
 
   afterEach(() => vi.useRealTimers());
+
+  it('loads the families, for the baby sheet', () => {
+    expect(families.refresh).toHaveBeenCalledOnce();
+  });
 
   it('lists the babies in the API order with their age', async () => {
     await list({ ok: true, babies: [tom, lea] });

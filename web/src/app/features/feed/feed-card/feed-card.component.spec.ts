@@ -24,6 +24,7 @@ const NOW = new Date(2026, 8, 30, 12, 0, 0);
 const minutesAgo = (m: number) => new Date(NOW.getTime() - m * 60_000).toISOString();
 const baby = (id: string): Baby => ({
   id,
+  familyId: 'f1',
   name: id,
   birthDate: '2026-09-01',
   sex: 'unspecified',

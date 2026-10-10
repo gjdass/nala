@@ -2,9 +2,10 @@ import { FieldErrors } from '../auth/auth.models';
 
 export type Sex = 'girl' | 'boy' | 'unspecified';
 
-/** A baby of the family. `birthDate` is a calendar date, `yyyy-MM-dd`. */
+/** A baby of one of the user's families; it never changes family. `birthDate` is a calendar date, `yyyy-MM-dd`. */
 export interface Baby {
   id: string;
+  familyId: string;
   name: string;
   birthDate: string;
   sex: Sex;
@@ -14,7 +15,7 @@ export interface Baby {
 }
 
 /** What a member enters to add or edit a baby. */
-export type BabyFields = Omit<Baby, 'id'>;
+export type BabyFields = Omit<Baby, 'id' | 'familyId'>;
 
 export type BabiesResult = { ok: true; babies: Baby[] } | { ok: false; errors: FieldErrors };
 

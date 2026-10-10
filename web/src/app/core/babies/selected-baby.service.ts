@@ -1,5 +1,6 @@
 import { DOCUMENT } from '@angular/common';
 import { Injectable, computed, inject, signal } from '@angular/core';
+import { CurrentFamilyService } from '../families/current-family.service';
 import { Baby } from './baby.models';
 import { BabyService } from './baby.service';
 
@@ -16,6 +17,7 @@ export const byBirthDate = (babies: Baby[]) =>
 @Injectable({ providedIn: 'root' })
 export class SelectedBabyService {
   private readonly api = inject(BabyService);
+  private readonly families = inject(CurrentFamilyService);
   private readonly storage = inject(DOCUMENT).defaultView?.localStorage;
   private readonly list = signal<Baby[] | null>(null);
   private readonly storedId = signal<string | null>(null);
@@ -29,10 +31,11 @@ export class SelectedBabyService {
   });
 
   /**
-   * Loads the babies and restores this device's choice. A baby that didn't change stays the same
-   * object, so reloading leaves the selected baby (and what follows it) as it was.
+   * Loads the babies, and the families along with them, and restores this device's choice. A baby that
+   * didn't change stays the same object, so reloading leaves the selected baby (and what follows it) as it was.
    */
   refresh(): void {
+    this.families.refresh();
     this.api.list().subscribe((result) => {
       if (result.ok) {
         const known = new Map((this.list() ?? []).map((b) => [b.id, b]));

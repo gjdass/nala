@@ -116,7 +116,7 @@ public class MemberEndpointTests
     {
         var (ben, benId) = await RegisterAsync("Ben");
         var benInvitation = await InviteAsync(ben);
-        var baby = await ben.PostAsJsonAsync("/api/babies", new { name = "Léa", birthDate = "2026-09-01" });
+        var baby = await TestBabies.PostAsync(ben, new { name = "Léa", birthDate = "2026-09-01" });
         Assert.That(baby.StatusCode, Is.EqualTo(HttpStatusCode.Created));
 
         var response = await RemoveAsync(_admin, benId);

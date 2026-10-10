@@ -94,7 +94,9 @@
         "resetLinkExpired": "Ce lien de réinitialisation a expiré. Demandez-en un nouveau à l'admin.",
         "resetLinkUsed": "Ce lien de réinitialisation a déjà été utilisé. Connectez-vous, ou demandez-en un nouveau à l'admin.",
         "emailResetDisabled": "Ce Nala ne peut pas envoyer d'emails. Demandez un lien de réinitialisation à l'administrateur de la famille.",
-        "babyNotFound": "Ce bébé n'existe plus. Il a peut-être été supprimé."
+        "babyNotFound": "Ce bébé n'existe plus. Il a peut-être été supprimé.",
+        "familyNotFound": "Cette famille n'existe plus, ou vous n'en faites plus partie.",
+        "familyAdminOnly": "Seul l'admin de la famille peut faire ça."
       }
     }
   },

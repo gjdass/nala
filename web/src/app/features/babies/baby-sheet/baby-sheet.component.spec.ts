@@ -1,27 +1,29 @@
-import { signal } from '@angular/core';
+import { computed, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideNativeDateAdapter } from '@angular/material/core';
 import { MatDialog } from '@angular/material/dialog';
 import { Subject } from 'rxjs';
 import en from '../../../../../public/i18n/en.json';
-import { AuthState } from '../../../core/auth/auth.models';
-import { AuthService } from '../../../core/auth/auth.service';
 import { Baby, BabyDeleteResult, BabyResult } from '../../../core/babies/baby.models';
 import { BabyService } from '../../../core/babies/baby.service';
+import { CurrentFamilyService } from '../../../core/families/current-family.service';
+import { Family } from '../../../core/families/family.models';
 import { ConfirmDialogComponent } from '../../../shared/ui/confirm-dialog/confirm-dialog.component';
 import { SHEET_DATA, SheetRef } from '../../../shared/ui/sheet/sheet-ref';
 import { TypeToConfirmDialogComponent } from '../../../shared/ui/type-to-confirm-dialog/type-to-confirm-dialog.component';
 import { translocoTesting } from '../../../testing/transloco-testing';
 import { BabySheetComponent } from './baby-sheet.component';
 
-/** An AuthService whose signed-in user is, or is not, the admin. */
-const authAs = (isAdmin: boolean) => ({
-  state: signal<AuthState | null>({
-    setupRequired: false,
-    smtpEnabled: false,
-    user: { id: 'u1', email: 'anna@mail.com', displayName: 'Anna', language: 'en', isAdmin },
-  }),
-});
+/** A CurrentFamilyService over the given families, the first one current. */
+const familiesOf = (families: Family[] | null) => {
+  const list = signal(families);
+  return {
+    list,
+    current: computed(() => list()?.[0] ?? null),
+    isAdminOf: (id: string) => list()?.find((f) => f.id === id)?.isAdmin ?? false,
+  };
+};
+const martins: Family = { id: 'f1', name: 'Martins', isAdmin: true };
 
 describe('BabySheetComponent', () => {
   let fixture: ComponentFixture<BabySheetComponent>;
@@ -30,9 +32,11 @@ describe('BabySheetComponent', () => {
   let sheetRef: { close: ReturnType<typeof vi.fn>; onDismiss?: (() => void) | null };
   let confirmed: Subject<boolean | undefined>;
   let dialog: { open: ReturnType<typeof vi.fn> };
+  let families: ReturnType<typeof familiesOf>;
 
   const lea: Baby = {
     id: 'b1',
+    familyId: 'f1',
     name: 'Lea',
     birthDate: '2026-09-01',
     sex: 'unspecified',
@@ -69,6 +73,7 @@ describe('BabySheetComponent', () => {
   beforeEach(async () => {
     created = new Subject<BabyResult>();
     babies = { create: vi.fn(() => created) };
+    families = familiesOf([martins, { id: 'f2', name: 'Durands', isAdmin: false }]);
     sheetRef = { close: vi.fn() };
     confirmed = new Subject<boolean | undefined>();
     dialog = { open: vi.fn(() => ({ afterClosed: () => confirmed })) };
@@ -79,7 +84,7 @@ describe('BabySheetComponent', () => {
         { provide: BabyService, useValue: babies },
         { provide: SheetRef, useValue: sheetRef },
         { provide: MatDialog, useValue: dialog },
-        { provide: AuthService, useValue: authAs(true) },
+        { provide: CurrentFamilyService, useValue: families },
       ],
     }).compileComponents();
     fixture = TestBed.createComponent(BabySheetComponent);
@@ -104,11 +109,18 @@ describe('BabySheetComponent', () => {
     expect(button('sheet-save').disabled).toBe(false);
   });
 
-  it('adds the baby and closes with it', async () => {
+  it('disables Save until the current family is known', async () => {
+    families.list.set(null);
+    await fillValid();
+
+    expect(button('sheet-save').disabled).toBe(true);
+  });
+
+  it('adds the baby to the current family and closes with it', async () => {
     await fillValid();
     await click('sheet-save');
 
-    expect(babies.create).toHaveBeenCalledWith({
+    expect(babies.create).toHaveBeenCalledWith('f1', {
       name: 'Lea',
       birthDate: '2026-09-01',
       sex: 'unspecified',
@@ -190,13 +202,14 @@ describe('BabySheetComponent editing a baby', () => {
     update: ReturnType<typeof vi.fn>;
     delete: ReturnType<typeof vi.fn>;
   };
-  let auth: ReturnType<typeof authAs>;
+  let families: ReturnType<typeof familiesOf>;
   let sheetRef: { close: ReturnType<typeof vi.fn> };
   let confirmed: Subject<boolean | undefined>;
   let dialog: { open: ReturnType<typeof vi.fn> };
 
   const lea: Baby = {
     id: 'b1',
+    familyId: 'f2',
     name: 'Lea',
     birthDate: '2026-09-01',
     sex: 'girl',
@@ -225,7 +238,11 @@ describe('BabySheetComponent editing a baby', () => {
     updated = new Subject<BabyResult>();
     deleted = new Subject<BabyDeleteResult>();
     babies = { create: vi.fn(), update: vi.fn(() => updated), delete: vi.fn(() => deleted) };
-    auth = authAs(true);
+    // Lea belongs to the Durands, which the user administers; the current family is another one.
+    families = familiesOf([
+      { id: 'f1', name: 'Martins', isAdmin: false },
+      { id: 'f2', name: 'Durands', isAdmin: true },
+    ]);
     sheetRef = { close: vi.fn() };
     confirmed = new Subject<boolean | undefined>();
     dialog = { open: vi.fn(() => ({ afterClosed: () => confirmed })) };
@@ -237,7 +254,7 @@ describe('BabySheetComponent editing a baby', () => {
         { provide: SheetRef, useValue: sheetRef },
         { provide: SHEET_DATA, useValue: lea },
         { provide: MatDialog, useValue: dialog },
-        { provide: AuthService, useValue: auth },
+        { provide: CurrentFamilyService, useValue: families },
       ],
     }).compileComponents();
     fixture = TestBed.createComponent(BabySheetComponent);
@@ -316,12 +333,15 @@ describe('BabySheetComponent editing a baby', () => {
       await fixture.whenStable();
     };
 
-    it('is offered to the admin', () => {
+    it("is offered to the admin of the baby's family", () => {
       expect(button('delete-baby').textContent?.trim()).toBe(en.babies.delete.action);
     });
 
-    it('is hidden from a non-admin member', async () => {
-      auth.state.update((state) => ({ ...state!, user: { ...state!.user!, isAdmin: false } }));
+    it("is hidden from a member who isn't the family admin, whatever their other families", async () => {
+      families.list.set([
+        { id: 'f1', name: 'Martins', isAdmin: true },
+        { id: 'f2', name: 'Durands', isAdmin: false },
+      ]);
       fixture.componentRef.changeDetectorRef.markForCheck();
       await fixture.whenStable();
 
@@ -358,11 +378,11 @@ describe('BabySheetComponent editing a baby', () => {
 
     it('shows a refusal as a form error and stays open', async () => {
       await confirmDelete();
-      deleted.next({ ok: false, errors: { form: 'adminOnly' } });
+      deleted.next({ ok: false, errors: { form: 'familyAdminOnly' } });
       await fixture.whenStable();
 
       expect(host().querySelector('[data-testid="form-error"]')?.textContent?.trim()).toBe(
-        en.auth.errors.form.adminOnly,
+        en.auth.errors.form.familyAdminOnly,
       );
       expect(sheetRef.close).not.toHaveBeenCalled();
     });

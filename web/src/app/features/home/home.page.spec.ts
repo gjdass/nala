@@ -47,6 +47,7 @@ describe('HomePage', () => {
 
   const lea: Baby = {
     id: 'b1',
+    familyId: 'f1',
     name: 'Lea',
     birthDate: '2026-09-01',
     sex: 'girl',
