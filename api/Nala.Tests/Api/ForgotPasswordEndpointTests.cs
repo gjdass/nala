@@ -45,7 +45,7 @@ public class ForgotPasswordEndpointTests
     private async Task SetUpAnnaAsync()
     {
         var response = await _client.PostAsJsonAsync(
-            "/api/auth/setup", new { email = "anna@mail.com", displayName = "Anna", password = Password, language = "en" });
+            "/api/auth/setup", new { email = "anna@mail.com", displayName = "Anna", password = Password, language = "en", familyName = "Martins" });
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
         await _client.PostAsync("/api/auth/logout", null);
     }
@@ -140,7 +140,7 @@ public class ForgotPasswordEndpointTests
         Start(smtp: true);
 
         var response = await _client.PostAsJsonAsync(
-            "/api/auth/setup", new { email = "anna@mail.com", displayName = "Anna", password = Password, language = "en" });
+            "/api/auth/setup", new { email = "anna@mail.com", displayName = "Anna", password = Password, language = "en", familyName = "Martins" });
 
         Assert.That((await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("smtpEnabled").GetBoolean(), Is.True);
     }

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Nala.Core.Families;
 using Nala.Core.Invitations;
 using Nala.Core.Users;
 using Nala.Sql.Users;
@@ -30,7 +31,8 @@ public class InvitationRepository(NalaDbContext db) : IInvitationRepository
             .Where(i => i.Id == id && i.UsedAt == null && i.RevokedAt == null && i.ExpiresAt > now)
             .ExecuteUpdateAsync(s => s.SetProperty(i => i.RevokedAt, now), cancellationToken) == 1;
 
-    public async Task<bool> RedeemAsync(Guid invitationId, User user, DateTimeOffset now, CancellationToken cancellationToken = default)
+    public async Task<bool> RedeemAsync(
+        Guid invitationId, User user, Membership? membership, DateTimeOffset now, CancellationToken cancellationToken = default)
     {
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
 
@@ -48,6 +50,12 @@ public class InvitationRepository(NalaDbContext db) : IInvitationRepository
             await transaction.RollbackAsync(cancellationToken);
             db.Entry(user).State = EntityState.Detached;
             return false;
+        }
+
+        if (membership is not null)
+        {
+            db.Set<Membership>().Add(membership);
+            await db.SaveChangesAsync(cancellationToken);
         }
 
         await transaction.CommitAsync(cancellationToken);

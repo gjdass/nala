@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Nala.Core.Babies;
+using Nala.Core.Families;
 using Nala.Core.Users;
 
 namespace Nala.Sql.Babies;
@@ -12,6 +13,7 @@ public class BabyConfiguration : IEntityTypeConfiguration<Baby>
         baby.ToTable("babies");
         baby.HasKey(b => b.Id);
         baby.Property(b => b.Id).HasColumnName("id").ValueGeneratedNever();
+        baby.Property(b => b.FamilyId).HasColumnName("family_id");
         baby.Property(b => b.Name).HasColumnName("name").HasMaxLength(BabyFields.NameMaxLength);
         baby.Property(b => b.BirthDate).HasColumnName("birth_date");
         baby.Property(b => b.Sex).HasColumnName("sex").HasMaxLength(16)
@@ -22,6 +24,9 @@ public class BabyConfiguration : IEntityTypeConfiguration<Baby>
         baby.Property(b => b.CreatedByUserId).HasColumnName("created_by_user_id");
         baby.Property(b => b.CreatedAt).HasColumnName("created_at");
         baby.Property(b => b.UpdatedAt).HasColumnName("updated_at");
+
+        baby.HasOne<Family>().WithMany().HasForeignKey(b => b.FamilyId).OnDelete(DeleteBehavior.Cascade);
+        baby.HasIndex(b => b.FamilyId).HasDatabaseName("ix_babies_family_id");
 
         // Users are only soft-deleted, so who added a baby is always known.
         baby.HasOne<User>().WithMany().HasForeignKey(b => b.CreatedByUserId).OnDelete(DeleteBehavior.Restrict);

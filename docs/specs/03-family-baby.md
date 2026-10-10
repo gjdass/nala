@@ -1,6 +1,6 @@
 # 03 — Family & baby profile
 
-Status: specified
+Status: in progress
 
 ## Goal
 
@@ -34,7 +34,7 @@ Let several households share one Nala instance, each one private: the instance a
 - **No baby yet:** when the current family has no baby, home shows only the shared `nala-empty-state` ("Add a baby", opening the baby sheet for the current family) under the top app bar; settings stays reachable from the bottom navigation bar (04). History shows the same empty state (spec 11).
 - **No family:** a user in no family (removed from their last one, or their last one deleted) sees, on home, History and Trends, the shared `nala-empty-state` "You're not part of a family yet. Ask a family member to invite you.", with no action and no baby switcher. Settings then shows no Family, Babies nor Members & invitations section. The instance admin always has a family (they can't be removed from it nor delete their account).
 - **Live entries:** `GET /api/live` (04) only returns the live entries of babies of the caller's families; the mini-bar lists them all, each with its baby's name when the user has more than one baby.
-- **Existing instances:** the migration creates one family named "Family" (the family admin can rename it), makes the instance admin its admin and every other non-deleted, enabled user a member, and puts every baby in it. Disabled users get no membership: since disabling no longer exists (02), they can sign in again and see the no-family state until invited.
+- **Existing instances:** the migration creates one family named "Family" (the family admin can rename it), makes the instance admin its admin and every other non-deleted, enabled user a member, and puts every baby and every invitation in it. Disabled users get no membership: since disabling no longer exists (02), they can sign in again and see the no-family state until invited.
 
 ## User stories
 
@@ -54,12 +54,12 @@ Let several households share one Nala instance, each one private: the instance a
 Each item becomes at least one test, written failing first.
 
 ### Families
-- [ ] The account created at first-run setup (02) is the admin of a first family, named at setup.
+- [x] The account created at first-run setup (02) is the admin of a first family, named at setup.
 - [ ] Accepting a new-family invitation (02) creates a family with the typed name (1–50 characters); the person is its admin and only member, and it has no baby.
 - [ ] A person can belong to several families, admin of some and member of others; `GET /api/families` lists theirs with their role.
-- [ ] Every family has exactly one admin, its creator; no action changes it.
+- [x] Every family has exactly one admin, its creator; no action changes it.
 - [ ] Only the family admin can rename the family; other members don't see the action and the endpoint refuses them (403).
-- [ ] On an existing instance, the migration puts every baby and every non-deleted, enabled user in one family "Family", with the instance admin as its admin; disabled users get no membership.
+- [x] On an existing instance, the migration puts every baby and every non-deleted, enabled user in one family "Family", with the instance admin as its admin; disabled users get no membership.
 
 ### First baby
 - [ ] When the current family has no baby, the app shows an empty state inviting the user to add one to it; no activity screen is reachable until it has one.
@@ -108,7 +108,7 @@ Each item becomes at least one test, written failing first.
 
 Slices 1–7 (single family) are done; each is a commit "Spec 03 slice N: …" (`git log --grep "Spec 03 slice"`). Multi-family, with 02's changes, continues from slice 8. The app keeps working after each slice: until slice 11, the web uses the user's first family as the current family.
 
-- [ ] **Slice 8: families, memberships and setup.** `Family` and `Membership` entities and tables (one admin per family, enforced by a unique partial index); `Baby.FamilyId`; nullable `Invitation.FamilyId`. Migration for existing instances (one family "Family": the instance admin as its admin, every other non-deleted, enabled user as a member, every baby and pending invitation in it). Setup asks for `familyName` and creates the account, the family and the admin membership together (API and web form). Registering through a join invitation adds a membership in its family. `GET /api/families`. *Covers:* Families 1, 4, 6; 02 First-run setup 2.
+- [x] **Slice 8: families, memberships and setup.** `Family` and `Membership` entities and tables (one admin per family, enforced by a unique partial index); `Baby.FamilyId`; nullable `Invitation.FamilyId`. Migration for existing instances (one family "Family": the instance admin as its admin, every other non-deleted, enabled user as a member, every baby and invitation in it). Setup asks for `familyName` and creates the account, the family and the admin membership together (API and web form). Registering through a join invitation adds a membership in its family. `GET /api/families`. *Covers:* Families 1, 4, 6; 02 First-run setup 2.
 - [ ] **Slice 9: shared family check, babies scoped to families.** `Nala.Core/Families` access check (family or baby → the caller's membership and role, 404 before any role check). Baby endpoints use it: `GET` returns the caller's families' babies, `POST` takes `familyId`, `PUT` never changes the family, and `DELETE` answers 403 `familyAdminOnly` to members who aren't the admin. Web: `familyId` on the baby model, a new baby goes to the current family, and only the family admin sees Delete. *Covers:* Babies 3, 5, 6; Isolation 3 (babies).
 - [ ] **Slice 10: isolation for every activity endpoint and Live.** Feed, Sleep, Diaper, Pump, Growth, Health and `/api/live` go through the shared check. Another family's baby or entry answers the same 404 as an unknown one, and an id that belongs to another family's entry is never created over, re-sent, started or stopped. Each section's API tests add a user from another family. *Covers:* Isolation 1, 3 (live), 4, 5.
 - [ ] **Slice 11: current family on the web, switcher across families, empty states.** The device remembers the current family and baby, with the fallbacks above. The switcher is grouped by family, with "No baby yet" items. The top bar shows the family name when the family has no baby. Home, History and Trends show the no-family empty state. Settings hides the family sections for a user in no family. *Covers:* First baby 1, 2; Baby switcher 1, 2, 3; Families 3.

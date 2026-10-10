@@ -29,6 +29,7 @@ describe('AuthService', () => {
     displayName: 'Anna',
     password: 'correct horse',
     language: 'fr',
+    familyName: 'Martins',
   };
 
   beforeEach(() => {
@@ -203,7 +204,7 @@ describe('AuthService', () => {
       smtpEnabled: false,
       user: { id: 'u2', email: 'ben@mail.com', displayName: 'Ben', language: 'fr', isAdmin: false },
     };
-    const registration = { ...request, email: 'ben@mail.com', displayName: 'Ben' };
+    const registration = { email: 'ben@mail.com', displayName: 'Ben', password: 'correct horse', language: 'fr' as const };
 
     it('posts the account to the invitation and stores the returned state', async () => {
       const result = firstValueFrom(service.register('tok', registration));

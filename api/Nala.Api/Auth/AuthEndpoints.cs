@@ -9,7 +9,7 @@ using Nala.Core.Users;
 
 namespace Nala.Api.Auth;
 
-public sealed record SetupRequest(string? Email, string? DisplayName, string? Password, string? Language);
+public sealed record SetupRequest(string? Email, string? DisplayName, string? Password, string? Language, string? FamilyName);
 
 public sealed record LoginRequest(string? Email, string? Password);
 
@@ -114,7 +114,7 @@ public static class AuthEndpoints
         SetupRequest request, SetupService setup, SessionService sessions, HttpContext context, CancellationToken cancellationToken)
     {
         var result = await setup.SetupAsync(
-            new SetupCommand(request.Email, request.DisplayName, request.Password, request.Language), cancellationToken);
+            new SetupCommand(request.Email, request.DisplayName, request.Password, request.Language, request.FamilyName), cancellationToken);
 
         switch (result)
         {

@@ -1,6 +1,6 @@
 # 02 — Authentication
 
-Status: specified
+Status: in progress
 
 ## Goal
 
@@ -23,7 +23,7 @@ Each item becomes at least one test, written failing first.
 
 ### First-run setup
 - [x] When the instance has no user, the app shows a setup screen instead of the login screen.
-- [ ] Setup creates an account with email, display name and password, and a family with the typed name (03); that account is the instance admin and the family's admin, and is logged in immediately.
+- [x] Setup creates an account with email, display name and password, and a family with the typed name (03); that account is the instance admin and the family's admin, and is logged in immediately.
 - [x] Once any user exists, the setup endpoint is refused (403) and the setup screen is no longer reachable.
 
 ### Registration (by invitation only)

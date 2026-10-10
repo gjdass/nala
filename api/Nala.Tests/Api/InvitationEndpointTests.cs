@@ -23,7 +23,7 @@ public class InvitationEndpointTests
         _admin = _factory.Start();
 
         var response = await _admin.PostAsJsonAsync(
-            "/api/auth/setup", new { email = "anna@mail.com", displayName = "Anna", password = Password, language = "en" });
+            "/api/auth/setup", new { email = "anna@mail.com", displayName = "Anna", password = Password, language = "en", familyName = "Martins" });
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
     }
 

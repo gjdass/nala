@@ -13,6 +13,7 @@ public class BabyRepositoryTests
 
     private Func<NalaDbContext> _db = null!;
     private User _anna = null!;
+    private Guid _familyId;
 
     [SetUp]
     public async Task SetUp()
@@ -29,6 +30,7 @@ public class BabyRepositoryTests
         };
         await using var db = _db();
         await new UserRepository(db).AddAsync(_anna);
+        _familyId = (await TestFamilies.SeedAsync(db, _anna)).Id;
     }
 
     private async Task<Baby> AddAsync(string name, DateOnly birthDate, DateTimeOffset? createdAt = null, Action<Baby>? change = null)
@@ -36,6 +38,7 @@ public class BabyRepositoryTests
         var baby = new Baby
         {
             Id = Guid.NewGuid(),
+            FamilyId = _familyId,
             Name = name,
             BirthDate = birthDate,
             CreatedByUserId = _anna.Id,

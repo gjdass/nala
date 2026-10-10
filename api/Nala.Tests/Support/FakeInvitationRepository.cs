@@ -1,3 +1,4 @@
+using Nala.Core.Families;
 using Nala.Core.Invitations;
 using Nala.Core.Users;
 
@@ -7,6 +8,9 @@ namespace Nala.Tests.Support;
 public class FakeInvitationRepository(FakeUserRepository users) : IInvitationRepository
 {
     public List<Invitation> Invitations { get; } = [];
+
+    /// <summary>The memberships saved by redeeming.</summary>
+    public List<Membership> Memberships { get; } = [];
 
     /// <summary>Simulates another registration consuming the invitation first.</summary>
     public bool ConsumedConcurrently { get; set; }
@@ -20,7 +24,8 @@ public class FakeInvitationRepository(FakeUserRepository users) : IInvitationRep
     public Task<Invitation?> GetByTokenHashAsync(string tokenHash, CancellationToken cancellationToken = default) =>
         Task.FromResult(Invitations.SingleOrDefault(i => i.TokenHash == tokenHash));
 
-    public async Task<bool> RedeemAsync(Guid invitationId, User user, DateTimeOffset now, CancellationToken cancellationToken = default)
+    public async Task<bool> RedeemAsync(
+        Guid invitationId, User user, Membership? membership, DateTimeOffset now, CancellationToken cancellationToken = default)
     {
         var invitation = Invitations.Single(i => i.Id == invitationId);
         if (ConsumedConcurrently || invitation.ProblemAt(now) is not null)
@@ -36,6 +41,11 @@ public class FakeInvitationRepository(FakeUserRepository users) : IInvitationRep
         await users.AddAsync(user, cancellationToken);
         invitation.UsedAt = now;
         invitation.UsedByUserId = user.Id;
+        if (membership is not null)
+        {
+            Memberships.Add(membership);
+        }
+
         return true;
     }
 

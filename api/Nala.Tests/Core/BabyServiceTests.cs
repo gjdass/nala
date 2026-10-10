@@ -1,4 +1,5 @@
 using Nala.Core.Babies;
+using Nala.Core.Families;
 using Nala.Core.Users;
 using Nala.Tests.Support;
 
@@ -9,23 +10,42 @@ public class BabyServiceTests
     private static readonly DateTimeOffset Now = new(2026, 9, 27, 20, 0, 0, TimeSpan.Zero);
 
     private FakeBabyRepository _babies = null!;
+    private FakeFamilyRepository _families = null!;
     private BabyService _service = null!;
 
     [SetUp]
     public void SetUp()
     {
         _babies = new FakeBabyRepository();
-        _service = new BabyService(_babies, new FixedTimeProvider(Now));
+        _families = new FakeFamilyRepository();
+        _service = new BabyService(_babies, _families, new FixedTimeProvider(Now));
     }
 
-    private static User NewUser(bool isAdmin = false) => new()
+    /// <summary>A user in a family of their own.</summary>
+    private User NewUser(bool isAdmin = false)
     {
-        Id = Guid.NewGuid(),
-        Email = "someone@mail.com",
-        DisplayName = "Someone",
-        PreferredLanguage = "en",
-        IsAdmin = isAdmin,
-    };
+        var user = new User
+        {
+            Id = Guid.NewGuid(),
+            Email = "someone@mail.com",
+            DisplayName = "Someone",
+            PreferredLanguage = "en",
+            IsAdmin = isAdmin,
+        };
+        _families.Seed("Someone's", Now, user);
+        return user;
+    }
+
+    [Test]
+    public async Task A_new_baby_goes_to_its_creators_first_family()
+    {
+        var actor = NewUser();
+        var alpha = _families.Seed("Alpha", Now.AddDays(1), actor);
+
+        var result = await _service.CreateAsync(actor, new BabyInput("Lea", new DateOnly(2026, 9, 1), null, null, null, null));
+
+        Assert.That(((CreateBabyResult.Created)result).Baby.FamilyId, Is.EqualTo(alpha.Id));
+    }
 
     [TestCase(true)]
     [TestCase(false)]
@@ -93,7 +113,7 @@ public class BabyServiceTests
     {
         var result = await _service.CreateAsync(
             creator, new BabyInput("Lea", new DateOnly(2026, 9, 1), "girl", 3400, 50.5m, 34.5m));
-        _service = new BabyService(_babies, new FixedTimeProvider(Later));
+        _service = new BabyService(_babies, _families, new FixedTimeProvider(Later));
         return ((CreateBabyResult.Created)result).Baby;
     }
 

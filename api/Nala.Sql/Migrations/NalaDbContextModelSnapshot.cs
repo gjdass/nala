@@ -119,6 +119,10 @@ namespace Nala.Sql.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("created_by_user_id");
 
+                    b.Property<Guid>("FamilyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("family_id");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -141,6 +145,9 @@ namespace Nala.Sql.Migrations
                         .HasDatabaseName("ix_babies_birth_date");
 
                     b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("FamilyId")
+                        .HasDatabaseName("ix_babies_family_id");
 
                     b.ToTable("babies", (string)null);
                 });
@@ -213,6 +220,66 @@ namespace Nala.Sql.Migrations
                         .HasDatabaseName("ix_diapers_baby_id_time_id");
 
                     b.ToTable("diapers", (string)null);
+                });
+
+            modelBuilder.Entity("Nala.Core.Families.Family", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("name");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.ToTable("families", (string)null);
+                });
+
+            modelBuilder.Entity("Nala.Core.Families.Membership", b =>
+                {
+                    b.Property<Guid>("FamilyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("family_id");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<DateTimeOffset>("JoinedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("joined_at");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("role");
+
+                    b.HasKey("FamilyId", "UserId");
+
+                    b.HasIndex("FamilyId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_family_memberships_single_admin")
+                        .HasFilter("role = 'admin'");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_family_memberships_user_id");
+
+                    b.ToTable("family_memberships", (string)null);
                 });
 
             modelBuilder.Entity("Nala.Core.Feeds.BreastFeedSegment", b =>
@@ -498,6 +565,10 @@ namespace Nala.Sql.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("expires_at");
 
+                    b.Property<Guid?>("FamilyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("family_id");
+
                     b.Property<DateTimeOffset?>("RevokedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("revoked_at");
@@ -518,6 +589,9 @@ namespace Nala.Sql.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("FamilyId")
+                        .HasDatabaseName("ix_invitations_family_id");
 
                     b.HasIndex("TokenHash")
                         .IsUnique()
@@ -778,6 +852,12 @@ namespace Nala.Sql.Migrations
                         .HasForeignKey("CreatedByUserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("Nala.Core.Families.Family", null)
+                        .WithMany()
+                        .HasForeignKey("FamilyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Nala.Core.Diapers.Diaper", b =>
@@ -797,6 +877,30 @@ namespace Nala.Sql.Migrations
                     b.HasOne("Nala.Core.Users.User", null)
                         .WithMany()
                         .HasForeignKey("UpdatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Nala.Core.Families.Family", b =>
+                {
+                    b.HasOne("Nala.Core.Users.User", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Nala.Core.Families.Membership", b =>
+                {
+                    b.HasOne("Nala.Core.Families.Family", null)
+                        .WithMany()
+                        .HasForeignKey("FamilyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Nala.Core.Users.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
@@ -880,6 +984,11 @@ namespace Nala.Sql.Migrations
                         .HasForeignKey("CreatedByUserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("Nala.Core.Families.Family", null)
+                        .WithMany()
+                        .HasForeignKey("FamilyId")
+                        .OnDelete(DeleteBehavior.Cascade);
 
                     b.HasOne("Nala.Core.Users.User", null)
                         .WithMany()

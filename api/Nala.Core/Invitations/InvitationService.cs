@@ -1,5 +1,6 @@
 using Nala.Core.Auth;
 using Nala.Core.Email;
+using Nala.Core.Families;
 using Nala.Core.Users;
 
 namespace Nala.Core.Invitations;
@@ -30,7 +31,8 @@ public abstract record SendInvitationResult
 }
 
 /// <summary>Invitation links. Every member can create, list and revoke them.</summary>
-public class InvitationService(IInvitationRepository invitations, IUserRepository users, IEmailOutbox outbox, TimeProvider time)
+public class InvitationService(
+    IInvitationRepository invitations, IUserRepository users, IFamilyRepository families, IEmailOutbox outbox, TimeProvider time)
 {
     public async Task<CreatedInvitation> CreateAsync(User actor, CancellationToken cancellationToken = default)
     {
@@ -40,6 +42,8 @@ public class InvitationService(IInvitationRepository invitations, IUserRepositor
         {
             Id = Guid.NewGuid(),
             TokenHash = LinkToken.Hash(token),
+            FamilyId = await FamilyService.FirstFamilyIdAsync(families, actor, cancellationToken)
+                ?? throw new InvalidOperationException("The user is in no family."),
             CreatedByUserId = actor.Id,
             CreatedAt = now,
             ExpiresAt = now + InvitationPolicy.Lifetime,

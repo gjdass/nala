@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Nala.Core.Families;
 using Nala.Core.Invitations;
 using Nala.Core.Users;
 
@@ -13,6 +14,7 @@ public class InvitationConfiguration : IEntityTypeConfiguration<Invitation>
         invitation.HasKey(i => i.Id);
         invitation.Property(i => i.Id).HasColumnName("id").ValueGeneratedNever();
         invitation.Property(i => i.TokenHash).HasColumnName("token_hash");
+        invitation.Property(i => i.FamilyId).HasColumnName("family_id");
         invitation.Property(i => i.CreatedByUserId).HasColumnName("created_by_user_id");
         invitation.Property(i => i.CreatedAt).HasColumnName("created_at");
         invitation.Property(i => i.ExpiresAt).HasColumnName("expires_at");
@@ -21,6 +23,9 @@ public class InvitationConfiguration : IEntityTypeConfiguration<Invitation>
         invitation.Property(i => i.RevokedAt).HasColumnName("revoked_at");
 
         invitation.HasIndex(i => i.TokenHash).IsUnique().HasDatabaseName("ux_invitations_token_hash");
+
+        invitation.HasOne<Family>().WithMany().HasForeignKey(i => i.FamilyId).OnDelete(DeleteBehavior.Cascade);
+        invitation.HasIndex(i => i.FamilyId).HasDatabaseName("ix_invitations_family_id");
 
         // Users are never hard-deleted (deletion only clears their credentials).
         invitation.HasOne<User>().WithMany().HasForeignKey(i => i.CreatedByUserId).OnDelete(DeleteBehavior.Restrict);

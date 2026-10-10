@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Nala.Core.Auth;
+using Nala.Core.Families;
 using Nala.Core.Invitations;
 using Nala.Core.Users;
 using Nala.Sql;
@@ -51,10 +52,16 @@ public class InvitationRepositoryTests
         return invitation;
     }
 
-    private async Task<bool> RedeemAsync(Invitation invitation, User user, DateTimeOffset? now = null)
+    private async Task<bool> RedeemAsync(Invitation invitation, User user, DateTimeOffset? now = null, Membership? membership = null)
     {
         await using var db = _db();
-        return await new InvitationRepository(db).RedeemAsync(invitation.Id, user, now ?? Now);
+        return await new InvitationRepository(db).RedeemAsync(invitation.Id, user, membership, now ?? Now);
+    }
+
+    private async Task<List<Membership>> MembershipsAsync()
+    {
+        await using var db = _db();
+        return await db.Set<Membership>().AsNoTracking().ToListAsync();
     }
 
     private async Task<Invitation> ReadAsync(Invitation invitation)
@@ -104,6 +111,45 @@ public class InvitationRepositoryTests
         var read = await ReadAsync(invitation);
         Assert.That(read.UsedAt, Is.EqualTo(Now.AddHours(1)));
         Assert.That(read.UsedByUserId, Is.EqualTo(ben.Id));
+    }
+
+    [Test]
+    public async Task Redeem_saves_the_membership()
+    {
+        Family family;
+        await using (var db = _db())
+        {
+            family = await TestFamilies.SeedAsync(db, _anna);
+        }
+
+        var invitation = await InviteAsync();
+        var ben = NewUser("ben@mail.com");
+        var membership = new Membership { FamilyId = family.Id, UserId = ben.Id, Role = FamilyRole.Member, JoinedAt = Now };
+
+        Assert.That(await RedeemAsync(invitation, ben, membership: membership), Is.True);
+
+        var saved = (await MembershipsAsync()).Single(m => m.UserId == ben.Id);
+        Assert.That(
+            new { saved.FamilyId, saved.Role, saved.JoinedAt },
+            Is.EqualTo(new { FamilyId = family.Id, Role = FamilyRole.Member, JoinedAt = Now }));
+    }
+
+    [Test]
+    public async Task Redeem_of_a_used_invitation_saves_no_membership()
+    {
+        Family family;
+        await using (var db = _db())
+        {
+            family = await TestFamilies.SeedAsync(db, _anna);
+        }
+
+        var invitation = await InviteAsync();
+        await RedeemAsync(invitation, NewUser("ben@mail.com"));
+        var carl = NewUser("carl@mail.com");
+        var membership = new Membership { FamilyId = family.Id, UserId = carl.Id, Role = FamilyRole.Member, JoinedAt = Now };
+
+        Assert.That(await RedeemAsync(invitation, carl, membership: membership), Is.False);
+        Assert.That((await MembershipsAsync()).Select(m => m.UserId), Is.EqualTo(new[] { _anna.Id }));
     }
 
     [Test]

@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Nala.Core.Babies;
+using Nala.Core.Families;
+using Nala.Core.Invitations;
 using Nala.Core.Feeds;
 using Nala.Core.HealthEntries;
 using Nala.Core.Sections;
@@ -48,22 +50,15 @@ public class MigrationTests
             DisplayName = "Anna",
             PasswordHash = "hash",
             PreferredLanguage = "en",
+            IsAdmin = true,
             CreatedAt = Now,
-        };
-        var baby = new Baby
-        {
-            Id = Guid.NewGuid(),
-            Name = "Lea",
-            BirthDate = new DateOnly(2026, 9, 1),
-            CreatedByUserId = user.Id,
-            CreatedAt = Now,
-            UpdatedAt = Now,
         };
         await using (var db = context())
         {
             await new UserRepository(db).AddAsync(user);
-            await new BabyRepository(db).AddAsync(baby);
         }
+
+        var baby = await InsertBabyAsync(context, user);
 
         Feed Breastfeed(int startMinutesAgo, int? endMinutesAgo, params (BreastSide Side, int From, int? To)[] segments)
         {
@@ -207,7 +202,69 @@ public class MigrationTests
         }
     }
 
-    private static async Task<User> SeedUserAsync(Func<NalaDbContext> context, string email, string displayName)
+    /// <summary>Spec 03 slice 8: an existing instance becomes one family "Family" with every enabled user and every baby.</summary>
+    [Test]
+    public async Task Existing_instance_gets_one_family_with_everyone_and_every_baby()
+    {
+        var context = await TestDatabase.CreateAsync("20261004154550_AddGrowthMilestones");
+        var member = await SeedUserAsync(context, "ben@mail.com", "Ben", createdAt: Now.AddDays(-5));
+        var admin = await SeedUserAsync(context, "anna@mail.com", "Anna", createdAt: Now.AddDays(-10), isAdmin: true);
+        var disabled = await SeedUserAsync(context, "carl@mail.com", "Carl", u => u.IsDisabled = true);
+        var deleted = await SeedUserAsync(context, "dora@mail.com", "Dora", u =>
+        {
+            u.Email = null;
+            u.PasswordHash = null;
+            u.DeletedAt = Now;
+        });
+        var lea = await InsertBabyAsync(context, admin);
+        var tom = await InsertBabyAsync(context, member);
+        var pending = await InsertInvitationAsync(context, member);
+        var used = await InsertInvitationAsync(context, admin, Now, member);
+
+        await using (var db = context())
+        {
+            await db.Database.MigrateAsync();
+        }
+
+        await using (var db = context())
+        {
+            var family = await db.Set<Family>().AsNoTracking().SingleAsync();
+            var memberships = await db.Set<Membership>().AsNoTracking().ToListAsync();
+            var babyFamilies = await db.Set<Baby>().AsNoTracking().ToDictionaryAsync(b => b.Id, b => b.FamilyId);
+            var invitationFamilies = await db.Set<Invitation>().AsNoTracking().ToDictionaryAsync(i => i.Id, i => i.FamilyId);
+            Assert.Multiple(() =>
+            {
+                Assert.That(
+                    new { family.Name, family.CreatedByUserId, family.CreatedAt },
+                    Is.EqualTo(new { Name = "Family", CreatedByUserId = admin.Id, admin.CreatedAt }));
+                Assert.That(
+                    memberships.Select(m => (m.FamilyId, m.UserId, m.Role, m.JoinedAt)),
+                    Is.EquivalentTo(new[]
+                    {
+                        (family.Id, admin.Id, FamilyRole.Admin, admin.CreatedAt),
+                        (family.Id, member.Id, FamilyRole.Member, member.CreatedAt),
+                    }));
+                Assert.That(memberships.Select(m => m.UserId), Has.None.EqualTo(disabled.Id).And.None.EqualTo(deleted.Id));
+                Assert.That(babyFamilies, Is.EquivalentTo(new Dictionary<Guid, Guid> { [lea.Id] = family.Id, [tom.Id] = family.Id }));
+                Assert.That(
+                    invitationFamilies,
+                    Is.EquivalentTo(new Dictionary<Guid, Guid?> { [pending] = family.Id, [used] = family.Id }));
+            });
+        }
+    }
+
+    [Test]
+    public async Task Empty_instance_gets_no_family()
+    {
+        var context = await TestDatabase.CreateAsync();
+
+        await using var db = context();
+        Assert.That(await db.Set<Family>().AnyAsync(), Is.False);
+    }
+
+    private static async Task<User> SeedUserAsync(
+        Func<NalaDbContext> context, string email, string displayName, Action<User>? change = null, DateTimeOffset? createdAt = null,
+        bool isAdmin = false)
     {
         var user = new User
         {
@@ -216,27 +273,45 @@ public class MigrationTests
             DisplayName = displayName,
             PasswordHash = "hash",
             PreferredLanguage = "en",
-            CreatedAt = Now,
+            IsAdmin = isAdmin,
+            CreatedAt = createdAt ?? Now,
         };
+        change?.Invoke(user);
         await using var db = context();
         await new UserRepository(db).AddAsync(user);
         return user;
     }
 
-    private static async Task<(User User, Baby Baby)> SeedUserAndBabyAsync(Func<NalaDbContext> context)
+    private static async Task<(User User, SeededBaby Baby)> SeedUserAndBabyAsync(Func<NalaDbContext> context)
     {
-        var user = await SeedUserAsync(context, "anna@mail.com", "Anna");
-        var baby = new Baby
-        {
-            Id = Guid.NewGuid(),
-            Name = "Lea",
-            BirthDate = new DateOnly(2026, 9, 1),
-            CreatedByUserId = user.Id,
-            CreatedAt = Now,
-            UpdatedAt = Now,
-        };
+        // An instance always has its admin, who becomes the admin of the family the babies move to (spec 03 slice 8).
+        var user = await SeedUserAsync(context, "anna@mail.com", "Anna", isAdmin: true);
+        return (user, await InsertBabyAsync(context, user));
+    }
+
+    /// <summary>With SQL: the <see cref="Baby"/> entity follows the latest schema, not the one being migrated from.</summary>
+    private static async Task<SeededBaby> InsertBabyAsync(Func<NalaDbContext> context, User creator)
+    {
+        var id = Guid.NewGuid();
+        var createdAt = Now;
         await using var db = context();
-        await new BabyRepository(db).AddAsync(baby);
-        return (user, baby);
+        await db.Database.ExecuteSqlAsync($"""
+            INSERT INTO babies (id, name, birth_date, sex, created_by_user_id, created_at, updated_at)
+            VALUES ({id}, 'Lea', {new DateOnly(2026, 9, 1)}, 'unspecified', {creator.Id}, {createdAt}, {createdAt})
+            """);
+        return new SeededBaby(id);
+    }
+
+    private sealed record SeededBaby(Guid Id);
+
+    private static async Task<Guid> InsertInvitationAsync(Func<NalaDbContext> context, User creator, DateTimeOffset? usedAt = null, User? usedBy = null)
+    {
+        var id = Guid.NewGuid();
+        await using var db = context();
+        await db.Database.ExecuteSqlAsync($"""
+            INSERT INTO invitations (id, token_hash, created_by_user_id, created_at, expires_at, used_at, used_by_user_id)
+            VALUES ({id}, {id.ToString()}, {creator.Id}, {Now}, {Now.AddDays(7)}, {usedAt}, {usedBy?.Id})
+            """);
+        return id;
     }
 }

@@ -1,10 +1,13 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Nala.Core.Auth;
+using Nala.Core.Families;
 using Nala.Core.Invitations;
 using Nala.Core.Users;
+using Nala.Sql;
 using Nala.Tests.Support;
 
 namespace Nala.Tests.Api;
@@ -29,7 +32,7 @@ public class RegisterEndpointTests
         // The admin signs up on another client; _client stays signed out.
         using var setup = NewClient();
         var response = await setup.PostAsJsonAsync(
-            "/api/auth/setup", new { email = "anna@mail.com", displayName = "Anna", password = Password, language = "en" });
+            "/api/auth/setup", new { email = "anna@mail.com", displayName = "Anna", password = Password, language = "en", familyName = "Martins" });
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
         _annaId = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("user").GetProperty("id").GetGuid();
     }
@@ -43,21 +46,23 @@ public class RegisterEndpointTests
 
     private HttpClient NewClient() => _factory.CreateClient(new() { BaseAddress = new Uri("https://localhost") });
 
-    /// <summary>Seeds an invitation from Anna (created in 03 later); returns its token.</summary>
+    /// <summary>Seeds a join invitation from Anna to her family; returns its token.</summary>
     private async Task<string> InviteAsync(Action<Invitation>? change = null)
     {
         var token = LinkToken.Generate();
         var now = _time.GetUtcNow();
+        using var scope = _factory.Services.CreateScope();
+        var family = await scope.ServiceProvider.GetRequiredService<NalaDbContext>().Set<Family>().SingleOrDefaultAsync();
         var invitation = new Invitation
         {
             Id = Guid.NewGuid(),
             TokenHash = LinkToken.Hash(token),
+            FamilyId = family?.Id,
             CreatedByUserId = _annaId,
             CreatedAt = now,
             ExpiresAt = now + InvitationPolicy.Lifetime,
         };
         change?.Invoke(invitation);
-        using var scope = _factory.Services.CreateScope();
         await scope.ServiceProvider.GetRequiredService<IInvitationRepository>().AddAsync(invitation);
         return token;
     }
@@ -133,6 +138,17 @@ public class RegisterEndpointTests
         Assert.That(user.GetProperty("displayName").GetString(), Is.EqualTo("Ben"));
         Assert.That(user.GetProperty("language").GetString(), Is.EqualTo("fr"));
         Assert.That(user.GetProperty("isAdmin").GetBoolean(), Is.False);
+    }
+
+    [Test]
+    public async Task Register_joins_the_inviters_family_as_a_member()
+    {
+        await RegisterAsync(await InviteAsync());
+
+        var families = await (await _client.GetAsync("/api/families")).Content.ReadFromJsonAsync<JsonElement>();
+        Assert.That(families.GetArrayLength(), Is.EqualTo(1));
+        Assert.That(families[0].GetProperty("name").GetString(), Is.EqualTo("Martins"));
+        Assert.That(families[0].GetProperty("isAdmin").GetBoolean(), Is.False);
     }
 
     [Test]

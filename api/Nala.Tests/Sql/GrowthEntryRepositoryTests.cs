@@ -15,6 +15,7 @@ public class GrowthEntryRepositoryTests
     private static readonly DateTimeOffset Now = new(2026, 10, 3, 12, 0, 0, TimeSpan.Zero);
 
     private Func<NalaDbContext> _db = null!;
+    private Guid _familyId;
     private User _anna = null!;
     private User _ben = null!;
     private Baby _lea = null!;
@@ -26,12 +27,13 @@ public class GrowthEntryRepositoryTests
         _db = await TestDatabase.CreateAsync();
         _anna = NewUser("anna", "Anna");
         _ben = NewUser("ben", "Ben");
-        _lea = NewBaby("Lea");
-        _tom = NewBaby("Tom");
         await using var db = _db();
         var users = new UserRepository(db);
         await users.AddAsync(_anna);
         await users.AddAsync(_ben);
+        _familyId = (await TestFamilies.SeedAsync(db, _anna, _ben)).Id;
+        _lea = NewBaby("Lea");
+        _tom = NewBaby("Tom");
         var babies = new BabyRepository(db);
         await babies.AddAsync(_lea);
         await babies.AddAsync(_tom);
@@ -50,6 +52,7 @@ public class GrowthEntryRepositoryTests
     private Baby NewBaby(string name) => new()
     {
         Id = Guid.NewGuid(),
+        FamilyId = _familyId,
         Name = name,
         BirthDate = new DateOnly(2026, 9, 1),
         CreatedByUserId = _anna.Id,

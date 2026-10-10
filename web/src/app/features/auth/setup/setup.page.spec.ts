@@ -30,6 +30,7 @@ describe('SetupPage', () => {
     type('email', ' Anna@Mail.com ');
     type('displayName', '  Anna ');
     type('password', 'correct horse');
+    type('familyName', '  The Martins ');
   };
   const send = async () => {
     submit().click();
@@ -51,11 +52,12 @@ describe('SetupPage', () => {
     await fixture.whenStable();
   });
 
-  it('shows the translated title and the three fields', () => {
+  it('shows the translated title and the four fields', () => {
     expect(host().querySelector('mat-card-title')?.textContent?.trim()).toBe(en.auth.setup.title);
     expect(input('email').type).toBe('email');
     expect(input('displayName').type).toBe('text');
     expect(input('password').type).toBe('password');
+    expect(input('familyName').type).toBe('text');
   });
 
   it('shows a required error per empty field on submit, and sends nothing', async () => {
@@ -64,6 +66,7 @@ describe('SetupPage', () => {
     expect(error('email')).toBe(en.auth.errors.email.required);
     expect(error('displayName')).toBe(en.auth.errors.displayName.required);
     expect(error('password')).toBe(en.auth.errors.password.required);
+    expect(error('familyName')).toBe(en.families.errors.name.required);
     expect(auth.setup).not.toHaveBeenCalled();
   });
 
@@ -85,6 +88,12 @@ describe('SetupPage', () => {
     expect(error('displayName')).toBe(en.auth.errors.displayName.tooLong);
   });
 
+  it('refuses a family name longer than 50 characters', async () => {
+    type('familyName', 'a'.repeat(51));
+    await fixture.whenStable();
+    expect(error('familyName')).toBe(en.families.errors.name.tooLong);
+  });
+
   it('submits the trimmed values with the active language', async () => {
     TestBed.inject(TranslocoService).setActiveLang('fr');
     fillValid();
@@ -95,6 +104,7 @@ describe('SetupPage', () => {
       displayName: 'Anna',
       password: 'correct horse',
       language: 'fr',
+      familyName: 'The Martins',
     });
   });
 
@@ -125,6 +135,15 @@ describe('SetupPage', () => {
 
     expect(error('email')).toBe(en.auth.errors.email.invalid);
     expect(router.navigateByUrl).not.toHaveBeenCalled();
+  });
+
+  it("shows the server's family name error under its field", async () => {
+    fillValid();
+    await send();
+    result.next({ ok: false, errors: { familyName: 'tooLong' } });
+    await fixture.whenStable();
+
+    expect(error('familyName')).toBe(en.families.errors.name.tooLong);
   });
 
   it('when the instance is already set up, says so and goes home', async () => {

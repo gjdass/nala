@@ -21,6 +21,8 @@ export interface SetupRequest {
   displayName: string;
   password: string;
   language: Lang;
+  /** The instance's first family, administered by the new account. */
+  familyName: string;
 }
 
 /** Field name → error code (`required`, `invalid`, `tooShort`, `tooLong`); `form` for errors not tied to a field. */
@@ -45,7 +47,7 @@ export interface Invitation {
 export type InvitationLookup = { ok: true; invitation: Invitation } | { ok: false; code: string };
 
 /** The same account fields as setup, sent to an invitation. */
-export type RegisterRequest = SetupRequest;
+export type RegisterRequest = Omit<SetupRequest, 'familyName'>;
 
 export type RegisterResult = { ok: true } | { ok: false; errors: FieldErrors };
 

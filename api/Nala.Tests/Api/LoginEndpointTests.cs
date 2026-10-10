@@ -28,7 +28,7 @@ public class LoginEndpointTests
         // The admin, then a fresh client with no session.
         using var setup = NewClient();
         var response = await setup.PostAsJsonAsync(
-            "/api/auth/setup", new { email = "anna@mail.com", displayName = "Anna", password = Password, language = "en" });
+            "/api/auth/setup", new { email = "anna@mail.com", displayName = "Anna", password = Password, language = "en", familyName = "Martins" });
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
     }
 

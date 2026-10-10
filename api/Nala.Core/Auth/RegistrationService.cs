@@ -1,3 +1,4 @@
+using Nala.Core.Families;
 using Nala.Core.Invitations;
 using Nala.Core.Users;
 
@@ -22,7 +23,7 @@ public abstract record RegisterResult
     public sealed record Invalid(IReadOnlyDictionary<string, string> Errors) : RegisterResult;
 }
 
-/// <summary>Turns an invitation link into a member account. There is no other way to sign up once the instance is set up.</summary>
+/// <summary>Turns an invitation link into an account, a member of the invitation's family. There is no other way to sign up once the instance is set up.</summary>
 public class RegistrationService(IInvitationRepository invitations, IUserRepository users, IPasswordHasher hasher, TimeProvider time)
 {
     private static readonly IReadOnlyDictionary<string, string> EmailTaken = new Dictionary<string, string> { ["email"] = "taken" };
@@ -76,7 +77,10 @@ public class RegistrationService(IInvitationRepository invitations, IUserReposit
         try
         {
             // Another registration may have used the link since it was read.
-            return await invitations.RedeemAsync(invitation.Id, member, now, cancellationToken)
+            var membership = invitation.FamilyId is { } familyId
+                ? new Membership { FamilyId = familyId, UserId = member.Id, Role = FamilyRole.Member, JoinedAt = now }
+                : null;
+            return await invitations.RedeemAsync(invitation.Id, member, membership, now, cancellationToken)
                 ? new RegisterResult.Registered(member)
                 : new RegisterResult.Unavailable(InvitationProblem.Used);
         }

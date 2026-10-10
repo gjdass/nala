@@ -29,8 +29,8 @@ public class SetupEndpointTests
         await _factory.DisposeAsync();
     }
 
-    private static object Setup(string email = "Anna@Mail.com ", string password = Password) =>
-        new { email, displayName = "Anna", password, language = "fr" };
+    private static object Setup(string email = "Anna@Mail.com ", string password = Password, string? familyName = " Our family ") =>
+        new { email, displayName = "Anna", password, language = "fr", familyName };
 
     private async Task<JsonElement> StateAsync()
     {
@@ -86,13 +86,42 @@ public class SetupEndpointTests
     public async Task Setup_invalid_input_returns_400_with_field_errors()
     {
         var response = await _client.PostAsJsonAsync(
-            "/api/auth/setup", new { email = "anna@localhost", displayName = "", password = "short", language = "en" });
+            "/api/auth/setup", new { email = "anna@localhost", displayName = "", password = "short", language = "en", familyName = "" });
 
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
         var errors = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("errors");
         Assert.That(errors.GetProperty("email")[0].GetString(), Is.EqualTo("invalid"));
         Assert.That(errors.GetProperty("displayName")[0].GetString(), Is.EqualTo("required"));
         Assert.That(errors.GetProperty("password")[0].GetString(), Is.EqualTo("tooShort"));
+        Assert.That(errors.GetProperty("familyName")[0].GetString(), Is.EqualTo("required"));
+        Assert.That((await StateAsync()).GetProperty("setupRequired").GetBoolean(), Is.True);
+    }
+
+    [Test]
+    public async Task Setup_creates_the_named_family_with_the_admin()
+    {
+        await _client.PostAsJsonAsync("/api/auth/setup", Setup());
+
+        var response = await _client.GetAsync("/api/families");
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        var families = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.That(families.GetArrayLength(), Is.EqualTo(1));
+        Assert.That(families[0].GetProperty("id").GetGuid(), Is.Not.EqualTo(Guid.Empty));
+        Assert.That(families[0].GetProperty("name").GetString(), Is.EqualTo("Our family"));
+        Assert.That(families[0].GetProperty("isAdmin").GetBoolean(), Is.True);
+    }
+
+    [TestCase(null, "required")]
+    [TestCase("   ", "required")]
+    [TestCase("123456789012345678901234567890123456789012345678901", "tooLong")]
+    public async Task Setup_with_an_invalid_family_name_is_refused(string? familyName, string code)
+    {
+        var response = await _client.PostAsJsonAsync("/api/auth/setup", Setup(familyName: familyName));
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
+        var errors = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("errors");
+        Assert.That(errors.EnumerateObject().Select(e => (e.Name, e.Value[0].GetString())), Is.EqualTo(new[] { ("familyName", code) }));
         Assert.That((await StateAsync()).GetProperty("setupRequired").GetBoolean(), Is.True);
     }
 

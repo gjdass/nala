@@ -35,11 +35,4 @@ export const newPassword: ValidatorFn = (control): ValidationErrors | null => {
   return value.length >= PASSWORD_MIN_LENGTH ? null : { tooShort: true };
 };
 
-/** The code to show for a control: a server-side code set as `{ server: code }`, else the first validator key. */
-export function errorCode(control: AbstractControl): string | null {
-  const errors = control.errors;
-  if (!errors) {
-    return null;
-  }
-  return 'server' in errors ? (errors['server'] as string) : Object.keys(errors)[0];
-}
+export { errorCode } from '../../core/forms/error-code';

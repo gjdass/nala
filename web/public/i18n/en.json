@@ -15,7 +15,7 @@
   "auth": {
     "setup": {
       "title": "Welcome to Nala",
-      "subtitle": "Create the admin account for this instance.",
+      "subtitle": "Create the admin account for this instance and name your family.",
       "submit": "Create account"
     },
     "login": {
@@ -209,6 +209,17 @@
   "sheet": {
     "close": "Close",
     "save": "Save"
+  },
+  "families": {
+    "name": {
+      "label": "Family name"
+    },
+    "errors": {
+      "name": {
+        "required": "Enter a family name",
+        "tooLong": "50 characters maximum"
+      }
+    }
   },
   "babies": {
     "loadError": "Couldn't load your babies. Check your connection and try again.",

@@ -1,4 +1,5 @@
 using Nala.Core.Auth;
+using Nala.Core.Families;
 using Nala.Core.Invitations;
 using Nala.Core.Users;
 using Nala.Tests.Support;
@@ -14,6 +15,7 @@ public class RegistrationServiceTests
     private FixedTimeProvider _time = null!;
     private RegistrationService _service = null!;
     private User _anna = null!;
+    private readonly Guid _familyId = Guid.NewGuid();
 
     [SetUp]
     public void SetUp()
@@ -43,6 +45,7 @@ public class RegistrationServiceTests
         {
             Id = Guid.NewGuid(),
             TokenHash = LinkToken.Hash(token),
+            FamilyId = _familyId,
             CreatedByUserId = _anna.Id,
             CreatedAt = Now,
             ExpiresAt = Now + InvitationPolicy.Lifetime,
@@ -118,6 +121,18 @@ public class RegistrationServiceTests
         var invitation = _invitations.Invitations.Single();
         Assert.That(invitation.UsedAt, Is.EqualTo(Now));
         Assert.That(invitation.UsedByUserId, Is.EqualTo(ben.Id));
+    }
+
+    [Test]
+    public async Task Registering_joins_the_invitations_family_as_a_member()
+    {
+        var result = await _service.RegisterAsync(Register(Invite()));
+
+        var ben = ((RegisterResult.Registered)result).User;
+        var membership = _invitations.Memberships.Single();
+        Assert.That(
+            new { membership.FamilyId, membership.UserId, membership.Role, membership.JoinedAt },
+            Is.EqualTo(new { FamilyId = _familyId, UserId = ben.Id, Role = FamilyRole.Member, JoinedAt = Now }));
     }
 
     [Test]

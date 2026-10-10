@@ -1,3 +1,4 @@
+using Nala.Core.Families;
 using Nala.Core.Users;
 
 namespace Nala.Core.Babies;
@@ -30,7 +31,7 @@ public abstract record DeleteBabyResult
 }
 
 /// <summary>The family's babies. Every member can list, add and edit them; only the admin can delete one.</summary>
-public class BabyService(IBabyRepository babies, TimeProvider time)
+public class BabyService(IBabyRepository babies, IFamilyRepository families, TimeProvider time)
 {
     public async Task<CreateBabyResult> CreateAsync(User actor, BabyInput input, CancellationToken cancellationToken = default)
     {
@@ -44,6 +45,8 @@ public class BabyService(IBabyRepository babies, TimeProvider time)
         var baby = new Baby
         {
             Id = Guid.NewGuid(),
+            FamilyId = await FamilyService.FirstFamilyIdAsync(families, actor, cancellationToken)
+                ?? throw new InvalidOperationException("The user is in no family."),
             Name = string.Empty,
             CreatedByUserId = actor.Id,
             CreatedAt = now,

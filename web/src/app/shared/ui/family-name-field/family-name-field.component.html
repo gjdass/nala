@@ -1,0 +1,15 @@
+<mat-form-field>
+  <mat-label>{{ 'families.name.label' | transloco }}</mat-label>
+  <input
+    matInput
+    type="text"
+    [formControl]="control()"
+    autocomplete="off"
+    data-testid="familyName"
+  />
+  @if (errorCode(control()); as code) {
+    <mat-error data-testid="error-familyName">{{
+      'families.errors.name.' + code | transloco
+    }}</mat-error>
+  }
+</mat-form-field>

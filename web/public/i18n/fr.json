@@ -15,7 +15,7 @@
   "auth": {
     "setup": {
       "title": "Bienvenue sur Nala",
-      "subtitle": "Créez le compte administrateur de cette instance.",
+      "subtitle": "Créez le compte administrateur de cette instance et nommez votre famille.",
       "submit": "Créer le compte"
     },
     "login": {
@@ -209,6 +209,17 @@
   "sheet": {
     "close": "Fermer",
     "save": "Enregistrer"
+  },
+  "families": {
+    "name": {
+      "label": "Nom de la famille"
+    },
+    "errors": {
+      "name": {
+        "required": "Saisissez un nom de famille",
+        "tooLong": "50 caractères maximum"
+      }
+    }
   },
   "babies": {
     "loadError": "Impossible de charger vos bébés. Vérifiez votre connexion et réessayez.",

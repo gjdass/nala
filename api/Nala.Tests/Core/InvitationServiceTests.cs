@@ -1,5 +1,6 @@
 using Nala.Core.Auth;
 using Nala.Core.Email;
+using Nala.Core.Families;
 using Nala.Core.Invitations;
 using Nala.Core.Users;
 using Nala.Tests.Support;
@@ -12,6 +13,8 @@ public class InvitationServiceTests
 
     private FakeUserRepository _users = null!;
     private FakeInvitationRepository _invitations = null!;
+    private FakeFamilyRepository _families = null!;
+    private Family _family = null!;
     private FakeEmailOutbox _outbox = null!;
     private InvitationService _service = null!;
     private User _anna = null!;
@@ -24,9 +27,11 @@ public class InvitationServiceTests
         _users = new FakeUserRepository();
         _invitations = new FakeInvitationRepository(_users);
         _outbox = new FakeEmailOutbox();
-        _service = new InvitationService(_invitations, _users, _outbox, new FixedTimeProvider(Now));
+        _families = new FakeFamilyRepository(_users);
+        _service = new InvitationService(_invitations, _users, _families, _outbox, new FixedTimeProvider(Now));
         _anna = NewUser("Anna", isAdmin: true);
         await _users.AddAsync(_anna);
+        _family = _families.Seed("Martins", Now, _anna);
     }
 
     private static User NewUser(string name, bool isAdmin = false) => new()
@@ -59,6 +64,7 @@ public class InvitationServiceTests
     public async Task Any_member_creates_a_link_valid_7_days_and_only_its_hash_is_stored(bool isAdmin)
     {
         var actor = NewUser("Ben", isAdmin);
+        var family = _families.Seed("Ben's", Now, actor);
 
         var created = await _service.CreateAsync(actor);
 
@@ -71,6 +77,7 @@ public class InvitationServiceTests
             Assert.That(stored.TokenHash, Is.EqualTo(LinkToken.Hash(created.Token)));
             Assert.That(stored.TokenHash, Is.Not.EqualTo(created.Token));
             Assert.That(stored.CreatedByUserId, Is.EqualTo(actor.Id));
+            Assert.That(stored.FamilyId, Is.EqualTo(family.Id));
             Assert.That(stored.CreatedAt, Is.EqualTo(Now));
             Assert.That(stored.ExpiresAt, Is.EqualTo(Now.AddDays(7)));
             Assert.That(stored.ProblemAt(Now), Is.Null);
@@ -194,6 +201,7 @@ public class InvitationServiceTests
         {
             Assert.That(result, Is.EqualTo(new SendInvitationResult.Sent(Now.AddDays(7))));
             Assert.That(stored.CreatedByUserId, Is.EqualTo(_anna.Id));
+            Assert.That(stored.FamilyId, Is.EqualTo(_family.Id));
             Assert.That(stored.ExpiresAt, Is.EqualTo(Now.AddDays(7)));
             Assert.That(message.To, Is.EqualTo("ben@mail.com"));
             Assert.That(stored.TokenHash, Is.EqualTo(LinkToken.Hash(TokenIn(message))));

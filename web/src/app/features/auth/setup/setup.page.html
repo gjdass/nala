@@ -5,6 +5,7 @@
     [error]="formError() ? ('auth.errors.form.' + formError() | transloco) : null"
   >
     <nala-account-fields [form]="form" />
+    <nala-family-name-field [control]="familyName" />
 
     <button
       authCardActions

@@ -5,6 +5,9 @@ public class Baby
 {
     public Guid Id { get; init; }
 
+    /// <summary>A baby never changes family.</summary>
+    public Guid FamilyId { get; init; }
+
     public required string Name { get; set; }
 
     /// <summary>A calendar date, no time or time zone.</summary>

@@ -1,9 +1,12 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Nala.Core.Auth;
+using Nala.Core.Families;
 using Nala.Core.Invitations;
+using Nala.Sql;
 using Nala.Tests.Support;
 
 namespace Nala.Tests.Api;
@@ -28,7 +31,7 @@ public class BabyEndpointTests
 
         // The admin, signed in on _admin by setup.
         var response = await _admin.PostAsJsonAsync(
-            "/api/auth/setup", new { email = "anna@mail.com", displayName = "Anna", password = Password, language = "en" });
+            "/api/auth/setup", new { email = "anna@mail.com", displayName = "Anna", password = Password, language = "en", familyName = "Martins" });
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
         _annaId = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("user").GetProperty("id").GetGuid();
     }
@@ -49,10 +52,13 @@ public class BabyEndpointTests
         var now = _factory.Time!.GetUtcNow();
         using (var scope = _factory.Services.CreateScope())
         {
+            // A join invitation to Anna's family.
+            var family = await scope.ServiceProvider.GetRequiredService<NalaDbContext>().Set<Family>().SingleAsync();
             await scope.ServiceProvider.GetRequiredService<IInvitationRepository>().AddAsync(new Invitation
             {
                 Id = Guid.NewGuid(),
                 TokenHash = LinkToken.Hash(token),
+                FamilyId = family.Id,
                 CreatedByUserId = _annaId,
                 CreatedAt = now,
                 ExpiresAt = now + InvitationPolicy.Lifetime,

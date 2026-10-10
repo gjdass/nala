@@ -1,4 +1,5 @@
 using Nala.Core.Auth;
+using Nala.Core.Families;
 using Nala.Tests.Support;
 
 namespace Nala.Tests.Core;
@@ -8,16 +9,18 @@ public class SetupServiceTests
     private static readonly DateTimeOffset Now = new(2026, 9, 27, 20, 0, 0, TimeSpan.Zero);
 
     private FakeUserRepository _users = null!;
+    private FakeFamilyRepository _families = null!;
     private SetupService _service = null!;
 
     [SetUp]
     public void SetUp()
     {
         _users = new FakeUserRepository();
-        _service = new SetupService(_users, new FakePasswordHasher(), new FixedTimeProvider(Now));
+        _families = new FakeFamilyRepository(_users);
+        _service = new SetupService(_users, _families, new FakePasswordHasher(), new FixedTimeProvider(Now));
     }
 
-    private static SetupCommand Valid() => new("Anna@Mail.com ", " Anna ", "correct horse", "fr");
+    private static SetupCommand Valid() => new("Anna@Mail.com ", " Anna ", "correct horse", "fr", " The Martins ");
 
     [Test]
     public async Task Creates_admin_with_normalized_email_and_hashed_password()
@@ -62,7 +65,7 @@ public class SetupServiceTests
     {
         await _service.SetupAsync(Valid());
 
-        var result = await _service.SetupAsync(new SetupCommand(null, null, null, null));
+        var result = await _service.SetupAsync(new SetupCommand(null, null, null, null, null));
 
         Assert.That(result, Is.InstanceOf<SetupResult.AlreadySetUp>());
     }
@@ -80,7 +83,7 @@ public class SetupServiceTests
     [Test]
     public async Task Invalid_input_returns_field_errors()
     {
-        var result = await _service.SetupAsync(new SetupCommand("anna@localhost", new string('a', 51), "short", "en"));
+        var result = await _service.SetupAsync(new SetupCommand("anna@localhost", new string('a', 51), "short", "en", new string('f', 51)));
 
         Assert.That(result, Is.InstanceOf<SetupResult.Invalid>());
         Assert.That(((SetupResult.Invalid)result).Errors, Is.EquivalentTo(new Dictionary<string, string>
@@ -88,20 +91,56 @@ public class SetupServiceTests
             ["email"] = "invalid",
             ["displayName"] = "tooLong",
             ["password"] = "tooShort",
+            ["familyName"] = "tooLong",
         }));
         Assert.That(_users.Users, Is.Empty);
+        Assert.That(_families.Families, Is.Empty);
     }
 
     [Test]
     public async Task Missing_fields_are_required()
     {
-        var result = await _service.SetupAsync(new SetupCommand(" ", null, "", "en"));
+        var result = await _service.SetupAsync(new SetupCommand(" ", null, "", "en", "  "));
 
         Assert.That(((SetupResult.Invalid)result).Errors, Is.EquivalentTo(new Dictionary<string, string>
         {
             ["email"] = "required",
             ["displayName"] = "required",
             ["password"] = "required",
+            ["familyName"] = "required",
         }));
+    }
+
+    [Test]
+    public async Task Setup_creates_the_family_with_its_admin_membership()
+    {
+        var result = await _service.SetupAsync(Valid());
+
+        var admin = ((SetupResult.Created)result).User;
+        var family = _families.Families.Single();
+        Assert.Multiple(() =>
+        {
+            Assert.That(family.Id, Is.Not.EqualTo(Guid.Empty));
+            Assert.That(family.Name, Is.EqualTo("The Martins"));
+            Assert.That(family.CreatedByUserId, Is.EqualTo(admin.Id));
+            Assert.That(family.CreatedAt, Is.EqualTo(Now));
+        });
+        var membership = _families.Memberships.Single();
+        Assert.That(
+            new { membership.FamilyId, membership.UserId, membership.Role, membership.JoinedAt },
+            Is.EqualTo(new { FamilyId = family.Id, UserId = admin.Id, Role = FamilyRole.Admin, JoinedAt = Now }));
+    }
+
+    [Test]
+    public async Task Setup_refuses_only_an_invalid_family_name()
+    {
+        var result = await _service.SetupAsync(Valid() with { FamilyName = null });
+
+        Assert.That(((SetupResult.Invalid)result).Errors, Is.EquivalentTo(new Dictionary<string, string>
+        {
+            ["familyName"] = "required",
+        }));
+        Assert.That(_users.Users, Is.Empty);
+        Assert.That(_families.Families, Is.Empty);
     }
 }
