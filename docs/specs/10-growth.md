@@ -6,7 +6,7 @@ Builds on [04 — App layout](04-app-layout.md): the section pattern, the entry 
 
 ## Goal
 
-Log the selected baby's measurements (weight, length, head circumference) and milestones over time, starting from the birth measurements of the baby profile, and see the latest value of each measure at a glance. Raw logging only: no percentiles, curves or trends.
+Log the selected baby's measurements (weight, length, head circumference) and milestones over time, starting from the birth measurements of the baby profile, and see the latest value of each measure at a glance. Raw logging only: no percentiles, curves or trends in the section (the curves live in Trends, spec 12).
 
 ## Kinds
 
@@ -98,7 +98,7 @@ Built in 3 slices, all done; each is a commit "Spec 10 slice N: …" (`git log -
 
 ## Out of scope
 
-- Percentiles, WHO curves, growth charts, trend or velocity analysis (decided: raw logging only).
+- Percentiles, WHO curves, trend or velocity analysis (decided: raw logging only). Plain growth curves are in Trends (spec 12).
 - Imperial units (metric only, overview).
 - Times on growth entries (date only).
 - Other measures (temperature, BMI…), milestone photos.
