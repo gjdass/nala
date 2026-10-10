@@ -9,7 +9,7 @@
   } @else if (empty()) {
     <nala-empty-state
       icon="history"
-      [title]="'history.empty.title' | transloco"
+      [title]="emptyTitle() ?? ('history.empty.title' | transloco)"
       data-testid="history-empty"
     />
   }

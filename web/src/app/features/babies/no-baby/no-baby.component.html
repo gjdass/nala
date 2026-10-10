@@ -1,0 +1,10 @@
+<nala-empty-state
+  icon="child_care"
+  [title]="'babies.empty.title' | transloco"
+  [text]="'babies.empty.text' | transloco"
+  data-testid="empty-state"
+>
+  <button mat-flat-button type="button" (click)="addBaby()" data-testid="add-baby">
+    {{ 'babies.empty.add' | transloco }}
+  </button>
+</nala-empty-state>

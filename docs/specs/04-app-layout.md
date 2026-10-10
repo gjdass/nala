@@ -28,7 +28,7 @@ This spec has four parts:
 ### Bottom navigation bar
 - Shared `nala-bottom-nav`, on every signed-in screen (auth state with a user), never on the signed-out ones (setup, login, invitation, password reset).
 - Four destinations, in this order: **Dashboard** (`/`, home), **History** (`/history`), **Trends** (`/trends`), **Settings** (`/settings`), each an icon only (the destination name is its accessible name and tooltip), the current one marked with the M3 active indicator pill. A section's history page (`/history/:section`) is reached from a home card, so **Dashboard** stays the active destination there; History is active on `/history` only. The settings page has no back link (it is a destination).
-- History and Trends are placeholders: the shared top app bar, the destination as page title and a "Coming soon" empty state; their content is features 11 and 12.
+- History (`/history`) is feature 11 (spec 11). Trends is a placeholder: the shared top app bar, the destination as page title and a "Coming soon" empty state; its content is feature 12.
 - Floating, fixed at the bottom of the screen above the safe area: not full width (70 % of the screen width minus the 16 px side margins, at most 294 px wide, centred), compact (about 60 px tall: 48 dp destinations, no visible labels), fully rounded ends, a translucent surface with the page blurred behind it (`backdrop-filter`, theme token `--nala-nav-bar-surface` in `_navigation.scss`), like the iOS "liquid glass" bars. While it holds timer rows (see [Running timers mini-bar](#running-timers-mini-bar)) it takes the full width between the side margins, at most 360 px, and the M3 large corner.
 - The bar sits in a dock pinned at the bottom of the app shell, after the page, so the page's last element always scrolls above it (no per-page padding).
 
@@ -152,7 +152,7 @@ For a section with resource `/api/<entries>` (e.g. `/api/diapers`):
   - the **network comes back** (`online`);
   - changes kept on the device (offline queue) **have reached the server**.
 - **Queued changes first:** coming back (or back online) while changes wait on the device sends no signal; the queue is sent and its arrival sends it, so the lists never show the server's data without the user's own changes, and reload once.
-- On the signal, the mounted lists reload: every visible home card (its recent entries and highlight), the open history list (from the first page), the babies (home and history pages) and the section order and visibility (home). A card keeps what it shows until the new entries arrive; a failed call keeps it. Reloading babies that didn't change keeps the selected baby as it was, so the cards don't reload twice.
+- On the signal, the mounted lists reload: every visible home card (its recent entries and highlight), the open history list and the History destination's list (from the first page), the babies (home, history and History pages) and the section order and visibility (home). A card keeps what it shows until the new entries arrive; a failed call keeps it. Reloading babies that didn't change keeps the selected baby as it was, so the cards don't reload twice.
 - Not reloaded: the settings page, and an open entry sheet (timer sections follow other devices through Live sync; a form being typed is never overwritten). Live timers keep their own polling (Live sync).
 
 ## Timers
@@ -301,7 +301,7 @@ Hold for every section with timers (Feed's breastfeed, Sleep, Pump); each covers
 - [x] Every signed-in screen shows the floating bottom navigation bar with Dashboard, History, Trends and Settings, in that order, icons only with their names as accessible names; the current destination is marked active.
 - [x] Signed-out screens don't show it.
 - [x] The top app bar has no settings button; the settings page has no back link.
-- [x] History (`/history`) and Trends (`/trends`) show a "Coming soon" empty state.
+- [x] Trends (`/trends`) shows a "Coming soon" empty state.
 - [x] The last element of a page can scroll above the navigation bar.
 
 ### Safe areas & brand

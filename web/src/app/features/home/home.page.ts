@@ -1,16 +1,12 @@
 import { AsyncPipe, NgComponentOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
-import { MatButtonModule } from '@angular/material/button';
 import { TranslocoPipe } from '@jsverse/transloco';
-import { BabySheetResult } from '../../core/babies/baby.models';
 import { SelectedBabyService } from '../../core/babies/selected-baby.service';
 import { onReload } from '../../core/refresh/data-refresh.service';
 import { SECTIONS, SectionDefinition } from '../../core/sections/section.models';
 import { SectionPreferencesService } from '../../core/sections/section-preferences.service';
-import { EmptyStateComponent } from '../../shared/ui/empty-state/empty-state.component';
-import { SheetService } from '../../shared/ui/sheet/sheet.service';
 import { TopAppBarComponent } from '../../shared/ui/top-app-bar/top-app-bar.component';
-import { BabySheetComponent } from '../babies/baby-sheet/baby-sheet.component';
+import { NoBabyComponent } from '../babies/no-baby/no-baby.component';
 import { LoadComponentPipe } from '../../core/sections/load-component.pipe';
 
 /**
@@ -23,9 +19,8 @@ import { LoadComponentPipe } from '../../core/sections/load-component.pipe';
   imports: [
     AsyncPipe,
     LoadComponentPipe,
-    EmptyStateComponent,
-    MatButtonModule,
     NgComponentOutlet,
+    NoBabyComponent,
     TopAppBarComponent,
     TranslocoPipe,
   ],
@@ -34,7 +29,6 @@ import { LoadComponentPipe } from '../../core/sections/load-component.pipe';
   styleUrl: './home.page.scss',
 })
 export class HomePage {
-  private readonly sheet = inject(SheetService);
   private readonly preferences = inject(SectionPreferencesService);
   private readonly registry = new Map(inject(SECTIONS).map((s) => [s.key, s]));
 
@@ -55,13 +49,5 @@ export class HomePage {
     };
     load();
     onReload(load);
-  }
-
-  protected addBaby(): void {
-    this.sheet.open<BabySheetComponent, BabySheetResult>(BabySheetComponent).subscribe((result) => {
-      if (result && 'saved' in result) {
-        this.store.add(result.saved);
-      }
-    });
   }
 }

@@ -320,6 +320,7 @@
     "empty": {
       "title": "Nothing logged yet"
     },
+    "emptyPeriod": "Nothing logged in this period",
     "loadError": "Couldn't load the history.",
     "retry": "Try again",
     "loading": "Loading…"

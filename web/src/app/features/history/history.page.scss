@@ -1,28 +1,14 @@
-.heading {
-  display: flex;
-  flex-direction: column;
-  margin-inline-start: 8px;
-  min-width: 0;
-}
-
-.title {
-  margin: 0;
-  font: var(--mat-sys-title-large);
-}
-
-.baby {
-  font: var(--mat-sys-body-small);
-  color: var(--mat-sys-on-surface-variant);
-}
-
 main {
   max-width: 600px;
   margin: 0 auto;
   padding: 16px 0;
 }
 
+nala-no-baby,
 .error {
-  margin: 0;
-  padding: 0 16px;
+  margin: 0 16px;
+}
+
+.error {
   color: var(--mat-sys-error);
 }

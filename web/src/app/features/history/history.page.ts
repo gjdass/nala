@@ -1,62 +1,97 @@
-import { AsyncPipe, NgComponentOutlet } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, effect, inject } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { MatToolbarModule } from '@angular/material/toolbar';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  untracked,
+  viewChild,
+} from '@angular/core';
 import { TranslocoPipe } from '@jsverse/transloco';
-import { map } from 'rxjs';
+import { filter } from 'rxjs';
 import { SelectedBabyService } from '../../core/babies/selected-baby.service';
-import { onReload } from '../../core/refresh/data-refresh.service';
-import { SECTIONS } from '../../core/sections/section.models';
-import { LoadComponentPipe } from '../../core/sections/load-component.pipe';
-import { sectionScheme } from '../../core/sections/section-scheme';
+import { HistoryLoaderService } from '../../core/history/history-loader.service';
+import { HistoryItem } from '../../core/history/history-source.models';
+import { DataRefreshService, onReload } from '../../core/refresh/data-refresh.service';
+import { SECTION_KEYS, SectionKey, HistoryPageLoader } from '../../core/sections/section.models';
+import { SectionPreferencesService } from '../../core/sections/section-preferences.service';
+import { EntrySheetResult } from '../../shared/ui/entry-sheet/entry-sheet.models';
+import { EntrySheetService } from '../../shared/ui/entry-sheet/entry-sheet.service';
+import { HistoryListComponent } from '../../shared/ui/history-list/history-list.component';
+import { SectionEntryDirective } from '../../shared/ui/section-card/section-entry.directive';
+import { TopAppBarComponent } from '../../shared/ui/top-app-bar/top-app-bar.component';
+import { NoBabyComponent } from '../babies/no-baby/no-baby.component';
+import { HistoryEntryComponent } from './history-entry/history-entry.component';
+
+/** The sections History shows by default (spec 11). */
+const DEFAULT_SECTIONS: readonly SectionKey[] = ['feed', 'sleep', 'diaper'];
+
+/** The default time window: the last 24 h. */
+const WINDOW_MS = 24 * 3_600_000;
 
 /**
- * `/history/:section` (spec 04): a top app bar with back, the section's title and the selected baby,
- * then the section's own history list. The route guard only lets built sections in; without a baby,
- * the page goes back home. The babies load again on the reload signal (spec 04 Refresh on return).
+ * The History destination (spec 11): the top bar with the selected baby, then the entries of the
+ * selected sections in the time window, newest first across sections, each its section's own list item;
+ * a tapped entry opens its sheet and is updated in place. Without a baby, 03's empty state. The babies,
+ * the home order and the list load again on the reload signal (spec 04 Refresh on return).
  */
 @Component({
   selector: 'nala-history',
   imports: [
-    AsyncPipe,
-    LoadComponentPipe,
-    MatButtonModule,
-    MatIconModule,
-    MatToolbarModule,
-    NgComponentOutlet,
-    RouterLink,
+    HistoryEntryComponent,
+    HistoryListComponent,
+    NoBabyComponent,
+    SectionEntryDirective,
+    TopAppBarComponent,
     TranslocoPipe,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './history.page.html',
   styleUrl: './history.page.scss',
-  host: { '[class]': 'scheme()' },
 })
 export class HistoryPage {
-  private readonly sections = inject(SECTIONS);
-  private readonly key = toSignal(
-    inject(ActivatedRoute).paramMap.pipe(map((params) => params.get('section'))),
-  );
+  private readonly loaders = inject(HistoryLoaderService);
+  private readonly preferences = inject(SectionPreferencesService);
+  private readonly entrySheets = inject(EntrySheetService);
+  private readonly refresh = inject(DataRefreshService);
+  private readonly list = viewChild<HistoryListComponent<HistoryItem>>(HistoryListComponent);
 
   protected readonly store = inject(SelectedBabyService);
-  protected readonly section = computed(() => this.sections.find((s) => s.key === this.key()));
-  /** The section's colour scheme, for the whole page. */
-  protected readonly scheme = computed(() => {
-    const section = this.section();
-    return section ? sectionScheme(section.key) : '';
+
+  /** A new loader (another baby, the reload signal) starts again from the first page, with a new window. */
+  protected readonly loader = computed((): HistoryPageLoader<HistoryItem> | null => {
+    const babyId = this.store.selected()?.id;
+    this.refresh.reload();
+    if (!babyId) {
+      return null;
+    }
+    // The home order only breaks ties: read once, so its arrival doesn't load the list again.
+    const order = untracked(this.preferences.preferences)?.map((p) => p.key) ?? SECTION_KEYS;
+    const keys = order.filter((key) => DEFAULT_SECTIONS.includes(key));
+    return this.loaders.loader(babyId, keys, new Date(Date.now() - WINDOW_MS));
   });
 
   constructor() {
-    const router = inject(Router);
-    this.store.refresh();
-    onReload(() => this.store.refresh());
-    effect(() => {
-      if (this.store.babies()?.length === 0) {
-        void router.navigateByUrl('/');
-      }
-    });
+    const load = () => {
+      this.store.refresh();
+      this.preferences.load();
+    };
+    load();
+    onReload(load);
+  }
+
+  protected edit(item: HistoryItem): void {
+    this.loaders.source(item.section).then((source) =>
+      this.entrySheets
+        .edit(item.section, source.kind(item.entry), item.entry)
+        .pipe(filter((result) => result !== undefined))
+        .subscribe((result) => this.list()?.apply(this.toItem(item, result))),
+    );
+  }
+
+  /** The sheet's result as a result on History's items. */
+  private toItem(item: HistoryItem, result: EntrySheetResult): EntrySheetResult<HistoryItem> {
+    return 'saved' in result
+      ? { saved: { ...item, entry: result.saved as HistoryItem['entry'] } }
+      : (result as EntrySheetResult<HistoryItem>);
   }
 }

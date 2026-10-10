@@ -72,6 +72,7 @@ describe('BottomNavComponent', () => {
   it.each([
     ['/', '/'],
     ['/history', '/history'],
+    ['/history?section=feed', '/history'],
     ['/trends', '/trends'],
     ['/settings', '/settings'],
   ])('on %s marks %s as the current destination, with the active indicator', async (url, href) => {

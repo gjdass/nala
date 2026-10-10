@@ -11,16 +11,7 @@
     </p>
   } @else if (store.babies(); as babies) {
     @if (babies.length === 0) {
-      <nala-empty-state
-        icon="child_care"
-        [title]="'babies.empty.title' | transloco"
-        [text]="'babies.empty.text' | transloco"
-        data-testid="empty-state"
-      >
-        <button mat-flat-button type="button" (click)="addBaby()" data-testid="add-baby">
-          {{ 'babies.empty.add' | transloco }}
-        </button>
-      </nala-empty-state>
+      <nala-no-baby />
     } @else {
       <div class="sections" data-testid="section-column">
         @for (section of sections(); track section.key) {

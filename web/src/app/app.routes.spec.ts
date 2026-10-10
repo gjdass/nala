@@ -6,6 +6,9 @@ import { routes } from './app.routes';
 import { AuthState } from './core/auth/auth.models';
 import { SECTIONS } from './core/sections/section.models';
 import { fakeSection } from './testing/fake-section';
+import { ComingSoonPage } from './features/coming-soon/coming-soon.page';
+import { HistoryPage } from './features/history/history.page';
+import { SectionHistoryPage } from './features/history/section-history/section-history.page';
 
 describe('app routes', () => {
   let router: Router;
@@ -118,7 +121,20 @@ describe('app routes', () => {
     expect(await navigate(url, signedIn)).toBe(url);
   });
 
-  it.each(['/history', '/trends'])('a signed-out visitor opening %s lands on the login screen', async (url) => {
-    expect(await navigate(url, signedOut)).toBe('/login');
+  it.each(['/history', '/trends'])(
+    'a signed-out visitor opening %s lands on the login screen',
+    async (url) => {
+      expect(await navigate(url, signedOut)).toBe('/login');
+    },
+  );
+
+  it.each([
+    ['history', HistoryPage],
+    ['trends', ComingSoonPage],
+    ['history/:section', SectionHistoryPage],
+  ])('/%s shows its page', async (path, page) => {
+    const route = routes.find((r) => r.path === path)!;
+
+    expect(await route.loadComponent!()).toBe(page);
   });
 });

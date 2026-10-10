@@ -29,7 +29,7 @@ import { HistoryEndDirective } from './history-end.directive';
  * A section's full history (spec 04): the entries `loader` returns, page by page as the end of the
  * list scrolls into view, each rendered through the `nalaSectionEntry` template, then the optional
  * `nalaHistoryEnd` template once the last page is loaded, with a progress indicator, an empty state
- * (none with an end template), and an error with Try again that keeps the pages already loaded. A new
+ * (none with an end template; its title from `emptyTitle`), and an error with Try again that keeps the pages already loaded. A new
  * `loader` (e.g. another baby) starts again from the first page. `apply()` patches an entry edited
  * or deleted from the list in place.
  */
@@ -48,8 +48,10 @@ import { HistoryEndDirective } from './history-end.directive';
   styleUrl: './history-list.component.scss',
 })
 export class HistoryListComponent<T extends { id: string } = { id: string }> {
-  readonly key = input.required<SectionKey>();
+  readonly key = input<SectionKey>();
   readonly loader = input.required<HistoryPageLoader<T>>();
+  /** The empty state's title; "Nothing logged yet" by default. */
+  readonly emptyTitle = input<string>();
 
   protected readonly entryTemplate = contentChild(SectionEntryDirective, { read: TemplateRef });
   protected readonly endTemplate = contentChild(HistoryEndDirective, { read: TemplateRef });

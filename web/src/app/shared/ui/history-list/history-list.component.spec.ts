@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, signal, viewChild } from '@angular/
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Observable, Subject } from 'rxjs';
 import en from '../../../../../public/i18n/en.json';
-import { HistoryPage, HistoryPageLoader, SectionKey } from '../../../core/sections/section.models';
+import { HistoryPage, HistoryPageLoader } from '../../../core/sections/section.models';
 import { translocoTesting } from '../../../testing/transloco-testing';
 import { SectionEntryDirective } from '../section-card/section-entry.directive';
 import { HistoryEndDirective } from './history-end.directive';
@@ -16,7 +16,7 @@ interface Entry {
 @Component({
   imports: [HistoryEndDirective, HistoryListComponent, SectionEntryDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `<nala-history-list [key]="key()" [loader]="loader()">
+  template: `<nala-history-list [loader]="loader()" [emptyTitle]="emptyTitle()">
     <ng-template nalaSectionEntry let-entry>
       <span data-testid="entry">{{ entry.id }}:{{ entry.v }}</span>
     </ng-template>
@@ -26,7 +26,7 @@ interface Entry {
   </nala-history-list>`,
 })
 class Host {
-  readonly key = signal<SectionKey>('feed');
+  readonly emptyTitle = signal<string | undefined>(undefined);
   readonly loader = signal<HistoryPageLoader<Entry>>(() => new Subject());
   readonly withEnd = signal(false);
   readonly list = viewChild.required(HistoryListComponent);
@@ -166,6 +166,14 @@ describe('HistoryListComponent', () => {
     await answer([], null);
 
     expect(find('history-empty')?.textContent).toContain(en.history.empty.title);
+  });
+
+  it('shows the given empty title instead of the default one', async () => {
+    fixture.componentInstance.emptyTitle.set('Nothing in this period');
+    await answer([], null);
+
+    expect(find('history-empty')?.textContent).toContain('Nothing in this period');
+    expect(find('history-empty')?.textContent).not.toContain(en.history.empty.title);
   });
 
   it('shows an error with Try again when a page fails, keeping the loaded entries', async () => {

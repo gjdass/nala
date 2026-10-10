@@ -36,9 +36,7 @@ export const routes: Routes = [
     path: 'reset/:token',
     canActivate: [signedOutGuard],
     loadComponent: () =>
-      import('./features/auth/reset-password/reset-password.page').then(
-        (m) => m.ResetPasswordPage,
-      ),
+      import('./features/auth/reset-password/reset-password.page').then((m) => m.ResetPasswordPage),
   },
   {
     path: 'settings',
@@ -48,9 +46,7 @@ export const routes: Routes = [
   {
     path: 'history',
     canActivate: [authGuard],
-    data: { destination: 'history' },
-    loadComponent: () =>
-      import('./features/coming-soon/coming-soon.page').then((m) => m.ComingSoonPage),
+    loadComponent: () => import('./features/history/history.page').then((m) => m.HistoryPage),
   },
   {
     path: 'trends',
@@ -62,7 +58,10 @@ export const routes: Routes = [
   {
     path: 'history/:section',
     canActivate: [authGuard, registeredSectionGuard],
-    loadComponent: () => import('./features/history/history.page').then((m) => m.HistoryPage),
+    loadComponent: () =>
+      import('./features/history/section-history/section-history.page').then(
+        (m) => m.SectionHistoryPage,
+      ),
   },
   {
     path: '',

@@ -68,4 +68,17 @@ describe('HistoryLoaderService', () => {
     expect(page.next).toBeNull();
     expect(calls.sort()).toEqual(['diaper:baby-1', 'feed:baby-1']);
   });
+
+  it('gives the registered source of a section, loaded once', async () => {
+    const service = TestBed.inject(HistoryLoaderService);
+    const feed = TestBed.inject(SECTIONS).find((s) => s.key === 'feed')!;
+    const load = vi.spyOn(feed, 'loadSource');
+
+    const first = await service.source('feed');
+    const again = await service.source('feed');
+
+    expect(first).toBe(again);
+    expect(first.kind({ id: 'f1' })).toBe('feed');
+    expect(load).toHaveBeenCalledTimes(1);
+  });
 });

@@ -1,32 +1,21 @@
-@if (section(); as section) {
-  <mat-toolbar>
-    <a
-      mat-icon-button
-      routerLink="/"
-      [attr.aria-label]="'history.back' | transloco"
-      data-testid="back"
-    >
-      <mat-icon>arrow_back</mat-icon>
-    </a>
-    <span class="heading">
-      <h1 class="title" data-testid="history-title">
-        {{ 'history.title' | transloco: { section: ('sections.' + section.key | transloco) } }}
-      </h1>
-      @if (store.selected(); as baby) {
-        <span class="baby" data-testid="history-baby">{{ baby.name }}</span>
-      }
-    </span>
-  </mat-toolbar>
+<nala-top-app-bar
+  [babies]="store.babies() ?? []"
+  [selected]="store.selected()"
+  (babySelected)="store.select($event)"
+/>
 
-  <main>
-    @if (store.loadError()) {
-      <p class="error" role="alert" data-testid="babies-error">
-        {{ 'babies.loadError' | transloco }}
-      </p>
-    } @else if (store.selected()) {
-      <ng-container
-        *ngComponentOutlet="(section.loadHistory | nalaLoadComponent | async) ?? null"
-      />
-    }
-  </main>
-}
+<main>
+  @if (store.loadError()) {
+    <p class="error" role="alert" data-testid="babies-error">
+      {{ 'babies.loadError' | transloco }}
+    </p>
+  } @else if (store.babies()?.length === 0) {
+    <nala-no-baby />
+  } @else if (loader(); as loader) {
+    <nala-history-list [loader]="loader" [emptyTitle]="'history.emptyPeriod' | transloco">
+      <ng-template nalaSectionEntry let-item>
+        <nala-history-entry [item]="item" (open)="edit(item)" />
+      </ng-template>
+    </nala-history-list>
+  }
+</main>

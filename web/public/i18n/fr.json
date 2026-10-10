@@ -320,6 +320,7 @@
     "empty": {
       "title": "Rien d'enregistré pour l'instant"
     },
+    "emptyPeriod": "Rien de noté sur cette période",
     "loadError": "Impossible de charger l'historique.",
     "retry": "Réessayer",
     "loading": "Chargement…"

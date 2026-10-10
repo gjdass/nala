@@ -31,7 +31,7 @@ On the History tab, show the selected baby's entries from several sections in on
 - The per-section history page (`/history/:section`) and each section's history component (`loadHistory`) are retired; `/history/:section` redirects to `/history?section=<key>` for a registered section (bookmarks), home otherwise.
 
 ### List
-- Every entry of the selected sections whose time falls in the window, **newest first, interleaved across sections**: ordered by each section's time (Feed, Sleep and Pump by start time; Diaper and Health by time), ties by section in the home order, then the section's own order. Growth is date-only, so a growth entry counts as **local midnight of its date**, for the window as for the order: today's measurement appears below today's timed entries.
+- Every entry of the selected sections whose time falls in the window, **newest first, interleaved across sections**: ordered by each section's time (Feed, Sleep and Pump by start time; Diaper and Health by time), ties by section in the home order (the default section order while the home order is not loaded, or failed to load: it only breaks ties, so its arrival doesn't load the list again), then the section's own order. Growth is date-only, so a growth entry counts as **local midnight of its date**, for the window as for the order: today's measurement appears below today's timed entries.
 - Each entry is **its section's own list item** (`nala-feed-entry`, `nala-sleep-entry`…), inside its section's colour scheme (`.nala-scheme-<key>`), so it looks exactly as on its card. A live entry is listed with its live total, as on the cards.
 - **Tap → edit:** opens the entry's sheet in edit mode, as on home (`EntrySheetService.edit(section, kind, entry)`). A saved entry is replaced where it is, a deleted one removed, without a reload (04's history rule).
 - **States:** `nala-history-list` as it is: progress spinner while loading, the next page loading when the end scrolls into view, an empty state ("Nothing logged in this period"), and an error with Try again keeping what is already shown. A new baby, a filter change or the reload signal (04) starts again from the first page. Reading needs the network (overview).
@@ -56,8 +56,8 @@ Each item becomes at least one test, written failing first.
 
 ### Page
 - [ ] `/history` shows the top app bar (baby switcher and brand), the filter bar and the list; no page title, no + button.
-- [ ] Without a baby, it shows 03's empty state.
-- [ ] History is the active destination on `/history`, with or without a query.
+- [x] Without a baby, it shows 03's empty state.
+- [x] History is the active destination on `/history`, with or without a query.
 
 ### Filter bar
 - [ ] By default (nothing remembered) the window is 24 h and Feed, Sleep and Diaper are selected.
@@ -74,12 +74,12 @@ Each item becomes at least one test, written failing first.
 - [ ] An unknown section in the link is ignored; `/history/<key>` redirects to History opened for that section, anything else goes home.
 
 ### List
-- [ ] It lists the selected sections' entries within the window, newest first, interleaved across sections; an entry outside the window, or of an unselected section, is never listed.
-- [ ] A growth entry counts as local midnight of its date, for the window and the order.
-- [ ] Each entry shows its section's list item in its section's colours; a live entry shows its live total.
-- [ ] Tapping an entry opens its sheet in edit mode; a save replaces it in place, a delete removes it, without a reload.
-- [ ] The list pages as it scrolls, never out of order; it shows a spinner while loading, an empty state for an empty period, and an error with Try again that keeps the entries shown.
-- [ ] Switching baby or the reload signal (04) loads the list again from the first page.
+- [x] It lists the selected sections' entries within the window, newest first, interleaved across sections; an entry outside the window, or of an unselected section, is never listed.
+- [x] A growth entry counts as local midnight of its date, for the window and the order.
+- [x] Each entry shows its section's list item in its section's colours; a live entry shows its live total.
+- [x] Tapping an entry opens its sheet in edit mode; a save replaces it in place, a delete removes it, without a reload.
+- [x] The list pages as it scrolls, never out of order; it shows a spinner while loading, an empty state for an empty period, and an error with Try again that keeps the entries shown.
+- [x] Switching baby or the reload signal (04) loads the list again from the first page.
 
 ### Merged loader
 - [x] It reads each selected section's pages only until one entry is older than the window (or the last page), and returns pages of 20 in final order.
@@ -90,7 +90,7 @@ Each item becomes at least one test, written failing first.
 Each slice goes red → green → commit on `master`, in this order.
 
 - [x] **Slice 1 — Merged loader and history sources.** `core/history/` merged loader (window cut-off, order across sections, Growth by date, pages of 20, errors), `loadSource` registered by all six sections. Covers: Merged loader.
-- [ ] **Slice 2 — History page with the default filters.** `/history` replaces the placeholder: no title, list of the last 24 h of Feed, Sleep and Diaper, each section's list item in its scheme, tap → sheet with in-place update, empty and error states, baby switch and reload signal; spec 04 updated first (only Trends stays a placeholder). Covers: Page, List.
+- [x] **Slice 2 — History page with the default filters.** `/history` replaces the placeholder: no title, list of the last 24 h of Feed, Sleep and Diaper, each section's list item in its scheme, tap → sheet with in-place update, empty and error states, baby switch and reload signal; spec 04 updated first (only Trends stays a placeholder). Covers: Page, List.
 - [ ] **Slice 3 — Filter bar.** Time segmented button and sections dropdown chip (home order, hidden ones after a divider, last one locked), restart on change, remembered per device, sticky. Covers: Filter bar.
 - [ ] **Slice 4 — All activities opens History.** `/history?section=<key>` with the 7 days window and nothing saved, `/history/:section` redirect, section history components and `loadHistory` retired; specs 04 and 10 updated first (history page, All activities, Birth item). Covers: Opened from a card.
 
@@ -100,8 +100,8 @@ Nothing new on the server. On the device: `nala.historyFilters` (`localStorage`)
 
 ## UI notes
 
-- Reused: `nala-top-app-bar`, `nala-history-list`, each section's list item component, `EntrySheetService`, 03's no-baby empty state.
-- New: `nala-history-filter-bar` (segmented button + sections dropdown chip) in `features/history/`.
+- Reused: `nala-top-app-bar`, `nala-history-list` (its `emptyTitle` input gives the period's empty state), each section's list item component, `EntrySheetService`, 03's no-baby empty state (`nala-no-baby`, `features/babies/`, shared with home).
+- New, in `features/history/`: `nala-history-entry` (renders an item's section list item from its History source, in the section's scheme) and `nala-history-filter-bar` (segmented button + sections dropdown chip).
 - Labels (EN / FR): "24 h" / "24 h", "7 days" / "7 jours", "30 days" / "30 jours", "Sections" / "Sections", "Sections · 3" / "Sections · 3", "Nothing logged in this period" / "Rien de noté sur cette période". Section titles reuse `sections.<key>`.
 
 ## Out of scope
