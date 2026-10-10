@@ -1,11 +1,12 @@
-import { Routes } from '@angular/router';
+import { inject } from '@angular/core';
+import { Router, Routes } from '@angular/router';
 import {
   authGuard,
   emailResetGuard,
   signedOutGuard,
   setupOnlyGuard,
 } from './core/auth/auth.guards';
-import { registeredSectionGuard } from './core/sections/section.guards';
+import { SECTIONS } from './core/sections/section.models';
 
 export const routes: Routes = [
   {
@@ -56,12 +57,14 @@ export const routes: Routes = [
       import('./features/coming-soon/coming-soon.page').then((m) => m.ComingSoonPage),
   },
   {
+    // The retired section history page (bookmarks): History for that section, if built.
     path: 'history/:section',
-    canActivate: [authGuard, registeredSectionGuard],
-    loadComponent: () =>
-      import('./features/history/section-history/section-history.page').then(
-        (m) => m.SectionHistoryPage,
-      ),
+    redirectTo: ({ params }) =>
+      inject(SECTIONS).some((s) => s.key === params['section'])
+        ? inject(Router).createUrlTree(['/history'], {
+            queryParams: { section: params['section'] },
+          })
+        : '/',
   },
   {
     path: '',

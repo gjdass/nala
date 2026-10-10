@@ -8,7 +8,6 @@ import { SECTIONS } from './core/sections/section.models';
 import { fakeSection } from './testing/fake-section';
 import { ComingSoonPage } from './features/coming-soon/coming-soon.page';
 import { HistoryPage } from './features/history/history.page';
-import { SectionHistoryPage } from './features/history/section-history/section-history.page';
 
 describe('app routes', () => {
   let router: Router;
@@ -101,15 +100,15 @@ describe('app routes', () => {
     expect(await navigate('/settings', signedOut)).toBe('/login');
   });
 
-  it('a signed-in user can open the history of a built section', async () => {
-    expect(await navigate('/history/feed', signedIn)).toBe('/history/feed');
+  it('an old section history link opens History for that section', async () => {
+    expect(await navigate('/history/feed', signedIn)).toBe('/history?section=feed');
   });
 
-  it('the history of an unknown section leads to the app', async () => {
+  it('an old history link of an unknown section leads to the app', async () => {
     expect(await navigate('/history/nope', signedIn)).toBe('/');
   });
 
-  it('the history of a section not built yet leads to the app', async () => {
+  it('an old history link of a section not built yet leads to the app', async () => {
     expect(await navigate('/history/pump', signedIn)).toBe('/');
   });
 
@@ -131,7 +130,6 @@ describe('app routes', () => {
   it.each([
     ['history', HistoryPage],
     ['trends', ComingSoonPage],
-    ['history/:section', SectionHistoryPage],
   ])('/%s shows its page', async (path, page) => {
     const route = routes.find((r) => r.path === path)!;
 

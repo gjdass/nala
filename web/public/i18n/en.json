@@ -315,8 +315,6 @@
     "allActivities": "All activities"
   },
   "history": {
-    "title": "{{section}} history",
-    "back": "Back",
     "empty": {
       "title": "Nothing logged yet"
     },

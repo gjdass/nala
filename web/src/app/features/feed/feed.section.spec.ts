@@ -2,7 +2,6 @@ import en from '../../../../public/i18n/en.json';
 import { BottleSheetComponent } from './bottle-sheet/bottle-sheet.component';
 import { BreastfeedSheetComponent } from './breastfeed-sheet/breastfeed-sheet.component';
 import { FeedCardComponent } from './feed-card/feed-card.component';
-import { FeedHistoryComponent } from './feed-history/feed-history.component';
 import { SolidsSheetComponent } from './solids-sheet/solids-sheet.component';
 import { FeedHistorySource } from './feed-history-source';
 import { FEED_SECTION } from './feed.section';
@@ -13,9 +12,8 @@ describe('FEED_SECTION', () => {
     expect(FEED_SECTION.icon).toBe('restaurant');
   });
 
-  it('loads its card and history on demand', async () => {
+  it('loads its card on demand', async () => {
     expect(await FEED_SECTION.loadCard()).toBe(FeedCardComponent);
-    expect(await FEED_SECTION.loadHistory()).toBe(FeedHistoryComponent);
   });
 
   it('loads its History source on demand', async () => {

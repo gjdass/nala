@@ -1,7 +1,0 @@
-@if (loader(); as loader) {
-  <nala-history-list key="pump" [loader]="loader">
-    <ng-template nalaSectionEntry let-pump>
-      <nala-pump-entry [pump]="pump" (open)="edit(pump)" />
-    </ng-template>
-  </nala-history-list>
-}

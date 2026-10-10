@@ -1,7 +1,6 @@
 import en from '../../../../public/i18n/en.json';
 import fr from '../../../../public/i18n/fr.json';
 import { GrowthCardComponent } from './growth-card/growth-card.component';
-import { GrowthHistoryComponent } from './growth-history/growth-history.component';
 import { MeasurementSheetComponent } from './measurement-sheet/measurement-sheet.component';
 import { MilestoneSheetComponent } from './milestone-sheet/milestone-sheet.component';
 import { GrowthHistorySource } from './growth-history-source';
@@ -15,9 +14,8 @@ describe('GROWTH_SECTION', () => {
     expect(GROWTH_SECTION.icon).toBe('monitor_weight');
   });
 
-  it('loads its card and history on demand', async () => {
+  it('loads its card on demand', async () => {
     expect(await GROWTH_SECTION.loadCard()).toBe(GrowthCardComponent);
-    expect(await GROWTH_SECTION.loadHistory()).toBe(GrowthHistoryComponent);
   });
 
   it('loads its History source on demand', async () => {

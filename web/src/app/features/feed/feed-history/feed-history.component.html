@@ -1,7 +1,0 @@
-@if (loader(); as loader) {
-  <nala-history-list key="feed" [loader]="loader">
-    <ng-template nalaSectionEntry let-feed>
-      <nala-feed-entry [feed]="feed" (open)="edit(feed)" />
-    </ng-template>
-  </nala-history-list>
-}

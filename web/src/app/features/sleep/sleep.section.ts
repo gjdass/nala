@@ -17,7 +17,5 @@ export const SLEEP_SECTION: SectionDefinition = {
         import('./sleep-sheet/sleep-sheet.component').then((m) => m.SleepSheetComponent),
     },
   ],
-  loadHistory: () =>
-    import('./sleep-history/sleep-history.component').then((m) => m.SleepHistoryComponent),
   loadSource: () => import('./sleep-history-source').then((m) => m.SleepHistorySource),
 };

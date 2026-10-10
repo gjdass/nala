@@ -28,7 +28,5 @@ export const GROWTH_SECTION: SectionDefinition = {
         ),
     },
   ],
-  loadHistory: () =>
-    import('./growth-history/growth-history.component').then((m) => m.GrowthHistoryComponent),
   loadSource: () => import('./growth-history-source').then((m) => m.GrowthHistorySource),
 };

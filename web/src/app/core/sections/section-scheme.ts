@@ -3,7 +3,7 @@ import { SectionKey } from './section.models';
 
 /**
  * The global class (`_sections.scss`) giving an element and everything in it the section's own
- * Material colour scheme (spec 04). Set on the section's card and history page, and as the
+ * Material colour scheme (spec 04). Set on the section's card and History entries, and as the
  * `panelClass` of the overlays a section opens, which render outside it.
  */
 export const sectionScheme = (key: SectionKey): string => `nala-scheme-${key}`;

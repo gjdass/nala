@@ -8,7 +8,7 @@ Give every activity section (Feed, Sleep, Diaper, Pump, Growth, Health) the same
 
 This spec has four parts:
 - **App shell:** safe areas, top app bar, bottom navigation bar, home and its per-user section order.
-- **Section pattern:** section card, kind picker, entry sheet, entry list item, history page, formats, colours.
+- **Section pattern:** section card, kind picker, entry sheet, entry list item, history list, formats, colours.
 - **Entries:** the API conventions, offline queue and rules every section's entries share.
 - **Timers:** the rules, API, mini-bar and live sync shared by every section with timers (Feed's breastfeed, Sleep, Pump).
 
@@ -23,11 +23,11 @@ This spec has four parts:
 
 ### Top app bar
 - Selected baby (name + age) with the baby switcher (03). Shared `nala-top-app-bar`. No settings button: Settings is a destination of the bottom navigation bar.
-- On the right, vertically centred with the baby's name + age block, the Nala brand: "Nala" in `headline-small`, `on-surface-variant`, then the lion's head (`icons/brand-mark.png`, 72 px, generated from the artwork like the favicon) at 40 px, the height of the name + age block (`title-medium` + `body-small` lines), so the brand fills the same row height. Decorative (not a button, not translated), shown with or without a baby. A long baby name ends with an ellipsis before the brand is squeezed. The section history page keeps its own bar (back + title), without the brand.
+- On the right, vertically centred with the baby's name + age block, the Nala brand: "Nala" in `headline-small`, `on-surface-variant`, then the lion's head (`icons/brand-mark.png`, 72 px, generated from the artwork like the favicon) at 40 px, the height of the name + age block (`title-medium` + `body-small` lines), so the brand fills the same row height. Decorative (not a button, not translated), shown with or without a baby. A long baby name ends with an ellipsis before the brand is squeezed.
 
 ### Bottom navigation bar
 - Shared `nala-bottom-nav`, on every signed-in screen (auth state with a user), never on the signed-out ones (setup, login, invitation, password reset).
-- Four destinations, in this order: **Dashboard** (`/`, home), **History** (`/history`), **Trends** (`/trends`), **Settings** (`/settings`), each an icon only (the destination name is its accessible name and tooltip), the current one marked with the M3 active indicator pill. A section's history page (`/history/:section`) is reached from a home card, so **Dashboard** stays the active destination there; History is active on `/history` only. The settings page has no back link (it is a destination).
+- Four destinations, in this order: **Dashboard** (`/`, home), **History** (`/history`), **Trends** (`/trends`), **Settings** (`/settings`), each an icon only (the destination name is its accessible name and tooltip), the current one marked with the M3 active indicator pill. History is active on `/history`, whatever its query (a card's All activities opens it too, spec 11). The settings page has no back link (it is a destination).
 - History (`/history`) is feature 11 (spec 11). Trends is a placeholder: the shared top app bar, the destination as page title and a "Coming soon" empty state; its content is feature 12.
 - Floating, fixed at the bottom of the screen above the safe area: not full width (70 % of the screen width minus the 16 px side margins, at most 294 px wide, centred), compact (about 60 px tall: 48 dp destinations, no visible labels), fully rounded ends, a translucent surface with the page blurred behind it (`backdrop-filter`, theme token `--nala-nav-bar-surface` in `_navigation.scss`), like the iOS "liquid glass" bars. While it holds timer rows (see [Running timers mini-bar](#running-timers-mini-bar)) it takes the full width between the side margins, at most 360 px, and the M3 large corner.
 - The bar sits in a dock pinned at the bottom of the app shell, after the page, so the page's last element always scrolls above it (no per-page padding).
@@ -42,9 +42,9 @@ This spec has four parts:
 ## Section pattern
 
 ### Section registry
-- The web keeps a section registry. Each section registers its key, icon, its card component, its history component and its kinds of entry (key, icon, label translation key, sheet component). Home and the settings list only show registered sections.
-- The card is self-contained: it loads its entries for the selected baby and wraps the shared section card. The history component is self-contained too: it wraps the shared `nala-history-list` with a page loader for the selected baby and the `nalaSectionEntry` template, and opens entries for editing.
-- The registry is part of the initial bundle, so it holds **loaders** for these components (`loadCard`, `loadHistory`, each kind's `loadSheet`: `() => import(…)`), never the components themselves: home and the history page render them through the `nalaLoadComponent` pipe, and `EntrySheetService` loads a kind's sheet before opening it.
+- The web keeps a section registry. Each section registers its key, icon, its card component, its History source (spec 11) and its kinds of entry (key, icon, label translation key, sheet component). Home and the settings list only show registered sections.
+- The card is self-contained: it loads its entries for the selected baby and wraps the shared section card. The History source gives the History destination the section's page loader, entry times and kinds, and its list item (spec 11).
+- The registry is part of the initial bundle, so it holds **loaders** for these components (`loadCard`, `loadSource`, each kind's `loadSheet`: `() => import(…)`), never the components themselves: home renders the cards through the `nalaLoadComponent` pipe, History loads the sources, and `EntrySheetService` loads a kind's sheet before opening it.
 
 ### Section card
 Every section card has the same frame (shared `nala-section-card`), filled with section-specific content:
@@ -62,7 +62,7 @@ Every section card has the same frame (shared `nala-section-card`), filled with 
 │ [icon] 1:30 PM             › │
 │        Total 5m · L 1m · R 4m│
 │ Show more                  ⌄ │  ← the last 24 hours
-│ All activities             › │  ← full history page
+│ All activities             › │  ← History, for this section
 └──────────────────────────────┘
 ```
 
@@ -71,13 +71,13 @@ Every section card has the same frame (shared `nala-section-card`), filled with 
 - **Highlight:** the summary of the last record(s), defined by each section spec, with a section-specific **empty state** when there is nothing to highlight. By default the card decides from its entries; a section can set the card's `empty` input itself (Growth). A section may show a shared `nala-banner` above the highlight through the `[sectionBanner]` slot ("Still feeding?").
 - **Recent entries:** folded, the card lists the **3 most recent entries** under the highlight. **Show more** lists every entry that started in the **last 24 hours** (never fewer than the 3 already shown); it is hidden when the 24 hours hold no more than those 3. **Show less** folds back to 3. The card loads its entries through the section's page loader with the shared `loadRecentEntries` helper (`core/sections/`): page after page until an entry is older than 24 h or the last page (the window is taken when the card loads, it doesn't move while the page stays open; a failed page leaves the card as a failed load does).
 - **Show more state:** remembered per device and per section in `localStorage` (`nala.sectionExpanded.<key>`).
-- **All activities** opens the section's history page.
+- **All activities** opens the History destination for this section only, over the last 7 days (`/history?section=<key>`, spec 11).
 - **No timer on the card:** a live entry changes nothing in the card body (see Timers).
 
 ### Section colours
 - Each section has a colour token and an "on colour" token (`--nala-section-<key>` / `--nala-on-section-<key>`), plus container tokens (`--nala-section-<key>-container` / `--nala-on-section-<key>-container`: palette 90 / on 10 in light mode, 30 / on 90 in dark mode), defined in `web/src/styles/_sections.scss` with light and dark values. Components never hard-code these colours.
 - **Card buttons:** the + / timer button small FAB uses the container tokens; the Show more / Show less text button uses `--nala-section-<key>`. Both are applied through the global theme, not component CSS: `mat.fab-overrides` on `.nala-section-fab` and `mat.button-overrides` on `.nala-section-text-button`, reading `--nala-section-container` / `--nala-on-section-container` / `--nala-section-accent`, which the section card sets to its section's tokens. Scoped to these two buttons, so buttons projected by features keep their own colours.
-- **Section colour scheme:** everything shown inside a section uses that section's own full M3 colour scheme (primary, secondary, tertiary, surfaces, outlines…), generated from the section's palette, never the app's: the section card, the section's history page, its kind picker, its entry sheets and every overlay they open (confirmation and duration dialogs, date pickers). One global class per section, `.nala-scheme-<key>` (`_sections.scss`, `mat.theme` colours only, `theme-type: color-scheme`), named by `sectionScheme(key)`; it is set on the card, on the history page and as the `panelClass` of the section's overlays. `nala-entry-sheet` provides `SECTION_SCHEME` (the class) to its content, so shared rows that open overlays (the time row's pickers) and kind sheets use it. Outside sections (home without a baby, settings, sign-in, the baby sheet, the bottom navigation and its mini-bar) the app scheme stays.
+- **Section colour scheme:** everything shown inside a section uses that section's own full M3 colour scheme (primary, secondary, tertiary, surfaces, outlines…), generated from the section's palette, never the app's: the section card, its entries in History, its kind picker, its entry sheets and every overlay they open (confirmation and duration dialogs, date pickers). One global class per section, `.nala-scheme-<key>` (`_sections.scss`, `mat.theme` colours only, `theme-type: color-scheme`), named by `sectionScheme(key)`; it is set on the card, on each of its History entries and as the `panelClass` of the section's overlays. `nala-entry-sheet` provides `SECTION_SCHEME` (the class) to its content, so shared rows that open overlays (the time row's pickers) and kind sheets use it. Outside sections (home without a baby, settings, sign-in, the baby sheet, the bottom navigation and its mini-bar) the app scheme stays.
 
 ### + button and kind picker
 - While the section has no live entry, the shared section card handles + itself (`EntrySheetService.add`) and emits `changed` once a sheet saved, so the section's card reloads.
@@ -106,14 +106,12 @@ Every section card has the same frame (shared `nala-section-card`), filled with 
 - **Entry time** (`nalaEntryTime`): the local time for today's entries (`2:10 PM`), `Yesterday 2:10 PM`, then date and time (`Sep 20, 2:10 PM`, with the year when it is not the current year). **Entry date** (`nalaEntryDate`, date-only entries): its date part ("Today", "Yesterday", "Sep 28").
 
 ### Entry list item
-- Shared `nala-entry-list-item`, used by the card and the history page. Every item is the same two-line M3 list item, whatever the section or kind, so rows have the same height: kind icon; headline: the local time (or the date with `dateOnly`), then the optional label after " · " ("4:23 PM · Snack · Liked"); supporting text: the section-specific summary on one line, aligned with the headline, cut with an ellipsis when too long; a chevron. Tapping it opens the entry sheet in edit mode.
+- Shared `nala-entry-list-item`, used by the card and History. Every item is the same two-line M3 list item, whatever the section or kind, so rows have the same height: kind icon; headline: the local time (or the date with `dateOnly`), then the optional label after " · " ("4:23 PM · Snack · Liked"); supporting text: the section-specific summary on one line, aligned with the headline, cut with an ellipsis when too long; a chevron. Tapping it opens the entry sheet in edit mode.
 - No duration bar: a duration is written in the summary by the section ("Total 8m 30s · L 5m · R 3m 30s").
 
-### History page
-- `/history/:section`, for a registered section only (anything else → home); without a baby it goes home. M3 top app bar: back icon button to home, title "Feed history" with the selected baby's name as supporting text, no switcher. Below, the section's registered history component.
-- The section's entries for the selected baby, newest first, as a plain list of entry list items. No totals, no charts.
-- **Paging:** a page loader is `(cursor | null) → { entries, next }`, newest first; `null` asks for the first page and `next: null` marks the last one (the cursor format is each section's API). The next page loads when the end of the list scrolls into view (and again right away while it stays in view). While loading: a progress spinner. Without entries: an empty state ("Nothing logged yet"). A failed page shows an error with Try again, keeping the pages already loaded. A new loader (another baby, or the reload signal, see Refresh on return) starts again from the first page. An entry edited from the history is replaced where it is, a deleted one removed; no reload.
-- A section may add an end template (`nalaHistoryEnd`), rendered after the last page (not while loading nor after an error); with it, the list shows no empty state (Growth's Birth item, spec 10).
+### History list
+- Shared `nala-history-list`, used by the History destination (spec 11): entries newest first, as a plain list of entry list items. No totals, no charts.
+- **Paging:** a page loader is `(cursor | null) → { entries, next }`, newest first; `null` asks for the first page and `next: null` marks the last one (the cursor format is each section's API). The next page loads when the end of the list scrolls into view (and again right away while it stays in view). While loading: a progress spinner. Without entries: an empty state ("Nothing logged yet"). A failed page shows an error with Try again, keeping the pages already loaded. A new loader (another baby, a filter change, or the reload signal, see Refresh on return) starts again from the first page. An entry edited from the list is replaced where it is, a deleted one removed; no reload.
 
 ## Entries
 
@@ -152,7 +150,7 @@ For a section with resource `/api/<entries>` (e.g. `/api/diapers`):
   - the **network comes back** (`online`);
   - changes kept on the device (offline queue) **have reached the server**.
 - **Queued changes first:** coming back (or back online) while changes wait on the device sends no signal; the queue is sent and its arrival sends it, so the lists never show the server's data without the user's own changes, and reload once.
-- On the signal, the mounted lists reload: every visible home card (its recent entries and highlight), the open history list and the History destination's list (from the first page), the babies (home, history and History pages) and the section order and visibility (home). A card keeps what it shows until the new entries arrive; a failed call keeps it. Reloading babies that didn't change keeps the selected baby as it was, so the cards don't reload twice.
+- On the signal, the mounted lists reload: every visible home card (its recent entries and highlight), the History destination's list (from the first page), the babies (home and History pages) and the section order and visibility (home). A card keeps what it shows until the new entries arrive; a failed call keeps it. Reloading babies that didn't change keeps the selected baby as it was, so the cards don't reload twice.
 - Not reloaded: the settings page, and an open entry sheet (timer sections follow other devices through Live sync; a form being typed is never overwritten). Live timers keep their own polling (Live sync).
 
 ## Timers
@@ -161,7 +159,7 @@ Rules for every section with timers: Feed's breastfeed (two per-side timers, `na
 
 ### Live or not
 - An entry with timers is either **live** (one of its timers runs) or **not live**. There is no paused, in-progress or finished state: stopping the timers makes it an ordinary entry, and Start on it (from its sheet) makes it live again. (Some API names say "in progress"; they mean live.)
-- The entry exists from its first Start, and is listed at once (card and history) with its live total.
+- The entry exists from its first Start, and is listed at once (card and History) with its live total.
 - The end time is the end of the last timed segment, empty while live.
 - Timers live on the server: a live entry is visible on every member's device, any member can stop it, and it survives closing the app. Durations are computed from the stored timestamps, not from a client-side counter.
 - Only live entries show the timer button, a mini-bar row, and are synced live between devices.
@@ -219,7 +217,7 @@ Each item becomes at least one test, written failing first.
 - [x] Every section card uses the shared section card component (header band, + button, highlight slot, show more / less, All activities).
 - [x] Folded, the card lists the 3 most recent entries under the highlight.
 - [x] "Show more" lists every entry of the last 24 hours (at least the 3 shown folded), loading more pages when needed; it is hidden when that adds nothing. "Show less" folds back to 3. The expanded state is remembered per device.
-- [x] The history link reads "All activities" and opens the section's history page.
+- [x] The history link reads "All activities" and opens History for that section (spec 11).
 - [x] The + button and the Show more / Show less button use the section's colour tokens, not the app's primary colour.
 - [x] With no entry yet, the highlight shows a section-specific empty state.
 - [x] Time-since values ("26m ago") update live without reloading.
@@ -294,8 +292,8 @@ Hold for every section with timers (Feed's breastfeed, Sleep, Pump); each covers
 - [x] Coming back to the app after at least 30 s away, or the network coming back, sends the reload signal; coming back sooner sends nothing; nothing is sent while signed out.
 - [x] Changes kept on the device reaching the server send the reload signal; coming back while changes wait sends nothing until the queue is sent.
 - [x] On the reload signal every home card reloads its entries, keeping the ones shown until the new ones arrive.
-- [x] On the reload signal the open history list loads again from the first page.
-- [x] On the reload signal the home page reloads the babies and the section preferences, and the history page reloads the babies; babies that didn't change keep the same selected baby (the cards don't reload again).
+- [x] On the reload signal the History list loads again from the first page.
+- [x] On the reload signal the home page reloads the babies and the section preferences, and the History page reloads the babies; babies that didn't change keep the same selected baby (the cards don't reload again).
 
 ### Bottom navigation bar
 - [x] Every signed-in screen shows the floating bottom navigation bar with Dashboard, History, Trends and Settings, in that order, icons only with their names as accessible names; the current destination is marked active.
@@ -329,7 +327,7 @@ Hold for every section with timers (Feed's breastfeed, Sleep, Pump); each covers
 ### Theming
 - [x] Each section has a colour token (and an "on colour" token for text/icons on it) defined in the global theme, with light and dark values. Components never hard-code these colours.
 - [x] Each section also has container tokens (light and dark values), used by the card's + / timer button.
-- [x] Everything inside a section uses that section's colour scheme, not the app's: the card (icons, empty state, highlight, entries, buttons), the section's history page, its kind picker, its entry sheets (rows, chips, toggles, switches, timers, buttons) and the dialogs and pickers they open. Screens outside a section keep the app scheme.
+- [x] Everything inside a section uses that section's colour scheme, not the app's: the card (icons, empty state, highlight, entries, buttons), its entries in History, its kind picker, its entry sheets (rows, chips, toggles, switches, timers, buttons) and the dialogs and pickers they open. Screens outside a section keep the app scheme.
 
 ## Build slices
 
@@ -368,7 +366,7 @@ Use Angular Material's M3 components as-is. Customize only through the global th
 ## UI notes — shared components
 
 - Shell: `nala-top-app-bar`, `nala-bottom-nav`, `nala-running-timers-bar`, empty state.
-- Section: `nala-section-card` (with the live timer button, `[sectionBanner]` slot, `empty` input), `nala-kind-picker`, `nala-history-list` (`nalaHistoryEnd` end template), `nala-entry-list-item` (`dateOnly`).
+- Section: `nala-section-card` (with the live timer button, `[sectionBanner]` slot, `empty` input), `nala-kind-picker`, `nala-history-list`, `nala-entry-list-item` (`dateOnly`).
 - Entry sheet: `nala-entry-sheet`, `nala-sheet-header`, `nala-form-row`, `nala-suggestion-row`, `nala-notes-row`, `nala-entry-audit`, delete action, confirm dialog.
 - Form rows: `nala-time-row` (`dateOnly`), `nala-chip-choice-row` (optional single choice as filter chips, translated or raw labels, optionally not clearable, optional `dotToken` colour dots and `error`), `nala-chip-toggles-row` (filter chips each bound to its own boolean), `nala-switch-row`, `nala-number-fields-row` (number fields side by side, each with its own suffix, bounds, step and error; a decimal `step` brings the decimal keyboard).
 - Timers: `nala-timer`, `nala-split-timer`, `nala-duration-field` + `nala-duration-dialog`, `nala-banner`.

@@ -17,13 +17,6 @@ export class FakeSectionCard {}
 })
 export class FakeKindSheet {}
 
-@Component({
-  selector: 'nala-fake-section-history',
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  template: '',
-})
-export class FakeSectionHistory {}
-
 /** A History source listing nothing. */
 @Injectable({ providedIn: 'root' })
 export class FakeHistorySource implements HistorySource {
@@ -52,6 +45,5 @@ export const fakeSection = (
   icon,
   loadCard: () => Promise.resolve(FakeSectionCard),
   kinds,
-  loadHistory: () => Promise.resolve(FakeSectionHistory),
   loadSource: () => Promise.resolve(FakeHistorySource),
 });

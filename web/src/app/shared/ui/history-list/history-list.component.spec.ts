@@ -5,7 +5,6 @@ import en from '../../../../../public/i18n/en.json';
 import { HistoryPage, HistoryPageLoader } from '../../../core/sections/section.models';
 import { translocoTesting } from '../../../testing/transloco-testing';
 import { SectionEntryDirective } from '../section-card/section-entry.directive';
-import { HistoryEndDirective } from './history-end.directive';
 import { HistoryListComponent } from './history-list.component';
 
 interface Entry {
@@ -14,21 +13,17 @@ interface Entry {
 }
 
 @Component({
-  imports: [HistoryEndDirective, HistoryListComponent, SectionEntryDirective],
+  imports: [HistoryListComponent, SectionEntryDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `<nala-history-list [loader]="loader()" [emptyTitle]="emptyTitle()">
     <ng-template nalaSectionEntry let-entry>
       <span data-testid="entry">{{ entry.id }}:{{ entry.v }}</span>
     </ng-template>
-    @if (withEnd()) {
-      <ng-template nalaHistoryEnd><span data-testid="end">end</span></ng-template>
-    }
   </nala-history-list>`,
 })
 class Host {
   readonly emptyTitle = signal<string | undefined>(undefined);
   readonly loader = signal<HistoryPageLoader<Entry>>(() => new Subject());
-  readonly withEnd = signal(false);
   readonly list = viewChild.required(HistoryListComponent);
 }
 
@@ -269,50 +264,5 @@ describe('HistoryListComponent', () => {
       'entry',
       'entry',
     ]);
-  });
-
-  describe('with an end template', () => {
-    beforeEach(async () => {
-      fixture.componentInstance.withEnd.set(true);
-      await fixture.whenStable();
-    });
-
-    it('renders it in the list after the last page only', async () => {
-      await answer([entry('2')], 'c1');
-      expect(find('end')).toBeNull();
-
-      await endVisible();
-      await answer([entry('1')], null);
-
-      const list = host().querySelector('mat-action-list')!;
-      expect(
-        [...list.querySelectorAll('[data-testid]')].map((e) => e.getAttribute('data-testid')),
-      ).toEqual(['entry', 'entry', 'end']);
-    });
-
-    it('shows it instead of the empty state when there is no entry', async () => {
-      await answer([], null);
-
-      expect(find('end')).toBeTruthy();
-      expect(find('history-empty')).toBeNull();
-    });
-
-    it('does not show it when a page fails', async () => {
-      await fail();
-
-      expect(find('end')).toBeNull();
-    });
-  });
-
-  it('keeps the empty state when the end template is not there', async () => {
-    fixture.componentInstance.withEnd.set(true);
-    await fixture.whenStable();
-    fixture.componentInstance.withEnd.set(false);
-    await fixture.whenStable();
-
-    await answer([], null);
-
-    expect(find('end')).toBeNull();
-    expect(find('history-empty')).toBeTruthy();
   });
 });

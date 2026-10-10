@@ -73,7 +73,12 @@
   }
 
   <mat-nav-list>
-    <a mat-list-item [routerLink]="['/history', key()]" data-testid="section-history">
+    <a
+      mat-list-item
+      routerLink="/history"
+      [queryParams]="{ section: key() }"
+      data-testid="section-history"
+    >
       <span matListItemTitle>{{ 'sectionCard.allActivities' | transloco }}</span>
       <mat-icon matListItemMeta aria-hidden="true">chevron_right</mat-icon>
     </a>

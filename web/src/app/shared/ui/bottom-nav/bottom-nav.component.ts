@@ -21,12 +21,9 @@ const DESTINATIONS: Destination[] = [
   { key: 'settings', path: '/settings', icon: 'settings' },
 ];
 
-/** The destination a URL belongs to: a section's history page is reached from home, so it stays on Dashboard. */
+/** The destination a URL belongs to, whatever its query. */
 const destinationOf = (url: string): Destination['key'] | null => {
   const path = url.split(/[?#]/)[0];
-  if (path === '/' || path.startsWith('/history/')) {
-    return 'dashboard';
-  }
   return DESTINATIONS.find((d) => d.path === path)?.key ?? null;
 };
 

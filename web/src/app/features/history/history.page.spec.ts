@@ -9,7 +9,7 @@ import {
   signal,
 } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
 import { EMPTY, Observable, Subject } from 'rxjs';
 import en from '../../../../public/i18n/en.json';
 import { BabiesResult, Baby } from '../../core/babies/baby.models';
@@ -155,7 +155,7 @@ describe('HistoryPage', () => {
     await TestBed.configureTestingModule({
       imports: [HistoryPage, translocoTesting()],
       providers: [
-        provideRouter([]),
+        provideRouter([{ path: '**', children: [] }]),
         {
           provide: SECTIONS,
           useValue: (['feed', 'sleep', 'diaper', 'pump'] as const).map((k) =>
@@ -445,6 +445,66 @@ describe('HistoryPage', () => {
         ),
       ).toEqual([en.sections.feed, en.sections.sleep, en.sections.diaper, en.sections.pump]);
       expect(document.querySelector('.mat-mdc-menu-panel mat-divider')).toBeNull();
+    });
+
+    describe('opened from a card', () => {
+      const REMEMBERED = { window: '30d', sections: ['sleep'] };
+      const visit = async (url: string) => {
+        await TestBed.inject(Router).navigateByUrl(url);
+        await fixture.whenStable();
+      };
+
+      beforeEach(() => localStorage.setItem(KEY, JSON.stringify(REMEMBERED)));
+
+      it('shows only that section over the last 7 days, whatever is remembered', async () => {
+        await visit('/history?section=pump');
+        await recreate();
+        await loadBabies([lea]);
+
+        expect(checkedWindow()).toBe(en.history.window['7d']);
+        expect(chip()).toContain('Sections · 1');
+        expect(calls.at(-1)!.keys).toEqual(['pump']);
+        expect(calls.at(-1)!.since).toEqual(new Date(NOW.getTime() - 7 * DAY));
+      });
+
+      it('changes the list but saves nothing when a filter changes there', async () => {
+        await visit('/history?section=pump');
+        await recreate();
+        await loadBabies([lea]);
+
+        host().querySelectorAll<HTMLButtonElement>('mat-button-toggle button')[0].click();
+        await fixture.whenStable();
+        await openMenu();
+        menuRows()[0].click(); // feed
+        await fixture.whenStable();
+
+        expect(calls.at(-1)!.keys).toEqual(['feed', 'pump']);
+        expect(calls.at(-1)!.since).toEqual(new Date(NOW.getTime() - DAY));
+        expect(calls.at(-1)!.cursors).toEqual([null]);
+        expect(JSON.parse(localStorage.getItem(KEY)!)).toEqual(REMEMBERED);
+      });
+
+      it('shows the remembered filters again once History is opened from the bottom bar', async () => {
+        await visit('/history?section=pump');
+        await recreate();
+        await loadBabies([lea]);
+
+        await visit('/history');
+
+        expect(checkedWindow()).toBe(en.history.window['30d']);
+        expect(calls.at(-1)!.keys).toEqual(['sleep']);
+        expect(calls.at(-1)!.since).toEqual(new Date(NOW.getTime() - 30 * DAY));
+        expect(calls.at(-1)!.cursors).toEqual([null]);
+      });
+
+      it('ignores an unknown section in the link', async () => {
+        await visit('/history?section=bath');
+        await recreate();
+        await loadBabies([lea]);
+
+        expect(checkedWindow()).toBe(en.history.window['30d']);
+        expect(calls.at(-1)!.keys).toEqual(['sleep']);
+      });
     });
   });
 });

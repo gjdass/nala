@@ -17,7 +17,7 @@ export interface SectionPreference {
 export type SectionsSaveResult = { ok: true } | { ok: false; errors: FieldErrors };
 
 /**
- * Loads a component on demand, so a section's card, history and sheets stay out of the initial bundle:
+ * Loads a component on demand, so a section's card and sheets stay out of the initial bundle:
  * `() => import('./x.component').then((m) => m.XComponent)`.
  */
 export type ComponentLoader = () => Promise<Type<unknown>>;
@@ -45,8 +45,6 @@ export interface SectionDefinition {
   loadCard: ComponentLoader;
   /** Its kinds of entry: + opens the kind picker with several, the sheet directly with one. */
   kinds: readonly SectionKind[];
-  /** Loads its history list, which loads its pages for the selected baby and wraps `nala-history-list`. */
-  loadHistory: ComponentLoader;
   /** Loads its History source (spec 11), giving History its pages, times, kinds and list item. */
   loadSource: HistorySourceLoader;
 }

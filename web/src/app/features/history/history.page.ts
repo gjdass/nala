@@ -3,10 +3,12 @@ import {
   Component,
   computed,
   inject,
-  signal,
+  linkedSignal,
   untracked,
   viewChild,
 } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { ActivatedRoute } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { filter } from 'rxjs';
 import { SelectedBabyService } from '../../core/babies/selected-baby.service';
@@ -37,8 +39,9 @@ import {
  * The History destination (spec 11): the top bar with the selected baby, the filter bar (time window and
  * sections, remembered on the device), then the entries of the selected sections in the window, newest
  * first across sections, each its section's own list item; a tapped entry opens its sheet and is updated
- * in place. Without a baby, 03's empty state. The babies, the home order and the list load again on the
- * reload signal (spec 04 Refresh on return).
+ * in place. Opened from a card (`?section=<key>`), it shows that section over 7 days and saves nothing.
+ * Without a baby, 03's empty state. The babies, the home order and the list load again on the reload
+ * signal (spec 04 Refresh on return).
  */
 @Component({
   selector: 'nala-history',
@@ -64,8 +67,23 @@ export class HistoryPage {
   private readonly sections = inject(SECTIONS);
   private readonly list = viewChild<HistoryListComponent<HistoryItem>>(HistoryListComponent);
 
+  private readonly query = toSignal(inject(ActivatedRoute).queryParamMap);
+
   protected readonly store = inject(SelectedBabyService);
-  protected readonly filters = signal(this.filterStore.read(this.sections.map((s) => s.key)));
+
+  /** The registered section of a card's All activities link, null when History is opened otherwise. */
+  private readonly linked = computed(() => {
+    const key = this.query()?.get('section');
+    return this.sections.find((s) => s.key === key)?.key ?? null;
+  });
+
+  /** The link's filters, or the remembered ones; the filter bar changes them until the link changes. */
+  protected readonly filters = linkedSignal((): HistoryFilters => {
+    const linked = this.linked();
+    return linked
+      ? { window: '7d', sections: [linked] }
+      : untracked(() => this.filterStore.read(this.sections.map((s) => s.key)));
+  });
 
   /** The registered sections in the home order (the default one, all visible, until it is known). */
   protected readonly menuSections = computed((): FilterBarSection[] => {
@@ -117,7 +135,9 @@ export class HistoryPage {
 
   private setFilters(filters: HistoryFilters): void {
     this.filters.set(filters);
-    this.filterStore.save(filters);
+    if (!this.linked()) {
+      this.filterStore.save(filters);
+    }
   }
 
   protected edit(item: HistoryItem): void {

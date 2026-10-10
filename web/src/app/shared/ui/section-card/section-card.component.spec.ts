@@ -142,8 +142,8 @@ describe('SectionCardComponent', () => {
       expect(fixture.componentInstance.changes).toEqual([]);
     });
 
-    it('links to the section history with "All activities"', () => {
-      expect(find('section-history')?.getAttribute('href')).toBe('/history/feed');
+    it('opens History for the section with "All activities"', () => {
+      expect(find('section-history')?.getAttribute('href')).toBe('/history?section=feed');
       expect(text('section-history')).toContain(en.sectionCard.allActivities);
     });
   });

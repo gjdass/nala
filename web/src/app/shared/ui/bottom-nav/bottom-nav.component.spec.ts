@@ -84,12 +84,6 @@ describe('BottomNavComponent', () => {
     expect(host().querySelectorAll('.indicator.active')).toHaveLength(1);
   });
 
-  it("keeps Dashboard active on a section's history page", async () => {
-    await visit('/history/feed');
-
-    expect(active()).toEqual(['/']);
-  });
-
   it('uses no density override, so destinations keep their 48 dp touch targets', () => {
     expect(host().querySelector('[class*="density"]')).toBeNull();
   });

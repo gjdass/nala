@@ -37,7 +37,7 @@ const storageKey = (key: SectionKey) => `nala.sectionExpanded.${key}`;
  * (`[sectionHighlight]`) or, without entries, the empty state (`[sectionEmpty]`), unchanged while an
  * entry is live (no timer on the card), then the 3 most recent `entries` rendered
  * through the `nalaSectionEntry` template, Show more / Show less listing all of them (hidden when
- * there are no more than 3), and "All activities", the section's history. `entries` is null while
+ * there are no more than 3), and "All activities", History for the section. `entries` is null while
  * loading. The expanded state is remembered per device and section.
  */
 @Component({

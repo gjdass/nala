@@ -63,7 +63,6 @@ describe('HomePage', () => {
       icon: 'restaurant',
       loadCard: () => Promise.resolve(FakeFeedCard),
       kinds: [],
-      loadHistory: () => Promise.resolve(FakeFeedCard),
       loadSource: () => Promise.resolve(FakeHistorySource),
     },
     {
@@ -71,7 +70,6 @@ describe('HomePage', () => {
       icon: 'baby_changing_station',
       loadCard: () => Promise.resolve(FakeDiaperCard),
       kinds: [],
-      loadHistory: () => Promise.resolve(FakeDiaperCard),
       loadSource: () => Promise.resolve(FakeHistorySource),
     },
     {
@@ -79,7 +77,6 @@ describe('HomePage', () => {
       icon: 'bedtime',
       loadCard: () => Promise.resolve(FakeSleepCard),
       kinds: [],
-      loadHistory: () => Promise.resolve(FakeSleepCard),
       loadSource: () => Promise.resolve(FakeHistorySource),
     },
   ];

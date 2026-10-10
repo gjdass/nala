@@ -34,7 +34,6 @@ const section = (key: SectionKey, source: Type<HistorySource>): SectionDefinitio
     icon: key,
     kinds: [],
     loadCard: () => Promise.resolve(class {}),
-    loadHistory: () => Promise.resolve(class {}),
     loadSource: () => Promise.resolve(source),
   }) as SectionDefinition;
 

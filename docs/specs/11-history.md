@@ -1,6 +1,6 @@
 # 11 — History
 
-Status: in progress
+Status: done
 
 Builds on [04 — App layout](04-app-layout.md): the app shell, the section registry, the entry list items, the entry sheets, `nala-history-list` paging and the reload signal apply. Each section's list item and sheet come from its own spec (05–10). This spec only adds what is specific to the History destination.
 
@@ -30,18 +30,18 @@ On the History tab, show the selected baby's entries from several sections in on
 ### Opened from a section card
 - A card's **All activities** opens `/history?section=<key>`: only that section selected, the **7 days** window. These filters come from the link, never from `localStorage`, and **nothing is saved** while History shows them: changing a filter there changes the list only. Opening History from the bottom bar afterwards shows the remembered filters again.
 - An unknown `section` in the query is ignored (the remembered filters apply).
-- The per-section history page (`/history/:section`) and each section's history component (`loadHistory`) are retired; `/history/:section` redirects to `/history?section=<key>` for a registered section (bookmarks), home otherwise.
+- There is no per-section history page: `/history/:section` (old bookmarks) redirects to `/history?section=<key>` for a registered section, home otherwise.
 
 ### List
 - Every entry of the selected sections whose time falls in the window, **newest first, interleaved across sections**: ordered by each section's time (Feed, Sleep and Pump by start time; Diaper and Health by time), ties by section in the home order (the default section order while the home order is not loaded, or failed to load: it only breaks ties, so its arrival doesn't load the list again), then the section's own order. Growth is date-only, so a growth entry counts as **local midnight of its date**, for the window as for the order: today's measurement appears below today's timed entries.
 - Each entry is **its section's own list item** (`nala-feed-entry`, `nala-sleep-entry`…), inside its section's colour scheme (`.nala-scheme-<key>`), so it looks exactly as on its card. A live entry is listed with its live total, as on the cards.
 - **Tap → edit:** opens the entry's sheet in edit mode, as on home (`EntrySheetService.edit(section, kind, entry)`). A saved entry is replaced where it is, a deleted one removed, without a reload (04's history rule).
 - **States:** `nala-history-list` as it is: progress spinner while loading, the next page loading when the end scrolls into view, an empty state ("Nothing logged in this period"), and an error with Try again keeping what is already shown. A new baby, a filter change or the reload signal (04) starts again from the first page. Reading needs the network (overview).
-- **Growth's Birth item** (spec 10) is not listed: it lives on the baby's profile (03). *(See Open questions.)*
+- **Growth's birth measurements** are not listed: they stay on the baby's profile (03) and as the Growth card highlight's fallback (spec 10).
 
 ### Architecture
 - **No API change.** The overview asks a combined timeline to aggregate across types explicitly: the web does it with each section's existing list endpoint.
-- **History sources:** each `SectionDefinition` gets a lazily loaded history source (`loadSource: () => import(…)`, replacing `loadHistory`), providing: the section's page loader for a baby, the entry's time (for the window and the order), the entry's kind (to open its sheet), and the entry's list item component with its inputs. A new section joins History by registering its source.
+- **History sources:** each `SectionDefinition` gets a lazily loaded history source (`loadSource: () => import(…)`), providing: the section's page loader for a baby, the entry's time (for the window and the order), the entry's kind (to open its sheet), and the entry's list item component with its inputs. A new section joins History by registering its source.
 - **Merged loader** (`core/history/`): for each selected section it pages through that section's list (limit 50) until an entry is older than the window or the last page, merges the sections newest first, and hands out pages of 20 items `{ id, section, entry }` in final order. It has the `HistoryPageLoader` signature, so `nala-history-list` (paging, `apply()`, retry) is reused unchanged. A section's failed page fails the whole load (Try again retries it); nothing is listed out of order.
 
 ## User stories
@@ -71,9 +71,9 @@ Each item becomes at least one test, written failing first.
 - [x] The filter bar stays at the top while the list scrolls.
 
 ### Opened from a card
-- [ ] A card's All activities opens History with only its section selected and the 7 days window.
-- [ ] Filters opened from a card, or changed afterwards on that view, are never saved; History opened from the bottom bar then shows the remembered ones.
-- [ ] An unknown section in the link is ignored; `/history/<key>` redirects to History opened for that section, anything else goes home.
+- [x] A card's All activities opens History with only its section selected and the 7 days window.
+- [x] Filters opened from a card, or changed afterwards on that view, are never saved; History opened from the bottom bar then shows the remembered ones.
+- [x] An unknown section in the link is ignored; `/history/<key>` redirects to History opened for that section, anything else goes home.
 
 ### List
 - [x] It lists the selected sections' entries within the window, newest first, interleaved across sections; an entry outside the window, or of an unselected section, is never listed.
@@ -89,12 +89,7 @@ Each item becomes at least one test, written failing first.
 
 ## Build slices
 
-Each slice goes red → green → commit on `master`, in this order.
-
-- [x] **Slice 1 — Merged loader and history sources.** `core/history/` merged loader (window cut-off, order across sections, Growth by date, pages of 20, errors), `loadSource` registered by all six sections. Covers: Merged loader.
-- [x] **Slice 2 — History page with the default filters.** `/history` replaces the placeholder: no title, list of the last 24 h of Feed, Sleep and Diaper, each section's list item in its scheme, tap → sheet with in-place update, empty and error states, baby switch and reload signal; spec 04 updated first (only Trends stays a placeholder). Covers: Page, List.
-- [x] **Slice 3 — Filter bar.** Time segmented button and sections dropdown chip (home order, hidden ones after a divider, last one locked), restart on change, remembered per device, sticky. Covers: Filter bar.
-- [ ] **Slice 4 — All activities opens History.** `/history?section=<key>` with the 7 days window and nothing saved, `/history/:section` redirect, section history components and `loadHistory` retired; specs 04 and 10 updated first (history page, All activities, Birth item). Covers: Opened from a card.
+Built in 4 slices, all done; each is a commit "Spec 11 slice N: …" (`git log --grep "Spec 11 slice"`).
 
 ## Data
 
@@ -113,7 +108,3 @@ Nothing new on the server. On the device: `nala.historyFilters` (`localStorage`)
 - Adding entries from History.
 - Custom date ranges, search, filtering by kind or by who logged an entry.
 - Reading history offline.
-
-## Open questions
-
-- **Birth item:** with `/history/:section` retired, Growth's Birth item (spec 10) has no list to end. Proposed: drop it from History (the birth measurements stay on the baby's profile and as the card highlight's fallback). Alternative: list it as a Growth item at the birth date, so it shows only while the birth date is within the window.

@@ -27,17 +27,15 @@ Two kinds, so + opens the kind picker (Measurement, Milestone). Section icon: `m
   - **Head circumference** in cm, one decimal, 15–60 cm.
   - The API takes and returns `weightG`, `lengthCm`, `headCircumferenceCm` (same names and precision as the baby's birth fields); the web converts kg ↔ g.
 - **Milestones:** a single choice among presets, as chips (shared `nala-chip-choice-row`): `firstSmile`, `firstLaugh`, `holdsHead`, `rollsOver`, `sitsUp`, `crawls`, `firstTooth`, `standsUp`, `firstSteps`, `firstWord`, and `custom`. With `custom`, a Title field shows (required, 1–100 characters once trimmed; "Enter a title" / "100 characters at most"); with a preset, the title is ignored and stored null. A preset can be logged more than once (each tooth, say). The chips are not clearable (tapping the chosen one keeps it). A title typed under Other stays while the sheet is open, so switching to a preset and back brings it back; it is only sent with Other.
-- **Birth is the first point.** The birth weight / length / head circumference stay on the baby profile (03), never copied into entries. They show as:
-  - the fallback of the card highlight for any measure that has no entry yet;
-  - a **Birth** item at the end of the history list (spec 04's `nalaHistoryEnd`), when the baby has at least one birth measurement: `monitor_weight` icon, headline the birth date · "Birth", supporting text as a measurement. With no entry, the history shows the Birth item alone, without the empty state. Tapping it opens the baby's profile form (03's baby sheet); it can't be deleted from here. A profile saved there updates the app's babies at once (ages, card highlight, Birth item); a baby the admin deletes there is dropped and the next baby is shown.
+- **Birth is the first point.** The birth weight / length / head circumference stay on the baby profile (03), never copied into entries. They are the fallback of the card highlight for any measure that has no entry yet. They are not listed as an entry, on the card nor in History (spec 11).
 - **Order:** newest date first; entries on the same date by creation time, newest first, then id.
 - **Endpoints** (spec 04 entry API conventions): resource `/api/growth-entries`, body `{ id, babyId, kind, date, notes, …kind fields }` (measurement: `weightG`, `lengthCm`, `headCircumferenceCm`; milestone: `milestone`, `title`), `PUT` replaces every field of the entry's kind, list in the order above, not found `growthEntryNotFound`. `GET /api/babies/{babyId}/growth-entries/latest` → `{ weight, length, headCircumference }`, each `{ value, date, birth: bool }` from the most recent measurement that has it (newest date, then creation), or from the birth fields (`date` = birth date, `birth: true`), or null.
 - **Validation codes:** `kind` `required` / `invalid`, `date` `required` / `beforeBirth`, `weightG` `outOfRange` / `invalid` (not whole), `lengthCm` / `headCircumferenceCm` `outOfRange` / `invalid` (more than one decimal), `measurements` `required` (measurement with no value), `milestone` `required` / `invalid`, `title` `required` (custom, blank) / `tooLong`, plus spec 04's common codes.
 - **Adding:** a sheet opens with the date at today, every value empty (measurement) or no milestone chosen (milestone).
 - **Measurement sheet values:** the weight field takes kg as typed and shows a saved weight back as a plain number ("4.25"); "4.250 kg" (3 decimals) is the list item and highlight format. Each field shows its range under it when invalid ("0.3 to 30 kg, 3 decimals at most"); once a value was touched and none is left, the row says "Enter a weight, a length or a head circumference".
 - **Card highlight:** the latest of each measure side by side, from `…/growth-entries/latest`: Weight ("4.250 kg"), Length ("55.5 cm"), Head ("38.0 cm"), each value in an M3 headline typescale with its label above it and its date under it (spec 04's entry date format; "Birth" when it comes from the profile). A measure with no value shows "—". The highlight reloads when the card reloads (after a save). A milestone never changes the highlight. With no value at all (no measurement, no birth measurement): the empty state, even when milestones exist (the card's `empty` input). When the latest values can't be loaded (offline), the card lists its entries without a highlight nor the empty state.
-- **Card entries:** spec 04's card rules apply, an entry's date counting as its local midnight for the 24-hour window (so Show more rarely appears). The Birth item is not listed on the card.
-- **Offline:** the highlight and the Birth item need the network (reading needs the network, overview).
+- **Card entries:** spec 04's card rules apply, an entry's date counting as its local midnight for the 24-hour window (so Show more rarely appears).
+- **Offline:** the highlight needs the network (reading needs the network, overview).
 - **No percentiles, curves, charts or trend analysis.**
 
 ## User stories
@@ -45,7 +43,7 @@ Two kinds, so + opens the kind picker (Measurement, Milestone). Section icon: `m
 - As a parent, I want to type my baby's weight from the scale or the doctor's visit in kg, with length and head circumference when I have them.
 - As a parent, I want to see the latest weight, length and head circumference at a glance, and their date.
 - As a parent, I want to note milestones (first smile, first tooth, first steps…) or one of my own, with the day they happened.
-- As a parent, I want the birth measurements to appear as the start of the history, without typing them again.
+- As a parent, I want the birth measurements to count as the first values, without typing them again.
 - As a parent, I want to fix or delete a wrong entry.
 
 ## Acceptance criteria
@@ -75,7 +73,6 @@ Each item becomes at least one test, written failing first.
 - [x] Headline: the entry date and the baby's age on that date ("Sep 28 · 6 weeks 2 days", shared `BabyAgePipe` from 03).
 - [x] Measurement: `monitor_weight` icon; supporting text: the filled values ("4.250 kg · 55.5 cm · Head 38.0 cm", empty ones left out).
 - [x] Milestone: `celebration` icon; supporting text: the preset's label or the custom title.
-- [x] History ends with the Birth item when the baby has a birth measurement: birth date · "Birth", the birth values as a measurement; tapping it opens the baby's profile form.
 
 ### API and validation
 - [x] Fields of the other kind are ignored and returned null; a preset milestone's title is returned null.
@@ -94,8 +91,8 @@ Built in 3 slices, all done; each is a commit "Spec 10 slice N: …" (`git log -
 ## UI notes
 
 - Section colour token: `growth` (green palette).
-- Shared components extended for this feature (spec 04): `nala-time-row` `dateOnly` (the service sends `yyyy-MM-dd`), `nala-number-fields-row` per-field suffix / bounds / step / error, `nala-entry-list-item` `dateOnly`, `nala-history-list` end template, `nala-section-card` `empty` input, `nalaEntryDate`.
-- The measurement summary is the shared `nalaMeasurementSummary` pipe, used by entries and the Birth item.
+- Shared components extended for this feature (spec 04): `nala-time-row` `dateOnly` (the service sends `yyyy-MM-dd`), `nala-number-fields-row` per-field suffix / bounds / step / error, `nala-entry-list-item` `dateOnly`, `nala-section-card` `empty` input, `nalaEntryDate`.
+- The measurement summary is the shared `nalaMeasurementSummary` pipe.
 - The Growth card highlight is the section's own content inside the shared section card's highlight slot (three columns, label / value / date).
 - Labels: Growth / Croissance, Measurement / Mesure, Milestone / Étape, Weight / Poids, Length / Taille, Head / Périmètre crânien (short "PC" in summaries), Birth / Naissance, Other / Autre, Title / Titre. Milestones: First smile / Premier sourire, First laugh / Premier rire, Holds head up / Tient sa tête, Rolls over / Se retourne, Sits up / Tient assis, Crawls / Marche à quatre pattes, First tooth / Première dent, Stands up / Se met debout, First steps / Premiers pas, First word / Premier mot.
 

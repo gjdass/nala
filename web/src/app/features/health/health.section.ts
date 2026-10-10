@@ -17,7 +17,5 @@ export const HEALTH_SECTION: SectionDefinition = {
         import('./health-sheet/health-sheet.component').then((m) => m.HealthSheetComponent),
     },
   ],
-  loadHistory: () =>
-    import('./health-history/health-history.component').then((m) => m.HealthHistoryComponent),
   loadSource: () => import('./health-history-source').then((m) => m.HealthHistorySource),
 };

@@ -315,8 +315,6 @@
     "allActivities": "Toutes les activités"
   },
   "history": {
-    "title": "Historique : {{section}}",
-    "back": "Retour",
     "empty": {
       "title": "Rien d'enregistré pour l'instant"
     },
