@@ -44,31 +44,58 @@ describe('HistoryFilterBarComponent', () => {
     fixture.componentInstance.selectedChange.subscribe((s) => selections.push([...s]));
   });
 
-  it('offers 24 h, 7 days and 30 days as a segmented button, the current one checked', async () => {
+  const windowRows = () => [
+    ...document.querySelectorAll<HTMLButtonElement>('[data-testid="window-option"]'),
+  ];
+  const openWindowMenu = async () => {
+    find('window-chip')!.click();
+    await fixture.whenStable();
+  };
+
+  it('shows the window chip first, then the sections chip, in one chip set', async () => {
+    await show(['feed']);
+
+    const sets = host().querySelectorAll('mat-chip-set');
+    expect(sets.length).toBe(1);
+    const chips = [...sets[0].querySelectorAll('mat-chip')];
+    expect(chips.map((c) => c.getAttribute('data-testid'))).toEqual(['window-chip', 'sections-chip']);
+    expect(host().querySelector('mat-button-toggle-group')).toBeNull();
+  });
+
+  it('shows the current window on its chip', async () => {
     await show(['feed'], '7d');
 
-    const group = host().querySelector('mat-button-toggle-group');
-    expect(group).not.toBeNull();
-    const toggles = [...group!.querySelectorAll('mat-button-toggle')];
-    expect(toggles.map((t) => t.textContent?.trim())).toEqual([
-      en.history.window['24h'],
-      en.history.window['7d'],
-      en.history.window['30d'],
-    ]);
-    expect(toggles.map((t) => t.classList.contains('mat-button-toggle-checked'))).toEqual([
-      false,
-      true,
-      false,
+    expect(find('window-chip')!.textContent).toContain(en.history.window['7d']);
+  });
+
+  it('lists the three windows, the current one checked', async () => {
+    await show(['feed'], '7d');
+    await openWindowMenu();
+
+    expect(
+      windowRows().map((row) => [
+        row.getAttribute('role'),
+        row.textContent?.trim(),
+        row.getAttribute('aria-checked'),
+        !!row.querySelector('mat-pseudo-checkbox.mat-pseudo-checkbox-checked'),
+      ]),
+    ).toEqual([
+      ['menuitemradio', en.history.window['24h'], 'false', false],
+      ['menuitemradio', en.history.window['7d'], 'true', true],
+      ['menuitemradio', en.history.window['30d'], 'false', false],
     ]);
   });
 
-  it('emits the window chosen', async () => {
+  it('emits the window picked and closes the menu', async () => {
     await show(['feed']);
+    await openWindowMenu();
 
-    host().querySelectorAll<HTMLButtonElement>('mat-button-toggle button')[2].click();
+    expect(find('window-chip')!.getAttribute('aria-expanded')).toBe('true');
+    windowRows()[2].click();
     await fixture.whenStable();
 
     expect(windows).toEqual(['30d']);
+    expect(find('window-chip')!.getAttribute('aria-expanded')).toBe('false');
   });
 
   it('shows how many sections are selected on the chip', async () => {

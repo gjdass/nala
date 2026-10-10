@@ -325,7 +325,8 @@
     "window": {
       "24h": "24 h",
       "7d": "7 days",
-      "30d": "30 days"
+      "30d": "30 days",
+      "label": "Period"
     },
     "sections": "Sections",
     "sectionsCount": "Sections · {{count}}"

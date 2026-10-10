@@ -342,7 +342,15 @@ describe('HistoryPage', () => {
     const KEY = 'nala.historyFilters';
     const DAY = 24 * 3_600_000;
     const checkedWindow = () =>
-      host().querySelector('mat-button-toggle.mat-button-toggle-checked')?.textContent?.trim();
+      find('window-chip')
+        ?.querySelector('.mdc-evolution-chip__text-label')
+        ?.textContent?.trim();
+    const pickWindow = async (index: number) => {
+      find('window-chip')!.click();
+      await fixture.whenStable();
+      document.querySelectorAll<HTMLButtonElement>('[data-testid="window-option"]')[index].click();
+      await fixture.whenStable();
+    };
     const chip = () => find('sections-chip')?.textContent;
     const menuRows = () => [
       ...document.querySelectorAll<HTMLButtonElement>('[data-testid="section-option"]'),
@@ -383,8 +391,7 @@ describe('HistoryPage', () => {
       await loadBabies([lea]);
       await answer([item('feed', 'f1')], '1');
 
-      host().querySelectorAll<HTMLButtonElement>('mat-button-toggle button')[2].click();
-      await fixture.whenStable();
+      await pickWindow(2);
 
       expect(calls).toHaveLength(2);
       expect(calls[1].since).toEqual(new Date(NOW.getTime() - 30 * DAY));
@@ -472,8 +479,7 @@ describe('HistoryPage', () => {
         await recreate();
         await loadBabies([lea]);
 
-        host().querySelectorAll<HTMLButtonElement>('mat-button-toggle button')[0].click();
-        await fixture.whenStable();
+        await pickWindow(0);
         await openMenu();
         menuRows()[0].click(); // feed
         await fixture.whenStable();

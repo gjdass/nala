@@ -1,6 +1,5 @@
 import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
-import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatPseudoCheckboxModule } from '@angular/material/core';
 import { MatDividerModule } from '@angular/material/divider';
@@ -20,14 +19,13 @@ export interface FilterBarSection {
 }
 
 /**
- * History's filter bar (spec 11): the time window as a segmented button, and the sections as a filter
- * chip opening a menu of checkboxes that stays open while sections are picked. The last selected
- * section can't be unselected.
+ * History's filter bar (spec 11): two filter chips opening a menu each. The time window's menu is a
+ * single choice and closes once one is picked; the sections' menu of checkboxes stays open while
+ * sections are picked, and the last selected section can't be unselected.
  */
 @Component({
   selector: 'nala-history-filter-bar',
   imports: [
-    MatButtonToggleModule,
     MatChipsModule,
     MatDividerModule,
     MatIconModule,
