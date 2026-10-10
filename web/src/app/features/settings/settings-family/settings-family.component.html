@@ -1,0 +1,10 @@
+@if (family(); as current) {
+  <div class="family">
+    <span class="name" data-testid="family-name">{{ current.name }}</span>
+    @if (current.isAdmin) {
+      <button mat-button type="button" (click)="rename(current)" data-testid="rename-family">
+        {{ 'families.rename.open' | transloco }}
+      </button>
+    }
+  </div>
+}

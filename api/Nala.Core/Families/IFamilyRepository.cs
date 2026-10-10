@@ -10,9 +10,12 @@ public interface IFamilyRepository
     /// </summary>
     Task AddWithNewAdminAsync(User admin, Family family, Membership membership, CancellationToken cancellationToken = default);
 
-    /// <summary>The user's families with their role, in no particular order.</summary>
     /// <summary>The user's role in the family; null when they have no membership in it.</summary>
     Task<FamilyRole?> GetRoleAsync(Guid familyId, Guid userId, CancellationToken cancellationToken = default);
 
+    /// <summary>The user's families with their role, in no particular order.</summary>
     Task<IReadOnlyList<UserFamily>> ListForUserAsync(Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>Saves the family's new name; null when the family is unknown.</summary>
+    Task<Family?> RenameAsync(Guid familyId, string name, CancellationToken cancellationToken = default);
 }

@@ -24,6 +24,17 @@ public class FakeFamilyRepository(FakeUserRepository? users = null) : IFamilyRep
     public Task<FamilyRole?> GetRoleAsync(Guid familyId, Guid userId, CancellationToken cancellationToken = default) =>
         Task.FromResult(Memberships.SingleOrDefault(m => m.FamilyId == familyId && m.UserId == userId)?.Role);
 
+    public Task<Family?> RenameAsync(Guid familyId, string name, CancellationToken cancellationToken = default)
+    {
+        var family = Families.SingleOrDefault(f => f.Id == familyId);
+        if (family is not null)
+        {
+            family.Name = name;
+        }
+
+        return Task.FromResult(family);
+    }
+
     public Task<IReadOnlyList<UserFamily>> ListForUserAsync(Guid userId, CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<UserFamily>>(Memberships
             .Where(m => m.UserId == userId)

@@ -28,13 +28,14 @@ import { displayName, errorCode, newPassword } from '../auth/auth.validators';
 import { AdminUsersComponent } from './admin-users/admin-users.component';
 import { DeleteAccountDialogComponent } from './delete-account-dialog/delete-account-dialog.component';
 import { SettingsBabiesComponent } from './settings-babies/settings-babies.component';
+import { SettingsFamilyComponent } from './settings-family/settings-family.component';
 import { SettingsInvitationsComponent } from './settings-invitations/settings-invitations.component';
 import { SettingsMembersComponent } from './settings-members/settings-members.component';
 import { SettingsSectionsComponent } from './settings-sections/settings-sections.component';
 
 const SNACK_DURATION = 3000;
 
-/** Babies, members & invitations (current family, hidden from a user in no family), home sections (once a section is built), account (display name, language, password, deletion), admin (admin only), appearance (theme), logout and the version. */
+/** Family, babies, members & invitations (current family, hidden from a user in no family), home sections (once a section is built), account (display name, language, password, deletion), admin (admin only), appearance (theme), logout and the version. */
 @Component({
   selector: 'nala-settings',
   imports: [
@@ -45,6 +46,7 @@ const SNACK_DURATION = 3000;
     MatInputModule,
     ReactiveFormsModule,
     SettingsBabiesComponent,
+    SettingsFamilyComponent,
     SettingsInvitationsComponent,
     SettingsMembersComponent,
     SettingsSectionComponent,

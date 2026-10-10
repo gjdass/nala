@@ -1,0 +1,10 @@
+.family {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.name {
+  font: var(--mat-sys-body-large);
+}

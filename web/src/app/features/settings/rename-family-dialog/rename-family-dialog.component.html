@@ -1,0 +1,19 @@
+<form [formGroup]="form" (ngSubmit)="save()" novalidate>
+  <h2 mat-dialog-title>{{ 'families.rename.title' | transloco }}</h2>
+  <mat-dialog-content>
+    <nala-family-name-field [control]="name" />
+    @if (formError(); as code) {
+      <p class="form-error" role="alert" data-testid="form-error">
+        {{ 'auth.errors.form.' + code | transloco }}
+      </p>
+    }
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button mat-button type="button" (click)="cancel()" data-testid="cancel">
+      {{ 'families.rename.cancel' | transloco }}
+    </button>
+    <button mat-flat-button type="submit" [disabled]="saving()" data-testid="save">
+      {{ 'families.rename.save' | transloco }}
+    </button>
+  </mat-dialog-actions>
+</form>

@@ -32,6 +32,18 @@ public class FamilyRepository(NalaDbContext db) : IFamilyRepository
             .Select(m => (FamilyRole?)m.Role)
             .SingleOrDefaultAsync(cancellationToken);
 
+    public async Task<Family?> RenameAsync(Guid familyId, string name, CancellationToken cancellationToken = default)
+    {
+        if (await db.Set<Family>().SingleOrDefaultAsync(f => f.Id == familyId, cancellationToken) is not { } family)
+        {
+            return null;
+        }
+
+        family.Name = name;
+        await db.SaveChangesAsync(cancellationToken);
+        return family;
+    }
+
     public async Task<IReadOnlyList<UserFamily>> ListForUserAsync(Guid userId, CancellationToken cancellationToken = default) =>
         (await db.Set<Membership>().AsNoTracking()
             .Where(m => m.UserId == userId)

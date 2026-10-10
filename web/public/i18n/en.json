@@ -149,6 +149,9 @@
     },
     "logout": "Log out",
     "version": "Version {{ commit }}",
+    "family": {
+      "title": "Family"
+    },
     "babies": {
       "title": "Babies",
       "add": "Add a baby"
@@ -226,7 +229,14 @@
       "title": "You're not part of a family yet",
       "text": "Ask a family member to invite you."
     },
-    "noBaby": "No baby yet"
+    "noBaby": "No baby yet",
+    "rename": {
+      "open": "Rename",
+      "title": "Rename the family",
+      "save": "Save",
+      "cancel": "Cancel",
+      "done": "Family renamed"
+    }
   },
   "babies": {
     "loadError": "Couldn't load your babies. Check your connection and try again.",

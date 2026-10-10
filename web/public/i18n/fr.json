@@ -149,6 +149,9 @@
     },
     "logout": "Se déconnecter",
     "version": "Version {{ commit }}",
+    "family": {
+      "title": "Famille"
+    },
     "babies": {
       "title": "Bébés",
       "add": "Ajouter un bébé"
@@ -226,7 +229,14 @@
       "title": "Vous ne faites partie d'aucune famille",
       "text": "Demandez à un membre de la famille de vous inviter."
     },
-    "noBaby": "Pas encore de bébé"
+    "noBaby": "Pas encore de bébé",
+    "rename": {
+      "open": "Renommer",
+      "title": "Renommer la famille",
+      "save": "Enregistrer",
+      "cancel": "Annuler",
+      "done": "Famille renommée"
+    }
   },
   "babies": {
     "loadError": "Impossible de charger vos bébés. Vérifiez votre connexion et réessayez.",

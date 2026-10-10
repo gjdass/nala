@@ -154,4 +154,31 @@ public class FamilyRepositoryTests
             Assert.That(await repository.GetRoleAsync(Guid.NewGuid(), anna.Id), Is.Null);
         });
     }
+
+    [Test]
+    public async Task Rename_saves_the_name_and_returns_the_family()
+    {
+        var anna = NewUser("Anna");
+        var (martins, annaAdmin) = NewFamily(anna, "Martins");
+        await AddWithNewAdminAsync(anna, martins, annaAdmin);
+
+        Family? renamed;
+        await using (var db = _db())
+        {
+            renamed = await new FamilyRepository(db).RenameAsync(martins.Id, "The Martins");
+        }
+
+        Assert.That(renamed?.Id, Is.EqualTo(martins.Id));
+        Assert.That(renamed?.Name, Is.EqualTo("The Martins"));
+        await using var check = _db();
+        Assert.That((await check.Set<Family>().SingleAsync()).Name, Is.EqualTo("The Martins"));
+    }
+
+    [Test]
+    public async Task Rename_of_an_unknown_family_returns_null()
+    {
+        await using var db = _db();
+
+        Assert.That(await new FamilyRepository(db).RenameAsync(Guid.NewGuid(), "The Martins"), Is.Null);
+    }
 }

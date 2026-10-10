@@ -2,6 +2,10 @@
   <h1>{{ 'settings.title' | transloco }}</h1>
 
   @if (hasFamily()) {
+    <nala-settings-section [title]="'settings.family.title' | transloco">
+      <nala-settings-family />
+    </nala-settings-section>
+
     <nala-settings-section [title]="'settings.babies.title' | transloco">
       <nala-settings-babies />
     </nala-settings-section>

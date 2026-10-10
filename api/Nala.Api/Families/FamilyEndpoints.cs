@@ -6,7 +6,9 @@ namespace Nala.Api.Families;
 /// <summary><c>IsAdmin</c>: the caller is the family's admin.</summary>
 public sealed record FamilyResponse(Guid Id, string Name, bool IsAdmin);
 
-/// <summary>The caller's families (fallback session policy).</summary>
+public sealed record RenameFamilyRequest(string? Name);
+
+/// <summary>The caller's families (fallback session policy); renaming is for the family admin only.</summary>
 public static class FamilyEndpoints
 {
     public static IServiceCollection AddNalaFamilies(this IServiceCollection services) =>
@@ -15,10 +17,24 @@ public static class FamilyEndpoints
     public static IEndpointRouteBuilder MapNalaFamilies(this IEndpointRouteBuilder endpoints)
     {
         endpoints.MapGet("/api/families", ListAsync);
+        endpoints.MapPatch("/api/families/{id:guid}", RenameAsync);
         return endpoints;
     }
 
     private static async Task<IResult> ListAsync(FamilyService families, HttpContext context, CancellationToken cancellationToken) =>
         Results.Ok((await families.ListAsync(AuthEndpoints.CurrentUser(context)!, cancellationToken))
-            .Select(f => new FamilyResponse(f.Family.Id, f.Family.Name, f.Role == FamilyRole.Admin)));
+            .Select(ToResponse));
+
+    private static async Task<IResult> RenameAsync(
+        Guid id, RenameFamilyRequest request, FamilyService families, HttpContext context, CancellationToken cancellationToken) =>
+        await families.RenameAsync(AuthEndpoints.CurrentUser(context)!, id, request.Name, cancellationToken) switch
+        {
+            RenameFamilyResult.Renamed renamed => Results.Ok(ToResponse(renamed.Family)),
+            RenameFamilyResult.Invalid invalid => AuthEndpoints.ValidationProblem(invalid.Errors),
+            RenameFamilyResult.Forbidden => Results.Json(new ErrorResponse("familyAdminOnly"), statusCode: StatusCodes.Status403Forbidden),
+            _ => Results.Json(new ErrorResponse("familyNotFound"), statusCode: StatusCodes.Status404NotFound),
+        };
+
+    private static FamilyResponse ToResponse(UserFamily family) =>
+        new(family.Family.Id, family.Family.Name, family.Role == FamilyRole.Admin);
 }

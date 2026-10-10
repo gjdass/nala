@@ -8,3 +8,5 @@ export interface Family {
 }
 
 export type FamiliesResult = { ok: true; families: Family[] } | { ok: false; errors: FieldErrors };
+
+export type FamilyResult = { ok: true; family: Family } | { ok: false; errors: FieldErrors };

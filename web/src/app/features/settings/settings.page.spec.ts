@@ -132,8 +132,9 @@ describe('SettingsPage', () => {
   const sectionTitles = () =>
     [...host().querySelectorAll('mat-card-title')].map((t) => t.textContent?.trim());
 
-  it('shows the Babies, Members & invitations, Account, Admin and Appearance sections to the admin', () => {
+  it('shows the Family, Babies, Members & invitations, Account, Admin and Appearance sections to the admin', () => {
     expect(sectionTitles()).toEqual([
+      en.settings.family.title,
       en.settings.babies.title,
       en.settings.members.title,
       en.settings.account.title,
@@ -148,12 +149,14 @@ describe('SettingsPage', () => {
     await fixture.whenStable();
 
     expect(sectionTitles()).toEqual([
+      en.settings.family.title,
       en.settings.babies.title,
       en.settings.members.title,
       en.settings.account.title,
       en.settings.appearance.title,
     ]);
     expect(host().querySelector('nala-admin-users')).toBeNull();
+    expect(host().querySelector('nala-settings-family')).not.toBeNull();
     expect(host().querySelector('nala-settings-babies')).not.toBeNull();
     expect(host().querySelector('nala-settings-invitations')).not.toBeNull();
   });
@@ -162,7 +165,7 @@ describe('SettingsPage', () => {
     expect(TestBed.inject(FamilyService).list).toHaveBeenCalledOnce();
   });
 
-  it('hides Babies and Members & invitations from a user in no family', async () => {
+  it('hides Family, Babies and Members & invitations from a user in no family', async () => {
     families = { ok: true, families: [] };
     fixture = TestBed.createComponent(SettingsPage);
     await fixture.whenStable();
@@ -172,6 +175,7 @@ describe('SettingsPage', () => {
       en.settings.admin.title,
       en.settings.appearance.title,
     ]);
+    expect(host().querySelector('nala-settings-family')).toBeNull();
     expect(host().querySelector('nala-settings-babies')).toBeNull();
     expect(host().querySelector('nala-settings-members')).toBeNull();
     expect(host().querySelector('nala-settings-invitations')).toBeNull();
@@ -187,7 +191,8 @@ describe('SettingsPage', () => {
     fixture = TestBed.createComponent(SettingsPage);
     await fixture.whenStable();
 
-    expect(sectionTitles().slice(0, 3)).toEqual([
+    expect(sectionTitles().slice(0, 4)).toEqual([
+      en.settings.family.title,
       en.settings.babies.title,
       en.settings.members.title,
       en.settings.sections.title,
@@ -196,7 +201,7 @@ describe('SettingsPage', () => {
   });
 
   it('shows the members before the invitations in the Members & invitations section', () => {
-    const section = [...host().querySelectorAll('nala-settings-section')][1];
+    const section = [...host().querySelectorAll('nala-settings-section')][2];
     const parts = [...section.querySelectorAll('nala-settings-members, nala-settings-invitations')];
 
     expect(parts.map((p) => p.tagName.toLowerCase())).toEqual([
