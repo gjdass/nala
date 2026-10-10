@@ -323,7 +323,14 @@
     "emptyPeriod": "Rien de noté sur cette période",
     "loadError": "Impossible de charger l'historique.",
     "retry": "Réessayer",
-    "loading": "Chargement…"
+    "loading": "Chargement…",
+    "window": {
+      "24h": "24 h",
+      "7d": "7 jours",
+      "30d": "30 jours"
+    },
+    "sections": "Sections",
+    "sectionsCount": "Sections · {{count}}"
   },
   "time": {
     "justNow": "à l'instant",

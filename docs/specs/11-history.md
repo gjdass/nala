@@ -16,14 +16,16 @@ On the History tab, show the selected baby's entries from several sections in on
 - The bottom navigation bar marks **History** active on `/history`, whatever its query.
 
 ### Filter bar
-- At the top of the page, under the top app bar, **sticky** (it stays under the top edge guard while the list scrolls).
+- At the top of the page, under the top app bar, **sticky** (it stays under the top edge guard while the list scrolls; the top app bar scrolls away). Not shown without a baby.
 - **Time window:** an M3 segmented button (`mat-button-toggle-group`) with **24 h** (default), **7 days** and **30 days**, each a rolling window: the entries whose time is at or after now − 24 h / 7 × 24 h / 30 × 24 h. The window is taken when the list loads and doesn't move while the page stays open, as the card's Show more; a list loaded again (filter change, baby switch, reload signal) takes a new one.
 - **Sections:** an M3 filter chip with a dropdown (`mat-chip` opening a `mat-menu`), reading "Sections" with the number selected ("Sections · 3"). Its menu lists **every registered section**, each with its icon, title and a checkbox:
   - first the sections **visible on home**, in the user's home order (04's section preferences);
-  - then, after a divider, the sections **hidden from home**, in the same order.
+  - then, after a divider, the sections **hidden from home**, in the same order;
+  - while the home order is not loaded (or failed to load), every section in the default order, as visible.
+  - Each row is a menu item checkbox (`menuitemcheckbox`) showing its state with Material's pseudo-checkbox.
   - Default selection: **Feed, Sleep and Diaper**. Selecting or unselecting one applies at once and keeps the menu open. The last selected section can't be unselected (its checkbox is disabled), the same rule as "at least one visible section" in settings.
 - Changing a filter loads the list again from the first page.
-- **Remembered per device:** the filters chosen from the bar are saved in `localStorage` (`nala.historyFilters`: `{ window, sections }`) and restored when History is opened from the bottom bar. A stored key no longer registered is dropped; a stored selection left empty, or unreadable, falls back to the default. A section registered later starts unselected.
+- **Remembered per device:** the filters chosen from the bar are saved in `localStorage` (`nala.historyFilters`: `{ window, sections }`) and restored when History is opened from the bottom bar. A stored key no longer registered is dropped; a stored selection left empty, or unreadable, falls back to the default sections, and an unknown window to 24 h (an unreadable value resets both). A section registered later starts unselected.
 
 ### Opened from a section card
 - A card's **All activities** opens `/history?section=<key>`: only that section selected, the **7 days** window. These filters come from the link, never from `localStorage`, and **nothing is saved** while History shows them: changing a filter there changes the list only. Opening History from the bottom bar afterwards shows the remembered filters again.
@@ -55,18 +57,18 @@ On the History tab, show the selected baby's entries from several sections in on
 Each item becomes at least one test, written failing first.
 
 ### Page
-- [ ] `/history` shows the top app bar (baby switcher and brand), the filter bar and the list; no page title, no + button.
+- [x] `/history` shows the top app bar (baby switcher and brand), the filter bar and the list; no page title, no + button.
 - [x] Without a baby, it shows 03's empty state.
 - [x] History is the active destination on `/history`, with or without a query.
 
 ### Filter bar
-- [ ] By default (nothing remembered) the window is 24 h and Feed, Sleep and Diaper are selected.
-- [ ] The time window offers 24 h, 7 days and 30 days (rolling), as a segmented button.
-- [ ] The sections menu lists the sections visible on home in home order, a divider, then the hidden ones in home order; the chip shows how many are selected.
-- [ ] Selecting or unselecting a section updates the list; the last selected one can't be unselected.
-- [ ] Changing a filter loads the list again from the first page.
-- [ ] Filters chosen from the bar are remembered on the device and restored when History is opened from the bottom bar; an unknown stored key is dropped, an empty or unreadable selection falls back to the default.
-- [ ] The filter bar stays at the top while the list scrolls.
+- [x] By default (nothing remembered) the window is 24 h and Feed, Sleep and Diaper are selected.
+- [x] The time window offers 24 h, 7 days and 30 days (rolling), as a segmented button.
+- [x] The sections menu lists the sections visible on home in home order, a divider, then the hidden ones in home order; the chip shows how many are selected.
+- [x] Selecting or unselecting a section updates the list; the last selected one can't be unselected.
+- [x] Changing a filter loads the list again from the first page.
+- [x] Filters chosen from the bar are remembered on the device and restored when History is opened from the bottom bar; an unknown stored key is dropped, an empty or unreadable selection falls back to the default.
+- [x] The filter bar stays at the top while the list scrolls.
 
 ### Opened from a card
 - [ ] A card's All activities opens History with only its section selected and the 7 days window.
@@ -91,7 +93,7 @@ Each slice goes red → green → commit on `master`, in this order.
 
 - [x] **Slice 1 — Merged loader and history sources.** `core/history/` merged loader (window cut-off, order across sections, Growth by date, pages of 20, errors), `loadSource` registered by all six sections. Covers: Merged loader.
 - [x] **Slice 2 — History page with the default filters.** `/history` replaces the placeholder: no title, list of the last 24 h of Feed, Sleep and Diaper, each section's list item in its scheme, tap → sheet with in-place update, empty and error states, baby switch and reload signal; spec 04 updated first (only Trends stays a placeholder). Covers: Page, List.
-- [ ] **Slice 3 — Filter bar.** Time segmented button and sections dropdown chip (home order, hidden ones after a divider, last one locked), restart on change, remembered per device, sticky. Covers: Filter bar.
+- [x] **Slice 3 — Filter bar.** Time segmented button and sections dropdown chip (home order, hidden ones after a divider, last one locked), restart on change, remembered per device, sticky. Covers: Filter bar.
 - [ ] **Slice 4 — All activities opens History.** `/history?section=<key>` with the 7 days window and nothing saved, `/history/:section` redirect, section history components and `loadHistory` retired; specs 04 and 10 updated first (history page, All activities, Birth item). Covers: Opened from a card.
 
 ## Data

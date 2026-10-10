@@ -12,3 +12,11 @@ nala-no-baby,
 .error {
   color: var(--mat-sys-error);
 }
+
+// Stays under the top edge guard while the list scrolls.
+nala-history-filter-bar {
+  position: sticky;
+  top: var(--nala-safe-top);
+  z-index: 1;
+  background: var(--mat-sys-surface);
+}

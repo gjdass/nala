@@ -323,7 +323,14 @@
     "emptyPeriod": "Nothing logged in this period",
     "loadError": "Couldn't load the history.",
     "retry": "Try again",
-    "loading": "Loading…"
+    "loading": "Loading…",
+    "window": {
+      "24h": "24 h",
+      "7d": "7 days",
+      "30d": "30 days"
+    },
+    "sections": "Sections",
+    "sectionsCount": "Sections · {{count}}"
   },
   "time": {
     "justNow": "just now",

@@ -190,6 +190,20 @@ describe('HistoryPage', () => {
     expect(host().querySelector('h1')).toBeNull();
     expect(host().querySelector('[mat-fab], [mat-mini-fab], nala-kind-picker')).toBeNull();
     expect(host().querySelector('nala-history-list')).not.toBeNull();
+    const bar = host().querySelector('nala-history-filter-bar');
+    expect(bar).not.toBeNull();
+    expect(
+      bar!.compareDocumentPosition(host().querySelector('nala-history-list')!) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it('keeps the filter bar at the top while the list scrolls', async () => {
+    await loadBabies([lea]);
+
+    expect(getComputedStyle(host().querySelector('nala-history-filter-bar')!).position).toBe(
+      'sticky',
+    );
   });
 
   it("shows 03's empty state without a baby, and no list", async () => {
@@ -198,6 +212,7 @@ describe('HistoryPage', () => {
     expect(host().querySelector('nala-no-baby')).not.toBeNull();
     expect(find('add-baby')).not.toBeNull();
     expect(host().querySelector('nala-history-list')).toBeNull();
+    expect(host().querySelector('nala-history-filter-bar')).toBeNull();
     expect(loaders.loader).not.toHaveBeenCalled();
   });
 
@@ -321,5 +336,115 @@ describe('HistoryPage', () => {
     expect(loadSections).toHaveBeenCalledTimes(1);
     expect(calls).toHaveLength(2);
     expect(calls[1].cursors).toEqual([null]);
+  });
+
+  describe('filter bar', () => {
+    const KEY = 'nala.historyFilters';
+    const DAY = 24 * 3_600_000;
+    const checkedWindow = () =>
+      host().querySelector('mat-button-toggle.mat-button-toggle-checked')?.textContent?.trim();
+    const chip = () => find('sections-chip')?.textContent;
+    const menuRows = () => [
+      ...document.querySelectorAll<HTMLButtonElement>('[data-testid="section-option"]'),
+    ];
+    const openMenu = async () => {
+      find('sections-chip')!.click();
+      await fixture.whenStable();
+    };
+    const recreate = async () => {
+      fixture.destroy();
+      fixture = TestBed.createComponent(HistoryPage);
+      await fixture.whenStable();
+    };
+
+    it('starts with 24 h and Feed, Sleep and Diaper when nothing is remembered', async () => {
+      await loadBabies([lea]);
+
+      expect(checkedWindow()).toBe(en.history.window['24h']);
+      expect(chip()).toContain('Sections · 3');
+      expect(calls.at(-1)!.keys).toEqual(['feed', 'sleep', 'diaper']);
+    });
+
+    it('restores the remembered filters, the sections in home order', async () => {
+      localStorage.setItem(
+        KEY,
+        JSON.stringify({ window: '7d', sections: ['pump', 'feed', 'bath'] }),
+      );
+      await recreate();
+      await loadBabies([lea]);
+
+      expect(checkedWindow()).toBe(en.history.window['7d']);
+      expect(chip()).toContain('Sections · 2');
+      expect(calls.at(-1)!.keys).toEqual(['feed', 'pump']);
+      expect(calls.at(-1)!.since).toEqual(new Date(NOW.getTime() - 7 * DAY));
+    });
+
+    it('loads the list again from the first page with another window, and remembers it', async () => {
+      await loadBabies([lea]);
+      await answer([item('feed', 'f1')], '1');
+
+      host().querySelectorAll<HTMLButtonElement>('mat-button-toggle button')[2].click();
+      await fixture.whenStable();
+
+      expect(calls).toHaveLength(2);
+      expect(calls[1].since).toEqual(new Date(NOW.getTime() - 30 * DAY));
+      expect(calls[1].cursors).toEqual([null]);
+      expect(JSON.parse(localStorage.getItem(KEY)!)).toEqual({
+        window: '30d',
+        sections: ['feed', 'sleep', 'diaper'],
+      });
+    });
+
+    it('loads the list again from the first page with other sections, and remembers them', async () => {
+      await loadBabies([lea]);
+      await openMenu();
+
+      menuRows()[3].click(); // pump
+      await fixture.whenStable();
+      expect(calls.at(-1)!.keys).toEqual(['feed', 'sleep', 'diaper', 'pump']);
+      expect(calls.at(-1)!.cursors).toEqual([null]);
+
+      menuRows()[1].click(); // sleep
+      await fixture.whenStable();
+      expect(calls.at(-1)!.keys).toEqual(['feed', 'diaper', 'pump']);
+      expect(chip()).toContain('Sections · 3');
+      expect(JSON.parse(localStorage.getItem(KEY)!).sections.sort()).toEqual([
+        'diaper',
+        'feed',
+        'pump',
+      ]);
+    });
+
+    it('lists the registered sections in the home order, the hidden ones after a divider', async () => {
+      preferences.set([
+        { key: 'diaper', visible: true },
+        { key: 'growth', visible: true },
+        { key: 'pump', visible: false },
+        { key: 'feed', visible: true },
+        { key: 'sleep', visible: false },
+        { key: 'health', visible: true },
+      ]);
+      await loadBabies([lea]);
+      await openMenu();
+
+      expect(
+        menuRows().map((r) =>
+          r.querySelector('[data-testid="section-title"]')?.textContent?.trim(),
+        ),
+      ).toEqual([en.sections.diaper, en.sections.feed, en.sections.pump, en.sections.sleep]);
+      expect(document.querySelectorAll('.mat-mdc-menu-panel mat-divider')).toHaveLength(1);
+    });
+
+    it('lists every registered section in the default order before the home order is known', async () => {
+      await loadBabies([lea]);
+      await openMenu();
+
+      expect(
+        menuRows().map((r) =>
+          r.querySelector('[data-testid="section-title"]')?.textContent?.trim(),
+        ),
+      ).toEqual([en.sections.feed, en.sections.sleep, en.sections.diaper, en.sections.pump]);
+      expect(document.querySelector('.mat-mdc-menu-panel mat-divider')).toBeNull();
+    });
   });
 });

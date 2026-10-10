@@ -12,6 +12,13 @@
   } @else if (store.babies()?.length === 0) {
     <nala-no-baby />
   } @else if (loader(); as loader) {
+    <nala-history-filter-bar
+      [window]="filters().window"
+      [selected]="filters().sections"
+      [sections]="menuSections()"
+      (windowChange)="setWindow($event)"
+      (selectedChange)="setSections($event)"
+    />
     <nala-history-list [loader]="loader" [emptyTitle]="'history.emptyPeriod' | transloco">
       <ng-template nalaSectionEntry let-item>
         <nala-history-entry [item]="item" (open)="edit(item)" />

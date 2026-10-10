@@ -1,0 +1,55 @@
+<mat-button-toggle-group
+  hideSingleSelectionIndicator
+  [value]="window()"
+  (change)="windowChange.emit($event.value)"
+>
+  @for (w of windows; track w) {
+    <mat-button-toggle [value]="w">{{ 'history.window.' + w | transloco }}</mat-button-toggle>
+  }
+</mat-button-toggle-group>
+
+<mat-chip-set>
+  <mat-chip
+    highlighted
+    tabindex="0"
+    [matMenuTriggerFor]="menu"
+    [attr.aria-label]="'history.sections' | transloco"
+    data-testid="sections-chip"
+  >
+    {{ 'history.sectionsCount' | transloco: { count: selected().length } }}
+    <mat-icon matChipTrailingIcon>arrow_drop_down</mat-icon>
+  </mat-chip>
+</mat-chip-set>
+
+<mat-menu #menu="matMenu" [ariaLabel]="'history.sections' | transloco">
+  @for (section of visible(); track section.key) {
+    <ng-container *ngTemplateOutlet="option; context: { $implicit: section }" />
+  }
+  @if (hidden().length) {
+    <mat-divider />
+    @for (section of hidden(); track section.key) {
+      <ng-container *ngTemplateOutlet="option; context: { $implicit: section }" />
+    }
+  }
+</mat-menu>
+
+<ng-template #option let-section>
+  <button
+    mat-menu-item
+    type="button"
+    role="menuitemcheckbox"
+    [attr.aria-checked]="isSelected(section.key)"
+    [disabled]="locked(section.key)"
+    (click)="toggle($event, section.key)"
+    data-testid="section-option"
+  >
+    <mat-icon>{{ section.icon }}</mat-icon>
+    <span class="option">
+      <span data-testid="section-title">{{ 'sections.' + section.key | transloco }}</span>
+      <mat-pseudo-checkbox
+        [state]="isSelected(section.key) ? 'checked' : 'unchecked'"
+        [disabled]="locked(section.key)"
+      />
+    </span>
+  </button>
+</ng-template>
