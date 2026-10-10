@@ -21,6 +21,9 @@ public class FakeFamilyRepository(FakeUserRepository? users = null) : IFamilyRep
         Memberships.Add(membership);
     }
 
+    public Task<Family?> GetAsync(Guid familyId, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Families.SingleOrDefault(f => f.Id == familyId));
+
     public Task<FamilyRole?> GetRoleAsync(Guid familyId, Guid userId, CancellationToken cancellationToken = default) =>
         Task.FromResult(Memberships.SingleOrDefault(m => m.FamilyId == familyId && m.UserId == userId)?.Role);
 

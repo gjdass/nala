@@ -55,8 +55,10 @@ public class FakeInvitationRepository(FakeUserRepository users) : IInvitationRep
     public Task<Invitation?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
         Task.FromResult(Invitations.SingleOrDefault(i => i.Id == id));
 
-    public Task<IReadOnlyList<Invitation>> ListPendingAsync(DateTimeOffset now, CancellationToken cancellationToken = default) =>
-        Task.FromResult<IReadOnlyList<Invitation>>(Invitations.Where(i => i.ProblemAt(now) is null).ToList());
+    public Task<IReadOnlyList<Invitation>> ListPendingAsync(
+        Guid familyId, DateTimeOffset now, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<Invitation>>(
+            Invitations.Where(i => i.FamilyId == familyId && i.ProblemAt(now) is null).ToList());
 
     public Task<bool> RevokeAsync(Guid id, DateTimeOffset now, CancellationToken cancellationToken = default)
     {

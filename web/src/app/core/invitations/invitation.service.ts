@@ -11,14 +11,16 @@ import {
   SendInvitationResult,
 } from './invitation.models';
 
-/** Invitation links; any member may create, list and revoke them. */
+const invitationsOf = (familyId: string) => `/api/families/${familyId}/invitations`;
+
+/** Join invitations to a family; any of its members may create, list and revoke them. */
 @Injectable({ providedIn: 'root' })
 export class InvitationService {
   private readonly http = inject(HttpClient);
 
   /** A single-use link, valid 7 days. */
-  create(): Observable<CreateInvitationResult> {
-    return this.http.post<CreatedInvitation>('/api/invitations', null).pipe(
+  create(familyId: string): Observable<CreateInvitationResult> {
+    return this.http.post<CreatedInvitation>(invitationsOf(familyId), null).pipe(
       map((invitation): CreateInvitationResult => ({ ok: true, invitation })),
       catchError((error: HttpErrorResponse) =>
         of<CreateInvitationResult>({ ok: false, errors: toFieldErrors(error) }),
@@ -27,8 +29,8 @@ export class InvitationService {
   }
 
   /** Unused, unexpired, unrevoked invitations, newest first. */
-  pending(): Observable<PendingInvitationsResult> {
-    return this.http.get<PendingInvitation[]>('/api/invitations').pipe(
+  pending(familyId: string): Observable<PendingInvitationsResult> {
+    return this.http.get<PendingInvitation[]>(invitationsOf(familyId)).pipe(
       map((invitations): PendingInvitationsResult => ({ ok: true, invitations })),
       catchError((error: HttpErrorResponse) =>
         of<PendingInvitationsResult>({ ok: false, errors: toFieldErrors(error) }),
@@ -37,8 +39,8 @@ export class InvitationService {
   }
 
   /** Refused with `invitationUsed`, `invitationExpired` or `invitationUnknown`; revoking twice is fine. */
-  revoke(id: string): Observable<RevokeInvitationResult> {
-    return this.http.post<void>(`/api/invitations/${id}/revoke`, null).pipe(
+  revoke(familyId: string, id: string): Observable<RevokeInvitationResult> {
+    return this.http.post<void>(`${invitationsOf(familyId)}/${id}/revoke`, null).pipe(
       map((): RevokeInvitationResult => ({ ok: true })),
       catchError((error: HttpErrorResponse) =>
         of<RevokeInvitationResult>({ ok: false, errors: toFieldErrors(error) }),
@@ -47,8 +49,9 @@ export class InvitationService {
   }
 
   /** Emails a new invitation link (SMTP only). Refused with `email` errors or `emailInviteDisabled`. */
-  sendByEmail(email: string): Observable<SendInvitationResult> {
-    return this.http.post<{ expiresAt: string }>('/api/invitations/email', { email }).pipe(
+  sendByEmail(familyId: string, email: string): Observable<SendInvitationResult> {
+    const url = `${invitationsOf(familyId)}/email`;
+    return this.http.post<{ expiresAt: string }>(url, { email }).pipe(
       map(({ expiresAt }): SendInvitationResult => ({ ok: true, expiresAt })),
       catchError((error: HttpErrorResponse) =>
         of<SendInvitationResult>({ ok: false, errors: toFieldErrors(error) }),

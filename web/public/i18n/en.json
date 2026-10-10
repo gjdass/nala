@@ -58,7 +58,8 @@
       "email": {
         "required": "Enter your email",
         "invalid": "Enter a valid email address",
-        "taken": "An account already uses this email"
+        "taken": "An account already uses this email",
+        "alreadyMember": "This person is already in this family"
       },
       "displayName": {
         "required": "Enter a display name",
@@ -185,7 +186,7 @@
     "shareText": "Send this link to the person you want to invite. It works once, until {{date}}.",
     "emailDialog": {
       "title": "Invite by email",
-      "text": "We'll email them a link to create their account. It works once, for 7 days.",
+      "text": "We'll email them a link to join your family. It works once, for 7 days.",
       "send": "Send",
       "cancel": "Cancel"
     },

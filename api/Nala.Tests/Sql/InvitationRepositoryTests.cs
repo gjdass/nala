@@ -36,11 +36,12 @@ public class InvitationRepositoryTests
         CreatedAt = Now,
     };
 
-    private async Task<Invitation> InviteAsync(Action<Invitation>? change = null, Guid? createdBy = null)
+    private async Task<Invitation> InviteAsync(Action<Invitation>? change = null, Guid? createdBy = null, Guid? familyId = null)
     {
         var invitation = new Invitation
         {
             Id = Guid.NewGuid(),
+            FamilyId = familyId,
             TokenHash = LinkToken.Hash(LinkToken.Generate()),
             CreatedByUserId = createdBy ?? _anna.Id,
             CreatedAt = Now,
@@ -247,27 +248,34 @@ public class InvitationRepositoryTests
     }
 
     [Test]
-    public async Task ListPending_returns_only_usable_invitations()
+    public async Task ListPending_returns_only_usable_invitations_of_the_family()
     {
         var ben = NewUser("ben@mail.com");
+        Family martins, others;
         await using (var db = _db())
         {
             await new UserRepository(db).AddAsync(ben);
+            martins = await TestFamilies.SeedAsync(db, _anna, ben);
+            others = await TestFamilies.SeedAsync(db, ben);
         }
 
-        var pending = await InviteAsync();
-        var bens = await InviteAsync(createdBy: ben.Id);
-        await InviteAsync(i =>
-        {
-            i.UsedAt = Now.AddDays(-1);
-            i.UsedByUserId = ben.Id;
-        });
-        await InviteAsync(i => i.RevokedAt = Now.AddDays(-1));
-        await InviteAsync(i => i.ExpiresAt = Now);
+        var pending = await InviteAsync(familyId: martins.Id);
+        var bens = await InviteAsync(createdBy: ben.Id, familyId: martins.Id);
+        await InviteAsync(createdBy: ben.Id, familyId: others.Id);
+        await InviteAsync(); // A new-family invitation: no family.
+        await InviteAsync(
+            i =>
+            {
+                i.UsedAt = Now.AddDays(-1);
+                i.UsedByUserId = ben.Id;
+            },
+            familyId: martins.Id);
+        await InviteAsync(i => i.RevokedAt = Now.AddDays(-1), familyId: martins.Id);
+        await InviteAsync(i => i.ExpiresAt = Now, familyId: martins.Id);
 
         await using (var db = _db())
         {
-            var listed = await new InvitationRepository(db).ListPendingAsync(Now);
+            var listed = await new InvitationRepository(db).ListPendingAsync(martins.Id, Now);
             Assert.That(listed.Select(i => i.Id), Is.EquivalentTo(new[] { pending.Id, bens.Id }));
         }
     }

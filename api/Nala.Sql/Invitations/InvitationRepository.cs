@@ -20,9 +20,10 @@ public class InvitationRepository(NalaDbContext db) : IInvitationRepository
     public Task<Invitation?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
         db.Set<Invitation>().AsNoTracking().SingleOrDefaultAsync(i => i.Id == id, cancellationToken);
 
-    public async Task<IReadOnlyList<Invitation>> ListPendingAsync(DateTimeOffset now, CancellationToken cancellationToken = default) =>
+    public async Task<IReadOnlyList<Invitation>> ListPendingAsync(
+        Guid familyId, DateTimeOffset now, CancellationToken cancellationToken = default) =>
         await db.Set<Invitation>().AsNoTracking()
-            .Where(i => i.UsedAt == null && i.RevokedAt == null && i.ExpiresAt > now)
+            .Where(i => i.FamilyId == familyId && i.UsedAt == null && i.RevokedAt == null && i.ExpiresAt > now)
             .ToListAsync(cancellationToken);
 
     // Conditional update: a registration using the link at the same time can't also succeed.

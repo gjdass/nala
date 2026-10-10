@@ -6,6 +6,8 @@ import { Subject, of } from 'rxjs';
 import en from '../../../../../public/i18n/en.json';
 import { AuthState } from '../../../core/auth/auth.models';
 import { AuthService } from '../../../core/auth/auth.service';
+import { CurrentFamilyService } from '../../../core/families/current-family.service';
+import { Family } from '../../../core/families/family.models';
 import { formatDateTime } from '../../../core/i18n/date-time';
 import {
   CreateInvitationResult,
@@ -33,6 +35,7 @@ describe('SettingsInvitationsComponent', () => {
   let snackBar: { open: ReturnType<typeof vi.fn> };
   let changed: Subject<void>;
   let auth: { state: ReturnType<typeof signal<AuthState | null>> };
+  const martins: Family = { id: 'f1', name: 'Martins', isAdmin: false };
 
   const fromBen: PendingInvitation = {
     id: 'i2',
@@ -100,13 +103,15 @@ describe('SettingsInvitationsComponent', () => {
         { provide: MatSnackBar, useValue: snackBar },
         { provide: AuthService, useValue: auth },
         { provide: MemberService, useValue: { changed$: changed } },
+        { provide: CurrentFamilyService, useValue: { current: signal<Family | null>(martins) } },
       ],
     }).compileComponents();
   });
 
-  it('lists the pending invitations in the order received, with creator and expiry', async () => {
+  it("lists the current family's pending invitations in the order received, with creator and expiry", async () => {
     await render();
 
+    expect(invitations.pending).toHaveBeenCalledWith('f1');
     expect(rows().map((r) => r.querySelector('[matListItemTitle]')?.textContent?.trim())).toEqual([
       en.invitations.invitedBy.replace('{{name}}', 'Ben'),
       en.invitations.invitedBy.replace('{{name}}', 'Anna'),
@@ -149,7 +154,7 @@ describe('SettingsInvitationsComponent', () => {
     it('creates a link and hands it over in the share dialog, then reloads the list', async () => {
       await render();
       await click(byTestId('invite')!);
-      expect(invitations.create).toHaveBeenCalled();
+      expect(invitations.create).toHaveBeenCalledWith('f1');
 
       invitations.pending.mockReturnValue(of({ ok: true, invitations: [fromBen] }));
       await answer(created, {
@@ -200,14 +205,16 @@ describe('SettingsInvitationsComponent', () => {
       expect(byTestId('invite-by-email')).toBeNull();
     });
 
-    it('opens the email dialog when SMTP is configured', async () => {
+    it('opens the email dialog for the current family when SMTP is configured', async () => {
       enableSmtp();
       dialog.open.mockReturnValue({ afterClosed: () => of(undefined) });
       await render();
 
       await click(byTestId('invite-by-email')!);
 
-      expect(dialog.open).toHaveBeenCalledWith(InviteEmailDialogComponent);
+      expect(dialog.open).toHaveBeenCalledWith(InviteEmailDialogComponent, {
+        data: { familyId: 'f1' },
+      });
       expect(snackBar.open).not.toHaveBeenCalled();
       expect(invitations.pending).toHaveBeenCalledTimes(1);
     });
@@ -233,7 +240,7 @@ describe('SettingsInvitationsComponent', () => {
     it('revokes at once, removes the row and confirms with a snackbar', async () => {
       await render();
       await click(row('Ben').querySelector<HTMLElement>('[data-testid="revoke"]')!);
-      expect(invitations.revoke).toHaveBeenCalledWith('i2');
+      expect(invitations.revoke).toHaveBeenCalledWith('f1', 'i2');
 
       await answer(revoked, { ok: true });
 

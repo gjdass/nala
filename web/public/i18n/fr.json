@@ -58,7 +58,8 @@
       "email": {
         "required": "Saisissez votre e-mail",
         "invalid": "Saisissez une adresse e-mail valide",
-        "taken": "Un compte utilise déjà cet e-mail"
+        "taken": "Un compte utilise déjà cet e-mail",
+        "alreadyMember": "Cette personne fait déjà partie de cette famille"
       },
       "displayName": {
         "required": "Saisissez un nom affiché",
@@ -185,7 +186,7 @@
     "shareText": "Envoyez ce lien à la personne que vous voulez inviter. Il ne sert qu'une fois, jusqu'au {{date}}.",
     "emailDialog": {
       "title": "Inviter par email",
-      "text": "Nous lui enverrons par email un lien pour créer son compte. Il ne sert qu'une fois, pendant 7 jours.",
+      "text": "Nous lui enverrons par email un lien pour rejoindre votre famille. Il ne sert qu'une fois, pendant 7 jours.",
       "send": "Envoyer",
       "cancel": "Annuler"
     },

@@ -1,14 +1,18 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
-import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { InvitationService } from '../../../core/invitations/invitation.service';
 import { email, errorCode } from '../../auth/auth.validators';
 
-/** Emails an invitation link to an address; closes with that address once sent. */
+export interface InviteEmailDialogData {
+  familyId: string;
+}
+
+/** Emails an invitation link to the family to an address; closes with that address once sent. */
 @Component({
   selector: 'nala-invite-email-dialog',
   imports: [
@@ -25,6 +29,7 @@ import { email, errorCode } from '../../auth/auth.validators';
 })
 export class InviteEmailDialogComponent {
   private readonly invitations = inject(InvitationService);
+  private readonly data = inject<InviteEmailDialogData>(MAT_DIALOG_DATA);
   private readonly dialogRef =
     inject<MatDialogRef<InviteEmailDialogComponent, string>>(MatDialogRef);
 
@@ -47,7 +52,7 @@ export class InviteEmailDialogComponent {
     const address = this.email.value.trim();
     this.sending.set(true);
     this.formError.set(null);
-    this.invitations.sendByEmail(address).subscribe((result) => {
+    this.invitations.sendByEmail(this.data.familyId, address).subscribe((result) => {
       this.sending.set(false);
       if (result.ok) {
         this.dialogRef.close(address);

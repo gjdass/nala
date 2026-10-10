@@ -44,7 +44,8 @@ public class FamilyEndpointTests
     /// <summary>Ben, invited into the Martins family, signed in on a new client.</summary>
     private async Task<HttpClient> InviteBenAsync()
     {
-        var link = await (await _client.PostAsync("/api/invitations", null)).Content.ReadFromJsonAsync<JsonElement>();
+        var martins = (await _client.GetFromJsonAsync<JsonElement[]>("/api/families"))!.Single().GetProperty("id").GetGuid();
+        var link = await (await _client.PostAsync($"/api/families/{martins}/invitations", null)).Content.ReadFromJsonAsync<JsonElement>();
         var ben = NewClient();
         var registered = await ben.PostAsJsonAsync(
             $"/api/auth/invitations/{link.GetProperty("token").GetString()}/register",

@@ -11,6 +11,7 @@ public class InvitationEndpointTests
 
     private NalaApiFactory _factory = null!;
     private HttpClient _admin = null!;
+    private Guid _familyId;
 
     [SetUp]
     public async Task SetUp()
@@ -25,6 +26,7 @@ public class InvitationEndpointTests
         var response = await _admin.PostAsJsonAsync(
             "/api/auth/setup", new { email = "anna@mail.com", displayName = "Anna", password = Password, language = "en", familyName = "Martins" });
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        _familyId = (await _admin.GetFromJsonAsync<JsonElement[]>("/api/families"))!.Single().GetProperty("id").GetGuid();
     }
 
     [TearDown]
@@ -38,23 +40,25 @@ public class InvitationEndpointTests
 
     private HttpClient NewClient() => _factory.CreateClient(new() { BaseAddress = new Uri("https://localhost") });
 
-    private static async Task<(string Token, DateTimeOffset ExpiresAt)> CreateAsync(HttpClient client)
+    private string Invitations(Guid? familyId = null) => $"/api/families/{familyId ?? _familyId}/invitations";
+
+    private async Task<(string Token, DateTimeOffset ExpiresAt)> CreateAsync(HttpClient client, Guid? familyId = null)
     {
-        var response = await client.PostAsync("/api/invitations", null);
+        var response = await client.PostAsync(Invitations(familyId), null);
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
         return (body.GetProperty("token").GetString()!, body.GetProperty("expiresAt").GetDateTimeOffset());
     }
 
-    private static async Task<JsonElement[]> PendingAsync(HttpClient client)
+    private async Task<JsonElement[]> PendingAsync(HttpClient client, Guid? familyId = null)
     {
-        var response = await client.GetAsync("/api/invitations");
+        var response = await client.GetAsync(Invitations(familyId));
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
         return (await response.Content.ReadFromJsonAsync<JsonElement[]>())!;
     }
 
-    private static Task<HttpResponseMessage> RevokeAsync(HttpClient client, Guid id) =>
-        client.PostAsync($"/api/invitations/{id}/revoke", null);
+    private Task<HttpResponseMessage> RevokeAsync(HttpClient client, Guid id, Guid? familyId = null) =>
+        client.PostAsync($"{Invitations(familyId)}/{id}/revoke", null);
 
     private Task<HttpResponseMessage> RegisterAsync(string token, string email, string displayName) =>
         NewClient().PostAsJsonAsync(
@@ -184,8 +188,56 @@ public class InvitationEndpointTests
     {
         using var anonymous = NewClient();
 
-        Assert.That((await anonymous.PostAsync("/api/invitations", null)).StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
-        Assert.That((await anonymous.GetAsync("/api/invitations")).StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
+        Assert.That((await anonymous.PostAsync(Invitations(), null)).StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
+        Assert.That((await anonymous.GetAsync(Invitations())).StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
         Assert.That((await RevokeAsync(anonymous, Guid.NewGuid())).StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
+    }
+
+    [Test]
+    public async Task Another_family_cannot_create_list_or_revoke_and_gets_familyNotFound()
+    {
+        using var carl = await OtherFamily.CreateAsync(_factory);
+        await CreateAsync(_admin);
+        var id = (await PendingAsync(_admin)).Single().GetProperty("id").GetGuid();
+
+        foreach (var familyId in new[] { _familyId, Guid.NewGuid() })
+        {
+            await Isolation.AssertNotFoundAsync(carl.Client.PostAsync(Invitations(familyId), null), "familyNotFound", "create");
+            await Isolation.AssertNotFoundAsync(carl.Client.GetAsync(Invitations(familyId)), "familyNotFound", "list");
+            await Isolation.AssertNotFoundAsync(RevokeAsync(carl.Client, id, familyId), "familyNotFound", "revoke");
+        }
+
+        Assert.That(await PendingAsync(_admin), Has.Length.EqualTo(1));
+    }
+
+    [Test]
+    public async Task Revoking_another_familys_invitation_through_ones_own_family_is_invitationUnknown()
+    {
+        using var carl = await OtherFamily.CreateAsync(_factory);
+        await CreateAsync(_admin);
+        var id = (await PendingAsync(_admin)).Single().GetProperty("id").GetGuid();
+
+        await Isolation.AssertNotFoundAsync(RevokeAsync(carl.Client, id, carl.FamilyId), "invitationUnknown", "revoke");
+
+        Assert.That(await PendingAsync(_admin), Has.Length.EqualTo(1));
+    }
+
+    [Test]
+    public async Task Pending_list_shows_only_that_familys_invitations_and_a_link_joins_its_family()
+    {
+        using var carl = await OtherFamily.CreateAsync(_factory);
+        await CreateAsync(_admin);
+        var (token, _) = await CreateAsync(carl.Client, carl.FamilyId);
+
+        Assert.That((await PendingAsync(_admin)).Single().GetProperty("createdBy").GetString(), Is.EqualTo("Anna"));
+        Assert.That((await PendingAsync(carl.Client, carl.FamilyId)).Single().GetProperty("createdBy").GetString(), Is.EqualTo("Carl"));
+
+        var dora = NewClient();
+        Assert.That((await dora.PostAsJsonAsync(
+            $"/api/auth/invitations/{token}/register",
+            new { email = "dora@mail.com", displayName = "Dora", password = Password, language = "en" })).StatusCode,
+            Is.EqualTo(HttpStatusCode.OK));
+        var families = await dora.GetFromJsonAsync<JsonElement[]>("/api/families");
+        Assert.That(families!.Single().GetProperty("id").GetGuid(), Is.EqualTo(carl.FamilyId));
     }
 }

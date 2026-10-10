@@ -46,11 +46,4 @@ public class FamilyService(IFamilyRepository families, FamilyAccess access)
             ? new RenameFamilyResult.Renamed(new UserFamily(family, role))
             : new RenameFamilyResult.NotFound();
     }
-
-    /// <summary>
-    /// The family something new the user creates goes to, until the API is told which one (spec 03 slice 13):
-    /// their first family. Null when they are in none.
-    /// </summary>
-    public static async Task<Guid?> FirstFamilyIdAsync(IFamilyRepository families, User user, CancellationToken cancellationToken) =>
-        FamilyOrder.ByName(await families.ListForUserAsync(user.Id, cancellationToken)).FirstOrDefault()?.Family.Id;
 }

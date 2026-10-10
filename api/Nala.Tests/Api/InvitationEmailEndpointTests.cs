@@ -14,6 +14,7 @@ public class InvitationEmailEndpointTests
     private NalaApiFactory _factory = null!;
     private CapturingEmailSender _sender = null!;
     private HttpClient _admin = null!;
+    private Guid _familyId;
 
     /// <summary>Anna sets the instance up and stays signed in on <see cref="_admin"/>.</summary>
     private async Task StartAsync(bool smtp)
@@ -31,6 +32,7 @@ public class InvitationEmailEndpointTests
         var response = await _admin.PostAsJsonAsync(
             "/api/auth/setup", new { email = "anna@mail.com", displayName = "Anna", password = Password, language = "en", familyName = "Martins" });
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        _familyId = (await _admin.GetFromJsonAsync<JsonElement[]>("/api/families"))!.Single().GetProperty("id").GetGuid();
     }
 
     [TearDown]
@@ -42,8 +44,10 @@ public class InvitationEmailEndpointTests
 
     private HttpClient NewClient() => _factory.CreateClient(new() { BaseAddress = new Uri("https://localhost") });
 
-    private static Task<HttpResponseMessage> SendAsync(HttpClient client, string? email) =>
-        client.PostAsJsonAsync("/api/invitations/email", new { email });
+    private string Invitations => $"/api/families/{_familyId}/invitations";
+
+    private Task<HttpResponseMessage> SendAsync(HttpClient client, string? email, Guid? familyId = null) =>
+        client.PostAsJsonAsync($"/api/families/{familyId ?? _familyId}/invitations/email", new { email });
 
     private static string TokenIn(EmailMessage message)
     {
@@ -63,7 +67,7 @@ public class InvitationEmailEndpointTests
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Accepted));
         var expiresAt = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("expiresAt").GetDateTimeOffset();
         Assert.That(expiresAt, Is.EqualTo(_factory.Time!.GetUtcNow().AddDays(7)).Within(TimeSpan.FromSeconds(1)));
-        var pending = await _admin.GetFromJsonAsync<JsonElement[]>("/api/invitations");
+        var pending = await _admin.GetFromJsonAsync<JsonElement[]>(Invitations);
         Assert.That(pending!.Single().GetProperty("createdBy").GetString(), Is.EqualTo("Anna"));
 
         var message = await _sender.NextAsync();
@@ -84,12 +88,12 @@ public class InvitationEmailEndpointTests
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
         var code = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("code").GetString();
         Assert.That(code, Is.EqualTo("emailInviteDisabled"));
-        Assert.That(await _admin.GetFromJsonAsync<JsonElement[]>("/api/invitations"), Is.Empty);
+        Assert.That(await _admin.GetFromJsonAsync<JsonElement[]>(Invitations), Is.Empty);
         Assert.That(_sender.TryTake(out _), Is.False);
     }
 
     [TestCase("not-an-email", "invalid")]
-    [TestCase(" Anna@Mail.com ", "taken")]
+    [TestCase(" Anna@Mail.com ", "alreadyMember")]
     public async Task Email_invitation_answers_a_validation_problem(string email, string code)
     {
         await StartAsync(smtp: true);
@@ -99,7 +103,7 @@ public class InvitationEmailEndpointTests
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
         var errors = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("errors");
         Assert.That(errors.GetProperty("email")[0].GetString(), Is.EqualTo(code));
-        Assert.That(await _admin.GetFromJsonAsync<JsonElement[]>("/api/invitations"), Is.Empty);
+        Assert.That(await _admin.GetFromJsonAsync<JsonElement[]>(Invitations), Is.Empty);
     }
 
     [Test]
@@ -110,6 +114,31 @@ public class InvitationEmailEndpointTests
         var response = await SendAsync(NewClient(), "ben@mail.com");
 
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
+        Assert.That(_sender.TryTake(out _), Is.False);
+    }
+
+    [Test]
+    public async Task An_email_with_an_account_in_another_family_is_accepted()
+    {
+        await StartAsync(smtp: true);
+        using var carl = await OtherFamily.CreateAsync(_factory);
+
+        var response = await SendAsync(_admin, "carl@mail.com");
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Accepted));
+        Assert.That((await _sender.NextAsync()).To, Is.EqualTo("carl@mail.com"));
+    }
+
+    [TestCase(true)]
+    [TestCase(false)]
+    public async Task Another_familys_id_is_familyNotFound_before_emailInviteDisabled(bool smtp)
+    {
+        await StartAsync(smtp);
+        using var carl = await OtherFamily.CreateAsync(_factory);
+
+        await Isolation.AssertNotFoundAsync(SendAsync(carl.Client, "ben@mail.com"), "familyNotFound", "send");
+
+        Assert.That(await _admin.GetFromJsonAsync<JsonElement[]>(Invitations), Is.Empty);
         Assert.That(_sender.TryTake(out _), Is.False);
     }
 }

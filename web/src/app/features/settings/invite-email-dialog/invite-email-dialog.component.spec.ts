@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { MatDialogRef } from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { Subject } from 'rxjs';
 import en from '../../../../../public/i18n/en.json';
 import { SendInvitationResult } from '../../../core/invitations/invitation.models';
@@ -42,6 +42,7 @@ describe('InviteEmailDialogComponent', () => {
       providers: [
         { provide: InvitationService, useValue: invitations },
         { provide: MatDialogRef, useValue: dialogRef },
+        { provide: MAT_DIALOG_DATA, useValue: { familyId: 'f1' } },
       ],
     }).compileComponents();
     fixture = TestBed.createComponent(InviteEmailDialogComponent);
@@ -65,22 +66,22 @@ describe('InviteEmailDialogComponent', () => {
     expect(invitations.sendByEmail).not.toHaveBeenCalled();
   });
 
-  it('sends the trimmed email and closes with it', async () => {
+  it('sends the trimmed email to the family and closes with it', async () => {
     type(' ben@mail.com ');
     await click(button('send'));
 
-    expect(invitations.sendByEmail).toHaveBeenCalledWith('ben@mail.com');
+    expect(invitations.sendByEmail).toHaveBeenCalledWith('f1', 'ben@mail.com');
     expect(button('send').disabled).toBe(true);
     await answer({ ok: true, expiresAt: '2026-10-04T20:00:00Z' });
     expect(dialogRef.close).toHaveBeenCalledWith('ben@mail.com');
   });
 
-  it('shows an email that has an account under the field and stays open', async () => {
+  it('shows the email of a member of the family under the field and stays open', async () => {
     type('anna@mail.com');
     await click(button('send'));
-    await answer({ ok: false, errors: { email: 'taken' } });
+    await answer({ ok: false, errors: { email: 'alreadyMember' } });
 
-    expect(error()).toBe(en.auth.errors.email.taken);
+    expect(error()).toBe(en.auth.errors.email.alreadyMember);
     expect(button('send').disabled).toBe(false);
     expect(dialogRef.close).not.toHaveBeenCalled();
   });

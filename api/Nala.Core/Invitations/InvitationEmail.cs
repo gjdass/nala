@@ -4,10 +4,10 @@ using Nala.Core.Users;
 
 namespace Nala.Core.Invitations;
 
-/// <summary>The email carrying an invitation link, in the inviter's language (English when it has no translation).</summary>
+/// <summary>The email carrying a join invitation link to <c>familyName</c>, in the inviter's language (English when it has no translation).</summary>
 public static class InvitationEmail
 {
-    public static EmailMessage Compose(User inviter, string to, Uri publicUrl, string token, DateTimeOffset expiresAt)
+    public static EmailMessage Compose(User inviter, string familyName, string to, Uri publicUrl, string token, DateTimeOffset expiresAt)
     {
         var link = $"{publicUrl.AbsoluteUri.TrimEnd('/')}/invite/{token}";
         var utc = expiresAt.UtcDateTime;
@@ -18,7 +18,7 @@ public static class InvitationEmail
                 $"""
                 Bonjour,
 
-                {inviter.DisplayName} vous invite à rejoindre sa famille sur Nala, pour suivre ensemble les repas, le sommeil et les couches de bébé. Ouvrez ce lien pour créer votre compte ; il ne sert qu'une fois, jusqu'au {utc.ToString("d MMMM yyyy 'à' HH:mm", CultureInfo.GetCultureInfo("fr-FR"))} (UTC) :
+                {inviter.DisplayName} vous invite à rejoindre la famille « {familyName} » sur Nala, pour suivre ensemble les repas, le sommeil et les couches de bébé. Ouvrez ce lien pour la rejoindre ; il ne sert qu'une fois, jusqu'au {utc.ToString("d MMMM yyyy 'à' HH:mm", CultureInfo.GetCultureInfo("fr-FR"))} (UTC) :
 
                 {link}
 
@@ -31,7 +31,7 @@ public static class InvitationEmail
                 $"""
                 Hello,
 
-                {inviter.DisplayName} invites you to join their family on Nala, to keep track of the baby's feeds, sleep and diapers together. Open this link to create your account; it works once, until {utc.ToString("MMMM d, yyyy 'at' HH:mm", CultureInfo.GetCultureInfo("en-US"))} (UTC):
+                {inviter.DisplayName} invites you to join the family "{familyName}" on Nala, to keep track of the baby's feeds, sleep and diapers together. Open this link to join; it works once, until {utc.ToString("MMMM d, yyyy 'at' HH:mm", CultureInfo.GetCultureInfo("en-US"))} (UTC):
 
                 {link}
 

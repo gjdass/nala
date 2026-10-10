@@ -11,8 +11,8 @@ public interface IInvitationRepository
 
     Task<Invitation?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
 
-    /// <summary>The invitations still usable at <paramref name="now"/>, in no particular order.</summary>
-    Task<IReadOnlyList<Invitation>> ListPendingAsync(DateTimeOffset now, CancellationToken cancellationToken = default);
+    /// <summary>The family's join invitations still usable at <paramref name="now"/>, in no particular order.</summary>
+    Task<IReadOnlyList<Invitation>> ListPendingAsync(Guid familyId, DateTimeOffset now, CancellationToken cancellationToken = default);
 
     /// <summary>Revokes the invitation at <paramref name="now"/> if it is still usable then; false when it is not (nothing saved).</summary>
     Task<bool> RevokeAsync(Guid id, DateTimeOffset now, CancellationToken cancellationToken = default);

@@ -8,6 +8,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { take } from 'rxjs';
 import { AuthService } from '../../../core/auth/auth.service';
+import { CurrentFamilyService } from '../../../core/families/current-family.service';
 import { formatDateTime } from '../../../core/i18n/date-time';
 import { PendingInvitation } from '../../../core/invitations/invitation.models';
 import { InvitationService } from '../../../core/invitations/invitation.service';
@@ -17,7 +18,10 @@ import {
   ShareLinkDialogComponent,
   ShareLinkDialogData,
 } from '../../../shared/ui/share-link-dialog/share-link-dialog.component';
-import { InviteEmailDialogComponent } from '../invite-email-dialog/invite-email-dialog.component';
+import {
+  InviteEmailDialogComponent,
+  InviteEmailDialogData,
+} from '../invite-email-dialog/invite-email-dialog.component';
 
 const SNACK_DURATION = 3000;
 
@@ -25,7 +29,7 @@ const SNACK_DURATION = 3000;
 const REVOKE_ERRORS = ['invitationUsed', 'invitationExpired', 'invitationUnknown'];
 
 /**
- * Invite someone (a link handed over through the share dialog, or emailed when SMTP is configured), and the pending
+ * Invite someone into the current family (a link handed over through the share dialog, or emailed when SMTP is configured), and the pending
  * invitations, each revocable.
  */
 @Component({
@@ -42,6 +46,8 @@ export class SettingsInvitationsComponent {
   private readonly transloco = inject(TranslocoService);
   private readonly origin = inject(DOCUMENT).location.origin;
   private readonly auth = inject(AuthService);
+  /** Settings only shows this section for a current family, and has no switcher to change it. */
+  private readonly families = inject(CurrentFamilyService);
 
   protected readonly pending = signal<PendingInvitation[]>([]);
   protected readonly loadError = signal(false);
@@ -61,7 +67,7 @@ export class SettingsInvitationsComponent {
       return;
     }
     this.creating.set(true);
-    this.invitations.create().subscribe((result) => {
+    this.invitations.create(this.familyId()).subscribe((result) => {
       this.creating.set(false);
       if (!result.ok) {
         this.notify('auth.errors.form.unknown');
@@ -84,7 +90,9 @@ export class SettingsInvitationsComponent {
 
   protected inviteByEmail(): void {
     this.dialog
-      .open<InviteEmailDialogComponent, void, string>(InviteEmailDialogComponent)
+      .open<InviteEmailDialogComponent, InviteEmailDialogData, string>(InviteEmailDialogComponent, {
+        data: { familyId: this.familyId() },
+      })
       .afterClosed()
       .subscribe((email) => {
         if (email) {
@@ -96,7 +104,7 @@ export class SettingsInvitationsComponent {
 
   /** Immediate: a new link is easy to make. */
   protected revoke(invitation: PendingInvitation): void {
-    this.invitations.revoke(invitation.id).subscribe((result) => {
+    this.invitations.revoke(this.familyId(), invitation.id).subscribe((result) => {
       if (result.ok) {
         this.pending.update((list) => list.filter((i) => i.id !== invitation.id));
         this.notify('invitations.revoked');
@@ -114,12 +122,16 @@ export class SettingsInvitationsComponent {
   }
 
   private load(): void {
-    this.invitations.pending().subscribe((result) => {
+    this.invitations.pending(this.familyId()).subscribe((result) => {
       this.loadError.set(!result.ok);
       if (result.ok) {
         this.pending.set(result.invitations);
       }
     });
+  }
+
+  private familyId(): string {
+    return this.families.current()!.id;
   }
 
   private notify(key: string, params?: Record<string, string>): void {

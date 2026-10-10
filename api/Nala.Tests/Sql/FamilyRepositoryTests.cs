@@ -156,6 +156,19 @@ public class FamilyRepositoryTests
     }
 
     [Test]
+    public async Task Get_returns_the_family_or_null()
+    {
+        var anna = NewUser("Anna");
+        var (martins, annaAdmin) = NewFamily(anna, "Martins");
+        await AddWithNewAdminAsync(anna, martins, annaAdmin);
+
+        await using var db = _db();
+        var repository = new FamilyRepository(db);
+        Assert.That((await repository.GetAsync(martins.Id))?.Name, Is.EqualTo("Martins"));
+        Assert.That(await repository.GetAsync(Guid.NewGuid()), Is.Null);
+    }
+
+    [Test]
     public async Task Rename_saves_the_name_and_returns_the_family()
     {
         var anna = NewUser("Anna");

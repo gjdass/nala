@@ -39,10 +39,14 @@ public class MemberEndpointTests
 
     private HttpClient NewClient() => _factory.CreateClient(new() { BaseAddress = new Uri("https://localhost") });
 
+    /// <summary>The first family of the user signed in on <paramref name="client"/>.</summary>
+    private static async Task<Guid> FamilyIdAsync(HttpClient client) =>
+        (await client.GetFromJsonAsync<JsonElement[]>("/api/families"))![0].GetProperty("id").GetGuid();
+
     /// <summary>A new invitation link created by the member signed in on <paramref name="client"/>; returns its token.</summary>
     private static async Task<string> InviteAsync(HttpClient client)
     {
-        var response = await client.PostAsync("/api/invitations", null);
+        var response = await client.PostAsync($"/api/families/{await FamilyIdAsync(client)}/invitations", null);
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
         return (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("token").GetString()!;
     }

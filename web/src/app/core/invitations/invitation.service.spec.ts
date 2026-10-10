@@ -33,9 +33,9 @@ describe('InvitationService', () => {
   afterEach(() => http.verify());
 
   describe('create()', () => {
-    it('posts to /api/invitations and returns the token and expiry', async () => {
-      const result = firstValueFrom(service.create());
-      const req = http.expectOne('/api/invitations');
+    it("posts to the family's invitations and returns the token and expiry", async () => {
+      const result = firstValueFrom(service.create('f1'));
+      const req = http.expectOne('/api/families/f1/invitations');
       expect(req.request.method).toBe('POST');
       req.flush({ token: 'tok', expiresAt: '2026-10-04T20:00:00Z' });
 
@@ -46,8 +46,8 @@ describe('InvitationService', () => {
     });
 
     it('maps a failure to a form error', async () => {
-      const result = firstValueFrom(service.create());
-      http.expectOne('/api/invitations').flush(null, { status: 500, statusText: 'Server Error' });
+      const result = firstValueFrom(service.create('f1'));
+      http.expectOne('/api/families/f1/invitations').flush(null, { status: 500, statusText: 'Server Error' });
 
       expect(await result).toEqual<CreateInvitationResult>({
         ok: false,
@@ -57,9 +57,9 @@ describe('InvitationService', () => {
   });
 
   describe('pending()', () => {
-    it('gets /api/invitations', async () => {
-      const result = firstValueFrom(service.pending());
-      const req = http.expectOne('/api/invitations');
+    it("gets the family's invitations", async () => {
+      const result = firstValueFrom(service.pending('f1'));
+      const req = http.expectOne('/api/families/f1/invitations');
       expect(req.request.method).toBe('GET');
       req.flush([pending]);
 
@@ -67,8 +67,8 @@ describe('InvitationService', () => {
     });
 
     it('maps a failure to a form error', async () => {
-      const result = firstValueFrom(service.pending());
-      http.expectOne('/api/invitations').error(new ProgressEvent('error'));
+      const result = firstValueFrom(service.pending('f1'));
+      http.expectOne('/api/families/f1/invitations').error(new ProgressEvent('error'));
 
       expect(await result).toEqual<PendingInvitationsResult>({
         ok: false,
@@ -78,9 +78,9 @@ describe('InvitationService', () => {
   });
 
   describe('revoke()', () => {
-    it('posts to /api/invitations/{id}/revoke', async () => {
-      const result = firstValueFrom(service.revoke('i1'));
-      const req = http.expectOne('/api/invitations/i1/revoke');
+    it("posts to the family's invitations/{id}/revoke", async () => {
+      const result = firstValueFrom(service.revoke('f1', 'i1'));
+      const req = http.expectOne('/api/families/f1/invitations/i1/revoke');
       expect(req.request.method).toBe('POST');
       req.flush(null, { status: 204, statusText: 'No Content' });
 
@@ -92,17 +92,17 @@ describe('InvitationService', () => {
       [410, 'invitationExpired'],
       [404, 'invitationUnknown'],
     ])('maps a %s to its code %s', async (status, code) => {
-      const result = firstValueFrom(service.revoke('i1'));
-      http.expectOne('/api/invitations/i1/revoke').flush({ code }, { status, statusText: 'Error' });
+      const result = firstValueFrom(service.revoke('f1', 'i1'));
+      http.expectOne('/api/families/f1/invitations/i1/revoke').flush({ code }, { status, statusText: 'Error' });
 
       expect(await result).toEqual<RevokeInvitationResult>({ ok: false, errors: { form: code } });
     });
   });
 
   describe('sendByEmail()', () => {
-    it('posts the email to /api/invitations/email', async () => {
-      const result = firstValueFrom(service.sendByEmail('ben@mail.com'));
-      const req = http.expectOne('/api/invitations/email');
+    it("posts the email to the family's invitations/email", async () => {
+      const result = firstValueFrom(service.sendByEmail('f1', 'ben@mail.com'));
+      const req = http.expectOne('/api/families/f1/invitations/email');
       expect(req.request.method).toBe('POST');
       expect(req.request.body).toEqual({ email: 'ben@mail.com' });
       req.flush({ expiresAt: '2026-10-04T20:00:00Z' }, { status: 202, statusText: 'Accepted' });
@@ -114,27 +114,24 @@ describe('InvitationService', () => {
     });
 
     it('maps a validation problem to field errors', async () => {
-      const result = firstValueFrom(service.sendByEmail('anna@mail.com'));
+      const result = firstValueFrom(service.sendByEmail('f1', 'anna@mail.com'));
       http
-        .expectOne('/api/invitations/email')
-        .flush({ errors: { email: ['taken'] } }, { status: 400, statusText: 'Bad Request' });
+        .expectOne('/api/families/f1/invitations/email')
+        .flush({ errors: { email: ['alreadyMember'] } }, { status: 400, statusText: 'Bad Request' });
 
       expect(await result).toEqual<SendInvitationResult>({
         ok: false,
-        errors: { email: 'taken' },
+        errors: { email: 'alreadyMember' },
       });
     });
 
-    it('maps SMTP being off to its code', async () => {
-      const result = firstValueFrom(service.sendByEmail('ben@mail.com'));
+    it.each(['emailInviteDisabled', 'familyNotFound'])('maps a 404 %s to its code', async (code) => {
+      const result = firstValueFrom(service.sendByEmail('f1', 'ben@mail.com'));
       http
-        .expectOne('/api/invitations/email')
-        .flush({ code: 'emailInviteDisabled' }, { status: 404, statusText: 'Not Found' });
+        .expectOne('/api/families/f1/invitations/email')
+        .flush({ code }, { status: 404, statusText: 'Not Found' });
 
-      expect(await result).toEqual<SendInvitationResult>({
-        ok: false,
-        errors: { form: 'emailInviteDisabled' },
-      });
+      expect(await result).toEqual<SendInvitationResult>({ ok: false, errors: { form: code } });
     });
   });
 });
