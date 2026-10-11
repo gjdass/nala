@@ -20,7 +20,7 @@ On the Trends tab, show how the selected baby's feeding, sleep, diapers, pumping
   - **Section** (chip "Section"; single choice, `menuitemradio`): the sections that have trends, i.e. **Feed, Sleep, Diaper, Pump and Growth**, in the home order (visible ones, a divider, then hidden ones; default order while the home order isn't loaded). **Health has no trends.** Default: the first section with trends that is visible on home, else the first one in home order (only Health visible).
   - **Range** (chip "Range"; `menuitemradio`): **7 days** (default), **30 days**, **3 months**, **6 months**, **Since birth**.
   - **Period navigation:** ‹ and › around the period's label ("3 – 9 Oct", "Jul – Oct 2026"). ‹ shows the period of the same length just before; › the one after, disabled on the current period. Nothing goes before the birth date (‹ disabled once the period reaches it). It sits on the chips' row and wraps below them when it doesn't fit. Since birth has no arrows (nothing to move), but its label still shows the dates ("Aug 2025 – Oct 2026").
-- Periods are **whole local days**, ending today: 7 days = today and the 6 days before; 3 months = from the same day 3 months ago + 1 day to today. Changing the range or the section goes back to the current period.
+- Periods are **whole local days**, ending today: 7 days = today and the 6 days before; 3 months = from the same day 3 months ago + 1 day to today. Earlier periods count both ends back from today, so a day clamped in a short month never makes two periods overlap. Changing the range, the section or the baby goes back to the current period, and so does a new day (today is read again on the reload signal).
 - **Remembered per device:** `localStorage` `nala.trendsFilters` `{ section, range }` (not the period offset), restored when Trends is opened. An unknown or no-longer-eligible section falls back to the default, an unknown range to 7 days.
 
 ### Buckets
@@ -90,7 +90,7 @@ Each item becomes at least one test, written failing first.
 - [x] The Section chip offers Feed, Sleep, Diaper, Pump and Growth in home order (visible, divider, hidden), never Health; default: the first visible one, else the first in home order.
 - [x] The Range chip offers 7 days (default), 30 days, 3 months, 6 months and Since birth.
 - [x] ‹ shows the previous period of the same length and › the next one; › is disabled on the current period, ‹ once the period reaches the birth date; no arrows for Since birth, whose label still shows its dates.
-- [x] Changing the section or the range goes back to the current period.
+- [x] Changing the section, the range or the baby goes back to the current period, and so does a new day on the reload signal; month periods never overlap.
 - [x] Section and range are remembered on the device; an unknown or ineligible stored value falls back to the default.
 
 ### Buckets

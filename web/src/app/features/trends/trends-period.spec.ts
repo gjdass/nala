@@ -35,6 +35,17 @@ describe('trends periods', () => {
     expect(bounds('6m', -1, today)).toEqual(['2025-10-10', '2026-04-09']);
   });
 
+  it('steps back by month periods that never overlap, even from a clamped day', () => {
+    const may31 = day(2026, 5, 31);
+    expect(bounds('3m', -1, may31)).toEqual(['2025-12-01', '2026-02-28']);
+    expect(bounds('3m', -2, may31)).toEqual(['2025-09-01', '2025-11-30']);
+  });
+
+  it('since birth without a birth date is today alone, and still has a label', () => {
+    expect(bounds('birth', 0, today, '')).toEqual(['2026-10-09', '2026-10-09']);
+    expect(() => periodLabel(period('birth', 0, today, ''), 'birth', 'en', today)).not.toThrow();
+  });
+
   it("can't go back once the period reaches the birth date, nor forward on the current period", () => {
     expect(canGoBack(period('7d', 0, today, '2026-09-01'), '2026-09-01')).toBe(true);
     expect(canGoBack(period('7d', -1, today, '2026-09-26'), '2026-09-26')).toBe(false);

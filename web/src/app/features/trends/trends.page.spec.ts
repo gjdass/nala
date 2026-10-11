@@ -1,6 +1,7 @@
 import { WritableSignal, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { TranslocoService } from '@jsverse/transloco';
 import { Subject, of } from 'rxjs';
 import en from '../../../../public/i18n/en.json';
 import { BabiesResult, Baby } from '../../core/babies/baby.models';
@@ -274,6 +275,44 @@ describe('TrendsPage', () => {
       await click('previous');
       await pick('range-chip', 'range-option', 1);
       expect(label()).toBe('Sep 10 – Oct 9');
+    });
+  });
+
+  describe('period', () => {
+    beforeEach(create);
+
+    it('moves to the new current period on the reload signal of another day', async () => {
+      await loadBabies([lea]);
+      await click('previous');
+
+      vi.setSystemTime(new Date(2026, 9, 10, 8));
+      refresh.reload.set(1);
+      await loadBabies([lea]);
+
+      expect(label()).toBe('Oct 4 – 10');
+      expect(find('next')!.hasAttribute('disabled')).toBe(true);
+    });
+
+    it('goes back to the current period when another baby is selected', async () => {
+      const tom = { id: 'b2', familyId: 'f1', name: 'Tom', birthDate: '2025-01-01' } as Baby;
+      await loadBabies([tom, lea]);
+      await click('previous');
+      await click('previous');
+
+      TestBed.inject(SelectedBabyService).select('b1');
+      await fixture.whenStable();
+
+      expect(find('selected-name')?.textContent?.trim()).toBe('Lea');
+      expect(label()).toBe('Oct 3 – 9');
+    });
+
+    it('gives the dates in the new language when it changes', async () => {
+      await loadBabies([lea]);
+
+      TestBed.inject(TranslocoService).setActiveLang('fr');
+      await fixture.whenStable();
+
+      expect(label()).toMatch(/^3\s?[–-]\s?9 oct\.$/);
     });
   });
 

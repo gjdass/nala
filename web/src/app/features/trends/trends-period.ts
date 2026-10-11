@@ -30,7 +30,8 @@ export function parseDate(value: string): Date {
 
 /**
  * The period of a range: `offset` 0 is the current one ending `today`, -1 the one of the same length
- * just before, and so on. Since birth runs from the `birthDate` and ignores the offset.
+ * just before, and so on. Since birth runs from the `birthDate` (today without one) and ignores the
+ * offset.
  */
 export function period(
   range: TrendsRange,
@@ -46,10 +47,13 @@ export function period(
   }
   const months = MONTHS[range];
   if (months) {
-    const to = addMonths(day, months * offset);
-    return { from: addDays(addMonths(to, -months), 1), to };
+    // Both ends count from today, so a day clamped in a short month never makes two periods overlap.
+    return {
+      from: addDays(addMonths(day, months * (offset - 1)), 1),
+      to: addMonths(day, months * offset),
+    };
   }
-  return { from: parseDate(birthDate), to: day };
+  return { from: birthDate ? parseDate(birthDate) : day, to: day };
 }
 
 /** Nothing goes before the birth date: no earlier period once this one reaches it. */

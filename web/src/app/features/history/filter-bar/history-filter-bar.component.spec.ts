@@ -3,14 +3,15 @@ import en from '../../../../../public/i18n/en.json';
 import { SectionKey } from '../../../core/sections/section.models';
 import { translocoTesting } from '../../../testing/transloco-testing';
 import { HistoryWindow } from '../history-filters';
-import { FilterBarSection, HistoryFilterBarComponent } from './history-filter-bar.component';
+import { MenuSection } from '../../../core/sections/section-menu';
+import { HistoryFilterBarComponent } from './history-filter-bar.component';
 
 describe('HistoryFilterBarComponent', () => {
   let fixture: ComponentFixture<HistoryFilterBarComponent>;
   let windows: HistoryWindow[];
   let selections: SectionKey[][];
 
-  const sections: FilterBarSection[] = [
+  const sections: MenuSection[] = [
     { key: 'diaper', icon: 'baby_changing_station', visible: true },
     { key: 'feed', icon: 'restaurant', visible: true },
     { key: 'sleep', icon: 'bedtime', visible: false },

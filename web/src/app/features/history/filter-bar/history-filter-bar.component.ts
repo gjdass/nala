@@ -10,17 +10,9 @@ import {
   ChoiceMenuComponent,
   ChoiceOption,
 } from '../../../shared/ui/choice-menu/choice-menu.component';
+import { MenuSection, splitByVisibility } from '../../../core/sections/section-menu';
 import { SectionKey } from '../../../core/sections/section.models';
 import { HISTORY_WINDOWS, HistoryWindow } from '../history-filters';
-
-/** A section in the sections menu, in the home order. */
-export interface FilterBarSection {
-  key: SectionKey;
-  /** Material Symbols name. */
-  icon: string;
-  /** Visible on home: listed first; the hidden ones follow after a divider. */
-  visible: boolean;
-}
 
 /**
  * History's filter bar (spec 11): two filter chips opening a menu each. The time window's menu is a
@@ -47,7 +39,7 @@ export class HistoryFilterBarComponent {
   readonly window = input.required<HistoryWindow>();
   readonly selected = input.required<readonly SectionKey[]>();
   /** Every registered section, in the home order. */
-  readonly sections = input.required<readonly FilterBarSection[]>();
+  readonly sections = input.required<readonly MenuSection[]>();
   readonly windowChange = output<HistoryWindow>();
   /** The new selection, in the menu's order. */
   readonly selectedChange = output<SectionKey[]>();
@@ -56,8 +48,7 @@ export class HistoryFilterBarComponent {
     value: w,
     labelKey: `history.window.${w}`,
   }));
-  protected readonly visible = computed(() => this.sections().filter((s) => s.visible));
-  protected readonly hidden = computed(() => this.sections().filter((s) => !s.visible));
+  protected readonly split = computed(() => splitByVisibility(this.sections()));
 
   protected isSelected(key: SectionKey): boolean {
     return this.selected().includes(key);

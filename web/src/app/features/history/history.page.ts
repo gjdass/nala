@@ -17,6 +17,7 @@ import { HistoryLoaderService } from '../../core/history/history-loader.service'
 import { HistoryItem } from '../../core/history/history-source.models';
 import { DataRefreshService, onReload } from '../../core/refresh/data-refresh.service';
 import { HistoryPageLoader, SECTIONS, SectionKey } from '../../core/sections/section.models';
+import { menuSections } from '../../core/sections/section-menu';
 import { SectionPreferencesService } from '../../core/sections/section-preferences.service';
 import { EntrySheetResult } from '../../shared/ui/entry-sheet/entry-sheet.models';
 import { EntrySheetService } from '../../shared/ui/entry-sheet/entry-sheet.service';
@@ -25,10 +26,7 @@ import { SectionEntryDirective } from '../../shared/ui/section-card/section-entr
 import { TopAppBarComponent } from '../../shared/ui/top-app-bar/top-app-bar.component';
 import { NoBabyComponent } from '../babies/no-baby/no-baby.component';
 import { NoFamilyComponent } from '../babies/no-family/no-family.component';
-import {
-  FilterBarSection,
-  HistoryFilterBarComponent,
-} from './filter-bar/history-filter-bar.component';
+import { HistoryFilterBarComponent } from './filter-bar/history-filter-bar.component';
 import { HistoryEntryComponent } from './history-entry/history-entry.component';
 import {
   HistoryFilters,
@@ -90,14 +88,9 @@ export class HistoryPage {
   });
 
   /** The registered sections in the home order (the default one, all visible, until it is known). */
-  protected readonly menuSections = computed((): FilterBarSection[] => {
-    const order =
-      this.preferences.preferences() ?? this.sections.map((s) => ({ key: s.key, visible: true }));
-    return order.flatMap(({ key, visible }) => {
-      const section = this.sections.find((s) => s.key === key);
-      return section ? [{ key, icon: section.icon, visible }] : [];
-    });
-  });
+  protected readonly menuSections = computed(() =>
+    menuSections(this.preferences.preferences(), this.sections),
+  );
 
   /**
    * A new loader (another baby, a filter change, the reload signal) starts again from the first page,

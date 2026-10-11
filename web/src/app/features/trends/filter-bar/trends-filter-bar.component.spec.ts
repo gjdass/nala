@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import en from '../../../../../public/i18n/en.json';
 import { translocoTesting } from '../../../testing/transloco-testing';
-import { FilterBarSection } from '../../history/filter-bar/history-filter-bar.component';
+import { MenuSection } from '../../../core/sections/section-menu';
 import { TrendsRange } from '../trends-period';
 import { TrendsFilterBarComponent } from './trends-filter-bar.component';
 
@@ -9,7 +9,7 @@ describe('TrendsFilterBarComponent', () => {
   let fixture: ComponentFixture<TrendsFilterBarComponent>;
   let events: unknown[][];
 
-  const sections: FilterBarSection[] = [
+  const sections: MenuSection[] = [
     { key: 'diaper', icon: 'baby_changing_station', visible: true },
     { key: 'feed', icon: 'restaurant', visible: true },
     { key: 'sleep', icon: 'bedtime', visible: false },

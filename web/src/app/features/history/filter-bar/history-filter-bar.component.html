@@ -31,12 +31,12 @@
 />
 
 <mat-menu #menu="matMenu" [ariaLabel]="'history.sections' | transloco">
-  @for (section of visible(); track section.key) {
+  @for (section of split().visible; track section.key) {
     <ng-container *ngTemplateOutlet="option; context: { $implicit: section }" />
   }
-  @if (hidden().length) {
+  @if (split().hidden.length) {
     <mat-divider />
-    @for (section of hidden(); track section.key) {
+    @for (section of split().hidden; track section.key) {
       <ng-container *ngTemplateOutlet="option; context: { $implicit: section }" />
     }
   }

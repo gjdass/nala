@@ -8,7 +8,7 @@ import {
   ChoiceMenuComponent,
   ChoiceOption,
 } from '../../../shared/ui/choice-menu/choice-menu.component';
-import { FilterBarSection } from '../../history/filter-bar/history-filter-bar.component';
+import { MenuSection, splitByVisibility } from '../../../core/sections/section-menu';
 import { TrendsSection } from '../trends-filters';
 import { TRENDS_RANGES, TrendsRange } from '../trends-period';
 
@@ -34,7 +34,7 @@ export class TrendsFilterBarComponent {
   readonly section = input.required<TrendsSection>();
   readonly range = input.required<TrendsRange>();
   /** The sections with trends, in the home order. */
-  readonly sections = input.required<readonly FilterBarSection[]>();
+  readonly sections = input.required<readonly MenuSection[]>();
   /** The current period's dates. */
   readonly label = input.required<string>();
   readonly canGoBack = input.required<boolean>();
@@ -48,21 +48,15 @@ export class TrendsFilterBarComponent {
   readonly next = output<void>();
 
   protected readonly sectionOptions = computed((): ChoiceOption<TrendsSection>[] => {
-    const options = (list: readonly FilterBarSection[], divided: boolean) =>
+    const { visible, hidden } = splitByVisibility(this.sections());
+    const options = (list: readonly MenuSection[], divided: boolean) =>
       list.map((s, i) => ({
         value: s.key as TrendsSection,
         labelKey: `sections.${s.key}`,
         icon: s.icon,
         dividerBefore: divided && i === 0,
       }));
-    const visible = this.sections().filter((s) => s.visible);
-    return [
-      ...options(visible, false),
-      ...options(
-        this.sections().filter((s) => !s.visible),
-        visible.length > 0,
-      ),
-    ];
+    return [...options(visible, false), ...options(hidden, visible.length > 0)];
   });
 
   protected readonly rangeOptions: ChoiceOption<TrendsRange>[] = TRENDS_RANGES.map((r) => ({
