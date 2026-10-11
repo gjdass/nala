@@ -117,7 +117,15 @@ Each item becomes at least one test, written failing first.
 
 ## Build slices
 
-<!-- Added by /slice before the first one is built. The slice that replaces the placeholder also updates spec 04 (Bottom navigation bar, its "Coming soon" criterion, Out of scope). -->
+Each slice: red → green → commit "Spec 12 slice N: …" on `master`.
+
+- [ ] **1. Page and filter bar.** `/trends` replaces "Coming soon": top app bar, no-baby empty state, sticky `nala-trends-filter-bar` (Section and Range chips, period navigation bounded by today and the birth date, `nala.trendsFilters` remembered with fallbacks). No cards yet. Updates spec 04 (Bottom navigation bar, its "Coming soon" criterion, Out of scope). Covers: Page; Filter bar (all).
+- [ ] **2. Sleep trends API.** Shared local-day splitting in `Nala.Core` (spans split across local days in an IANA zone, live up to now), the 19:00–07:00 night split, longest sleep on its start day; `GET …/trends/sleeps` with the `from` / `to` / `tz` codes and 404 across families; `tzdata` in the runtime image. Covers: API (sleeps); midnight split (API side); night / longest sleep.
+- [ ] **3. Sleep cards, daily bars.** `nala-bar-chart` (stacked series, no-data gaps, lighter today, tap for a value, accessible labels), `nala-metric-card` (title, headline, chart or "Nothing logged in this period", section scheme), the trends service, headlines (daily averages over data days, today excluded), reload on filter change / baby switch / reload signal, error with Try again; Sleep's two cards. Covers: no-data days; today lighter and out of headlines; tapping a bar; nothing logged; cards (Sleep).
+- [ ] **4. Week and month buckets.** Web regrouping by day / week (locale's first day) / month, daily average over data days, today left out. Covers: buckets; today out of week / month bars.
+- [ ] **5. Diaper and Pump.** `…/trends/diapers` and `…/trends/pumps`; grouped bars in `nala-bar-chart`; the Diapers, Pumped and Sessions cards. Covers: cards (Diaper, Pump); API (diapers, pumps).
+- [ ] **6. Feed.** `…/trends/feeds` (counts by kind, bottle ml by milk type, breast seconds per side split across midnight, gaps ≤ 8 h on the later feed's day); the four Feed cards with the L / R split headline. Covers: cards (Feed); time between feeds; breastfeeding split; API (feeds); live entry counted up to now.
+- [ ] **7. Growth.** `…/trends/growth` (measurements in range with the birth point, milestones); `nala-line-chart` (dated points, line from two points, markers, tooltip with date, value and age); Weight (with milestone markers), Length and Head cards. Covers: Growth (both); cards (Growth).
 
 ## Data
 
