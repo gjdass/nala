@@ -827,6 +827,7 @@
     "day": "Jour",
     "night": "Nuit",
     "perDay": "par jour",
+    "weekOf": "Semaine du {{date}}",
     "noValue": "–",
     "loadError": "Impossible de charger les tendances."
   }

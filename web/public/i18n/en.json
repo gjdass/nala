@@ -827,6 +827,7 @@
     "day": "Day",
     "night": "Night",
     "perDay": "per day",
+    "weekOf": "Week of {{date}}",
     "noValue": "–",
     "loadError": "Couldn't load the trends."
   }

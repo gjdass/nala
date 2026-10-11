@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { translocoTesting } from '../../../testing/transloco-testing';
 import { BarChartComponent, BarDatum, BarSeries } from './bar-chart.component';
 
 const hours = (v: number) => `${v}h`;
@@ -8,12 +9,19 @@ const hours = (v: number) => `${v}h`;
   imports: [BarChartComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `<p data-testid="outside">Outside</p>
-    <nala-bar-chart [bars]="bars()" [series]="series()" [format]="format" lang="en" />`,
+    <nala-bar-chart
+      [bars]="bars()"
+      [series]="series()"
+      [format]="format"
+      [bucket]="bucket()"
+      lang="en"
+    />`,
 })
 class HostComponent {
   readonly bars = signal<BarDatum[]>([]);
   readonly series = signal<BarSeries[]>([{ label: 'Night' }, { label: 'Day' }]);
   readonly format = hours;
+  readonly bucket = signal<'day' | 'week' | 'month'>('day');
 }
 
 describe('BarChartComponent', () => {
@@ -31,7 +39,9 @@ describe('BarChartComponent', () => {
   };
 
   beforeEach(async () => {
-    await TestBed.configureTestingModule({ imports: [HostComponent] }).compileComponents();
+    await TestBed.configureTestingModule({
+      imports: [HostComponent, translocoTesting()],
+    }).compileComponents();
     fixture = TestBed.createComponent(HostComponent);
     await fixture.whenStable();
   });
@@ -137,5 +147,29 @@ describe('BarChartComponent', () => {
         l.textContent?.trim(),
       ),
     ).toEqual(['Oct 7', '8', '9']);
+  });
+
+  const xLabels = () =>
+    [...host().querySelectorAll('[data-testid="chart-x-label"]')].map((l) => l.textContent?.trim());
+
+  it("labels a week bar with its first day's week and a daily average", async () => {
+    fixture.componentInstance.bucket.set('week');
+    await show([{ date: '2026-10-04', values: [8, 3] }]);
+
+    expect(bars()[0].getAttribute('aria-label')).toBe(
+      'Week of Oct 4: 11h per day (Night 8h, Day 3h)',
+    );
+    bars()[0].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await fixture.whenStable();
+    expect(tooltip()).toBe('Week of Oct 4: 11h per day (Night 8h, Day 3h)');
+  });
+
+  it('labels a month bar with its month, and the axis with months and years', async () => {
+    fixture.componentInstance.bucket.set('month');
+    const months = ['07', '08', '09', '10', '11', '12'].map((m) => `2026-${m}-01`);
+    await show([...months, '2027-01-01', '2027-02-01'].map((date) => ({ date, values: [8, 3] })));
+
+    expect(bars()[0].getAttribute('aria-label')).toBe('July 2026: 11h per day (Night 8h, Day 3h)');
+    expect(xLabels()).toEqual(['Jul 2026', 'Sep', 'Nov', 'Jan 2027']);
   });
 });

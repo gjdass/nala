@@ -25,7 +25,7 @@ On the Trends tab, show how the selected baby's feeding, sleep, diapers, pumping
 
 ### Buckets
 - The period decides the bar size: **up to 31 days → one bar per day**; up to 6 months → one bar per **week**; longer → one bar per **month**. Weeks start on the locale's first day of the week (Monday in French).
-- A week or month bar shows the **daily average** over its days with data, so bars stay comparable whatever the bucket.
+- A week or month bar shows the **daily average** over its days with data, so bars stay comparable whatever the bucket. It stands at its week's first day or its month: the axis labels the week's first day ("Oct 4") or the month ("Jul", the year on the first label and when it changes), and the bar's value reads "Week of Oct 4: 11h per day" / "July 2026: 11h per day". Only today's daily bar is lighter; the current week or month bar isn't.
 - **A day with no entry of the section is "no data", not zero:** it has no bar and stays out of every average. A day with at least one entry of the section is a data day, so its other metrics can be a true zero (a day of breastfeeds has 0 ml of bottle).
 - **Today is incomplete:** its daily bar is drawn in a lighter tone, and it's left out of the headline averages and of week / month bars.
 - Days are **local days in the device's time zone** (a 23 h or 25 h day on a clock change counts as it is). A sleep, a breastfeed side or a pump session that crosses midnight has its duration split across both days. Counts and volumes go to the day of the entry's start time. A live entry counts up to now.
@@ -96,9 +96,9 @@ Each item becomes at least one test, written failing first.
 - [x] Section and range are remembered on the device; an unknown or ineligible stored value falls back to the default.
 
 ### Buckets
-- [ ] Up to 31 days: one bar per day; up to 6 months: per week (locale's first day); longer: per month. Week and month bars show the daily average over their data days.
+- [x] Up to 31 days: one bar per day; up to 6 months: per week (locale's first day); longer: per month. Week and month bars show the daily average over their data days.
 - [x] A day without an entry of the section has no bar and is left out of averages; a data day's metric can be zero.
-- [ ] Today's bar is lighter and today is left out of headlines and week / month bars.
+- [x] Today's bar is lighter and today is left out of headlines and week / month bars.
 - [ ] Durations crossing midnight are split across both local days; counts and volumes go to the start day; a live entry counts up to now.
 
 ### Metric cards
@@ -124,7 +124,7 @@ Each slice: red → green → commit "Spec 12 slice N: …" on `master`.
 - [x] **1. Page and filter bar.** `/trends` replaces "Coming soon": top app bar, no-baby empty state, sticky `nala-trends-filter-bar` (Section and Range chips, period navigation bounded by today and the birth date, `nala.trendsFilters` remembered with fallbacks). No cards yet. Updates spec 04 (Bottom navigation bar, its "Coming soon" criterion, Out of scope). Covers: Page; Filter bar (all).
 - [x] **2. Sleep trends API.** Shared local-day splitting in `Nala.Core` (spans split across local days in an IANA zone, live up to now), the 19:00–07:00 night split, longest sleep on its start day; `GET …/trends/sleeps` with the `from` / `to` / `tz` codes and 404 across families; `tzdata` in the runtime image. Covers: API (sleeps); midnight split (API side); night / longest sleep.
 - [x] **3. Sleep cards, daily bars.** `nala-bar-chart` (stacked series, no-data gaps, lighter today, tap for a value, accessible labels), `nala-metric-card` (title, headline, chart or "Nothing logged in this period", section scheme), the trends service, headlines (daily averages over data days, today excluded), reload on filter change / baby switch / reload signal, error with Try again; Sleep's two cards. Covers: no-data days; today lighter and out of headlines; tapping a bar; nothing logged; cards (Sleep).
-- [ ] **4. Week and month buckets.** Web regrouping by day / week (locale's first day) / month, daily average over data days, today left out. Covers: buckets; today out of week / month bars.
+- [x] **4. Week and month buckets.** Web regrouping by day / week (locale's first day) / month, daily average over data days, today left out. Covers: buckets; today out of week / month bars.
 - [ ] **5. Diaper and Pump.** `…/trends/diapers` and `…/trends/pumps`; grouped bars in `nala-bar-chart`; the Diapers, Pumped and Sessions cards. Covers: cards (Diaper, Pump); API (diapers, pumps).
 - [ ] **6. Feed.** `…/trends/feeds` (counts by kind, bottle ml by milk type, breast seconds per side split across midnight, gaps ≤ 8 h on the later feed's day); the four Feed cards with the L / R split headline. Covers: cards (Feed); time between feeds; breastfeeding split; API (feeds); live entry counted up to now.
 - [ ] **7. Growth.** `…/trends/growth` (measurements in range with the birth point, milestones); `nala-line-chart` (dated points, line from two points, markers, tooltip with date, value and age); Weight (with milestone markers), Length and Head cards. Covers: Growth (both); cards (Growth).
@@ -139,7 +139,7 @@ Nothing new stored on the server: trends are computed from the existing entries.
 - New shared components: `nala-bar-chart` (stacked or grouped series, gaps for no-data days, lighter today bar, tap to show a value) and `nala-line-chart` (dated points, optional markers), both hand-made SVG from theme tokens, no chart library. Every bar and point has an accessible label ("Tue 7 Oct: 6 feeds").
 - New in `features/trends/`: the page, `nala-trends-filter-bar`, `nala-metric-card`.
 - The API image resolves IANA time zones: the `aspnet:10.0` runtime image (Ubuntu) ships `tzdata`.
-- Labels (EN / FR): Trends / Tendances, Section / Section, Range / Période, 7 days / 7 jours, 30 days / 30 jours, 3 months / 3 mois, 6 months / 6 mois, Since birth / Depuis la naissance, Previous period / Période précédente, Next period / Période suivante, Feeds / Tétées et repas, Bottle / Biberon, Breastfeeding / Allaitement, Time between feeds / Temps entre les repas, Sleep / Sommeil, Day / Jour, Night / Nuit, Longest sleep / Plus long sommeil, Diapers / Couches, Wet / Mouillée, Dirty / Selles (spec 07's), Pumped / Tiré, Sessions / Séances, per day / par jour, Nothing logged in this period / Rien de noté sur cette période (reused from spec 11). Growth labels reuse spec 10's.
+- Labels (EN / FR): Trends / Tendances, Section / Section, Range / Période, 7 days / 7 jours, 30 days / 30 jours, 3 months / 3 mois, 6 months / 6 mois, Since birth / Depuis la naissance, Previous period / Période précédente, Next period / Période suivante, Week of {date} / Semaine du {date}, Feeds / Tétées et repas, Bottle / Biberon, Breastfeeding / Allaitement, Time between feeds / Temps entre les repas, Sleep / Sommeil, Day / Jour, Night / Nuit, Longest sleep / Plus long sommeil, Diapers / Couches, Wet / Mouillée, Dirty / Selles (spec 07's), Pumped / Tiré, Sessions / Séances, per day / par jour, Nothing logged in this period / Rien de noté sur cette période (reused from spec 11). Growth labels reuse spec 10's.
 
 ## Out of scope
 

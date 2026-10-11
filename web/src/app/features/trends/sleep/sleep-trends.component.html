@@ -12,7 +12,13 @@
     [headline]="sleepHeadline()"
     [empty]="loaded().length === 0"
   >
-    <nala-bar-chart [bars]="sleepBars()" [series]="series()" [format]="format" [lang]="lang()" />
+    <nala-bar-chart
+      [bars]="sleepBars()"
+      [series]="series()"
+      [format]="format"
+      [bucket]="bucket()"
+      [lang]="lang()"
+    />
   </nala-metric-card>
   <nala-metric-card
     section="sleep"
@@ -24,6 +30,7 @@
       [bars]="longestBars()"
       [series]="longestSeries()"
       [format]="format"
+      [bucket]="bucket()"
       [lang]="lang()"
     />
   </nala-metric-card>

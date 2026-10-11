@@ -180,4 +180,37 @@ describe('SleepTrendsComponent', () => {
     expect(find('trends-error')).toBeNull();
     expect(cards().length).toBe(2);
   });
+
+  it('shows a bar per week, from the locale first day, over 3 months', async () => {
+    fixture.componentInstance.period.set({ from: new Date(2026, 6, 10), to: new Date(2026, 9, 9) });
+    await settle();
+    await respond([
+      day('2026-10-05', 3, 10, 5),
+      day('2026-10-07', 1, 8, null),
+      day('2026-10-09', 1, 9, 6),
+    ]);
+
+    const bars = [...inCard(0, 'bar')];
+    expect(bars.map((b) => b.getAttribute('data-date'))).toEqual(['2026-10-04']);
+    expect(bars[0].getAttribute('aria-label')).toBe(
+      `Week of Oct 4: 11h ${en.trends.perDay} (Night 9h, Day 2h)`,
+    );
+    expect(bars[0].classList.contains('partial')).toBe(false);
+    expect(inCard(1, 'bar')[0].getAttribute('aria-label')).toBe(
+      `Week of Oct 4: 5h ${en.trends.perDay}`,
+    );
+    expect(textIn(0, 'metric-headline')).toBe(`11h ${en.trends.perDay}`);
+  });
+
+  it('shows a bar per month beyond 6 months', async () => {
+    fixture.componentInstance.period.set({ from: new Date(2025, 9, 9), to: new Date(2026, 9, 9) });
+    await settle();
+    await respond([day('2026-09-15', 2, 10, 4), day('2026-10-01', 4, 10, 6)]);
+
+    const bars = [...inCard(0, 'bar')];
+    expect(bars.map((b) => b.getAttribute('data-date'))).toEqual(['2026-09-01', '2026-10-01']);
+    expect(bars[0].getAttribute('aria-label')).toBe(
+      `September 2026: 12h ${en.trends.perDay} (Night 10h, Day 2h)`,
+    );
+  });
 });

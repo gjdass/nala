@@ -11,11 +11,11 @@ import { TrendsService } from '../../../core/trends/trends.service';
 import { BarChartComponent, BarDatum } from '../../../shared/ui/bar-chart/bar-chart.component';
 import { MetricCardComponent } from '../metric-card/metric-card.component';
 import { TrendsPeriod } from '../trends-period';
-import { dailyAverage, periodDays } from '../trends-stats';
+import { bucketBars, bucketOf, dailyAverage, firstDayOfWeek } from '../trends-stats';
 
 /**
  * Sleep's trends (spec 12): the Sleep card (night and day stacked) and the Longest sleep card (on the
- * days a sleep starts), one bar per day, headlines averaged over the past data days. Loads again when
+ * days a sleep starts), a bar per day, week or month, headlines averaged over the past data days. Loads again when
  * the baby or the period changes and on the reload signal, keeping the cards meanwhile.
  */
 @Component({
@@ -64,6 +64,7 @@ export class SleepTrendsComponent {
   });
 
   private readonly todayDate = computed(() => formatDate(this.today()));
+  protected readonly bucket = computed(() => bucketOf(this.period()));
   protected readonly loaded = computed(() => this.days.value() ?? []);
 
   protected readonly sleepBars = computed(() =>
@@ -89,14 +90,16 @@ export class SleepTrendsComponent {
     onReload(() => this.days.reload());
   }
 
-  /** A slot per day of the period; no bar on a day without data or without a value. */
+  /** A slot per day, week or month of the period; no bar without data or without a value. */
   private bars(values: (day: SleepTrendDay) => number[] | null): BarDatum[] {
-    const byDate = new Map(this.loaded().map((day) => [day.date, day]));
-    const today = this.todayDate();
-    return periodDays(this.period()).map((date) => {
-      const day = byDate.get(date);
-      return { date, values: day ? values(day) : null, partial: date === today };
-    });
+    return bucketBars(
+      this.period(),
+      this.loaded(),
+      values,
+      this.todayDate(),
+      this.bucket(),
+      firstDayOfWeek(this.lang()),
+    );
   }
 
   private headline(average: number | null): string {

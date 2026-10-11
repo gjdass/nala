@@ -7,7 +7,11 @@ import {
   input,
   linkedSignal,
 } from '@angular/core';
+import { TranslocoService } from '@jsverse/transloco';
 import { parseDate } from '../../../core/time/local-date';
+
+/** What a bar stands for: a day, or the daily average of a week or a month (keyed by its first day). */
+export type BarBucket = 'day' | 'week' | 'month';
 
 /** A day of a bar chart: one value per series (stacked), or null when the day has no data (no bar). */
 export interface BarDatum {
@@ -35,8 +39,8 @@ const BAR = 7;
 const HEIGHT = 100;
 
 /**
- * A bar chart of days (spec 12), hand-made SVG from the theme tokens of the scheme it sits in: one
- * slot per day, a bar per data day with its series stacked (the first at the bottom), none on a day
+ * A bar chart of days, weeks or months (spec 12), hand-made SVG from the theme tokens of the scheme it
+ * sits in: one slot per day (or week, month), a bar per data day with its series stacked (the first at the bottom), none on a day
  * without data, the partial (today) bar lighter. Tapping a bar (or Enter on it) shows its date and
  * values above the chart; tapping anywhere else hides them. Every bar has the same text as its label.
  */
@@ -49,11 +53,13 @@ const HEIGHT = 100;
 })
 export class BarChartComponent {
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly transloco = inject(TranslocoService);
 
   readonly bars = input.required<readonly BarDatum[]>();
   readonly series = input.required<readonly BarSeries[]>();
   readonly format = input.required<(value: number) => string>();
   readonly lang = input('en');
+  readonly bucket = input<BarBucket>('day');
 
   protected readonly slot = SLOT;
   protected readonly barWidth = BAR;
@@ -92,20 +98,31 @@ export class BarChartComponent {
     });
   });
 
-  /** Every day on a week, else about five labels; the month with the first one and at each change. */
+  /**
+   * Every slot on a week, else about five labels: days (and weeks) with the month on the first one and
+   * at each change, months with the year on the first one and at each change.
+   */
   protected readonly xLabels = computed(() => {
     const bars = this.bars();
     const step = bars.length <= 7 ? 1 : Math.ceil(bars.length / 5);
-    const month = new Intl.DateTimeFormat(this.lang(), { month: 'short', day: 'numeric' });
-    const day = new Intl.DateTimeFormat(this.lang(), { day: 'numeric' });
+    const months = this.bucket() === 'month';
+    const full = new Intl.DateTimeFormat(
+      this.lang(),
+      months ? { month: 'short', year: 'numeric' } : { month: 'short', day: 'numeric' },
+    );
+    const short = new Intl.DateTimeFormat(
+      this.lang(),
+      months ? { month: 'short' } : { day: 'numeric' },
+    );
+    const unit = (date: Date) => (months ? date.getFullYear() : date.getMonth());
     let previous = -1;
     return bars.flatMap((bar, index) => {
       if (index % step !== 0) {
         return [];
       }
       const date = parseDate(bar.date);
-      const text = (date.getMonth() !== previous ? month : day).format(date);
-      previous = date.getMonth();
+      const text = (unit(date) !== previous ? full : short).format(date);
+      previous = unit(date);
       return [{ text, left: ((index + 0.5) / bars.length) * 100 }];
     });
   });
@@ -127,20 +144,28 @@ export class BarChartComponent {
     }
   }
 
-  /** "Fri, Oct 9: 13h (Night 10h, Day 3h)", or "Fri, Oct 9: 5h" for a single series. */
+  /**
+   * "Fri, Oct 9: 13h (Night 10h, Day 3h)", "Week of Oct 4: 11h per day (…)", "July 2026: 11h per day
+   * (…)", or without the parenthesis for a single series.
+   */
   private describe(date: string, values: readonly number[]): string {
     const format = this.format();
-    const day = new Intl.DateTimeFormat(this.lang(), {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-    }).format(parseDate(date));
+    const bucket = this.bucket();
+    const options: Record<BarBucket, Intl.DateTimeFormatOptions> = {
+      day: { weekday: 'short', month: 'short', day: 'numeric' },
+      week: { month: 'short', day: 'numeric' },
+      month: { month: 'long', year: 'numeric' },
+    };
+    const when = new Intl.DateTimeFormat(this.lang(), options[bucket]).format(parseDate(date));
+    const title =
+      bucket === 'week' ? this.transloco.translate('trends.weekOf', { date: when }) : when;
+    const perDay = bucket === 'day' ? '' : ` ${this.transloco.translate('trends.perDay')}`;
     const series = this.series();
     const parts =
       series.length > 1
         ? ` (${series.map((s, i) => `${s.label} ${format(values[i] ?? 0)}`).join(', ')})`
         : '';
-    return `${day}: ${format(sum(values))}${parts}`;
+    return `${title}: ${format(sum(values))}${perDay}${parts}`;
   }
 }
 
