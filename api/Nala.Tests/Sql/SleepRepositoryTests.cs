@@ -253,4 +253,23 @@ public class SleepRepositoryTests
 
         Assert.That(live.Select(e => e.Sleep.Id), Is.EqualTo(new[] { lea.Id }));
     }
+
+    [Test]
+    public async Task Listing_overlapping_returns_the_babys_sleeps_overlapping_the_window_live_included()
+    {
+        var from = Now.AddDays(-2);
+        var to = Now.AddDays(-1);
+        var inside = await AddAsync(startTime: from.AddHours(3), endTime: from.AddHours(4));
+        var acrossStart = await AddAsync(startTime: from.AddHours(-2), endTime: from.AddHours(1));
+        var acrossEnd = await AddAsync(startTime: to.AddHours(-1), endTime: to.AddHours(1));
+        var live = await AddAsync(startTime: from.AddHours(-3), live: true);
+        await AddAsync(startTime: from.AddHours(-1), endTime: from);
+        await AddAsync(startTime: to, endTime: to.AddHours(1));
+        await AddAsync(_tom, startTime: from.AddHours(3), endTime: from.AddHours(4));
+
+        await using var db = _db();
+        var sleeps = await new SleepRepository(db).ListOverlappingAsync(_lea.Id, from, to);
+
+        Assert.That(sleeps.Select(s => s.Id), Is.EquivalentTo(new[] { inside.Id, acrossStart.Id, acrossEnd.Id, live.Id }));
+    }
 }

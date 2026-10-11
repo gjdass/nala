@@ -40,6 +40,11 @@ public class FakeSleepRepository : ISleepRepository
             .Select(ToEntry)
             .ToList());
 
+    public Task<IReadOnlyList<Sleep>> ListOverlappingAsync(Guid babyId, DateTimeOffset from, DateTimeOffset to, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<Sleep>>(Sleeps
+            .Where(s => s.BabyId == babyId && s.StartTime < to && (s.EndTime is null || s.EndTime > from))
+            .ToList());
+
     public Task<SleepEntry?> GetLiveAsync(Guid babyId, CancellationToken cancellationToken = default) =>
         Task.FromResult(Live().Where(s => s.BabyId == babyId).Select(ToEntry).FirstOrDefault());
 

@@ -16,6 +16,7 @@ using Nala.Api.Invitations;
 using Nala.Api.Live;
 using Nala.Api.Members;
 using Nala.Api.Sections;
+using Nala.Api.Trends;
 using Nala.Sql;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -41,6 +42,7 @@ builder.Services.AddNalaHealthEntries();
 builder.Services.AddNalaInvitations();
 builder.Services.AddNalaMembers();
 builder.Services.AddNalaSectionPreferences();
+builder.Services.AddNalaTrends();
 builder.Services.AddSingleton(TimeProvider.System);
 
 var app = builder.Build();
@@ -69,6 +71,7 @@ app.MapNalaLive();
 app.MapNalaInvitations();
 app.MapNalaMembers();
 app.MapNalaSectionPreferences();
+app.MapNalaTrends();
 
 app.Run();
 

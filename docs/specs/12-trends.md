@@ -28,7 +28,7 @@ On the Trends tab, show how the selected baby's feeding, sleep, diapers, pumping
 - A week or month bar shows the **daily average** over its days with data, so bars stay comparable whatever the bucket.
 - **A day with no entry of the section is "no data", not zero:** it has no bar and stays out of every average. A day with at least one entry of the section is a data day, so its other metrics can be a true zero (a day of breastfeeds has 0 ml of bottle).
 - **Today is incomplete:** its daily bar is drawn in a lighter tone, and it's left out of the headline averages and of week / month bars.
-- Days are **local days in the device's time zone**. A sleep, a breastfeed side or a pump session that crosses midnight has its duration split across both days. Counts and volumes go to the day of the entry's start time. A live entry counts up to now.
+- Days are **local days in the device's time zone** (a 23 h or 25 h day on a clock change counts as it is). A sleep, a breastfeed side or a pump session that crosses midnight has its duration split across both days. Counts and volumes go to the day of the entry's start time. A live entry counts up to now.
 
 ### Metric cards
 - Each card: the metric's title, a **headline** for the whole period (above the chart, M3 headline typescale) and a full-width chart about 160 px tall, in the section's colour scheme. Tapping a bar or a point shows its date (or week / month) and value; tapping elsewhere hides it. No zoom, no scroll inside a chart.
@@ -42,14 +42,14 @@ On the Trends tab, show how the selected baby's feeding, sleep, diapers, pumping
 | Feed | Breastfeeding | minutes, stacked left / right | minutes per day, and the left / right split over the period ("L 55 % · R 45 %") |
 | Feed | Time between feeds | average gap per day | average gap ("2h 40m") |
 | Sleep | Sleep | hours, stacked day / night | hours per day |
-| Sleep | Longest sleep | longest single sleep per day | average longest sleep |
+| Sleep | Longest sleep | longest single sleep per day (days where a sleep starts) | average longest sleep |
 | Diaper | Diapers | two bars side by side: wet, dirty (a wet and dirty diaper counts in both) | wet per day · dirty per day |
 | Pump | Pumped | ml, stacked left / right | ml per day |
 | Pump | Sessions | sessions per day | sessions per day |
 | Growth | Weight / Length / Head | one line chart each (see Growth) | the latest value in the period and its date |
 
 - **Time between feeds:** the gap from one feed's start to the next feed's start, counted on the day of the later feed. **Gaps over 8 hours are ignored** (a night or a stretch nobody logged). A day with a single feed has no gap value.
-- **Night:** **19:00 to 07:00 local**, fixed. A sleep's minutes inside that window are night, the others day. The longest sleep counts on the day it starts.
+- **Night:** **19:00 to 07:00 local**, fixed. A sleep's minutes inside that window are night, the others day. The longest sleep counts, whole, on the day it starts; a day that only gets the end of an earlier sleep is a Sleep data day but has no longest sleep (no bar, left out of that headline).
 - Durations use spec 04's highlight duration format; ml and counts are rounded to whole numbers, averages of counts to one decimal ("6.4").
 
 ### Growth
@@ -62,11 +62,12 @@ On the Trends tab, show how the selected baby's feeding, sleep, diapers, pumping
 - **Aggregation in the API**, per section (the overview: aggregate across types explicitly), shared day-splitting logic in `Nala.Core`:
   - `GET /api/babies/{babyId}/trends/{section}?from=yyyy-MM-dd&to=yyyy-MM-dd&tz=<IANA zone>` for `feeds`, `sleeps`, `diapers`, `pumps` → `{ days: [{ date, …metrics }] }`, only the data days, in date order. Metrics per day:
     - feeds: `count: { breastfeed, bottle, solids }`, `bottleMl: { breastMilk, formula }`, `breastSeconds: { left, right }`, `gapSecondsSum`, `gapCount`;
-    - sleeps: `daySeconds`, `nightSeconds`, `longestSeconds`;
+    - sleeps: `daySeconds`, `nightSeconds`, `longestSeconds` (null when no sleep starts that day);
     - diapers: `wet`, `dirty`, `count`;
     - pumps: `leftMl`, `rightMl`, `sessions`.
   - `GET /api/babies/{babyId}/trends/growth?from=…&to=…` → `{ measurements: [{ date, weightG, lengthCm, headCircumferenceCm, birth }], milestones: [{ date, milestone, title }] }`.
-  - Codes: `from` / `to` `required` / `invalid`, `to` `beforeFrom`, `tz` `required` / `invalid` (the four bucketed endpoints; growth takes no `tz`); another family's or an unknown baby → 404 as the other baby endpoints.
+  - `from` and `to` are local dates (`yyyy-MM-dd`), both included; `tz` an IANA zone id. Seconds are whole (floored).
+  - Codes: `from` / `to` `required` / `invalid`, `to` `beforeFrom`, `tz` `required` / `invalid` (not a known IANA zone) (the four bucketed endpoints; growth takes no `tz`), all checked before the baby; another family's or an unknown baby → 404 as the other baby endpoints.
 - The web regroups days into weeks / months and computes the headlines. Reading needs the network (overview); an error shows Try again. The page reloads on the reload signal (04), a baby switch and a filter change.
 
 ## User stories
@@ -120,7 +121,7 @@ Each item becomes at least one test, written failing first.
 Each slice: red → green → commit "Spec 12 slice N: …" on `master`.
 
 - [x] **1. Page and filter bar.** `/trends` replaces "Coming soon": top app bar, no-baby empty state, sticky `nala-trends-filter-bar` (Section and Range chips, period navigation bounded by today and the birth date, `nala.trendsFilters` remembered with fallbacks). No cards yet. Updates spec 04 (Bottom navigation bar, its "Coming soon" criterion, Out of scope). Covers: Page; Filter bar (all).
-- [ ] **2. Sleep trends API.** Shared local-day splitting in `Nala.Core` (spans split across local days in an IANA zone, live up to now), the 19:00–07:00 night split, longest sleep on its start day; `GET …/trends/sleeps` with the `from` / `to` / `tz` codes and 404 across families; `tzdata` in the runtime image. Covers: API (sleeps); midnight split (API side); night / longest sleep.
+- [x] **2. Sleep trends API.** Shared local-day splitting in `Nala.Core` (spans split across local days in an IANA zone, live up to now), the 19:00–07:00 night split, longest sleep on its start day; `GET …/trends/sleeps` with the `from` / `to` / `tz` codes and 404 across families; `tzdata` in the runtime image. Covers: API (sleeps); midnight split (API side); night / longest sleep.
 - [ ] **3. Sleep cards, daily bars.** `nala-bar-chart` (stacked series, no-data gaps, lighter today, tap for a value, accessible labels), `nala-metric-card` (title, headline, chart or "Nothing logged in this period", section scheme), the trends service, headlines (daily averages over data days, today excluded), reload on filter change / baby switch / reload signal, error with Try again; Sleep's two cards. Covers: no-data days; today lighter and out of headlines; tapping a bar; nothing logged; cards (Sleep).
 - [ ] **4. Week and month buckets.** Web regrouping by day / week (locale's first day) / month, daily average over data days, today left out. Covers: buckets; today out of week / month bars.
 - [ ] **5. Diaper and Pump.** `…/trends/diapers` and `…/trends/pumps`; grouped bars in `nala-bar-chart`; the Diapers, Pumped and Sessions cards. Covers: cards (Diaper, Pump); API (diapers, pumps).
@@ -136,7 +137,7 @@ Nothing new stored on the server: trends are computed from the existing entries.
 - Reused: `nala-top-app-bar`, 03's `nala-no-baby`, History's dropdown chip pattern (the single-choice menu is the shared `nala-choice-menu`, also used by History's window chip), `.nala-scheme-<key>` on each card.
 - New shared components: `nala-bar-chart` (stacked or grouped series, gaps for no-data days, lighter today bar, tap to show a value) and `nala-line-chart` (dated points, optional markers), both hand-made SVG from theme tokens, no chart library. Every bar and point has an accessible label ("Tue 7 Oct: 6 feeds").
 - New in `features/trends/`: the page, `nala-trends-filter-bar`, `nala-metric-card`.
-- The API image must resolve IANA time zones (check `tzdata` in the runtime image).
+- The API image resolves IANA time zones: the `aspnet:10.0` runtime image (Ubuntu) ships `tzdata`.
 - Labels (EN / FR): Trends / Tendances, Section / Section, Range / Période, 7 days / 7 jours, 30 days / 30 jours, 3 months / 3 mois, 6 months / 6 mois, Since birth / Depuis la naissance, Previous period / Période précédente, Next period / Période suivante, Feeds / Tétées et repas, Bottle / Biberon, Breastfeeding / Allaitement, Time between feeds / Temps entre les repas, Sleep / Sommeil, Day / Jour, Night / Nuit, Longest sleep / Plus long sommeil, Diapers / Couches, Wet / Mouillée, Dirty / Selles (spec 07's), Pumped / Tiré, Sessions / Séances, per day / par jour, Nothing logged in this period / Rien de noté sur cette période (reused from spec 11). Growth labels reuse spec 10's.
 
 ## Out of scope

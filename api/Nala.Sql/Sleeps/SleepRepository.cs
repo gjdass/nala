@@ -43,6 +43,11 @@ public class SleepRepository(NalaDbContext db) : ISleepRepository
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<Sleep>> ListOverlappingAsync(Guid babyId, DateTimeOffset from, DateTimeOffset to, CancellationToken cancellationToken = default) =>
+        await db.Set<Sleep>().AsNoTracking()
+            .Where(s => s.BabyId == babyId && s.StartTime < to && (s.EndTime == null || s.EndTime > from))
+            .ToListAsync(cancellationToken);
+
     public Task<SleepEntry?> GetLiveAsync(Guid babyId, CancellationToken cancellationToken = default) =>
         Entries(Live().Where(s => s.BabyId == babyId)).FirstOrDefaultAsync(cancellationToken);
 
