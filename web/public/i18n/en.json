@@ -819,6 +819,15 @@
       "birth": "Since birth"
     },
     "previous": "Previous period",
-    "next": "Next period"
+    "next": "Next period",
+    "cards": {
+      "sleep": "Sleep",
+      "longestSleep": "Longest sleep"
+    },
+    "day": "Day",
+    "night": "Night",
+    "perDay": "per day",
+    "noValue": "–",
+    "loadError": "Couldn't load the trends."
   }
 }

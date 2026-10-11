@@ -819,6 +819,15 @@
       "birth": "Depuis la naissance"
     },
     "previous": "Période précédente",
-    "next": "Période suivante"
+    "next": "Période suivante",
+    "cards": {
+      "sleep": "Sommeil",
+      "longestSleep": "Plus long sommeil"
+    },
+    "day": "Jour",
+    "night": "Nuit",
+    "perDay": "par jour",
+    "noValue": "–",
+    "loadError": "Impossible de charger les tendances."
   }
 }

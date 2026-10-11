@@ -1,0 +1,72 @@
+<p class="tooltip" aria-live="polite">
+  @if (selected(); as bar) {
+    <span data-testid="chart-tooltip">{{ bar.label }}</span>
+  }
+</p>
+
+<div class="max" aria-hidden="true" data-testid="chart-max">{{ maxLabel() }}</div>
+
+<svg class="plot" [attr.viewBox]="viewBox()" preserveAspectRatio="none">
+  <line class="grid" x1="0" y1="0" x2="100%" y2="0" vector-effect="non-scaling-stroke" />
+  @for (bar of drawn(); track bar.date) {
+    <g
+      class="bar"
+      [class.partial]="bar.partial"
+      [class.selected]="selected()?.date === bar.date"
+      role="button"
+      tabindex="0"
+      [attr.aria-label]="bar.label"
+      [attr.data-date]="bar.date"
+      (click)="select(bar)"
+      (keydown.enter)="select(bar)"
+      (keydown.space)="$event.preventDefault(); select(bar)"
+      data-testid="bar"
+    >
+      <rect
+        class="hit"
+        [attr.x]="bar.x"
+        y="0"
+        [attr.width]="slot"
+        [attr.height]="plotHeight"
+        vector-effect="non-scaling-stroke"
+      />
+      @for (segment of bar.segments; track segment.series) {
+        <rect
+          [attr.class]="'segment series-' + segment.series"
+          [attr.x]="bar.x + barInset"
+          [attr.y]="segment.y"
+          [attr.width]="barWidth"
+          [attr.height]="segment.height"
+          data-testid="segment"
+        />
+      }
+    </g>
+  }
+  <line
+    class="baseline"
+    x1="0"
+    [attr.y1]="plotHeight"
+    x2="100%"
+    [attr.y2]="plotHeight"
+    vector-effect="non-scaling-stroke"
+  />
+</svg>
+
+<div class="x-labels" aria-hidden="true">
+  @for (label of xLabels(); track $index) {
+    <span [style.left.%]="label.left" data-testid="chart-x-label">{{ label.text }}</span>
+  }
+</div>
+
+@if (series().length > 1) {
+  <ul class="legend" data-testid="chart-legend">
+    @for (s of series(); track $index) {
+      <li data-testid="legend-item">
+        <svg class="swatch" viewBox="0 0 10 10" aria-hidden="true">
+          <rect [attr.class]="'series-' + $index" width="10" height="10" rx="2" />
+        </svg>
+        {{ s.label }}
+      </li>
+    }
+  </ul>
+}

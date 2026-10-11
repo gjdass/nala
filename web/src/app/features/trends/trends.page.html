@@ -34,6 +34,13 @@
         (previous)="offset.set(offset() - 1)"
         (next)="offset.set(offset() + 1)"
       />
+      @switch (section()) {
+        @case ('sleep') {
+          @if (store.selected(); as baby) {
+            <nala-sleep-trends [babyId]="baby.id" [period]="period()" [today]="today()" />
+          }
+        }
+      }
     }
   }
 </main>

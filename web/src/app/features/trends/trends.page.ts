@@ -18,6 +18,7 @@ import { TopAppBarComponent } from '../../shared/ui/top-app-bar/top-app-bar.comp
 import { NoBabyComponent } from '../babies/no-baby/no-baby.component';
 import { NoFamilyComponent } from '../babies/no-family/no-family.component';
 import { TrendsFilterBarComponent } from './filter-bar/trends-filter-bar.component';
+import { SleepTrendsComponent } from './sleep/sleep-trends.component';
 import {
   TRENDS_SECTIONS,
   TrendsFilters,
@@ -28,7 +29,8 @@ import { TrendsRange, canGoBack, canGoForward, period, periodLabel } from './tre
 
 /**
  * The Trends destination (spec 12): the top bar with the selected baby, then the filter bar (section,
- * range and period navigation; the section and range are remembered on the device). Without a baby, or
+ * range and period navigation; the section and range are remembered on the device), then the section's
+ * metric cards. Without a baby, or
  * in no family, 03's empty states. The babies, the home order and today load again on the reload signal
  * (spec 04 Refresh on return).
  */
@@ -37,6 +39,7 @@ import { TrendsRange, canGoBack, canGoForward, period, periodLabel } from './tre
   imports: [
     NoBabyComponent,
     NoFamilyComponent,
+    SleepTrendsComponent,
     TopAppBarComponent,
     TrendsFilterBarComponent,
     TranslocoPipe,
@@ -58,7 +61,7 @@ export class TrendsPage {
   protected readonly families = inject(CurrentFamilyService);
 
   /** The periods end today: read again on the reload signal, so a page left open overnight moves on. */
-  private readonly today = signal(startOfToday(), {
+  protected readonly today = signal(startOfToday(), {
     equal: (a, b) => a.getTime() === b.getTime(),
   });
 

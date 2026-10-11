@@ -383,6 +383,7 @@ Use Angular Material's M3 components as-is. Customize only through the global th
 - Entry sheet: `nala-entry-sheet`, `nala-sheet-header`, `nala-form-row`, `nala-suggestion-row`, `nala-notes-row`, `nala-entry-audit`, delete action, confirm dialog.
 - Form rows: `nala-time-row` (`dateOnly`), `nala-chip-choice-row` (optional single choice as filter chips, translated or raw labels, optionally not clearable, optional `dotToken` colour dots and `error`), `nala-chip-toggles-row` (filter chips each bound to its own boolean), `nala-switch-row`, `nala-number-fields-row` (number fields side by side, each with its own suffix, bounds, step and error; a decimal `step` brings the decimal keyboard).
 - Timers: `nala-timer`, `nala-split-timer`, `nala-duration-field` + `nala-duration-dialog`, `nala-banner`.
+- Trends (spec 12): `nala-bar-chart` (days as stacked bars, no-data gaps, lighter today, tap for a value).
 - Pipes: `nalaTimeSince`, `nalaHighlightDuration`, `nalaDuration`, `nalaEntryTime`, `nalaEntryDate`, `nalaLoadComponent`.
 
 ## What each section spec must define

@@ -1,0 +1,37 @@
+@if (days.error()) {
+  <div class="error" role="alert" data-testid="trends-error">
+    <p>{{ 'trends.loadError' | transloco }}</p>
+    <button mat-button type="button" (click)="days.reload()" data-testid="trends-retry">
+      {{ 'history.retry' | transloco }}
+    </button>
+  </div>
+} @else if (days.hasValue()) {
+  <nala-metric-card
+    section="sleep"
+    [title]="'trends.cards.sleep' | transloco"
+    [headline]="sleepHeadline()"
+    [empty]="loaded().length === 0"
+  >
+    <nala-bar-chart [bars]="sleepBars()" [series]="series()" [format]="format" [lang]="lang()" />
+  </nala-metric-card>
+  <nala-metric-card
+    section="sleep"
+    [title]="'trends.cards.longestSleep' | transloco"
+    [headline]="longestHeadline()"
+    [empty]="longestEmpty()"
+  >
+    <nala-bar-chart
+      [bars]="longestBars()"
+      [series]="longestSeries()"
+      [format]="format"
+      [lang]="lang()"
+    />
+  </nala-metric-card>
+} @else {
+  <mat-progress-spinner
+    mode="indeterminate"
+    diameter="32"
+    [attr.aria-label]="'history.loading' | transloco"
+    data-testid="trends-loading"
+  />
+}

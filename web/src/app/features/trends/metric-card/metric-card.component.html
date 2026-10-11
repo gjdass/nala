@@ -1,0 +1,16 @@
+<mat-card appearance="filled" [class]="scheme()">
+  <mat-card-content>
+    <h2 class="title" data-testid="metric-title">{{ title() }}</h2>
+    @if (empty()) {
+      <p class="empty" data-testid="metric-empty">{{ 'history.emptyPeriod' | transloco }}</p>
+    } @else {
+      <p class="headline" data-testid="metric-headline">
+        <span class="value">{{ headline() }}</span>
+        @if (perDay()) {
+          &ngsp;<span class="unit">{{ 'trends.perDay' | transloco }}</span>
+        }
+      </p>
+      <ng-content />
+    }
+  </mat-card-content>
+</mat-card>

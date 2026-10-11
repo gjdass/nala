@@ -1,13 +1,12 @@
+import { parseDate } from '../../core/time/local-date';
+import { TrendsPeriod } from '../../core/trends/trends.models';
+
 /** The ranges Trends offers (spec 12). */
 export const TRENDS_RANGES = ['7d', '30d', '3m', '6m', 'birth'] as const;
 
 export type TrendsRange = (typeof TRENDS_RANGES)[number];
 
-/** A period of whole local days, both ends included, as local midnights. */
-export interface TrendsPeriod {
-  from: Date;
-  to: Date;
-}
+export type { TrendsPeriod };
 
 const DAYS: Partial<Record<TrendsRange, number>> = { '7d': 7, '30d': 30 };
 const MONTHS: Partial<Record<TrendsRange, number>> = { '3m': 3, '6m': 6 };
@@ -20,12 +19,6 @@ function addMonths(date: Date, months: number): Date {
   const target = new Date(date.getFullYear(), date.getMonth() + months, 1);
   const last = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
   return new Date(target.getFullYear(), target.getMonth(), Math.min(date.getDate(), last));
-}
-
-/** Parses a `yyyy-MM-dd` calendar date as a local day. */
-export function parseDate(value: string): Date {
-  const [year, month, day] = value.split('-').map(Number);
-  return new Date(year, month - 1, day);
 }
 
 /**

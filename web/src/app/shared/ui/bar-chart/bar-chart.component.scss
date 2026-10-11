@@ -1,0 +1,98 @@
+:host {
+  display: block;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-label-small);
+}
+
+.tooltip {
+  min-height: 20px;
+  margin: 0 0 4px;
+  color: var(--mat-sys-on-surface);
+  font: var(--mat-sys-label-large);
+}
+
+.max {
+  text-align: end;
+}
+
+.plot {
+  display: block;
+  width: 100%;
+  height: 160px;
+  overflow: visible;
+}
+
+.grid,
+.baseline {
+  stroke: var(--mat-sys-outline-variant);
+  stroke-width: 1;
+}
+
+.grid {
+  stroke-dasharray: 4 4;
+}
+
+.bar {
+  cursor: pointer;
+  outline: none;
+}
+
+// The whole slot takes taps, so thin bars stay easy to hit.
+.hit {
+  fill: none;
+  pointer-events: all;
+}
+
+.bar:focus-visible .hit {
+  stroke: var(--mat-sys-primary);
+  stroke-width: 2;
+}
+
+.bar.selected .hit {
+  fill: var(--mat-sys-on-surface);
+  fill-opacity: 0.08;
+}
+
+// Today is still incomplete.
+.bar.partial .segment {
+  opacity: 0.45;
+}
+
+.series-0 {
+  fill: var(--mat-sys-primary);
+}
+
+.series-1 {
+  fill: var(--mat-sys-primary-container);
+}
+
+.x-labels {
+  position: relative;
+  height: 20px;
+  margin-top: 4px;
+
+  span {
+    position: absolute;
+    transform: translateX(-50%);
+    white-space: nowrap;
+  }
+}
+
+.legend {
+  display: flex;
+  gap: 16px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+}
+
+.swatch {
+  width: 10px;
+  height: 10px;
+}

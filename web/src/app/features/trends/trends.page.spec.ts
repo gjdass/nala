@@ -2,6 +2,7 @@ import { WritableSignal, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { TranslocoService } from '@jsverse/transloco';
+import { By } from '@angular/platform-browser';
 import { Subject, of } from 'rxjs';
 import en from '../../../../public/i18n/en.json';
 import { BabiesResult, Baby } from '../../core/babies/baby.models';
@@ -17,8 +18,10 @@ import {
   SectionPreference,
 } from '../../core/sections/section.models';
 import { SectionPreferencesService } from '../../core/sections/section-preferences.service';
+import { TrendsService } from '../../core/trends/trends.service';
 import { fakeDataRefresh } from '../../testing/data-refresh';
 import { translocoTesting } from '../../testing/transloco-testing';
+import { SleepTrendsComponent } from './sleep/sleep-trends.component';
 import { TrendsPage } from './trends.page';
 
 const section = (key: SectionKey): SectionDefinition =>
@@ -95,6 +98,7 @@ describe('TrendsPage', () => {
           useValue: { preferences, load: loadSections, save: vi.fn() },
         },
         { provide: DataRefreshService, useValue: refresh },
+        { provide: TrendsService, useValue: { sleeps: () => of([]) } },
       ],
     }).compileComponents();
   });
@@ -275,6 +279,23 @@ describe('TrendsPage', () => {
       await click('previous');
       await pick('range-chip', 'range-option', 1);
       expect(label()).toBe('Sep 10 – Oct 9');
+    });
+  });
+
+  describe('section content', () => {
+    beforeEach(create);
+
+    it("shows Sleep's trends for the selected baby and the current period", async () => {
+      await loadBabies([lea]);
+      expect(host().querySelector('nala-sleep-trends')).toBeNull();
+
+      await pick('section-chip', 'section-option', 1);
+
+      const sleep = fixture.debugElement.query(By.directive(SleepTrendsComponent))
+        .componentInstance as SleepTrendsComponent;
+      expect(sleep.babyId()).toBe('b1');
+      expect(sleep.period()).toEqual({ from: new Date(2026, 9, 3), to: new Date(2026, 9, 9) });
+      expect(sleep.today()).toEqual(new Date(2026, 9, 9));
     });
   });
 

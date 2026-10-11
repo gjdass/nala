@@ -32,8 +32,9 @@ On the Trends tab, show how the selected baby's feeding, sleep, diapers, pumping
 
 ### Metric cards
 - Each card: the metric's title, a **headline** for the whole period (above the chart, M3 headline typescale) and a full-width chart about 160 px tall, in the section's colour scheme. Tapping a bar or a point shows its date (or week / month) and value; tapping elsewhere hides it. No zoom, no scroll inside a chart.
-- With no data day in the period, the card shows "Nothing logged in this period" instead of the chart.
-- Headlines are **daily averages over the data days of the period** (today excluded), unless stated otherwise.
+- With no data day in the period, the card shows "Nothing logged in this period" instead of the chart. For Longest sleep, the data days are the days a sleep starts.
+- Headlines are **daily averages over the data days of the period** (today excluded), unless stated otherwise. When no day is left to average (only today has entries), the headline shows "–" and the chart still shows today's bar.
+- Bar charts: a dashed top line labelled with the tallest bar's value, a baseline, and day labels under the bars (every day on 7 days, about five otherwise; the month on the first label and when it changes). Stacked series use the scheme's `primary` (first, at the bottom) and `primary-container`, with a legend; Sleep stacks night under day.
 
 | Section | Card | Chart | Headline |
 |---|---|---|---|
@@ -96,16 +97,16 @@ Each item becomes at least one test, written failing first.
 
 ### Buckets
 - [ ] Up to 31 days: one bar per day; up to 6 months: per week (locale's first day); longer: per month. Week and month bars show the daily average over their data days.
-- [ ] A day without an entry of the section has no bar and is left out of averages; a data day's metric can be zero.
+- [x] A day without an entry of the section has no bar and is left out of averages; a data day's metric can be zero.
 - [ ] Today's bar is lighter and today is left out of headlines and week / month bars.
 - [ ] Durations crossing midnight are split across both local days; counts and volumes go to the start day; a live entry counts up to now.
 
 ### Metric cards
 - [ ] Each section shows the cards of the table above, with their headline and chart, in the section's colours.
 - [ ] Tapping a bar or point shows its date and value.
-- [ ] A card with no data day in the period shows "Nothing logged in this period".
+- [x] A card with no data day in the period shows "Nothing logged in this period".
 - [ ] Time between feeds ignores gaps over 8 hours and counts each gap on the later feed's day.
-- [ ] Sleep minutes between 19:00 and 07:00 local count as night; the longest sleep counts on its start day.
+- [x] Sleep minutes between 19:00 and 07:00 local count as night; the longest sleep counts on its start day.
 - [ ] Breastfeeding headline shows the period's left / right split.
 
 ### Growth
@@ -122,7 +123,7 @@ Each slice: red → green → commit "Spec 12 slice N: …" on `master`.
 
 - [x] **1. Page and filter bar.** `/trends` replaces "Coming soon": top app bar, no-baby empty state, sticky `nala-trends-filter-bar` (Section and Range chips, period navigation bounded by today and the birth date, `nala.trendsFilters` remembered with fallbacks). No cards yet. Updates spec 04 (Bottom navigation bar, its "Coming soon" criterion, Out of scope). Covers: Page; Filter bar (all).
 - [x] **2. Sleep trends API.** Shared local-day splitting in `Nala.Core` (spans split across local days in an IANA zone, live up to now), the 19:00–07:00 night split, longest sleep on its start day; `GET …/trends/sleeps` with the `from` / `to` / `tz` codes and 404 across families; `tzdata` in the runtime image. Covers: API (sleeps); midnight split (API side); night / longest sleep.
-- [ ] **3. Sleep cards, daily bars.** `nala-bar-chart` (stacked series, no-data gaps, lighter today, tap for a value, accessible labels), `nala-metric-card` (title, headline, chart or "Nothing logged in this period", section scheme), the trends service, headlines (daily averages over data days, today excluded), reload on filter change / baby switch / reload signal, error with Try again; Sleep's two cards. Covers: no-data days; today lighter and out of headlines; tapping a bar; nothing logged; cards (Sleep).
+- [x] **3. Sleep cards, daily bars.** `nala-bar-chart` (stacked series, no-data gaps, lighter today, tap for a value, accessible labels), `nala-metric-card` (title, headline, chart or "Nothing logged in this period", section scheme), the trends service, headlines (daily averages over data days, today excluded), reload on filter change / baby switch / reload signal, error with Try again; Sleep's two cards. Covers: no-data days; today lighter and out of headlines; tapping a bar; nothing logged; cards (Sleep).
 - [ ] **4. Week and month buckets.** Web regrouping by day / week (locale's first day) / month, daily average over data days, today left out. Covers: buckets; today out of week / month bars.
 - [ ] **5. Diaper and Pump.** `…/trends/diapers` and `…/trends/pumps`; grouped bars in `nala-bar-chart`; the Diapers, Pumped and Sessions cards. Covers: cards (Diaper, Pump); API (diapers, pumps).
 - [ ] **6. Feed.** `…/trends/feeds` (counts by kind, bottle ml by milk type, breast seconds per side split across midnight, gaps ≤ 8 h on the later feed's day); the four Feed cards with the L / R split headline. Covers: cards (Feed); time between feeds; breastfeeding split; API (feeds); live entry counted up to now.
