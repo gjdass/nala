@@ -41,23 +41,10 @@ public class PasswordResetEndpointTests
 
     private HttpClient NewClient() => _factory.CreateClient(new() { BaseAddress = new Uri("https://localhost") });
 
-    /// <summary>Ben joins through an invitation (created in 03 later) and is signed in on the returned client.</summary>
+    /// <summary>Ben joins Anna's family through an invitation and is signed in on the returned client.</summary>
     private async Task<(HttpClient Client, Guid Id)> RegisterBenAsync()
     {
-        var token = LinkToken.Generate();
-        var now = _time.Now;
-        using (var scope = _factory.Services.CreateScope())
-        {
-            await scope.ServiceProvider.GetRequiredService<IInvitationRepository>().AddAsync(new Invitation
-            {
-                Id = Guid.NewGuid(),
-                TokenHash = LinkToken.Hash(token),
-                CreatedByUserId = _annaId,
-                CreatedAt = now,
-                ExpiresAt = now + InvitationPolicy.Lifetime,
-            });
-        }
-
+        var token = await TestInvitations.SeedJoinAsync(_factory, _annaId);
         var client = NewClient();
         var response = await client.PostAsJsonAsync(
             $"/api/auth/invitations/{token}/register",

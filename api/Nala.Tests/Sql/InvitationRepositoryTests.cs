@@ -53,10 +53,17 @@ public class InvitationRepositoryTests
         return invitation;
     }
 
-    private async Task<bool> RedeemAsync(Invitation invitation, User user, DateTimeOffset? now = null, Membership? membership = null)
+    private async Task<bool> RedeemAsync(
+        Invitation invitation, User user, DateTimeOffset? now = null, Membership? membership = null, Family? family = null)
     {
         await using var db = _db();
-        return await new InvitationRepository(db).RedeemAsync(invitation.Id, user, membership, now ?? Now);
+        return await new InvitationRepository(db).RedeemAsync(invitation.Id, user, family, membership, now ?? Now);
+    }
+
+    private async Task<List<Family>> FamiliesAsync()
+    {
+        await using var db = _db();
+        return await db.Set<Family>().AsNoTracking().ToListAsync();
     }
 
     private async Task<List<Membership>> MembershipsAsync()
@@ -329,10 +336,10 @@ public class InvitationRepositoryTests
         return (await TestFamilies.SeedAsync(db, _anna), ben);
     }
 
-    private async Task<bool> AcceptAsync(Invitation invitation, Membership membership)
+    private async Task<bool> AcceptAsync(Invitation invitation, Membership membership, Family? family = null)
     {
         await using var db = _db();
-        return await new InvitationRepository(db).AcceptAsync(invitation.Id, membership, Now.AddHours(1));
+        return await new InvitationRepository(db).AcceptAsync(invitation.Id, family, membership, Now.AddHours(1));
     }
 
     private static Membership MemberOf(Family family, User user) =>
@@ -382,5 +389,90 @@ public class InvitationRepositoryTests
 
         Assert.That((await ReadAsync(invitation)).UsedAt, Is.Null);
         Assert.That((await MembershipsAsync()).Single(m => m.UserId == _anna.Id).Role, Is.EqualTo(FamilyRole.Admin));
+    }
+
+    private static (Family Family, Membership Membership) NewFamilyOf(User user) =>
+        NewFamilyOf(user, Guid.NewGuid());
+
+    private static (Family Family, Membership Membership) NewFamilyOf(User user, Guid familyId) =>
+        (new Family { Id = familyId, Name = "Dupont", CreatedByUserId = user.Id, CreatedAt = Now.AddHours(1) },
+            new Membership { FamilyId = familyId, UserId = user.Id, Role = FamilyRole.Admin, JoinedAt = Now.AddHours(1) });
+
+    [Test]
+    public async Task Redeem_with_a_family_saves_the_user_the_family_and_its_admin_membership()
+    {
+        var invitation = await InviteAsync();
+        var ben = NewUser("ben@mail.com");
+        var (family, membership) = NewFamilyOf(ben);
+
+        Assert.That(await RedeemAsync(invitation, ben, membership: membership, family: family), Is.True);
+
+        var saved = (await FamiliesAsync()).Single();
+        Assert.That(
+            new { saved.Id, saved.Name, saved.CreatedByUserId },
+            Is.EqualTo(new { family.Id, Name = "Dupont", CreatedByUserId = ben.Id }));
+        Assert.That((await MembershipsAsync()).Single().Role, Is.EqualTo(FamilyRole.Admin));
+        Assert.That((await ReadAsync(invitation)).UsedByUserId, Is.EqualTo(ben.Id));
+    }
+
+    [Test]
+    public async Task Redeem_of_a_used_invitation_saves_no_family()
+    {
+        var invitation = await InviteAsync(i => i.RevokedAt = Now);
+        var ben = NewUser("ben@mail.com");
+        var (family, membership) = NewFamilyOf(ben);
+
+        Assert.That(await RedeemAsync(invitation, ben, membership: membership, family: family), Is.False);
+
+        Assert.That(await FamiliesAsync(), Is.Empty);
+        Assert.That(await UserAsync(ben.Id), Is.Null);
+    }
+
+    [Test]
+    public async Task Accept_with_a_family_saves_the_family_and_its_admin_membership()
+    {
+        var (_, ben) = await FamilyAndBenAsync();
+        var invitation = await InviteAsync();
+        var (family, membership) = NewFamilyOf(ben);
+
+        Assert.That(await AcceptAsync(invitation, membership, family), Is.True);
+
+        Assert.That((await FamiliesAsync()).Select(f => f.Id), Does.Contain(family.Id));
+        var saved = (await MembershipsAsync()).Single(m => m.UserId == ben.Id);
+        Assert.That(new { saved.FamilyId, saved.Role }, Is.EqualTo(new { FamilyId = family.Id, Role = FamilyRole.Admin }));
+        Assert.That((await ReadAsync(invitation)).UsedByUserId, Is.EqualTo(ben.Id));
+    }
+
+    [Test]
+    public async Task Accept_of_a_revoked_invitation_saves_no_family()
+    {
+        var (_, ben) = await FamilyAndBenAsync();
+        var invitation = await InviteAsync(i => i.RevokedAt = Now);
+        var (family, membership) = NewFamilyOf(ben);
+
+        Assert.That(await AcceptAsync(invitation, membership, family), Is.False);
+
+        Assert.That((await FamiliesAsync()).Select(f => f.Id), Does.Not.Contain(family.Id));
+    }
+
+    [Test]
+    public async Task ListPending_without_a_family_lists_only_new_family_invitations()
+    {
+        Family martins;
+        await using (var db = _db())
+        {
+            martins = await TestFamilies.SeedAsync(db, _anna);
+        }
+
+        var pending = await InviteAsync();
+        await InviteAsync(familyId: martins.Id);
+        await InviteAsync(i => i.RevokedAt = Now.AddDays(-1));
+        await InviteAsync(i => i.ExpiresAt = Now);
+
+        await using (var db = _db())
+        {
+            var listed = await new InvitationRepository(db).ListPendingAsync(null, Now);
+            Assert.That(listed.Select(i => i.Id), Is.EqualTo(new[] { pending.Id }));
+        }
     }
 }

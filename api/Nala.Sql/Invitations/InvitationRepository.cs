@@ -22,7 +22,7 @@ public class InvitationRepository(NalaDbContext db) : IInvitationRepository
         db.Set<Invitation>().AsNoTracking().SingleOrDefaultAsync(i => i.Id == id, cancellationToken);
 
     public async Task<IReadOnlyList<Invitation>> ListPendingAsync(
-        Guid familyId, DateTimeOffset now, CancellationToken cancellationToken = default) =>
+        Guid? familyId, DateTimeOffset now, CancellationToken cancellationToken = default) =>
         await db.Set<Invitation>().AsNoTracking()
             .Where(i => i.FamilyId == familyId && i.UsedAt == null && i.RevokedAt == null && i.ExpiresAt > now)
             .ToListAsync(cancellationToken);
@@ -34,7 +34,12 @@ public class InvitationRepository(NalaDbContext db) : IInvitationRepository
             .ExecuteUpdateAsync(s => s.SetProperty(i => i.RevokedAt, now), cancellationToken) == 1;
 
     public async Task<bool> RedeemAsync(
-        Guid invitationId, User user, Membership? membership, DateTimeOffset now, CancellationToken cancellationToken = default)
+        Guid invitationId,
+        User user,
+        Family? family,
+        Membership? membership,
+        DateTimeOffset now,
+        CancellationToken cancellationToken = default)
     {
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
 
@@ -54,18 +59,25 @@ public class InvitationRepository(NalaDbContext db) : IInvitationRepository
             return false;
         }
 
+        // One save: EF inserts the family before the membership that references it.
+        if (family is not null)
+        {
+            db.Set<Family>().Add(family);
+        }
+
         if (membership is not null)
         {
             db.Set<Membership>().Add(membership);
-            await db.SaveChangesAsync(cancellationToken);
         }
+
+        await db.SaveChangesAsync(cancellationToken);
 
         await transaction.CommitAsync(cancellationToken);
         return true;
     }
 
     public async Task<bool> AcceptAsync(
-        Guid invitationId, Membership membership, DateTimeOffset now, CancellationToken cancellationToken = default)
+        Guid invitationId, Family? family, Membership membership, DateTimeOffset now, CancellationToken cancellationToken = default)
     {
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
 
@@ -81,6 +93,11 @@ public class InvitationRepository(NalaDbContext db) : IInvitationRepository
             return false;
         }
 
+        if (family is not null)
+        {
+            db.Set<Family>().Add(family);
+        }
+
         db.Set<Membership>().Add(membership);
         try
         {
@@ -91,6 +108,11 @@ public class InvitationRepository(NalaDbContext db) : IInvitationRepository
             // Already in the family: the invitation stays unused.
             await transaction.RollbackAsync(cancellationToken);
             db.Entry(membership).State = EntityState.Detached;
+            if (family is not null)
+            {
+                db.Entry(family).State = EntityState.Detached;
+            }
+
             throw new MembershipConflictException(e);
         }
 

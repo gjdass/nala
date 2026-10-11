@@ -17,13 +17,16 @@
   </nala-auth-card>
 } @else if (current.kind === 'accept') {
   <nala-auth-card
-    [title]="'auth.accept.title' | transloco"
+    [title]="(newFamily() ? 'auth.accept.titleNewFamily' : 'auth.accept.title') | transloco"
     [subtitle]="
-      'auth.accept.subtitle'
+      (newFamily() ? 'auth.accept.subtitleNewFamily' : 'auth.accept.subtitle')
         | transloco: { name: current.invitation.invitedBy, family: current.invitation.familyName }
     "
     [error]="formError() ? ('auth.errors.form.' + formError() | transloco) : null"
   >
+    @if (newFamily()) {
+      <nala-family-name-field [control]="familyName" />
+    }
     <button authCardActions mat-button type="button" (click)="notNow()" data-testid="not-now">
       {{ 'auth.accept.notNow' | transloco }}
     </button>
@@ -43,12 +46,15 @@
     <nala-auth-card
       [title]="'auth.register.title' | transloco"
       [subtitle]="
-        'auth.register.subtitle'
+        (newFamily() ? 'auth.register.subtitleNewFamily' : 'auth.register.subtitle')
           | transloco: { name: current.invitation.invitedBy, family: current.invitation.familyName }
       "
       [error]="formError() ? ('auth.errors.form.' + formError() | transloco) : null"
     >
       <nala-account-fields [form]="form" emailTakenKey="auth.register.emailTaken" />
+      @if (newFamily()) {
+        <nala-family-name-field [control]="familyName" />
+      }
 
       <a
         authCardActions

@@ -42,7 +42,7 @@ public class AdminEndpointTests
 
     private HttpClient NewClient() => _factory.CreateClient(new() { BaseAddress = new Uri("https://localhost") });
 
-    /// <summary>Seeds an invitation from Anna (created in 03 later); returns its token.</summary>
+    /// <summary>Seeds a new-family invitation from Anna; returns its token.</summary>
     private async Task<string> InviteAsync()
     {
         var token = LinkToken.Generate();
@@ -59,13 +59,13 @@ public class AdminEndpointTests
         return token;
     }
 
-    /// <summary>A member joins through an invitation and is signed in on the returned client.</summary>
+    /// <summary>Someone creates their family through a new-family invitation and is signed in on the returned client.</summary>
     private async Task<(HttpClient Client, Guid Id)> RegisterAsync(string name)
     {
         var client = NewClient();
         var response = await client.PostAsJsonAsync(
             $"/api/auth/invitations/{await InviteAsync()}/register",
-            new { email = $"{name.ToLowerInvariant()}@mail.com", displayName = name, password = Password, language = "en" });
+            new { email = $"{name.ToLowerInvariant()}@mail.com", displayName = name, password = Password, language = "en", familyName = name });
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
         var id = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("user").GetProperty("id").GetGuid();
         return (client, id);

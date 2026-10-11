@@ -161,6 +161,21 @@ describe('SettingsPage', () => {
     expect(host().querySelector('nala-settings-invitations')).not.toBeNull();
   });
 
+  it("starts the admin's Instance section with the new-family invitations, then the accounts", () => {
+    const section = [...host().querySelectorAll('nala-settings-section')][4];
+    const parts = [
+      ...section.querySelectorAll('h3, nala-settings-invitations, nala-admin-users'),
+    ].filter((part) => !part.parentElement?.closest('nala-settings-invitations, nala-admin-users'));
+
+    expect(parts.map((p) => p.tagName.toLowerCase())).toEqual([
+      'h3',
+      'nala-settings-invitations',
+      'nala-admin-users',
+    ]);
+    expect(parts[0].textContent?.trim()).toBe(en.settings.admin.newFamilies);
+    expect(TestBed.inject(InvitationService).pending).toHaveBeenCalledWith(null);
+  });
+
   it('loads the families: the family sections and the baby sheet need them, and settings can be opened first', () => {
     expect(TestBed.inject(FamilyService).list).toHaveBeenCalledOnce();
   });
@@ -178,7 +193,8 @@ describe('SettingsPage', () => {
     expect(host().querySelector('nala-settings-family')).toBeNull();
     expect(host().querySelector('nala-settings-babies')).toBeNull();
     expect(host().querySelector('nala-settings-members')).toBeNull();
-    expect(host().querySelector('nala-settings-invitations')).toBeNull();
+    // Only the Instance section's new-family invitations remain for the admin.
+    expect(host().querySelectorAll('nala-settings-invitations').length).toBe(1);
   });
 
   it('hides the Home sections section while no section is built', () => {

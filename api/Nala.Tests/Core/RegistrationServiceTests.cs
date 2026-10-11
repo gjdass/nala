@@ -365,14 +365,123 @@ public class RegistrationServiceTests
         Assert.That(_invitations.Invitations.Single().UsedAt, Is.Null);
     }
 
-    /// <summary>New-family invitations are accepted from slice 16 on; none can be created before.</summary>
+    private static RegisterCommand Register(string token, string? familyName) =>
+        Register(token) with { FamilyName = familyName };
+
     [Test]
-    public async Task Accept_of_a_new_family_invitation_is_unknown_for_now()
+    public async Task Register_with_a_new_family_invitation_creates_the_family_with_them_as_its_admin()
+    {
+        var token = Invite(newFamily: true);
+
+        var result = await _service.RegisterAsync(Register(token, " Dupont "));
+
+        var ben = ((RegisterResult.Registered)result).User;
+        var family = _families.Families.Single(f => f.Id != _familyId);
+        var membership = _invitations.Memberships.Single();
+        Assert.Multiple(() =>
+        {
+            Assert.That(family.Name, Is.EqualTo("Dupont"));
+            Assert.That(family.CreatedByUserId, Is.EqualTo(ben.Id));
+            Assert.That(family.CreatedAt, Is.EqualTo(Now));
+            Assert.That(
+                new { membership.FamilyId, membership.UserId, membership.Role, membership.JoinedAt },
+                Is.EqualTo(new { FamilyId = family.Id, UserId = ben.Id, Role = FamilyRole.Admin, JoinedAt = Now }));
+            Assert.That(ben.IsAdmin, Is.False);
+            Assert.That(_invitations.Invitations.Single().UsedByUserId, Is.EqualTo(ben.Id));
+        });
+    }
+
+    [TestCase(null, "required")]
+    [TestCase("   ", "required")]
+    public async Task Register_with_a_new_family_invitation_needs_a_family_name(string? familyName, string code)
+    {
+        var token = Invite(newFamily: true);
+
+        var result = await _service.RegisterAsync(Register(token, familyName) with { Password = "short" });
+
+        Assert.That(
+            ((RegisterResult.Invalid)result).Errors,
+            Is.EqualTo(new Dictionary<string, string> { ["password"] = "tooShort", ["familyName"] = code }));
+        Assert.That(_users.Users, Has.Count.EqualTo(1));
+        Assert.That(_invitations.Invitations.Single().UsedAt, Is.Null);
+    }
+
+    [Test]
+    public async Task Register_with_a_new_family_invitation_refuses_a_family_name_too_long()
+    {
+        var result = await _service.RegisterAsync(Register(Invite(newFamily: true), new string('a', 51)));
+
+        Assert.That(
+            ((RegisterResult.Invalid)result).Errors, Is.EqualTo(new Dictionary<string, string> { ["familyName"] = "tooLong" }));
+    }
+
+    [Test]
+    public async Task Register_with_a_join_invitation_ignores_the_family_name()
+    {
+        var result = await _service.RegisterAsync(Register(Invite(), new string('a', 51)));
+
+        Assert.That(result, Is.InstanceOf<RegisterResult.Registered>());
+        Assert.That(_families.Families, Has.Count.EqualTo(1));
+        Assert.That(_invitations.Memberships.Single().FamilyId, Is.EqualTo(_familyId));
+    }
+
+    [Test]
+    public async Task Accept_of_a_new_family_invitation_creates_the_family_with_them_as_its_admin()
     {
         var ben = AddBen();
         var token = Invite(newFamily: true);
 
-        Assert.That(await _service.AcceptAsync(ben, token), Is.EqualTo(new AcceptResult.Unavailable(InvitationProblem.Unknown)));
+        var result = await _service.AcceptAsync(ben, token, " Dupont ");
+
+        var family = _families.Families.Single(f => f.Name == "Dupont");
+        Assert.That(result, Is.EqualTo(new AcceptResult.Accepted(family.Id)));
+        Assert.That(family.CreatedByUserId, Is.EqualTo(ben.Id));
+        var membership = _families.Memberships.Single(m => m.FamilyId == family.Id);
+        Assert.That(
+            new { membership.UserId, membership.Role, membership.JoinedAt },
+            Is.EqualTo(new { UserId = ben.Id, Role = FamilyRole.Admin, JoinedAt = Now }));
+        Assert.That(_invitations.Invitations.Single().UsedByUserId, Is.EqualTo(ben.Id));
+    }
+
+    [Test]
+    public async Task Accept_of_a_new_family_invitation_by_the_instance_admin_creates_another_family()
+    {
+        var result = await _service.AcceptAsync(_anna, Invite(newFamily: true), "Second");
+
+        Assert.That(result, Is.InstanceOf<AcceptResult.Accepted>());
+        Assert.That(_families.Memberships.Count(m => m.UserId == _anna.Id && m.Role == FamilyRole.Admin), Is.EqualTo(2));
+    }
+
+    [TestCase(null, "required")]
+    [TestCase(" ", "required")]
+    [TestCase("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "tooLong")]
+    public async Task Accept_of_a_new_family_invitation_validates_the_family_name(string? familyName, string code)
+    {
+        var ben = AddBen();
+
+        var result = await _service.AcceptAsync(ben, Invite(newFamily: true), familyName);
+
+        Assert.That(
+            ((AcceptResult.Invalid)result).Errors, Is.EqualTo(new Dictionary<string, string> { ["familyName"] = code }));
         Assert.That(_invitations.Invitations.Single().UsedAt, Is.Null);
+        Assert.That(_families.Families, Has.Count.EqualTo(2));
+    }
+
+    [Test]
+    public async Task Accept_checks_the_invitation_before_the_family_name()
+    {
+        var token = Invite(i => i.RevokedAt = Now, newFamily: true);
+
+        Assert.That(
+            await _service.AcceptAsync(AddBen(), token, familyName: null),
+            Is.EqualTo(new AcceptResult.Unavailable(InvitationProblem.Revoked)));
+    }
+
+    [Test]
+    public async Task Accept_of_a_join_invitation_ignores_the_family_name()
+    {
+        var ben = AddBen();
+
+        Assert.That(await _service.AcceptAsync(ben, Invite(), familyName: ""), Is.EqualTo(new AcceptResult.Accepted(_familyId)));
     }
 }

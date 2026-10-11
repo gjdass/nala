@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
@@ -9,6 +9,10 @@ import { AuthService } from '../../../core/auth/auth.service';
 import { CurrentFamilyService } from '../../../core/families/current-family.service';
 import { Lang } from '../../../core/i18n/initial-lang';
 import { AuthCardComponent } from '../../../shared/ui/auth-card/auth-card.component';
+import {
+  FamilyNameFieldComponent,
+  createFamilyNameControl,
+} from '../../../shared/ui/family-name-field/family-name-field.component';
 import {
   AccountFieldsComponent,
   createAccountForm,
@@ -25,13 +29,15 @@ type View =
 
 /**
  * Opened from an invitation link. Signed out: creates the account (or logs in and comes back here); signed in: accepts
- * the invitation with the current account. Either way the invitation is consumed, then the app opens.
+ * the invitation with the current account. A new-family invitation also asks the name of the family it creates. Either
+ * way the invitation is consumed, then the app opens.
  */
 @Component({
   selector: 'nala-register',
   imports: [
     AccountFieldsComponent,
     AuthCardComponent,
+    FamilyNameFieldComponent,
     MatButtonModule,
     MatProgressBarModule,
     ReactiveFormsModule,
@@ -49,7 +55,13 @@ export class RegisterPage {
   protected readonly token = inject(ActivatedRoute).snapshot.paramMap.get('token') ?? '';
 
   protected readonly form = createAccountForm();
+  /** Only asked, and sent, for a new-family invitation. */
+  protected readonly familyName = createFamilyNameControl();
   protected readonly view = signal<View>({ kind: 'loading' });
+  protected readonly newFamily = computed(() => {
+    const view = this.view();
+    return (view.kind === 'form' || view.kind === 'accept') && view.invitation.kind === 'newFamily';
+  });
   protected readonly pending = signal(false);
   protected readonly formError = signal<string | null>(null);
 
@@ -66,7 +78,8 @@ export class RegisterPage {
 
   protected submit(): void {
     this.form.markAllAsTouched();
-    if (this.form.invalid || this.pending()) {
+    this.familyName.markAsTouched();
+    if (this.form.invalid || this.familyNameInvalid() || this.pending()) {
       return;
     }
     const value = this.form.getRawValue();
@@ -78,6 +91,7 @@ export class RegisterPage {
         displayName: value.displayName.trim(),
         password: value.password,
         language: this.transloco.getActiveLang() as Lang,
+        ...(this.newFamily() ? { familyName: this.familyName.value.trim() } : {}),
       })
       .subscribe((result) => {
         if (result.ok) {
@@ -85,7 +99,9 @@ export class RegisterPage {
           return;
         }
         for (const [field, code] of Object.entries(result.errors)) {
-          if (field !== 'form') {
+          if (field === 'familyName') {
+            this.familyName.setErrors({ server: code });
+          } else if (field !== 'form') {
             this.form.get(field)?.setErrors({ server: code });
           } else {
             this.showFormError(code);
@@ -95,20 +111,28 @@ export class RegisterPage {
       });
   }
 
-  /** Joins the family with the current account, then opens the app on it. */
+  /** Joins or creates the family with the current account, then opens the app on it. */
   protected accept(): void {
-    if (this.pending()) {
+    this.familyName.markAsTouched();
+    if (this.familyNameInvalid() || this.pending()) {
       return;
     }
     this.pending.set(true);
     this.formError.set(null);
-    this.auth.acceptInvitation(this.token).subscribe((result) => {
+    const request = this.newFamily()
+      ? this.auth.acceptInvitation(this.token, this.familyName.value.trim())
+      : this.auth.acceptInvitation(this.token);
+    request.subscribe((result) => {
       if (result.ok) {
         this.families.select(result.familyId);
         void this.router.navigateByUrl('/');
         return;
       }
-      this.showFormError(result.errors['form']);
+      if (result.errors['familyName']) {
+        this.familyName.setErrors({ server: result.errors['familyName'] });
+      } else {
+        this.showFormError(result.errors['form']);
+      }
       this.pending.set(false);
     });
   }
@@ -116,6 +140,10 @@ export class RegisterPage {
   /** Leaves the invitation unused. */
   protected notNow(): void {
     void this.router.navigateByUrl('/');
+  }
+
+  private familyNameInvalid(): boolean {
+    return this.newFamily() && this.familyName.invalid;
   }
 
   private showFormError(code: string | undefined): void {

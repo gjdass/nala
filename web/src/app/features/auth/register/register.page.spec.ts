@@ -282,4 +282,114 @@ describe('RegisterPage', () => {
       expect(toLogin()).not.toBeNull();
     });
   });
+
+  describe('new-family invitation', () => {
+    const foundNewFamily = async () => {
+      lookup.next({
+        ok: true,
+        invitation: {
+          kind: 'newFamily',
+          invitedBy: 'Anna',
+          familyName: null,
+          expiresAt: '2026-10-04T20:00:00Z',
+        },
+      });
+      await fixture.whenStable();
+    };
+
+    it('a join invitation asks no family name', async () => {
+      await found();
+
+      expect(input('familyName')).toBeNull();
+    });
+
+    describe('signed out', () => {
+      beforeEach(foundNewFamily);
+
+      it('invites to create a family and asks its name with the account', () => {
+        expect(subtitle()).toBe(en.auth.register.subtitleNewFamily.replace('{{name}}', 'Anna'));
+        expect(input('email')).not.toBeNull();
+        expect(input('familyName')).not.toBeNull();
+      });
+
+      it('requires the family name before sending', async () => {
+        fillValid();
+        await send();
+
+        expect(error('familyName')).toBe(en.families.errors.name.required);
+        expect(auth.register).not.toHaveBeenCalled();
+      });
+
+      it('sends the trimmed family name with the account', async () => {
+        fillValid();
+        type('familyName', ' Dupont ');
+        await send();
+
+        expect(auth.register).toHaveBeenCalledWith('a-b_c', {
+          email: 'Ben@Mail.com',
+          displayName: 'Ben',
+          password: 'correct horse',
+          language: 'en',
+          familyName: 'Dupont',
+        });
+      });
+
+      it('shows a server error on the family name under its field', async () => {
+        fillValid();
+        type('familyName', 'Dupont');
+        await send();
+        await answer({ ok: false, errors: { familyName: 'tooLong' } });
+
+        expect(error('familyName')).toBe(en.families.errors.name.tooLong);
+        expect(submit()!.disabled).toBe(false);
+      });
+    });
+
+    describe('signed in', () => {
+      beforeEach(async () => {
+        signIn();
+        await foundNewFamily();
+      });
+
+      it('offers to create a family with the current account, asking its name', () => {
+        expect(host().querySelector('mat-card-title')?.textContent?.trim()).toBe(
+          en.auth.accept.titleNewFamily,
+        );
+        expect(subtitle()).toBe(en.auth.accept.subtitleNewFamily.replace('{{name}}', 'Anna'));
+        expect(input('familyName')).not.toBeNull();
+        expect(input('email')).toBeNull();
+      });
+
+      it('requires the family name before accepting', async () => {
+        accept()!.click();
+        await fixture.whenStable();
+
+        expect(error('familyName')).toBe(en.families.errors.name.required);
+        expect(auth.acceptInvitation).not.toHaveBeenCalled();
+      });
+
+      it('accepts with the trimmed name, selects the new family and opens the app', async () => {
+        type('familyName', ' Dupont ');
+        accept()!.click();
+        await fixture.whenStable();
+        expect(auth.acceptInvitation).toHaveBeenCalledWith('a-b_c', 'Dupont');
+
+        accepted.next({ ok: true, familyId: 'f9' });
+        await fixture.whenStable();
+
+        expect(families.select).toHaveBeenCalledWith('f9');
+        expect(navigateByUrl).toHaveBeenCalledWith('/');
+      });
+
+      it('shows a server error on the family name under its field', async () => {
+        type('familyName', 'Dupont');
+        accept()!.click();
+        accepted.next({ ok: false, errors: { familyName: 'required' } });
+        await fixture.whenStable();
+
+        expect(error('familyName')).toBe(en.families.errors.name.required);
+        expect(accept()!.disabled).toBe(false);
+      });
+    });
+  });
 });

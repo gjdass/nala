@@ -29,8 +29,8 @@ Each item becomes at least one test, written failing first.
 ### Registration (by invitation only)
 - [x] There is no public sign-up once the instance is set up.
 - [x] An invitation link is single-use and expires after 7 days.
-- [ ] Opening a valid invitation link while signed out shows who invites and to what (join {family}, or create a family) and a registration form (email, display name, password, plus the family name for a new-family invitation), with a way to sign in instead. Submitting it creates the account, joins or creates the family (03), consumes the invitation, and logs the user in.
-- [ ] Signing in from an invitation link comes back to it. Opening it while signed in offers to accept it with the current account (asking the family name for a new-family invitation); accepting joins or creates the family (03) and consumes the invitation; Not now leaves it unused.
+- [x] Opening a valid invitation link while signed out shows who invites and to what (join {family}, or create a family) and a registration form (email, display name, password, plus the family name for a new-family invitation), with a way to sign in instead. Submitting it creates the account, joins or creates the family (03), consumes the invitation, and logs the user in.
+- [x] Signing in from an invitation link comes back to it. Opening it while signed in offers to accept it with the current account (asking the family name for a new-family invitation); accepting joins or creates the family (03) and consumes the invitation; Not now leaves it unused.
 - [x] An expired, already-used or unknown invitation link shows a clear error and cannot create an account.
 - [x] Registering with an email that already has an account is refused with a clear message, which offers to sign in and accept the invitation instead.
 - [x] Emails are case-insensitive and trimmed (`Anna@Mail.com ` = `anna@mail.com`).
@@ -70,7 +70,7 @@ Each item becomes at least one test, written failing first.
 ### Instance admin
 - [x] The instance has exactly one instance admin: the account created at first-run setup. No other user can be made instance admin.
 - [x] The instance admin can list all accounts (display name, email, last activity), whatever their families; deleted accounts are not listed. The list shows no family data.
-- [ ] Only the instance admin can create (link, or by email when SMTP is configured), list and revoke new-family invitations (single-use, 7 days); anyone else is refused (403).
+- [x] Only the instance admin can create (link, or by email when SMTP is configured), list and revoke new-family invitations (single-use, 7 days); anyone else is refused (403).
 - [x] There is no account disable: the disable / enable actions and endpoints are gone, and no login or reset link is refused for a disabled account.
 
 ### Offline interaction

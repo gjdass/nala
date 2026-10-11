@@ -46,16 +46,20 @@ public class InvitationServiceTests
         IsAdmin = isAdmin,
     };
 
-    /// <summary>A join invitation to <paramref name="family"/> (Anna's family by default).</summary>
+    /// <summary>A join invitation to <paramref name="family"/> (Anna's family by default), or a new-family one.</summary>
     private Invitation Seed(
-        Action<Invitation>? change = null, User? createdBy = null, DateTimeOffset? createdAt = null, Family? family = null)
+        Action<Invitation>? change = null,
+        User? createdBy = null,
+        DateTimeOffset? createdAt = null,
+        Family? family = null,
+        bool newFamily = false)
     {
         var at = createdAt ?? Now.AddDays(-1);
         var invitation = new Invitation
         {
             Id = Guid.NewGuid(),
             TokenHash = LinkToken.Hash(LinkToken.Generate()),
-            FamilyId = (family ?? _family).Id,
+            FamilyId = newFamily ? null : (family ?? _family).Id,
             CreatedByUserId = (createdBy ?? _anna).Id,
             CreatedAt = at,
             ExpiresAt = at + InvitationPolicy.Lifetime,
@@ -374,5 +378,146 @@ public class InvitationServiceTests
 
         Assert.That(result, Is.InstanceOf<SendInvitationResult.Sent>());
         Assert.That(_outbox.Messages.Single().To, Is.EqualTo("ben@mail.com"));
+    }
+
+    private Invitation SeedNewFamily(DateTimeOffset? createdAt = null, Action<Invitation>? change = null) =>
+        Seed(change, createdAt: createdAt, newFamily: true);
+
+    [Test]
+    public async Task NewFamily_create_list_send_and_revoke_are_admin_only()
+    {
+        var ben = NewUser("Ben");
+        await _users.AddAsync(ben);
+        _families.Seed("Ben's", Now, ben);
+        var invitation = SeedNewFamily();
+
+        Assert.That(await _service.CreateNewFamilyAsync(ben), Is.InstanceOf<CreateInvitationResult.AdminOnly>());
+        Assert.That(await _service.ListPendingNewFamilyAsync(ben), Is.Null);
+        Assert.That(
+            await _service.SendNewFamilyByEmailAsync(ben, "carl@mail.com", publicUrl: null),
+            Is.InstanceOf<SendInvitationResult.AdminOnly>());
+        Assert.That(await _service.RevokeNewFamilyAsync(ben, invitation.Id), Is.InstanceOf<RevokeInvitationResult.AdminOnly>());
+
+        Assert.That(_invitations.Invitations, Is.EqualTo(new[] { invitation }));
+        Assert.That(invitation.RevokedAt, Is.Null);
+        Assert.That(_outbox.Messages, Is.Empty);
+    }
+
+    [Test]
+    public async Task NewFamily_create_stores_an_invitation_without_family_valid_7_days()
+    {
+        var created = Created(await _service.CreateNewFamilyAsync(_anna));
+
+        var stored = _invitations.Invitations.Single();
+        Assert.Multiple(() =>
+        {
+            Assert.That(stored.FamilyId, Is.Null);
+            Assert.That(stored.Kind, Is.EqualTo(InvitationKind.NewFamily));
+            Assert.That(stored.TokenHash, Is.EqualTo(LinkToken.Hash(created.Token)));
+            Assert.That(stored.CreatedByUserId, Is.EqualTo(_anna.Id));
+            Assert.That(created.ExpiresAt, Is.EqualTo(Now.AddDays(7)));
+        });
+    }
+
+    [Test]
+    public async Task NewFamily_list_has_only_pending_new_family_invitations_newest_first()
+    {
+        var older = SeedNewFamily(Now.AddDays(-2));
+        var newer = SeedNewFamily(Now.AddHours(-1));
+        SeedNewFamily(change: i => i.RevokedAt = Now.AddMinutes(-1));
+        Seed(); // A join invitation.
+
+        var pending = await _service.ListPendingNewFamilyAsync(_anna);
+
+        Assert.That(pending!.Select(i => i.Id), Is.EqualTo(new[] { newer.Id, older.Id }));
+        Assert.That(pending![0].CreatedBy, Is.EqualTo("Anna"));
+    }
+
+    [Test]
+    public async Task Family_list_excludes_new_family_invitations()
+    {
+        var join = Seed();
+        SeedNewFamily();
+
+        var pending = await _service.ListPendingAsync(_anna, _family.Id);
+
+        Assert.That(pending!.Select(i => i.Id), Is.EqualTo(new[] { join.Id }));
+    }
+
+    [Test]
+    public async Task NewFamily_revoke_marks_it_revoked_and_a_join_invitation_is_not_found()
+    {
+        var invitation = SeedNewFamily();
+        var join = Seed();
+
+        Assert.That(await _service.RevokeNewFamilyAsync(_anna, invitation.Id), Is.InstanceOf<RevokeInvitationResult.Revoked>());
+        Assert.That(await _service.RevokeNewFamilyAsync(_anna, join.Id), Is.InstanceOf<RevokeInvitationResult.NotFound>());
+        Assert.That(await _service.RevokeNewFamilyAsync(_anna, Guid.NewGuid()), Is.InstanceOf<RevokeInvitationResult.NotFound>());
+        Assert.That(
+            await _service.RevokeAsync(_anna, _family.Id, invitation.Id), Is.InstanceOf<RevokeInvitationResult.NotFound>());
+
+        Assert.That(invitation.RevokedAt, Is.EqualTo(Now));
+        Assert.That(join.RevokedAt, Is.Null);
+    }
+
+    [Test]
+    public async Task NewFamily_used_invitation_cannot_be_revoked()
+    {
+        var invitation = SeedNewFamily(change: i => i.UsedAt = Now.AddMinutes(-1));
+
+        Assert.That(
+            await _service.RevokeNewFamilyAsync(_anna, invitation.Id),
+            Is.EqualTo(new RevokeInvitationResult.Unavailable(InvitationProblem.Used)));
+    }
+
+    [Test]
+    public async Task NewFamily_email_queues_the_link_even_to_a_member_of_the_admins_family()
+    {
+        var ben = NewUser("Ben");
+        await _users.AddAsync(ben);
+        _families.Memberships.Add(new Membership { FamilyId = _family.Id, UserId = ben.Id, Role = FamilyRole.Member, JoinedAt = Now });
+
+        var result = await _service.SendNewFamilyByEmailAsync(_anna, " Ben@Mail.com ", PublicUrl);
+
+        var stored = _invitations.Invitations.Single();
+        var message = _outbox.Messages.Single();
+        Assert.Multiple(() =>
+        {
+            Assert.That(result, Is.EqualTo(new SendInvitationResult.Sent(Now.AddDays(7))));
+            Assert.That(stored.FamilyId, Is.Null);
+            Assert.That(message.To, Is.EqualTo("ben@mail.com"));
+            Assert.That(stored.TokenHash, Is.EqualTo(LinkToken.Hash(TokenIn(message))));
+        });
+    }
+
+    [TestCase("en", "You're invited to Nala", "Anna invites you to create your family on Nala")]
+    [TestCase("fr", "Invitation à rejoindre Nala", "Anna vous invite à créer votre famille sur Nala")]
+    public async Task NewFamily_email_invites_to_create_a_family_in_the_admins_language(
+        string language, string subject, string greeting)
+    {
+        _anna.PreferredLanguage = language;
+
+        await _service.SendNewFamilyByEmailAsync(_anna, "ben@mail.com", PublicUrl);
+
+        var message = _outbox.Messages.Single();
+        Assert.That(message.Subject, Is.EqualTo(subject));
+        Assert.That(message.Body, Does.Contain(greeting));
+        Assert.That(message.Body, Does.Not.Contain("Martins"));
+    }
+
+    [Test]
+    public async Task NewFamily_email_checks_admin_then_smtp_then_the_address()
+    {
+        var ben = NewUser("Ben");
+        await _users.AddAsync(ben);
+
+        Assert.That(
+            await _service.SendNewFamilyByEmailAsync(ben, "x", publicUrl: null), Is.InstanceOf<SendInvitationResult.AdminOnly>());
+        Assert.That(
+            await _service.SendNewFamilyByEmailAsync(_anna, "x", publicUrl: null), Is.InstanceOf<SendInvitationResult.Disabled>());
+        var invalid = await _service.SendNewFamilyByEmailAsync(_anna, "x", PublicUrl);
+        Assert.That(
+            ((SendInvitationResult.Invalid)invalid).Errors, Is.EqualTo(new Dictionary<string, string> { ["email"] = "invalid" }));
+        Assert.That(_invitations.Invitations, Is.Empty);
     }
 }

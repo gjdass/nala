@@ -221,6 +221,15 @@ describe('AuthService', () => {
       expect(service.state()).toEqual(member);
     });
 
+    it('sends the family name of a new-family invitation', async () => {
+      const result = firstValueFrom(service.register('tok', { ...registration, familyName: 'Dupont' }));
+      const req = http.expectOne('/api/auth/invitations/tok/register');
+      expect(req.request.body).toEqual({ ...registration, familyName: 'Dupont' });
+      req.flush(member);
+
+      expect(await result).toEqual<RegisterResult>({ ok: true });
+    });
+
     it('maps a 400 validation problem to field error codes', async () => {
       const result = firstValueFrom(service.register('tok', registration));
       http
@@ -245,6 +254,24 @@ describe('AuthService', () => {
   });
 
   describe('acceptInvitation()', () => {
+    it('sends the family name of a new-family invitation', async () => {
+      const result = firstValueFrom(service.acceptInvitation('tok', 'Dupont'));
+      const req = http.expectOne('/api/auth/invitations/tok/accept');
+      expect(req.request.body).toEqual({ familyName: 'Dupont' });
+      req.flush({ familyId: 'f3' });
+
+      expect(await result).toEqual<AcceptInvitationResult>({ ok: true, familyId: 'f3' });
+    });
+
+    it('maps a 400 on the family name to a field error', async () => {
+      const result = firstValueFrom(service.acceptInvitation('tok', ''));
+      http
+        .expectOne('/api/auth/invitations/tok/accept')
+        .flush({ errors: { familyName: ['required'] } }, { status: 400, statusText: 'Bad Request' });
+
+      expect(await result).toEqual<AcceptInvitationResult>({ ok: false, errors: { familyName: 'required' } });
+    });
+
     it('posts to the invitation and returns the joined family', async () => {
       const result = firstValueFrom(service.acceptInvitation('a-b_c'));
       const req = http.expectOne('/api/auth/invitations/a-b_c/accept');

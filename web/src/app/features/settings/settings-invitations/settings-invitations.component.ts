@@ -1,5 +1,13 @@
 import { DOCUMENT } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  OnInit,
+  computed,
+  inject,
+  input,
+  signal,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
@@ -30,7 +38,8 @@ const REVOKE_ERRORS = ['invitationUsed', 'invitationExpired', 'invitationUnknown
 
 /**
  * Invite someone into the current family (a link handed over through the share dialog, or emailed when SMTP is configured), and the pending
- * invitations, each revocable.
+ * invitations, each revocable. With `newFamily` (the instance admin's Instance section), the same for the invitations to
+ * create a family, whatever the current family.
  */
 @Component({
   selector: 'nala-settings-invitations',
@@ -39,14 +48,17 @@ const REVOKE_ERRORS = ['invitationUsed', 'invitationExpired', 'invitationUnknown
   templateUrl: './settings-invitations.component.html',
   styleUrl: './settings-invitations.component.scss',
 })
-export class SettingsInvitationsComponent {
+export class SettingsInvitationsComponent implements OnInit {
+  /** Invitations to create a family rather than to join the current one. */
+  readonly newFamily = input(false);
+
   private readonly invitations = inject(InvitationService);
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
   private readonly transloco = inject(TranslocoService);
   private readonly origin = inject(DOCUMENT).location.origin;
   private readonly auth = inject(AuthService);
-  /** Settings only shows this section for a current family, and has no switcher to change it. */
+  /** Settings only shows the join invitations for a current family, and has no switcher to change it. */
   private readonly families = inject(CurrentFamilyService);
 
   protected readonly pending = signal<PendingInvitation[]>([]);
@@ -55,11 +67,14 @@ export class SettingsInvitationsComponent {
   protected readonly smtpEnabled = computed(() => this.auth.state()?.smtpEnabled ?? false);
 
   constructor() {
-    this.load();
     // Removing a member revokes their pending invitations to the family.
     inject(MemberService)
       .changed$.pipe(takeUntilDestroyed())
       .subscribe(() => this.load());
+  }
+
+  ngOnInit(): void {
+    this.load();
   }
 
   protected invite(): void {
@@ -78,9 +93,12 @@ export class SettingsInvitationsComponent {
       this.dialog.open<ShareLinkDialogComponent, ShareLinkDialogData>(ShareLinkDialogComponent, {
         data: {
           title: this.transloco.translate('invitations.shareTitle'),
-          text: this.transloco.translate('invitations.shareText', {
-            date: formatDateTime(expiresAt, lang),
-          }),
+          text: this.transloco.translate(
+            this.newFamily() ? 'invitations.shareTextNewFamily' : 'invitations.shareText',
+            {
+              date: formatDateTime(expiresAt, lang),
+            },
+          ),
           url: `${this.origin}/invite/${token}`,
         },
       });
@@ -130,8 +148,9 @@ export class SettingsInvitationsComponent {
     });
   }
 
-  private familyId(): string {
-    return this.families.current()!.id;
+  /** `null`: the new-family invitations. */
+  private familyId(): string | null {
+    return this.newFamily() ? null : this.families.current()!.id;
   }
 
   private notify(key: string, params?: Record<string, string>): void {

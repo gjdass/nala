@@ -39,13 +39,16 @@
       "toLogin": "Aller à la connexion",
       "loading": "Vérification de l'invitation…",
       "existingAccount": "Déjà un compte ? Connectez-vous",
-      "emailTaken": "Un compte utilise déjà cet e-mail. Connectez-vous pour accepter l'invitation avec."
+      "emailTaken": "Un compte utilise déjà cet e-mail. Connectez-vous pour accepter l'invitation avec.",
+      "subtitleNewFamily": "{{name}} vous invite à créer votre famille sur Nala. Créez votre compte et nommez votre famille."
     },
     "accept": {
       "title": "Rejoindre une famille",
       "subtitle": "{{name}} vous invite à rejoindre {{family}}",
       "accept": "Accepter",
-      "notNow": "Plus tard"
+      "notNow": "Plus tard",
+      "titleNewFamily": "Créer votre famille",
+      "subtitleNewFamily": "{{name}} vous invite à créer votre famille sur Nala"
     },
     "reset": {
       "title": "Choisir un nouveau mot de passe",
@@ -138,14 +141,15 @@
       "done": "Votre compte a été supprimé"
     },
     "admin": {
-      "title": "Administration",
-      "users": "Utilisateurs",
+      "title": "Instance",
+      "users": "Comptes",
       "lastActive": "Dernière activité {{date}}",
       "noActivity": "Aucune activité",
       "actions": "Actions pour {{name}}",
       "resetLink": "Lien de réinitialisation",
       "resetLinkTitle": "Lien de réinitialisation pour {{name}}",
-      "resetLinkText": "Envoyez ce lien à {{name}} : il permet de choisir un nouveau mot de passe, une seule fois, jusqu'au {{date}}. Les liens précédents ne fonctionnent plus."
+      "resetLinkText": "Envoyez ce lien à {{name}} : il permet de choisir un nouveau mot de passe, une seule fois, jusqu'au {{date}}. Les liens précédents ne fonctionnent plus.",
+      "newFamilies": "Nouvelles familles"
     },
     "logout": "Se déconnecter",
     "version": "Version {{ commit }}",
@@ -187,7 +191,8 @@
       "title": "Inviter par email",
       "text": "Nous lui enverrons par email un lien pour rejoindre votre famille. Il ne sert qu'une fois, pendant 7 jours.",
       "send": "Envoyer",
-      "cancel": "Annuler"
+      "cancel": "Annuler",
+      "textNewFamily": "Nous lui enverrons par email un lien pour créer sa famille sur Nala. Il ne sert qu'une fois, pendant 7 jours."
     },
     "emailSent": "Invitation envoyée à {{email}}",
     "pending": "Invitations en attente",
@@ -201,7 +206,9 @@
       "invitationUsed": "Cette invitation a déjà été utilisée.",
       "invitationExpired": "Cette invitation a déjà expiré.",
       "invitationUnknown": "Cette invitation n'existe plus."
-    }
+    },
+    "inviteFamily": "Inviter une famille",
+    "shareTextNewFamily": "Envoyez ce lien à la personne qui va créer sa famille. Il ne sert qu'une fois, jusqu'au {{date}}."
   },
   "shareLink": {
     "link": "Lien",

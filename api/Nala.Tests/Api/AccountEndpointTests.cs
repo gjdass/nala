@@ -55,22 +55,8 @@ public class AccountEndpointTests
         return (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("errors");
     }
 
-    /// <summary>Seeds an invitation from Anna (created in 03 later); returns its token.</summary>
-    private async Task<string> InviteAsync()
-    {
-        var token = LinkToken.Generate();
-        var now = _factory.Time!.GetUtcNow();
-        using var scope = _factory.Services.CreateScope();
-        await scope.ServiceProvider.GetRequiredService<IInvitationRepository>().AddAsync(new Invitation
-        {
-            Id = Guid.NewGuid(),
-            TokenHash = LinkToken.Hash(token),
-            CreatedByUserId = _annaId,
-            CreatedAt = now,
-            ExpiresAt = now + InvitationPolicy.Lifetime,
-        });
-        return token;
-    }
+    /// <summary>Seeds a join invitation from Anna to her family; returns its token.</summary>
+    private Task<string> InviteAsync() => TestInvitations.SeedJoinAsync(_factory, _annaId);
 
     /// <summary>Ben joins through an invitation and is signed in on the returned client.</summary>
     private async Task<(HttpClient Client, Guid Id)> RegisterBenAsync()

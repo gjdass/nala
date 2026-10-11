@@ -4,7 +4,9 @@ using Nala.Core.Users;
 
 namespace Nala.Core.Auth;
 
-public sealed record RegisterCommand(string? Token, string? Email, string? DisplayName, string? Password, string? Language);
+/// <summary><c>FamilyName</c> names the family a new-family invitation creates; a join invitation ignores it.</summary>
+public sealed record RegisterCommand(
+    string? Token, string? Email, string? DisplayName, string? Password, string? Language, string? FamilyName = null);
 
 public abstract record InvitationLookup
 {
@@ -15,7 +17,11 @@ public abstract record InvitationLookup
 
 public abstract record AcceptResult
 {
+    /// <summary>The family joined, or created by a new-family invitation.</summary>
     public sealed record Accepted(Guid FamilyId) : AcceptResult;
+
+    /// <summary>Field name → error code (<c>familyName</c>: <c>required</c>, <c>tooLong</c>), for a new-family invitation.</summary>
+    public sealed record Invalid(IReadOnlyDictionary<string, string> Errors) : AcceptResult;
 
     /// <summary>The caller is already in the invitation's family; the invitation stays unused.</summary>
     public sealed record AlreadyMember : AcceptResult;
@@ -29,13 +35,17 @@ public abstract record RegisterResult
 
     public sealed record Unavailable(InvitationProblem Problem) : RegisterResult;
 
-    /// <summary>Field name → error code: those of <see cref="AccountFields"/>, plus <c>email: taken</c>.</summary>
+    /// <summary>
+    /// Field name → error code: those of <see cref="AccountFields"/>, plus <c>email: taken</c>, and <c>familyName</c> for a
+    /// new-family invitation.
+    /// </summary>
     public sealed record Invalid(IReadOnlyDictionary<string, string> Errors) : RegisterResult;
 }
 
 /// <summary>
-/// Turns an invitation link into an account, a member of the invitation's family, or into a membership of an existing
-/// account. There is no other way to sign up once the instance is set up.
+/// Turns an invitation link into an account, or into a membership of an existing account: a member of a join invitation's
+/// family, or the admin of the family a new-family invitation creates. There is no other way to sign up once the instance
+/// is set up.
 /// </summary>
 public class RegistrationService(
     IInvitationRepository invitations, IUserRepository users, IFamilyRepository families, IPasswordHasher hasher, TimeProvider time)
@@ -66,6 +76,12 @@ public class RegistrationService(
         }
 
         var errors = AccountFields.Validate(command.Email, command.DisplayName, command.Password);
+        var familyName = string.Empty;
+        if (invitation.Kind == InvitationKind.NewFamily && FamilyName.Validate(command.FamilyName, out familyName) is { } familyNameError)
+        {
+            errors["familyName"] = familyNameError;
+        }
+
         if (errors.Count > 0)
         {
             return new RegisterResult.Invalid(errors);
@@ -92,10 +108,8 @@ public class RegistrationService(
         try
         {
             // Another registration may have used the link since it was read.
-            var membership = invitation.FamilyId is { } familyId
-                ? new Membership { FamilyId = familyId, UserId = member.Id, Role = FamilyRole.Member, JoinedAt = now }
-                : null;
-            return await invitations.RedeemAsync(invitation.Id, member, membership, now, cancellationToken)
+            var (family, membership) = MembershipFor(invitation, member, familyName, now);
+            return await invitations.RedeemAsync(invitation.Id, member, family, membership, now, cancellationToken)
                 ? new RegisterResult.Registered(member)
                 : new RegisterResult.Unavailable(InvitationProblem.Used);
         }
@@ -106,10 +120,12 @@ public class RegistrationService(
     }
 
     /// <summary>
-    /// Accepts a join invitation with the signed-in account: the caller becomes a member of its family. Someone already in
-    /// it is refused and the invitation stays unused. New-family invitations are not accepted yet (spec 03 slice 16).
+    /// Accepts an invitation with the signed-in account. A join invitation makes the caller a member of its family; someone
+    /// already in it is refused and the invitation stays unused. A new-family invitation creates a family named
+    /// <paramref name="familyName"/> with the caller as its admin. The invitation is checked before the family name.
     /// </summary>
-    public async Task<AcceptResult> AcceptAsync(User actor, string? token, CancellationToken cancellationToken = default)
+    public async Task<AcceptResult> AcceptAsync(
+        User actor, string? token, string? familyName = null, CancellationToken cancellationToken = default)
     {
         var (invitation, problem) = await FindUsableAsync(token, cancellationToken);
         if (invitation is null)
@@ -117,29 +133,48 @@ public class RegistrationService(
             return new AcceptResult.Unavailable(problem!.Value);
         }
 
-        if (invitation.FamilyId is not { } familyId)
+        var name = string.Empty;
+        if (invitation.FamilyId is { } familyId)
         {
-            return new AcceptResult.Unavailable(InvitationProblem.Unknown);
+            if (await families.GetRoleAsync(familyId, actor.Id, cancellationToken) is not null)
+            {
+                return new AcceptResult.AlreadyMember();
+            }
         }
-
-        if (await families.GetRoleAsync(familyId, actor.Id, cancellationToken) is not null)
+        else if (FamilyName.Validate(familyName, out name) is { } code)
         {
-            return new AcceptResult.AlreadyMember();
+            return new AcceptResult.Invalid(new Dictionary<string, string> { ["familyName"] = code });
         }
 
         var now = time.GetUtcNow();
-        var membership = new Membership { FamilyId = familyId, UserId = actor.Id, Role = FamilyRole.Member, JoinedAt = now };
+        var (family, membership) = MembershipFor(invitation, actor, name, now);
         try
         {
             // Another acceptance or registration may have used the link since it was read.
-            return await invitations.AcceptAsync(invitation.Id, membership, now, cancellationToken)
-                ? new AcceptResult.Accepted(familyId)
+            return await invitations.AcceptAsync(invitation.Id, family, membership, now, cancellationToken)
+                ? new AcceptResult.Accepted(membership.FamilyId)
                 : new AcceptResult.Unavailable(InvitationProblem.Used);
         }
         catch (MembershipConflictException)
         {
             return new AcceptResult.AlreadyMember();
         }
+    }
+
+    /// <summary>
+    /// What using the invitation gives <paramref name="user"/>: a member membership of a join invitation's family, or a new
+    /// family named <paramref name="familyName"/> with its admin membership.
+    /// </summary>
+    private static (Family? Family, Membership Membership) MembershipFor(
+        Invitation invitation, User user, string familyName, DateTimeOffset now)
+    {
+        if (invitation.FamilyId is { } familyId)
+        {
+            return (null, new Membership { FamilyId = familyId, UserId = user.Id, Role = FamilyRole.Member, JoinedAt = now });
+        }
+
+        var family = new Family { Id = Guid.NewGuid(), Name = familyName, CreatedByUserId = user.Id, CreatedAt = now };
+        return (family, new Membership { FamilyId = family.Id, UserId = user.Id, Role = FamilyRole.Admin, JoinedAt = now });
     }
 
     private async Task<(Invitation? Invitation, InvitationProblem? Problem)> FindUsableAsync(

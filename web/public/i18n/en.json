@@ -39,13 +39,16 @@
       "toLogin": "Go to login",
       "loading": "Checking your invitation…",
       "existingAccount": "Already have an account? Log in",
-      "emailTaken": "An account already uses this email. Log in to accept the invitation with it."
+      "emailTaken": "An account already uses this email. Log in to accept the invitation with it.",
+      "subtitleNewFamily": "{{name}} invited you to create your family on Nala. Create your account and name your family."
     },
     "accept": {
       "title": "Join a family",
       "subtitle": "{{name}} invites you to join {{family}}",
       "accept": "Accept",
-      "notNow": "Not now"
+      "notNow": "Not now",
+      "titleNewFamily": "Create your family",
+      "subtitleNewFamily": "{{name}} invites you to create your family on Nala"
     },
     "reset": {
       "title": "Set a new password",
@@ -138,14 +141,15 @@
       "done": "Your account was deleted"
     },
     "admin": {
-      "title": "Admin",
-      "users": "Users",
+      "title": "Instance",
+      "users": "Accounts",
       "lastActive": "Last active {{date}}",
       "noActivity": "No activity yet",
       "actions": "Actions for {{name}}",
       "resetLink": "Reset link",
       "resetLinkTitle": "Reset link for {{name}}",
-      "resetLinkText": "Send this link to {{name}}: it lets them set a new password, once, until {{date}}. Any earlier link stops working."
+      "resetLinkText": "Send this link to {{name}}: it lets them set a new password, once, until {{date}}. Any earlier link stops working.",
+      "newFamilies": "New families"
     },
     "logout": "Log out",
     "version": "Version {{ commit }}",
@@ -187,7 +191,8 @@
       "title": "Invite by email",
       "text": "We'll email them a link to join your family. It works once, for 7 days.",
       "send": "Send",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "textNewFamily": "We'll email them a link to create their family on Nala. It works once, for 7 days."
     },
     "emailSent": "Invitation sent to {{email}}",
     "pending": "Pending invitations",
@@ -201,7 +206,9 @@
       "invitationUsed": "This invitation has already been used.",
       "invitationExpired": "This invitation has already expired.",
       "invitationUnknown": "This invitation no longer exists."
-    }
+    },
+    "inviteFamily": "Invite a family",
+    "shareTextNewFamily": "Send this link to the person who will create their family. It works once, until {{date}}."
   },
   "shareLink": {
     "link": "Link",

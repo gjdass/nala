@@ -1,7 +1,7 @@
 <form [formGroup]="form" (ngSubmit)="send()" novalidate>
   <h2 mat-dialog-title>{{ 'invitations.emailDialog.title' | transloco }}</h2>
   <mat-dialog-content>
-    <p>{{ 'invitations.emailDialog.text' | transloco }}</p>
+    <p>{{ textKey | transloco }}</p>
     <mat-form-field>
       <mat-label>{{ 'auth.fields.email' | transloco }}</mat-label>
       <input matInput type="email" formControlName="email" autocomplete="off" data-testid="email" />

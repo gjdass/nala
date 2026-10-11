@@ -60,15 +60,14 @@ public static class InvitationEndpoints
         {
             SendInvitationResult.Sent sent => Results.Accepted(value: new SentInvitationResponse(sent.ExpiresAt)),
             SendInvitationResult.Invalid invalid => AuthEndpoints.ValidationProblem(invalid.Errors),
-            SendInvitationResult.Disabled =>
-                Results.Json(new ErrorResponse("emailInviteDisabled"), statusCode: StatusCodes.Status404NotFound),
+            SendInvitationResult.Disabled => EmailInviteDisabled(),
             _ => FamilyEndpoints.FamilyNotFound(),
         };
 
     private static async Task<IResult> ListAsync(
         Guid familyId, InvitationService invitations, HttpContext context, CancellationToken cancellationToken) =>
         await invitations.ListPendingAsync(AuthEndpoints.CurrentUser(context)!, familyId, cancellationToken) is { } pending
-            ? Results.Ok(pending.Select(i => new PendingInvitationResponse(i.Id, i.CreatedBy, i.CreatedAt, i.ExpiresAt)))
+            ? Results.Ok(pending.Select(ToResponse))
             : FamilyEndpoints.FamilyNotFound();
 
     /// <summary>204 when revoked (now or before); 410 when used or expired; 404 for the family, then the invitation.</summary>
@@ -81,4 +80,10 @@ public static class InvitationEndpoints
             RevokeInvitationResult.FamilyNotFound => FamilyEndpoints.FamilyNotFound(),
             _ => AuthEndpoints.InvitationUnavailable(InvitationProblem.Unknown),
         };
+
+    internal static IResult EmailInviteDisabled() =>
+        Results.Json(new ErrorResponse("emailInviteDisabled"), statusCode: StatusCodes.Status404NotFound);
+
+    internal static PendingInvitationResponse ToResponse(PendingInvitation invitation) =>
+        new(invitation.Id, invitation.CreatedBy, invitation.CreatedAt, invitation.ExpiresAt);
 }

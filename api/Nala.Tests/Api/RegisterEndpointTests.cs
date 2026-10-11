@@ -46,8 +46,8 @@ public class RegisterEndpointTests
 
     private HttpClient NewClient() => _factory.CreateClient(new() { BaseAddress = new Uri("https://localhost") });
 
-    /// <summary>Seeds a join invitation from Anna to her family; returns its token.</summary>
-    private async Task<string> InviteAsync(Action<Invitation>? change = null)
+    /// <summary>Seeds a join invitation from Anna to her family (or a new-family one); returns its token.</summary>
+    private async Task<string> InviteAsync(Action<Invitation>? change = null, bool newFamily = false)
     {
         var token = LinkToken.Generate();
         var now = _time.GetUtcNow();
@@ -57,7 +57,7 @@ public class RegisterEndpointTests
         {
             Id = Guid.NewGuid(),
             TokenHash = LinkToken.Hash(token),
-            FamilyId = family?.Id,
+            FamilyId = newFamily ? null : family?.Id,
             CreatedByUserId = _annaId,
             CreatedAt = now,
             ExpiresAt = now + InvitationPolicy.Lifetime,
@@ -341,5 +341,66 @@ public class RegisterEndpointTests
         var families = await (await _client.GetAsync("/api/families")).Content.ReadFromJsonAsync<JsonElement>();
         Assert.That(families.GetArrayLength(), Is.EqualTo(1));
         Assert.That(families[0].GetProperty("name").GetString(), Is.EqualTo("Martins"));
+    }
+
+    private Task<string> InviteNewFamilyAsync() => InviteAsync(newFamily: true);
+
+    [Test]
+    public async Task Register_with_a_new_family_invitation_creates_the_family_with_them_as_its_admin()
+    {
+        var token = await InviteNewFamilyAsync();
+
+        var response = await RegisterAsync(
+            token, new { email = "ben@mail.com", displayName = "Ben", password = Password, language = "en", familyName = " Dupont " });
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        var families = await _client.GetFromJsonAsync<JsonElement[]>("/api/families");
+        Assert.That(
+            families!.Select(f => (f.GetProperty("name").GetString(), f.GetProperty("isAdmin").GetBoolean())),
+            Is.EqualTo(new[] { ("Dupont", true) }));
+        Assert.That(await _client.GetFromJsonAsync<JsonElement[]>("/api/babies"), Is.Empty);
+        var user = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("user");
+        Assert.That(user.GetProperty("isAdmin").GetBoolean(), Is.False);
+    }
+
+    [Test]
+    public async Task Register_with_a_new_family_invitation_without_family_name_is_400_and_creates_nothing()
+    {
+        var token = await InviteNewFamilyAsync();
+
+        var response = await RegisterAsync(token);
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
+        Assert.That((await ErrorsAsync(response))["familyName"], Is.EqualTo(new[] { "required" }));
+        Assert.That(await UserAsync("ben@mail.com"), Is.Null);
+    }
+
+    [Test]
+    public async Task Accept_of_a_new_family_invitation_creates_the_family_for_an_existing_account()
+    {
+        var token = await InviteNewFamilyAsync();
+        using var carl = await OtherFamily.CreateAsync(_factory);
+
+        var response = await carl.Client.PostAsJsonAsync($"/api/auth/invitations/{token}/accept", new { familyName = "Dupont" });
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        var familyId = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("familyId").GetGuid();
+        var families = await carl.Client.GetFromJsonAsync<JsonElement[]>("/api/families");
+        Assert.That(
+            families!.Select(f => (f.GetProperty("id").GetGuid() == familyId, f.GetProperty("name").GetString(), f.GetProperty("isAdmin").GetBoolean())),
+            Is.EqualTo(new[] { (true, "Dupont", true), (false, "Others", true) }));
+    }
+
+    [Test]
+    public async Task Accept_of_a_new_family_invitation_without_family_name_is_400_and_the_link_stays_usable()
+    {
+        var token = await InviteNewFamilyAsync();
+        using var carl = await OtherFamily.CreateAsync(_factory);
+
+        var response = await AcceptAsync(token, carl.Client);
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
+        Assert.That((await ErrorsAsync(response))["familyName"], Is.EqualTo(new[] { "required" }));
+        Assert.That((await _client.GetAsync($"/api/auth/invitations/{token}")).StatusCode, Is.EqualTo(HttpStatusCode.OK));
     }
 }

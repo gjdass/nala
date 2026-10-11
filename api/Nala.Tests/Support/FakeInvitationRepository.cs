@@ -6,7 +6,7 @@ namespace Nala.Tests.Support;
 
 /// <summary>
 /// Redeeming adds the user to the given user repository, like the real transaction; accepting adds the membership to the
-/// given family repository.
+/// given family repository. A family created by either goes to the family repository.
 /// </summary>
 public class FakeInvitationRepository(FakeUserRepository users, FakeFamilyRepository? families = null) : IInvitationRepository
 {
@@ -28,7 +28,12 @@ public class FakeInvitationRepository(FakeUserRepository users, FakeFamilyReposi
         Task.FromResult(Invitations.SingleOrDefault(i => i.TokenHash == tokenHash));
 
     public async Task<bool> RedeemAsync(
-        Guid invitationId, User user, Membership? membership, DateTimeOffset now, CancellationToken cancellationToken = default)
+        Guid invitationId,
+        User user,
+        Family? family,
+        Membership? membership,
+        DateTimeOffset now,
+        CancellationToken cancellationToken = default)
     {
         var invitation = Invitations.Single(i => i.Id == invitationId);
         if (ConsumedConcurrently || invitation.ProblemAt(now) is not null)
@@ -44,6 +49,11 @@ public class FakeInvitationRepository(FakeUserRepository users, FakeFamilyReposi
         await users.AddAsync(user, cancellationToken);
         invitation.UsedAt = now;
         invitation.UsedByUserId = user.Id;
+        if (family is not null)
+        {
+            families?.Families.Add(family);
+        }
+
         if (membership is not null)
         {
             Memberships.Add(membership);
@@ -56,7 +66,7 @@ public class FakeInvitationRepository(FakeUserRepository users, FakeFamilyReposi
     public bool MembershipConflict { get; set; }
 
     public Task<bool> AcceptAsync(
-        Guid invitationId, Membership membership, DateTimeOffset now, CancellationToken cancellationToken = default)
+        Guid invitationId, Family? family, Membership membership, DateTimeOffset now, CancellationToken cancellationToken = default)
     {
         var invitation = Invitations.Single(i => i.Id == invitationId);
         if (ConsumedConcurrently || invitation.ProblemAt(now) is not null)
@@ -68,6 +78,11 @@ public class FakeInvitationRepository(FakeUserRepository users, FakeFamilyReposi
         if (MembershipConflict || memberships.Any(m => m.FamilyId == membership.FamilyId && m.UserId == membership.UserId))
         {
             throw new MembershipConflictException();
+        }
+
+        if (family is not null)
+        {
+            families?.Families.Add(family);
         }
 
         memberships.Add(membership);
@@ -83,7 +98,7 @@ public class FakeInvitationRepository(FakeUserRepository users, FakeFamilyReposi
         Task.FromResult(Invitations.SingleOrDefault(i => i.Id == id));
 
     public Task<IReadOnlyList<Invitation>> ListPendingAsync(
-        Guid familyId, DateTimeOffset now, CancellationToken cancellationToken = default) =>
+        Guid? familyId, DateTimeOffset now, CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<Invitation>>(
             Invitations.Where(i => i.FamilyId == familyId && i.ProblemAt(now) is null).ToList());
 

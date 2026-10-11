@@ -88,9 +88,13 @@ export class AuthService {
     );
   }
 
-  /** Accepts an invitation with the signed-in account; `alreadyMember` leaves it unused. */
-  acceptInvitation(token: string): Observable<AcceptInvitationResult> {
-    return this.http.post<{ familyId: string }>(`${invitationUrl(token)}/accept`, {}).pipe(
+  /**
+   * Accepts an invitation with the signed-in account; `alreadyMember` leaves it unused. `familyName` names the family a
+   * new-family invitation creates.
+   */
+  acceptInvitation(token: string, familyName?: string): Observable<AcceptInvitationResult> {
+    const body = familyName === undefined ? {} : { familyName };
+    return this.http.post<{ familyId: string }>(`${invitationUrl(token)}/accept`, body).pipe(
       map(({ familyId }): AcceptInvitationResult => ({ ok: true, familyId })),
       catchError((error: HttpErrorResponse) =>
         of<AcceptInvitationResult>({ ok: false, errors: toFieldErrors(error) }),

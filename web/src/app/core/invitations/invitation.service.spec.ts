@@ -134,4 +134,42 @@ describe('InvitationService', () => {
       expect(await result).toEqual<SendInvitationResult>({ ok: false, errors: { form: code } });
     });
   });
+
+  describe('new-family invitations (no family)', () => {
+    it('creates, lists, revokes and emails through the admin endpoints', async () => {
+      const created = firstValueFrom(service.create(null));
+      const create = http.expectOne('/api/admin/invitations');
+      expect(create.request.method).toBe('POST');
+      create.flush({ token: 'tok', expiresAt: '2026-10-04T20:00:00Z' });
+      expect(await created).toEqual<CreateInvitationResult>({
+        ok: true,
+        invitation: { token: 'tok', expiresAt: '2026-10-04T20:00:00Z' },
+      });
+
+      const listed = firstValueFrom(service.pending(null));
+      const list = http.expectOne('/api/admin/invitations');
+      expect(list.request.method).toBe('GET');
+      list.flush([pending]);
+      expect(await listed).toEqual<PendingInvitationsResult>({ ok: true, invitations: [pending] });
+
+      const revoked = firstValueFrom(service.revoke(null, 'i1'));
+      http.expectOne('/api/admin/invitations/i1/revoke').flush(null, { status: 204, statusText: 'No Content' });
+      expect(await revoked).toEqual<RevokeInvitationResult>({ ok: true });
+
+      const sent = firstValueFrom(service.sendByEmail(null, 'carl@mail.com'));
+      const email = http.expectOne('/api/admin/invitations/email');
+      expect(email.request.body).toEqual({ email: 'carl@mail.com' });
+      email.flush({ expiresAt: '2026-10-04T20:00:00Z' }, { status: 202, statusText: 'Accepted' });
+      expect(await sent).toEqual<SendInvitationResult>({ ok: true, expiresAt: '2026-10-04T20:00:00Z' });
+    });
+
+    it('maps a 403 to the adminOnly form error', async () => {
+      const result = firstValueFrom(service.create(null));
+      http
+        .expectOne('/api/admin/invitations')
+        .flush({ code: 'adminOnly' }, { status: 403, statusText: 'Forbidden' });
+
+      expect(await result).toEqual<CreateInvitationResult>({ ok: false, errors: { form: 'adminOnly' } });
+    });
+  });
 });

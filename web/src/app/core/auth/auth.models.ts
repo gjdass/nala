@@ -49,12 +49,15 @@ export interface Invitation {
 /** `code`: `invitationUnknown`, `invitationExpired`, `invitationUsed`, `invitationRevoked` or `unknown`. */
 export type InvitationLookup = { ok: true; invitation: Invitation } | { ok: false; code: string };
 
-/** The same account fields as setup, sent to an invitation. */
-export type RegisterRequest = Omit<SetupRequest, 'familyName'>;
+/** The same account fields as setup, sent to an invitation; `familyName` only for a new-family invitation. */
+export type RegisterRequest = Omit<SetupRequest, 'familyName'> & { familyName?: string };
 
 export type RegisterResult = { ok: true } | { ok: false; errors: FieldErrors };
 
-/** `familyId`: the family joined. Form codes: `alreadyMember`, `invitation…`, `unknown`. */
+/**
+ * `familyId`: the family joined, or created by a new-family invitation. Form codes: `alreadyMember`, `invitation…`,
+ * `unknown`; `familyName` codes for a new-family invitation.
+ */
 export type AcceptInvitationResult =
   | { ok: true; familyId: string }
   | { ok: false; errors: FieldErrors };

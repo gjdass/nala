@@ -277,4 +277,67 @@ describe('SettingsInvitationsComponent', () => {
       expect(rows()).toHaveLength(2);
     });
   });
+
+  describe('new families (instance admin)', () => {
+    const renderNewFamily = async () => {
+      invitations.pending.mockReturnValue(of({ ok: true, invitations: [fromAnna] }));
+      TestBed.overrideProvider(CurrentFamilyService, {
+        useValue: { current: signal<Family | null>(null) },
+      });
+      fixture = TestBed.createComponent(SettingsInvitationsComponent);
+      fixture.componentRef.setInput('newFamily', true);
+      await fixture.whenStable();
+    };
+
+    it('lists the pending new-family invitations, without needing a current family', async () => {
+      await renderNewFamily();
+
+      expect(invitations.pending).toHaveBeenCalledWith(null);
+      expect(invitations.pending).toHaveBeenCalledTimes(1);
+      expect(row('Anna')).toBeDefined();
+    });
+
+    it('creates a new-family link with its own label and share text', async () => {
+      await renderNewFamily();
+      expect(byTestId('invite')!.textContent?.trim()).toBe(en.invitations.inviteFamily);
+
+      await click(byTestId('invite')!);
+      expect(invitations.create).toHaveBeenCalledWith(null);
+      await answer(created, {
+        ok: true,
+        invitation: { token: 'tok', expiresAt: '2026-10-04T20:00:00Z' },
+      });
+
+      expect(dialog.open).toHaveBeenCalledWith(ShareLinkDialogComponent, {
+        data: {
+          title: en.invitations.shareTitle,
+          text: en.invitations.shareTextNewFamily.replace(
+            '{{date}}',
+            formatDateTime('2026-10-04T20:00:00Z', 'en'),
+          ),
+          url: `${document.location.origin}/invite/tok`,
+        },
+      });
+    });
+
+    it('opens the email dialog without a family', async () => {
+      auth.state.update((state) => ({ ...state!, smtpEnabled: true }));
+      await renderNewFamily();
+      dialog.open.mockReturnValue({ afterClosed: () => of(undefined) });
+
+      await click(byTestId('invite-by-email')!);
+
+      expect(dialog.open).toHaveBeenCalledWith(InviteEmailDialogComponent, {
+        data: { familyId: null },
+      });
+    });
+
+    it('revokes through the new-family invitations', async () => {
+      await renderNewFamily();
+
+      await click(row('Anna').querySelector<HTMLElement>('[data-testid="revoke"]')!);
+
+      expect(invitations.revoke).toHaveBeenCalledWith(null, 'i1');
+    });
+  });
 });

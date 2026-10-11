@@ -139,6 +139,8 @@
 
   @if (isAdmin()) {
     <nala-settings-section [title]="'settings.admin.title' | transloco">
+      <h3>{{ 'settings.admin.newFamilies' | transloco }}</h3>
+      <nala-settings-invitations [newFamily]="true" />
       <nala-admin-users />
     </nala-settings-section>
   }

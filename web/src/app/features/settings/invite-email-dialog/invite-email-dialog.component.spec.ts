@@ -101,4 +101,30 @@ describe('InviteEmailDialogComponent', () => {
     expect(dialogRef.close).toHaveBeenCalledWith();
     expect(invitations.sendByEmail).not.toHaveBeenCalled();
   });
+
+  describe('for a new family', () => {
+    beforeEach(async () => {
+      TestBed.resetTestingModule();
+      await TestBed.configureTestingModule({
+        imports: [InviteEmailDialogComponent, translocoTesting()],
+        providers: [
+          { provide: InvitationService, useValue: invitations },
+          { provide: MatDialogRef, useValue: dialogRef },
+          { provide: MAT_DIALOG_DATA, useValue: { familyId: null } },
+        ],
+      }).compileComponents();
+      fixture = TestBed.createComponent(InviteEmailDialogComponent);
+      await fixture.whenStable();
+    });
+
+    it('says the link lets them create their family, and sends without a family', async () => {
+      expect(host().textContent).toContain(en.invitations.emailDialog.textNewFamily);
+      expect(host().textContent).not.toContain(en.invitations.emailDialog.text);
+
+      type('carl@mail.com');
+      await click(button('send'));
+
+      expect(invitations.sendByEmail).toHaveBeenCalledWith(null, 'carl@mail.com');
+    });
+  });
 });

@@ -13,12 +13,13 @@ public sealed record SetupRequest(string? Email, string? DisplayName, string? Pa
 
 public sealed record LoginRequest(string? Email, string? Password);
 
-public sealed record RegisterRequest(string? Email, string? DisplayName, string? Password, string? Language);
+/// <summary><c>FamilyName</c>: the family a new-family invitation creates; ignored for a join invitation.</summary>
+public sealed record RegisterRequest(string? Email, string? DisplayName, string? Password, string? Language, string? FamilyName);
 
 /// <summary><c>Kind</c>: <c>join</c> or <c>newFamily</c>; <c>FamilyName</c> is null for a new-family invitation.</summary>
 public sealed record InvitationResponse(string Kind, string InvitedBy, string? FamilyName, DateTimeOffset ExpiresAt);
 
-/// <summary><c>FamilyName</c> is for new-family invitations (spec 03 slice 16), ignored for now.</summary>
+/// <summary><c>FamilyName</c>: the family a new-family invitation creates; ignored for a join invitation.</summary>
 public sealed record AcceptInvitationRequest(string? FamilyName);
 
 public sealed record AcceptInvitationResponse(Guid FamilyId);
@@ -173,7 +174,8 @@ public static class AuthEndpoints
         CancellationToken cancellationToken)
     {
         var result = await registration.RegisterAsync(
-            new RegisterCommand(token, request.Email, request.DisplayName, request.Password, request.Language), cancellationToken);
+            new RegisterCommand(token, request.Email, request.DisplayName, request.Password, request.Language, request.FamilyName),
+            cancellationToken);
 
         switch (result)
         {
@@ -187,12 +189,16 @@ public static class AuthEndpoints
         }
     }
 
-    /// <summary>Accepts an invitation with the signed-in account; 409 <c>alreadyMember</c> leaves the invitation unused.</summary>
+    /// <summary>
+    /// Accepts an invitation with the signed-in account; 409 <c>alreadyMember</c> leaves the invitation unused, as does a
+    /// 400 on the family name of a new-family invitation.
+    /// </summary>
     private static async Task<IResult> AcceptInvitationAsync(
         string token, AcceptInvitationRequest request, RegistrationService registration, HttpContext context, CancellationToken cancellationToken) =>
-        await registration.AcceptAsync(CurrentUser(context)!, token, cancellationToken) switch
+        await registration.AcceptAsync(CurrentUser(context)!, token, request.FamilyName, cancellationToken) switch
         {
             AcceptResult.Accepted accepted => Results.Ok(new AcceptInvitationResponse(accepted.FamilyId)),
+            AcceptResult.Invalid invalid => ValidationProblem(invalid.Errors),
             AcceptResult.AlreadyMember => Results.Json(new ErrorResponse("alreadyMember"), statusCode: StatusCodes.Status409Conflict),
             var result => InvitationUnavailable(((AcceptResult.Unavailable)result).Problem),
         };

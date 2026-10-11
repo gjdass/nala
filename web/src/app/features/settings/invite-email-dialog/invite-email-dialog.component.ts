@@ -9,10 +9,11 @@ import { InvitationService } from '../../../core/invitations/invitation.service'
 import { email, errorCode } from '../../auth/auth.validators';
 
 export interface InviteEmailDialogData {
-  familyId: string;
+  /** `null`: an invitation to create a family. */
+  familyId: string | null;
 }
 
-/** Emails an invitation link to the family to an address; closes with that address once sent. */
+/** Emails an invitation link (to the family, or to create one) to an address; closes with that address once sent. */
 @Component({
   selector: 'nala-invite-email-dialog',
   imports: [
@@ -30,6 +31,10 @@ export interface InviteEmailDialogData {
 export class InviteEmailDialogComponent {
   private readonly invitations = inject(InvitationService);
   private readonly data = inject<InviteEmailDialogData>(MAT_DIALOG_DATA);
+  protected readonly textKey =
+    this.data.familyId === null
+      ? 'invitations.emailDialog.textNewFamily'
+      : 'invitations.emailDialog.text';
   private readonly dialogRef =
     inject<MatDialogRef<InviteEmailDialogComponent, string>>(MatDialogRef);
 

@@ -16,7 +16,7 @@
     (click)="invite()"
     data-testid="invite"
   >
-    {{ 'invitations.invite' | transloco }}
+    {{ (newFamily() ? 'invitations.inviteFamily' : 'invitations.invite') | transloco }}
   </button>
 </div>
 

@@ -17,6 +17,9 @@ public abstract record CreateInvitationResult
 
     /// <summary>The family is unknown, or the caller isn't in it.</summary>
     public sealed record FamilyNotFound : CreateInvitationResult;
+
+    /// <summary>A new-family invitation, by anyone but the instance admin.</summary>
+    public sealed record AdminOnly : CreateInvitationResult;
 }
 
 public abstract record RevokeInvitationResult
@@ -32,6 +35,9 @@ public abstract record RevokeInvitationResult
 
     /// <summary>Used or expired: there is nothing left to revoke.</summary>
     public sealed record Unavailable(InvitationProblem Problem) : RevokeInvitationResult;
+
+    /// <summary>A new-family invitation, by anyone but the instance admin.</summary>
+    public sealed record AdminOnly : RevokeInvitationResult;
 }
 
 public abstract record SendInvitationResult
@@ -41,6 +47,9 @@ public abstract record SendInvitationResult
     /// <summary>The family is unknown, or the caller isn't in it.</summary>
     public sealed record FamilyNotFound : SendInvitationResult;
 
+    /// <summary>A new-family invitation, by anyone but the instance admin.</summary>
+    public sealed record AdminOnly : SendInvitationResult;
+
     /// <summary>SMTP isn't configured.</summary>
     public sealed record Disabled : SendInvitationResult;
 
@@ -49,8 +58,8 @@ public abstract record SendInvitationResult
 }
 
 /// <summary>
-/// Join invitations to a family (spec 03). Any of its members can create, list and revoke them; for anyone else the
-/// family answers as unknown, through the shared family check.
+/// Join invitations to a family (spec 03): any of its members can create, list and revoke them; for anyone else the
+/// family answers as unknown, through the shared family check. New-family invitations (spec 02): the instance admin's only.
 /// </summary>
 public class InvitationService(
     IInvitationRepository invitations,
@@ -83,14 +92,9 @@ public class InvitationService(
             return new SendInvitationResult.Disabled();
         }
 
-        if (string.IsNullOrWhiteSpace(email))
+        if (InvalidEmail(email, out var normalized) is { } invalid)
         {
-            return Invalid("required");
-        }
-
-        if (!EmailAddress.TryNormalize(email, out var normalized))
-        {
-            return Invalid("invalid");
+            return invalid;
         }
 
         if (await users.GetByEmailAsync(normalized, cancellationToken) is { } user
@@ -105,22 +109,84 @@ public class InvitationService(
             return new SendInvitationResult.FamilyNotFound();
         }
 
-        var created = await AddAsync(actor, familyId, cancellationToken);
-        outbox.Enqueue(InvitationEmail.Compose(actor, family.Name, normalized, publicUrl, created.Token, created.ExpiresAt));
-        return new SendInvitationResult.Sent(created.ExpiresAt);
-
-        static SendInvitationResult.Invalid Invalid(string code) => new(new Dictionary<string, string> { ["email"] = code });
+        return await SendAsync(actor, family, normalized, publicUrl, cancellationToken);
     }
 
     /// <summary>The family's unused, unexpired and unrevoked invitations, newest first; null when the family is unknown to the caller.</summary>
     public async Task<IReadOnlyList<PendingInvitation>?> ListPendingAsync(
-        User actor, Guid familyId, CancellationToken cancellationToken = default)
+        User actor, Guid familyId, CancellationToken cancellationToken = default) =>
+        await access.RoleInAsync(actor, familyId, cancellationToken) is null
+            ? null
+            : await PendingAsync(familyId, cancellationToken);
+
+    /// <summary>Idempotent: an already revoked invitation stays as it was. Another family's invitation is unknown.</summary>
+    public async Task<RevokeInvitationResult> RevokeAsync(
+        User actor, Guid familyId, Guid id, CancellationToken cancellationToken = default) =>
+        await access.RoleInAsync(actor, familyId, cancellationToken) is null
+            ? new RevokeInvitationResult.FamilyNotFound()
+            : await RevokeInAsync(familyId, id, cancellationToken);
+
+    /// <summary>A link that lets its recipient create a family; the instance admin only.</summary>
+    public async Task<CreateInvitationResult> CreateNewFamilyAsync(User actor, CancellationToken cancellationToken = default) =>
+        actor.IsAdmin
+            ? new CreateInvitationResult.Created(await AddAsync(actor, familyId: null, cancellationToken))
+            : new CreateInvitationResult.AdminOnly();
+
+    /// <summary>
+    /// Creates a new-family invitation and queues its link to <paramref name="email"/>; the instance admin only. Anyone can
+    /// create a family, even with an account. <paramref name="publicUrl"/> is null when SMTP is off, checked after the admin.
+    /// </summary>
+    public async Task<SendInvitationResult> SendNewFamilyByEmailAsync(
+        User actor, string? email, Uri? publicUrl, CancellationToken cancellationToken = default)
     {
-        if (await access.RoleInAsync(actor, familyId, cancellationToken) is null)
+        if (!actor.IsAdmin)
         {
-            return null;
+            return new SendInvitationResult.AdminOnly();
         }
 
+        if (publicUrl is null)
+        {
+            return new SendInvitationResult.Disabled();
+        }
+
+        return InvalidEmail(email, out var normalized) is { } invalid
+            ? invalid
+            : await SendAsync(actor, family: null, normalized, publicUrl, cancellationToken);
+    }
+
+    /// <summary>The pending new-family invitations, newest first; null for anyone but the instance admin.</summary>
+    public async Task<IReadOnlyList<PendingInvitation>?> ListPendingNewFamilyAsync(
+        User actor, CancellationToken cancellationToken = default) =>
+        actor.IsAdmin ? await PendingAsync(familyId: null, cancellationToken) : null;
+
+    /// <summary>Like <see cref="RevokeAsync"/>; a join invitation is unknown here.</summary>
+    public async Task<RevokeInvitationResult> RevokeNewFamilyAsync(User actor, Guid id, CancellationToken cancellationToken = default) =>
+        actor.IsAdmin
+            ? await RevokeInAsync(familyId: null, id, cancellationToken)
+            : new RevokeInvitationResult.AdminOnly();
+
+    private static SendInvitationResult.Invalid Invalid(string code) => new(new Dictionary<string, string> { ["email"] = code });
+
+    private static SendInvitationResult.Invalid? InvalidEmail(string? email, out string normalized)
+    {
+        normalized = string.Empty;
+        return string.IsNullOrWhiteSpace(email) ? Invalid("required")
+            : !EmailAddress.TryNormalize(email, out normalized) ? Invalid("invalid")
+            : null;
+    }
+
+    /// <summary>A join invitation to <paramref name="family"/>, or a new-family one when it is null.</summary>
+    private async Task<SendInvitationResult> SendAsync(
+        User actor, Family? family, string email, Uri publicUrl, CancellationToken cancellationToken)
+    {
+        var created = await AddAsync(actor, family?.Id, cancellationToken);
+        outbox.Enqueue(InvitationEmail.Compose(actor, family?.Name, email, publicUrl, created.Token, created.ExpiresAt));
+        return new SendInvitationResult.Sent(created.ExpiresAt);
+    }
+
+    /// <summary><paramref name="familyId"/> null: the new-family invitations.</summary>
+    private async Task<IReadOnlyList<PendingInvitation>> PendingAsync(Guid? familyId, CancellationToken cancellationToken)
+    {
         var pending = await invitations.ListPendingAsync(familyId, time.GetUtcNow(), cancellationToken);
 
         // Users are never hard-deleted, and a deleted account keeps its display name.
@@ -136,15 +202,9 @@ public class InvitationService(
             .ToList();
     }
 
-    /// <summary>Idempotent: an already revoked invitation stays as it was. Another family's invitation is unknown.</summary>
-    public async Task<RevokeInvitationResult> RevokeAsync(
-        User actor, Guid familyId, Guid id, CancellationToken cancellationToken = default)
+    /// <summary>Revokes an invitation of <paramref name="familyId"/> (null: a new-family one); any other is unknown.</summary>
+    private async Task<RevokeInvitationResult> RevokeInAsync(Guid? familyId, Guid id, CancellationToken cancellationToken)
     {
-        if (await access.RoleInAsync(actor, familyId, cancellationToken) is null)
-        {
-            return new RevokeInvitationResult.FamilyNotFound();
-        }
-
         var invitation = await invitations.GetByIdAsync(id, cancellationToken);
         if (invitation is null || invitation.FamilyId != familyId)
         {
@@ -165,7 +225,7 @@ public class InvitationService(
             : new RevokeInvitationResult.Unavailable(problem);
     }
 
-    private async Task<CreatedInvitation> AddAsync(User actor, Guid familyId, CancellationToken cancellationToken)
+    private async Task<CreatedInvitation> AddAsync(User actor, Guid? familyId, CancellationToken cancellationToken)
     {
         var now = time.GetUtcNow();
         var token = LinkToken.Generate();
