@@ -808,8 +808,17 @@
     "trends": "Trends",
     "settings": "Settings"
   },
-  "comingSoon": {
-    "title": "Coming soon",
-    "text": "This page is on its way."
+  "trends": {
+    "section": "Section",
+    "range": {
+      "label": "Range",
+      "7d": "7 days",
+      "30d": "30 days",
+      "3m": "3 months",
+      "6m": "6 months",
+      "birth": "Since birth"
+    },
+    "previous": "Previous period",
+    "next": "Next period"
   }
 }

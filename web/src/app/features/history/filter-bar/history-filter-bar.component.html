@@ -2,7 +2,7 @@
   <mat-chip
     highlighted
     tabindex="0"
-    [matMenuTriggerFor]="windowMenu"
+    [matMenuTriggerFor]="windowChoice.menu()"
     [attr.aria-label]="'history.window.label' | transloco"
     data-testid="window-chip"
   >
@@ -21,26 +21,14 @@
   </mat-chip>
 </mat-chip-set>
 
-<mat-menu #windowMenu="matMenu" [ariaLabel]="'history.window.label' | transloco">
-  @for (w of windows; track w) {
-    <button
-      mat-menu-item
-      type="button"
-      role="menuitemradio"
-      [attr.aria-checked]="w === window()"
-      (click)="windowChange.emit(w)"
-      data-testid="window-option"
-    >
-      <span class="option">
-        <span>{{ 'history.window.' + w | transloco }}</span>
-        <mat-pseudo-checkbox
-          appearance="minimal"
-          [state]="w === window() ? 'checked' : 'unchecked'"
-        />
-      </span>
-    </button>
-  }
-</mat-menu>
+<nala-choice-menu
+  #windowChoice
+  ariaLabel="history.window.label"
+  optionTestId="window-option"
+  [options]="windowOptions"
+  [value]="window()"
+  (valueChange)="windowChange.emit($event)"
+/>
 
 <mat-menu #menu="matMenu" [ariaLabel]="'history.sections' | transloco">
   @for (section of visible(); track section.key) {

@@ -6,6 +6,10 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { TranslocoPipe } from '@jsverse/transloco';
+import {
+  ChoiceMenuComponent,
+  ChoiceOption,
+} from '../../../shared/ui/choice-menu/choice-menu.component';
 import { SectionKey } from '../../../core/sections/section.models';
 import { HISTORY_WINDOWS, HistoryWindow } from '../history-filters';
 
@@ -26,6 +30,7 @@ export interface FilterBarSection {
 @Component({
   selector: 'nala-history-filter-bar',
   imports: [
+    ChoiceMenuComponent,
     MatChipsModule,
     MatDividerModule,
     MatIconModule,
@@ -47,7 +52,10 @@ export class HistoryFilterBarComponent {
   /** The new selection, in the menu's order. */
   readonly selectedChange = output<SectionKey[]>();
 
-  protected readonly windows = HISTORY_WINDOWS;
+  protected readonly windowOptions: ChoiceOption<HistoryWindow>[] = HISTORY_WINDOWS.map((w) => ({
+    value: w,
+    labelKey: `history.window.${w}`,
+  }));
   protected readonly visible = computed(() => this.sections().filter((s) => s.visible));
   protected readonly hidden = computed(() => this.sections().filter((s) => !s.visible));
 

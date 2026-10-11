@@ -36,7 +36,7 @@ This spec has four parts:
 ### Bottom navigation bar
 - Shared `nala-bottom-nav`, on every signed-in screen (auth state with a user), never on the signed-out ones (setup, login, invitation, password reset).
 - Four destinations, in this order: **Dashboard** (`/`, home), **History** (`/history`), **Trends** (`/trends`), **Settings** (`/settings`), each an icon only (the destination name is its accessible name and tooltip), the current one marked with the M3 active indicator pill. History is active on `/history`, whatever its query (a card's All activities opens it too, spec 11). The settings page has no back link (it is a destination).
-- History (`/history`) is feature 11 (spec 11). Trends is a placeholder: the shared top app bar, the destination as page title and a "Coming soon" empty state; its content is feature 12.
+- History (`/history`) is feature 11 (spec 11) and Trends (`/trends`) feature 12 (spec 12).
 - Floating, fixed at the bottom of the screen above the safe area: not full width (70 % of the screen width minus the 16 px side margins, at most 294 px wide, centred), compact (about 60 px tall: 48 dp destinations, no visible labels), fully rounded ends, a translucent surface with the page blurred behind it (`backdrop-filter`, theme token `--nala-nav-bar-surface` in `_navigation.scss`), like the iOS "liquid glass" bars. While it holds timer rows (see [Running timers mini-bar](#running-timers-mini-bar)) it takes the full width between the side margins, at most 360 px, and the M3 large corner.
 - The bar sits in a dock pinned at the bottom of the app shell, after the page, so the page's last element always scrolls above it (no per-page padding).
 
@@ -310,7 +310,7 @@ Hold for every section with timers (Feed's breastfeed, Sleep, Pump); each covers
 - [x] Every signed-in screen shows the floating bottom navigation bar with Dashboard, History, Trends and Settings, in that order, icons only with their names as accessible names; the current destination is marked active.
 - [x] Signed-out screens don't show it.
 - [x] The top app bar has no settings button; the settings page has no back link.
-- [x] Trends (`/trends`) shows a "Coming soon" empty state.
+- [x] Trends (`/trends`) is spec 12's page.
 - [x] The last element of a page can scroll above the navigation bar.
 
 ### Safe areas & brand
@@ -379,7 +379,7 @@ Use Angular Material's M3 components as-is. Customize only through the global th
 ## UI notes — shared components
 
 - Shell: `nala-top-app-bar`, `nala-bottom-nav`, `nala-running-timers-bar`, empty state.
-- Section: `nala-section-card` (with the live timer button, `[sectionBanner]` slot, `empty` input), `nala-kind-picker`, `nala-history-list`, `nala-entry-list-item` (`dateOnly`).
+- Section: `nala-section-card` (with the live timer button, `[sectionBanner]` slot, `empty` input), `nala-kind-picker`, `nala-history-list`, `nala-entry-list-item` (`dateOnly`), `nala-choice-menu` (single-choice `menuitemradio` menu for filter chips: History's window, Trends' section and range).
 - Entry sheet: `nala-entry-sheet`, `nala-sheet-header`, `nala-form-row`, `nala-suggestion-row`, `nala-notes-row`, `nala-entry-audit`, delete action, confirm dialog.
 - Form rows: `nala-time-row` (`dateOnly`), `nala-chip-choice-row` (optional single choice as filter chips, translated or raw labels, optionally not clearable, optional `dotToken` colour dots and `error`), `nala-chip-toggles-row` (filter chips each bound to its own boolean), `nala-switch-row`, `nala-number-fields-row` (number fields side by side, each with its own suffix, bounds, step and error; a decimal `step` brings the decimal keyboard).
 - Timers: `nala-timer`, `nala-split-timer`, `nala-duration-field` + `nala-duration-dialog`, `nala-banner`.
@@ -396,5 +396,5 @@ Use Angular Material's M3 components as-is. Customize only through the global th
 
 ## Out of scope
 
-- Totals, statistics and charts in cards or history (the Trends destination is a placeholder; its content comes with feature 12's spec).
+- Totals, statistics and charts in cards or history (they live in Trends, spec 12).
 - Home widgets other than section cards.

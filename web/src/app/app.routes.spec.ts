@@ -6,7 +6,7 @@ import { routes } from './app.routes';
 import { AuthState } from './core/auth/auth.models';
 import { SECTIONS } from './core/sections/section.models';
 import { fakeSection } from './testing/fake-section';
-import { ComingSoonPage } from './features/coming-soon/coming-soon.page';
+import { TrendsPage } from './features/trends/trends.page';
 import { HistoryPage } from './features/history/history.page';
 
 describe('app routes', () => {
@@ -129,7 +129,7 @@ describe('app routes', () => {
 
   it.each([
     ['history', HistoryPage],
-    ['trends', ComingSoonPage],
+    ['trends', TrendsPage],
   ])('/%s shows its page', async (path, page) => {
     const route = routes.find((r) => r.path === path)!;
 

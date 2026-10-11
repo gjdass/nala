@@ -1,0 +1,67 @@
+<mat-chip-set>
+  <mat-chip
+    highlighted
+    tabindex="0"
+    [matMenuTriggerFor]="sectionChoice.menu()"
+    [attr.aria-label]="'trends.section' | transloco"
+    data-testid="section-chip"
+  >
+    {{ 'sections.' + section() | transloco }}
+    <mat-icon matChipTrailingIcon>arrow_drop_down</mat-icon>
+  </mat-chip>
+  <mat-chip
+    highlighted
+    tabindex="0"
+    [matMenuTriggerFor]="rangeChoice.menu()"
+    [attr.aria-label]="'trends.range.label' | transloco"
+    data-testid="range-chip"
+  >
+    {{ 'trends.range.' + range() | transloco }}
+    <mat-icon matChipTrailingIcon>arrow_drop_down</mat-icon>
+  </mat-chip>
+</mat-chip-set>
+
+<div class="navigation">
+  @if (navigable()) {
+    <button
+      mat-icon-button
+      type="button"
+      [attr.aria-label]="'trends.previous' | transloco"
+      [disabled]="!canGoBack()"
+      (click)="previous.emit()"
+      data-testid="previous"
+    >
+      <mat-icon>chevron_left</mat-icon>
+    </button>
+  }
+  <span class="label" data-testid="period-label">{{ label() }}</span>
+  @if (navigable()) {
+    <button
+      mat-icon-button
+      type="button"
+      [attr.aria-label]="'trends.next' | transloco"
+      [disabled]="!canGoForward()"
+      (click)="next.emit()"
+      data-testid="next"
+    >
+      <mat-icon>chevron_right</mat-icon>
+    </button>
+  }
+</div>
+
+<nala-choice-menu
+  #sectionChoice
+  ariaLabel="trends.section"
+  optionTestId="section-option"
+  [options]="sectionOptions()"
+  [value]="section()"
+  (valueChange)="sectionChange.emit($event)"
+/>
+<nala-choice-menu
+  #rangeChoice
+  ariaLabel="trends.range.label"
+  optionTestId="range-option"
+  [options]="rangeOptions"
+  [value]="range()"
+  (valueChange)="rangeChange.emit($event)"
+/>

@@ -1,0 +1,39 @@
+<nala-top-app-bar
+  [families]="families.families() ?? []"
+  [family]="families.current()"
+  [babies]="store.babies() ?? []"
+  [selected]="store.selected()"
+  (babySelected)="store.select($event)"
+  (familySelected)="store.selectFamily($event)"
+/>
+
+<main>
+  @switch (store.screen()) {
+    @case ('error') {
+      <p class="error" role="alert" data-testid="babies-error">
+        {{ 'babies.loadError' | transloco }}
+      </p>
+    }
+    @case ('noFamily') {
+      <nala-no-family />
+    }
+    @case ('noBaby') {
+      <nala-no-baby />
+    }
+    @case ('ready') {
+      <nala-trends-filter-bar
+        [section]="section()"
+        [range]="filters().range"
+        [sections]="menuSections()"
+        [label]="label()"
+        [canGoBack]="canGoBack()"
+        [canGoForward]="canGoForward()"
+        [navigable]="navigable()"
+        (sectionChange)="setSection($event)"
+        (rangeChange)="setRange($event)"
+        (previous)="offset.set(offset() - 1)"
+        (next)="offset.set(offset() + 1)"
+      />
+    }
+  }
+</main>

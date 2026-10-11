@@ -53,9 +53,7 @@ export const routes: Routes = [
   {
     path: 'trends',
     canActivate: [authGuard],
-    data: { destination: 'trends' },
-    loadComponent: () =>
-      import('./features/coming-soon/coming-soon.page').then((m) => m.ComingSoonPage),
+    loadComponent: () => import('./features/trends/trends.page').then((m) => m.TrendsPage),
   },
   {
     // The retired section history page (bookmarks): History for that section, if built.

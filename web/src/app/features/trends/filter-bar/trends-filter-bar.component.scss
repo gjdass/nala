@@ -1,0 +1,18 @@
+:host {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+}
+
+.navigation {
+  display: flex;
+  align-items: center;
+}
+
+.label {
+  color: var(--mat-sys-on-surface);
+  font: var(--mat-sys-title-small);
+  text-align: center;
+}

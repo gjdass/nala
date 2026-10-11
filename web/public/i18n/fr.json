@@ -808,8 +808,17 @@
     "trends": "Tendances",
     "settings": "Paramètres"
   },
-  "comingSoon": {
-    "title": "Bientôt disponible",
-    "text": "Cette page arrive bientôt."
+  "trends": {
+    "section": "Section",
+    "range": {
+      "label": "Période",
+      "7d": "7 jours",
+      "30d": "30 jours",
+      "3m": "3 mois",
+      "6m": "6 mois",
+      "birth": "Depuis la naissance"
+    },
+    "previous": "Période précédente",
+    "next": "Période suivante"
   }
 }
