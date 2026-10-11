@@ -822,11 +822,19 @@
     "next": "Next period",
     "cards": {
       "sleep": "Sleep",
-      "longestSleep": "Longest sleep"
+      "longestSleep": "Longest sleep",
+      "diapers": "Diapers",
+      "pumped": "Pumped",
+      "sessions": "Sessions"
     },
     "day": "Day",
     "night": "Night",
+    "wet": "Wet",
+    "dirty": "Dirty",
+    "left": "Left",
+    "right": "Right",
     "perDay": "per day",
+    "diaperHeadline": "{{wet}} wet · {{dirty}} dirty",
     "weekOf": "Week of {{date}}",
     "noValue": "–",
     "loadError": "Couldn't load the trends."

@@ -14,3 +14,25 @@ export interface SleepTrendDay {
   nightSeconds: number;
   longestSeconds: number | null;
 }
+
+/**
+ * A data day of Diaper trends (spec 12), on the local day of each diaper: wet and dirty diapers (a wet
+ * and dirty one counts in both) and every diaper, dry ones included.
+ */
+export interface DiaperTrendDay {
+  date: string;
+  wet: number;
+  dirty: number;
+  count: number;
+}
+
+/**
+ * A data day of Pump trends (spec 12), on the local day each session starts: ml per side (a side not
+ * recorded counts 0) and the sessions.
+ */
+export interface PumpTrendDay {
+  date: string;
+  leftMl: number;
+  rightMl: number;
+  sessions: number;
+}

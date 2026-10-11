@@ -1,71 +1,35 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
-import { rxResource, toSignal } from '@angular/core/rxjs-interop';
-import { MatButtonModule } from '@angular/material/button';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
-import { onReload } from '../../../core/refresh/data-refresh.service';
-import { formatDate } from '../../../core/time/local-date';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { TranslocoPipe } from '@jsverse/transloco';
 import { HighlightDurationPipe } from '../../../core/time/highlight-duration';
 import { SleepTrendDay } from '../../../core/trends/trends.models';
 import { TrendsService } from '../../../core/trends/trends.service';
-import { BarChartComponent, BarDatum } from '../../../shared/ui/bar-chart/bar-chart.component';
+import { BarChartComponent } from '../../../shared/ui/bar-chart/bar-chart.component';
+import { TrendsLoadStateComponent } from '../load-state/trends-load-state.component';
 import { MetricCardComponent } from '../metric-card/metric-card.component';
 import { TrendsPeriod } from '../trends-period';
-import { bucketBars, bucketOf, dailyAverage, firstDayOfWeek } from '../trends-stats';
+import { TrendsSection } from '../trends-section';
+import { dailyAverage } from '../trends-stats';
 
 /**
  * Sleep's trends (spec 12): the Sleep card (night and day stacked) and the Longest sleep card (on the
- * days a sleep starts), a bar per day, week or month, headlines averaged over the past data days. Loads again when
- * the baby or the period changes and on the reload signal, keeping the cards meanwhile.
+ * days a sleep starts), headlines averaged over the past data days.
  */
 @Component({
   selector: 'nala-sleep-trends',
-  imports: [
-    BarChartComponent,
-    MatButtonModule,
-    MatProgressSpinnerModule,
-    MetricCardComponent,
-    TranslocoPipe,
-  ],
+  imports: [BarChartComponent, MetricCardComponent, TranslocoPipe, TrendsLoadStateComponent],
   providers: [HighlightDurationPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './sleep-trends.component.html',
   styleUrl: '../trends-cards.scss',
 })
-export class SleepTrendsComponent {
+export class SleepTrendsComponent extends TrendsSection<SleepTrendDay> {
   private readonly trends = inject(TrendsService);
   private readonly duration = inject(HighlightDurationPipe);
-  private readonly transloco = inject(TranslocoService);
-  protected readonly lang = toSignal(this.transloco.langChanges$, {
-    initialValue: this.transloco.getActiveLang(),
-  });
-
-  readonly babyId = input.required<string>();
-  readonly period = input.required<TrendsPeriod>();
-  readonly today = input.required<Date>();
-
-  protected readonly days = rxResource({
-    params: () => ({ babyId: this.babyId(), period: this.period() }),
-    stream: ({ params }) => this.trends.sleeps(params.babyId, params.period),
-  });
 
   protected readonly format = (seconds: number) => this.duration.transform(seconds);
 
-  protected readonly series = computed(() => {
-    this.lang();
-    return [
-      { label: this.transloco.translate('trends.night') },
-      { label: this.transloco.translate('trends.day') },
-    ];
-  });
-  protected readonly longestSeries = computed(() => {
-    this.lang();
-    return [{ label: this.transloco.translate('trends.cards.longestSleep') }];
-  });
-
-  private readonly todayDate = computed(() => formatDate(this.today()));
-  protected readonly bucket = computed(() => bucketOf(this.period()));
-  protected readonly loaded = computed(() => this.days.value() ?? []);
+  protected readonly series = this.seriesOf(['trends.night', 'trends.day']);
+  protected readonly longestSeries = this.seriesOf(['trends.cards.longestSleep']);
 
   protected readonly sleepBars = computed(() =>
     this.bars((day) => [day.nightSeconds, day.daySeconds]),
@@ -73,6 +37,7 @@ export class SleepTrendsComponent {
   protected readonly sleepHeadline = computed(() =>
     this.headline(
       dailyAverage(this.loaded(), (d) => d.daySeconds + d.nightSeconds, this.todayDate()),
+      this.format,
     ),
   );
 
@@ -83,29 +48,13 @@ export class SleepTrendsComponent {
     this.loaded().every((day) => day.longestSeconds === null),
   );
   protected readonly longestHeadline = computed(() =>
-    this.headline(dailyAverage(this.loaded(), (d) => d.longestSeconds, this.todayDate())),
+    this.headline(
+      dailyAverage(this.loaded(), (d) => d.longestSeconds, this.todayDate()),
+      this.format,
+    ),
   );
 
-  constructor() {
-    onReload(() => this.days.reload());
-  }
-
-  /** A slot per day, week or month of the period; no bar without data or without a value. */
-  private bars(values: (day: SleepTrendDay) => number[] | null): BarDatum[] {
-    return bucketBars(
-      this.period(),
-      this.loaded(),
-      values,
-      this.todayDate(),
-      this.bucket(),
-      firstDayOfWeek(this.lang()),
-    );
-  }
-
-  private headline(average: number | null): string {
-    this.lang();
-    return average === null
-      ? this.transloco.translate('trends.noValue')
-      : this.duration.transform(average);
+  protected load(babyId: string, period: TrendsPeriod) {
+    return this.trends.sleeps(babyId, period);
   }
 }

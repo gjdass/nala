@@ -18,4 +18,7 @@ public interface IDiaperRepository
 
     /// <summary>The baby's diapers, newest first (time, then id, both descending), after <paramref name="after"/> when given.</summary>
     Task<IReadOnlyList<DiaperEntry>> ListAsync(Guid babyId, EntryCursor? after, int limit, CancellationToken cancellationToken = default);
+
+    /// <summary>The baby's diapers timed in [<paramref name="from"/>, <paramref name="to"/>).</summary>
+    Task<IReadOnlyList<Diaper>> ListInWindowAsync(Guid babyId, DateTimeOffset from, DateTimeOffset to, CancellationToken cancellationToken = default);
 }

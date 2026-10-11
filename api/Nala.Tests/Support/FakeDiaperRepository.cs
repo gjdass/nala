@@ -40,6 +40,9 @@ public class FakeDiaperRepository : IDiaperRepository
             .Select(ToEntry)
             .ToList());
 
+    public Task<IReadOnlyList<Diaper>> ListInWindowAsync(Guid babyId, DateTimeOffset from, DateTimeOffset to, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<Diaper>>(Diapers.Where(d => d.BabyId == babyId && d.Time >= from && d.Time < to).ToList());
+
     private DiaperEntry ToEntry(Diaper diaper) =>
         new(diaper, new UserName(diaper.LoggedByUserId, Names[diaper.LoggedByUserId]), new UserName(diaper.UpdatedByUserId, Names[diaper.UpdatedByUserId]));
 }

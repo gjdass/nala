@@ -17,7 +17,9 @@ import { SectionPreferencesService } from '../../core/sections/section-preferenc
 import { TopAppBarComponent } from '../../shared/ui/top-app-bar/top-app-bar.component';
 import { NoBabyComponent } from '../babies/no-baby/no-baby.component';
 import { NoFamilyComponent } from '../babies/no-family/no-family.component';
+import { DiaperTrendsComponent } from './diaper/diaper-trends.component';
 import { TrendsFilterBarComponent } from './filter-bar/trends-filter-bar.component';
+import { PumpTrendsComponent } from './pump/pump-trends.component';
 import { SleepTrendsComponent } from './sleep/sleep-trends.component';
 import {
   TRENDS_SECTIONS,
@@ -37,8 +39,10 @@ import { TrendsRange, canGoBack, canGoForward, period, periodLabel } from './tre
 @Component({
   selector: 'nala-trends',
   imports: [
+    DiaperTrendsComponent,
     NoBabyComponent,
     NoFamilyComponent,
+    PumpTrendsComponent,
     SleepTrendsComponent,
     TopAppBarComponent,
     TrendsFilterBarComponent,

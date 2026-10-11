@@ -14,6 +14,7 @@ const hours = (v: number) => `${v}h`;
       [series]="series()"
       [format]="format"
       [bucket]="bucket()"
+      [layout]="layout()"
       lang="en"
     />`,
 })
@@ -22,6 +23,7 @@ class HostComponent {
   readonly series = signal<BarSeries[]>([{ label: 'Night' }, { label: 'Day' }]);
   readonly format = hours;
   readonly bucket = signal<'day' | 'week' | 'month'>('day');
+  readonly layout = signal<'stacked' | 'grouped'>('stacked');
 }
 
 describe('BarChartComponent', () => {
@@ -171,5 +173,47 @@ describe('BarChartComponent', () => {
 
     expect(bars()[0].getAttribute('aria-label')).toBe('July 2026: 11h per day (Night 8h, Day 3h)');
     expect(xLabels()).toEqual(['Jul 2026', 'Sep', 'Nov', 'Jan 2027']);
+  });
+
+  describe('grouped', () => {
+    beforeEach(async () => {
+      fixture.componentInstance.layout.set('grouped');
+      fixture.componentInstance.series.set([{ label: 'Wet' }, { label: 'Dirty' }]);
+      await fixture.whenStable();
+    });
+
+    it('draws the series side by side, each from the baseline, scaled to the tallest one', async () => {
+      await show([
+        { date: '2026-10-07', values: [6, 2] },
+        { date: '2026-10-08', values: [3, 3] },
+      ]);
+
+      const [wet, dirty] = segments(bars()[0]);
+      expect(Number(wet.getAttribute('x'))).toBeLessThan(Number(dirty.getAttribute('x')));
+      for (const segment of [wet, dirty]) {
+        const bottom = Number(segment.getAttribute('y')) + Number(segment.getAttribute('height'));
+        expect(bottom).toBeCloseTo(100);
+      }
+      expect(Number(wet.getAttribute('height'))).toBeCloseTo(100);
+      expect(Number(dirty.getAttribute('height'))).toBeCloseTo(100 / 3);
+      expect(wet.getAttribute('class')).toContain('series-0');
+      expect(dirty.getAttribute('class')).toContain('series-1');
+      expect(host().querySelector('[data-testid="chart-max"]')!.textContent!.trim()).toBe('6h');
+    });
+
+    it('labels a bar with each series and no total', async () => {
+      await show([{ date: '2026-10-07', values: [6, 2] }]);
+
+      expect(bars()[0].getAttribute('aria-label')).toBe('Wed, Oct 7: Wet 6h, Dirty 2h');
+    });
+
+    it('labels a week bar with its daily averages', async () => {
+      fixture.componentInstance.bucket.set('week');
+      await show([{ date: '2026-10-04', values: [6.4, 2.1] }]);
+
+      expect(bars()[0].getAttribute('aria-label')).toBe(
+        'Week of Oct 4, per day: Wet 6.4h, Dirty 2.1h',
+      );
+    });
   });
 });

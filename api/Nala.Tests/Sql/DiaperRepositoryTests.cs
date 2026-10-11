@@ -209,4 +209,21 @@ public class DiaperRepositoryTests
 
         Assert.That((await ListAsync()).Select(e => e.Diaper.Id), Is.EqualTo(new[] { kept.Id }));
     }
+
+    [Test]
+    public async Task Listing_in_a_window_returns_the_babys_diapers_timed_inside_it()
+    {
+        var from = Now.AddDays(-2);
+        var to = Now.AddDays(-1);
+        var first = await AddAsync(time: from);
+        var inside = await AddAsync(time: from.AddHours(5));
+        await AddAsync(time: from.AddMinutes(-1));
+        await AddAsync(time: to);
+        await AddAsync(_tom, time: from.AddHours(5));
+
+        await using var db = _db();
+        var diapers = await new DiaperRepository(db).ListInWindowAsync(_lea.Id, from, to);
+
+        Assert.That(diapers.Select(d => d.Id), Is.EquivalentTo(new[] { first.Id, inside.Id }));
+    }
 }

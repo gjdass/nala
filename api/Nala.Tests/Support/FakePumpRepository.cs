@@ -40,6 +40,9 @@ public class FakePumpRepository : IPumpRepository
             .Select(ToEntry)
             .ToList());
 
+    public Task<IReadOnlyList<Pump>> ListStartingInAsync(Guid babyId, DateTimeOffset from, DateTimeOffset to, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<Pump>>(Pumps.Where(p => p.BabyId == babyId && p.StartTime >= from && p.StartTime < to).ToList());
+
     public Task<PumpEntry?> GetLiveAsync(Guid babyId, CancellationToken cancellationToken = default) =>
         Task.FromResult(Live().Where(p => p.BabyId == babyId).Select(ToEntry).FirstOrDefault());
 

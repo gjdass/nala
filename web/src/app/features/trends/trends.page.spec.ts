@@ -21,6 +21,8 @@ import { SectionPreferencesService } from '../../core/sections/section-preferenc
 import { TrendsService } from '../../core/trends/trends.service';
 import { fakeDataRefresh } from '../../testing/data-refresh';
 import { translocoTesting } from '../../testing/transloco-testing';
+import { DiaperTrendsComponent } from './diaper/diaper-trends.component';
+import { PumpTrendsComponent } from './pump/pump-trends.component';
 import { SleepTrendsComponent } from './sleep/sleep-trends.component';
 import { TrendsPage } from './trends.page';
 
@@ -98,7 +100,10 @@ describe('TrendsPage', () => {
           useValue: { preferences, load: loadSections, save: vi.fn() },
         },
         { provide: DataRefreshService, useValue: refresh },
-        { provide: TrendsService, useValue: { sleeps: () => of([]) } },
+        {
+          provide: TrendsService,
+          useValue: { sleeps: () => of([]), diapers: () => of([]), pumps: () => of([]) },
+        },
       ],
     }).compileComponents();
   });
@@ -296,6 +301,21 @@ describe('TrendsPage', () => {
       expect(sleep.babyId()).toBe('b1');
       expect(sleep.period()).toEqual({ from: new Date(2026, 9, 3), to: new Date(2026, 9, 9) });
       expect(sleep.today()).toEqual(new Date(2026, 9, 9));
+    });
+
+    it.each([
+      [2, DiaperTrendsComponent],
+      [3, PumpTrendsComponent],
+    ] as const)('shows the trends of section option %i', async (option, component) => {
+      await loadBabies([lea]);
+
+      await pick('section-chip', 'section-option', option);
+
+      const trends = fixture.debugElement.query(By.directive(component)).componentInstance as
+        | DiaperTrendsComponent
+        | PumpTrendsComponent;
+      expect(trends.babyId()).toBe('b1');
+      expect(trends.period()).toEqual({ from: new Date(2026, 9, 3), to: new Date(2026, 9, 9) });
     });
   });
 

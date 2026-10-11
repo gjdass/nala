@@ -1,0 +1,21 @@
+<nala-trends-load-state
+  [error]="!!days.error()"
+  [loaded]="days.hasValue()"
+  (retry)="days.reload()"
+>
+  <nala-metric-card
+    section="diaper"
+    [title]="'trends.cards.diapers' | transloco"
+    [headline]="diaperHeadline()"
+    [empty]="loaded().length === 0"
+  >
+    <nala-bar-chart
+      [bars]="diaperBars()"
+      [series]="series()"
+      [format]="format"
+      [bucket]="bucket()"
+      [lang]="lang()"
+      layout="grouped"
+    />
+  </nala-metric-card>
+</nala-trends-load-state>

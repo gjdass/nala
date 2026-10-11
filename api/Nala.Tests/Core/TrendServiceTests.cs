@@ -1,5 +1,7 @@
 using Nala.Core.Babies;
+using Nala.Core.Diapers;
 using Nala.Core.Families;
+using Nala.Core.Pumps;
 using Nala.Core.Sleeps;
 using Nala.Core.Trends;
 using Nala.Core.Users;
@@ -13,6 +15,8 @@ public class TrendServiceTests
     private static readonly DateTimeOffset Now = new(2026, 9, 30, 12, 0, 0, TimeSpan.Zero);
 
     private FakeSleepRepository _sleeps = null!;
+    private FakeDiaperRepository _diapers = null!;
+    private FakePumpRepository _pumps = null!;
     private FakeFamilyRepository _families = null!;
     private FakeBabyRepository _babies = null!;
     private TrendService _service = null!;
@@ -26,9 +30,11 @@ public class TrendServiceTests
     public void SetUp()
     {
         _sleeps = new FakeSleepRepository();
+        _diapers = new FakeDiaperRepository();
+        _pumps = new FakePumpRepository();
         _families = new FakeFamilyRepository();
         _babies = new FakeBabyRepository(_families);
-        _service = new TrendService(_sleeps, new FamilyAccess(_families, _babies), new FixedTimeProvider(Now));
+        _service = new TrendService(_sleeps, _diapers, _pumps, new FamilyAccess(_families, _babies), new FixedTimeProvider(Now));
         _anna = new User { Id = Guid.NewGuid(), DisplayName = "Anna", PreferredLanguage = "en" };
         _carl = new User { Id = Guid.NewGuid(), DisplayName = "Carl", PreferredLanguage = "en" };
         var martins = _families.Seed("Martins", Now, _anna);
@@ -152,23 +158,152 @@ public class TrendServiceTests
         Assert.That(days[^1], Is.EqualTo(new SleepTrendDay(new DateOnly(2026, 9, 10), 0, Hours(1), Hours(2))));
     }
 
-    [Test]
-    public async Task Invalid_parameters_return_their_codes()
+    private void AddDiaper(DateTimeOffset time, bool wet, bool dirty, Baby? baby = null) => _diapers.Diapers.Add(new Diaper
     {
-        var result = await _service.SleepsAsync(_anna, _lea.Id, "2026-09-10", "2026-09-01", "Mars/Olympus");
+        Id = Guid.NewGuid(),
+        BabyId = (baby ?? _lea).Id,
+        Time = time,
+        Wet = wet,
+        Dirty = dirty,
+        LoggedByUserId = _anna.Id,
+        UpdatedByUserId = _anna.Id,
+        CreatedAt = Now,
+        UpdatedAt = Now,
+    });
 
-        Assert.That(((TrendResult<SleepTrendDay>.Invalid)result).Errors,
-            Is.EqualTo(new Dictionary<string, string> { ["to"] = "beforeFrom", ["tz"] = "invalid" }));
+    private async Task<IReadOnlyList<DiaperTrendDay>> DiaperDaysAsync(string from = "2026-09-01", string to = "2026-09-30") =>
+        ((TrendResult<DiaperTrendDay>.Days)await _service.DiapersAsync(_anna, _lea.Id, from, to, "Europe/Paris")).Items;
+
+    [Test]
+    public async Task Diapers_count_wet_dirty_and_all_per_local_day_of_their_time()
+    {
+        AddDiaper(At(10, 8), wet: true, dirty: true);
+        AddDiaper(At(10, 12), wet: true, dirty: false);
+        AddDiaper(At(10, 16), wet: false, dirty: false);
+        // 00:30 in Paris is still the 10th in UTC: it belongs to the 11th.
+        AddDiaper(At(11, 0, 30), wet: false, dirty: true);
+
+        Assert.That(await DiaperDaysAsync(), Is.EqualTo(new[]
+        {
+            new DiaperTrendDay(new DateOnly(2026, 9, 10), 2, 1, 3),
+            new DiaperTrendDay(new DateOnly(2026, 9, 11), 0, 1, 1),
+        }));
     }
 
     [Test]
-    public async Task Another_familys_or_an_unknown_baby_is_not_found()
+    public async Task A_day_with_only_dry_diapers_is_a_data_day_with_zero_wet_and_dirty()
+    {
+        AddDiaper(At(12, 9), wet: false, dirty: false);
+
+        Assert.That(await DiaperDaysAsync(), Is.EqualTo(new[] { new DiaperTrendDay(new DateOnly(2026, 9, 12), 0, 0, 1) }));
+    }
+
+    [Test]
+    public async Task Only_the_babys_diapers_in_the_range_are_returned_in_date_order()
+    {
+        AddDiaper(At(8, 9), wet: true, dirty: false);
+        AddDiaper(At(5, 9), wet: true, dirty: false);
+        AddDiaper(At(3, 23, 59), wet: true, dirty: false);
+        AddDiaper(At(11, 0), wet: true, dirty: false);
+        AddDiaper(At(6, 9), wet: true, dirty: false, _tom);
+
+        var days = await DiaperDaysAsync(from: "2026-09-04", to: "2026-09-10");
+
+        Assert.That(days.Select(d => d.Date), Is.EqualTo(new[] { new DateOnly(2026, 9, 5), new DateOnly(2026, 9, 8) }));
+    }
+
+    private void AddPump(DateTimeOffset start, DateTimeOffset? end, int? leftMl, int? rightMl, Baby? baby = null) => _pumps.Pumps.Add(new Pump
+    {
+        Id = Guid.NewGuid(),
+        BabyId = (baby ?? _lea).Id,
+        StartTime = start,
+        EndTime = end,
+        LeftMl = leftMl,
+        RightMl = rightMl,
+        LoggedByUserId = _anna.Id,
+        UpdatedByUserId = _anna.Id,
+        CreatedAt = Now,
+        UpdatedAt = Now,
+    });
+
+    private async Task<IReadOnlyList<PumpTrendDay>> PumpDaysAsync(string from = "2026-09-01", string to = "2026-09-30") =>
+        ((TrendResult<PumpTrendDay>.Days)await _service.PumpsAsync(_anna, _lea.Id, from, to, "Europe/Paris")).Items;
+
+    [Test]
+    public async Task Pump_volumes_and_sessions_go_to_the_start_day()
+    {
+        AddPump(At(10, 9), At(10, 9, 20), 90, 80);
+        AddPump(At(10, 23, 50), At(11, 0, 15), 60, null);
+        AddPump(At(11, 9), At(11, 9, 20), null, null);
+
+        Assert.That(await PumpDaysAsync(), Is.EqualTo(new[]
+        {
+            new PumpTrendDay(new DateOnly(2026, 9, 10), 150, 80, 2),
+            new PumpTrendDay(new DateOnly(2026, 9, 11), 0, 0, 1),
+        }));
+    }
+
+    [Test]
+    public async Task A_live_pump_session_counts_on_its_start_day()
+    {
+        AddPump(At(30, 13, 50), null, 40, 30);
+
+        Assert.That(await PumpDaysAsync(), Is.EqualTo(new[] { new PumpTrendDay(new DateOnly(2026, 9, 30), 40, 30, 1) }));
+    }
+
+    [Test]
+    public async Task Only_the_babys_pump_sessions_starting_in_the_range_are_returned()
+    {
+        AddPump(At(3, 23, 50), At(4, 0, 20), 50, 50);
+        AddPump(At(7, 9), At(7, 9, 20), 50, 50);
+        AddPump(At(11, 0), At(11, 0, 20), 50, 50);
+        AddPump(At(6, 9), At(6, 9, 20), 50, 50, _tom);
+
+        var days = await PumpDaysAsync(from: "2026-09-04", to: "2026-09-10");
+
+        Assert.That(days.Select(d => d.Date), Is.EqualTo(new[] { new DateOnly(2026, 9, 7) }));
+    }
+
+    /// <summary>A section's trends, whatever their day type.</summary>
+    private async Task<object> TrendsAsync(string section, Guid babyId, string from, string to, string tz) => section switch
+    {
+        "sleeps" => await _service.SleepsAsync(_anna, babyId, from, to, tz),
+        "diapers" => await _service.DiapersAsync(_anna, babyId, from, to, tz),
+        _ => await _service.PumpsAsync(_anna, babyId, from, to, tz),
+    };
+
+    [TestCase("sleeps")]
+    [TestCase("diapers")]
+    [TestCase("pumps")]
+    public async Task Invalid_parameters_return_their_codes(string section)
+    {
+        var result = await TrendsAsync(section, _lea.Id, "2026-09-10", "2026-09-01", "Mars/Olympus");
+
+        var errors = result switch
+        {
+            TrendResult<SleepTrendDay>.Invalid i => i.Errors,
+            TrendResult<DiaperTrendDay>.Invalid i => i.Errors,
+            TrendResult<PumpTrendDay>.Invalid i => i.Errors,
+            _ => null,
+        };
+        Assert.That(errors,
+            Is.EqualTo(new Dictionary<string, string> { ["to"] = "beforeFrom", ["tz"] = "invalid" }));
+    }
+
+    [TestCase("sleeps")]
+    [TestCase("diapers")]
+    [TestCase("pumps")]
+    public async Task Another_familys_or_an_unknown_baby_is_not_found(string section)
     {
         AddSleep(At(10, 13), At(10, 14), _max);
+        AddDiaper(At(10, 13), wet: true, dirty: false, _max);
+        AddPump(At(10, 13), At(10, 14), 50, 50, _max);
 
-        Assert.That(await _service.SleepsAsync(_anna, _max.Id, "2026-09-01", "2026-09-30", "Europe/Paris"),
-            Is.InstanceOf<TrendResult<SleepTrendDay>.BabyNotFound>());
-        Assert.That(await _service.SleepsAsync(_anna, Guid.NewGuid(), "2026-09-01", "2026-09-30", "Europe/Paris"),
-            Is.InstanceOf<TrendResult<SleepTrendDay>.BabyNotFound>());
+        foreach (var babyId in new[] { _max.Id, Guid.NewGuid() })
+        {
+            var result = await TrendsAsync(section, babyId, "2026-09-01", "2026-09-30", "Europe/Paris");
+
+            Assert.That(result.GetType().Name, Is.EqualTo("BabyNotFound"));
+        }
     }
 }

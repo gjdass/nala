@@ -48,6 +48,18 @@ public class TrendEndpointTests
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Created));
     }
 
+    private async Task AddDiaperAsync(DateTimeOffset time, bool wet, bool dirty)
+    {
+        var response = await _admin.PostAsJsonAsync("/api/diapers", new { id = Guid.NewGuid(), babyId = _leaId, time = time.ToUniversalTime(), wet, dirty });
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Created));
+    }
+
+    private async Task AddPumpAsync(DateTimeOffset start, DateTimeOffset end, int? leftMl, int? rightMl)
+    {
+        var response = await _admin.PostAsJsonAsync("/api/pumps", new { id = Guid.NewGuid(), babyId = _leaId, startTime = start.ToUniversalTime(), endTime = end.ToUniversalTime(), leftMl, rightMl });
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Created));
+    }
+
     private static async Task<JsonElement> JsonAsync(HttpResponseMessage response) =>
         await response.Content.ReadFromJsonAsync<JsonElement>();
 
@@ -76,25 +88,82 @@ public class TrendEndpointTests
         });
     }
 
-    [TestCase("", "from", "required")]
-    [TestCase("?from=2026-09-10&to=2026-09-16", "tz", "required")]
-    [TestCase("?from=2026-9-10&to=2026-09-16&tz=Europe/Paris", "from", "invalid")]
-    [TestCase("?from=2026-09-10&to=nope&tz=Europe/Paris", "to", "invalid")]
-    [TestCase("?from=2026-09-10&to=2026-09-09&tz=Europe/Paris", "to", "beforeFrom")]
-    [TestCase("?from=2026-09-10&to=2026-09-16&tz=Mars/Olympus", "tz", "invalid")]
-    public async Task Missing_or_invalid_parameters_answer_their_codes(string query, string field, string code)
+    [Test]
+    public async Task Diaper_trends_return_the_data_days_aggregated_in_the_zone()
     {
-        var response = await _admin.GetAsync($"/api/babies/{_leaId}/trends/sleeps{query}");
+        await AddDiaperAsync(At(10, 8), wet: true, dirty: true);
+        await AddDiaperAsync(At(10, 12), wet: false, dirty: false);
+        await AddDiaperAsync(At(11, 0, 30), wet: true, dirty: false);
+        await AddDiaperAsync(At(20, 9), wet: true, dirty: false);
+
+        var response = await _admin.GetAsync($"/api/babies/{_leaId}/trends/diapers?from=2026-09-10&to=2026-09-16&tz=Europe/Paris");
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        var days = (await JsonAsync(response)).GetProperty("days");
+        Assert.That(days.GetArrayLength(), Is.EqualTo(2));
+        Assert.Multiple(() =>
+        {
+            Assert.That(days[0].GetProperty("date").GetString(), Is.EqualTo("2026-09-10"));
+            Assert.That(days[0].GetProperty("wet").GetInt32(), Is.EqualTo(1));
+            Assert.That(days[0].GetProperty("dirty").GetInt32(), Is.EqualTo(1));
+            Assert.That(days[0].GetProperty("count").GetInt32(), Is.EqualTo(2));
+            Assert.That(days[1].GetProperty("date").GetString(), Is.EqualTo("2026-09-11"));
+            Assert.That(days[1].GetProperty("wet").GetInt32(), Is.EqualTo(1));
+            Assert.That(days[1].GetProperty("dirty").GetInt32(), Is.EqualTo(0));
+            Assert.That(days[1].GetProperty("count").GetInt32(), Is.EqualTo(1));
+        });
+    }
+
+    [Test]
+    public async Task Pump_trends_return_the_data_days_aggregated_in_the_zone()
+    {
+        await AddPumpAsync(At(10, 9), At(10, 9, 20), 90, 80);
+        await AddPumpAsync(At(10, 23, 50), At(11, 0, 10), 60, null);
+        await AddPumpAsync(At(20, 9), At(20, 9, 20), 50, 50);
+
+        var response = await _admin.GetAsync($"/api/babies/{_leaId}/trends/pumps?from=2026-09-10&to=2026-09-16&tz=Europe/Paris");
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        var days = (await JsonAsync(response)).GetProperty("days");
+        Assert.That(days.GetArrayLength(), Is.EqualTo(1));
+        Assert.Multiple(() =>
+        {
+            Assert.That(days[0].GetProperty("date").GetString(), Is.EqualTo("2026-09-10"));
+            Assert.That(days[0].GetProperty("leftMl").GetInt32(), Is.EqualTo(150));
+            Assert.That(days[0].GetProperty("rightMl").GetInt32(), Is.EqualTo(80));
+            Assert.That(days[0].GetProperty("sessions").GetInt32(), Is.EqualTo(2));
+        });
+    }
+
+    private static readonly string[] Sections = ["sleeps", "diapers", "pumps"];
+
+    private static IEnumerable<TestCaseData> InvalidQueries() =>
+        from section in Sections
+        from data in new[]
+        {
+            ("", "from", "required"),
+            ("?from=2026-09-10&to=2026-09-16", "tz", "required"),
+            ("?from=2026-9-10&to=2026-09-16&tz=Europe/Paris", "from", "invalid"),
+            ("?from=2026-09-10&to=nope&tz=Europe/Paris", "to", "invalid"),
+            ("?from=2026-09-10&to=2026-09-09&tz=Europe/Paris", "to", "beforeFrom"),
+            ("?from=2026-09-10&to=2026-09-16&tz=Mars/Olympus", "tz", "invalid"),
+        }
+        select new TestCaseData(section, data.Item1, data.Item2, data.Item3);
+
+    [TestCaseSource(nameof(InvalidQueries))]
+    public async Task Missing_or_invalid_parameters_answer_their_codes(string section, string query, string field, string code)
+    {
+        var response = await _admin.GetAsync($"/api/babies/{_leaId}/trends/{section}{query}");
 
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
         Assert.That((await JsonAsync(response)).GetProperty("errors").GetProperty(field)[0].GetString(), Is.EqualTo(code));
     }
 
-    [Test]
-    public async Task Another_familys_baby_and_an_unknown_baby_answer_404()
+    [TestCaseSource(nameof(Sections))]
+    public async Task Another_familys_baby_and_an_unknown_baby_answer_404(string section)
     {
         using var carl = await OtherFamily.CreateAsync(_factory);
-        const string query = "trends/sleeps?from=2026-09-10&to=2026-09-16&tz=Europe/Paris";
+        var query = $"trends/{section}?from=2026-09-10&to=2026-09-16&tz=Europe/Paris";
 
         foreach (var (client, babyId) in new[] { (carl.Client, _leaId), (_admin, Guid.NewGuid()) })
         {

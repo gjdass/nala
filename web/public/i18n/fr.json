@@ -822,11 +822,19 @@
     "next": "Période suivante",
     "cards": {
       "sleep": "Sommeil",
-      "longestSleep": "Plus long sommeil"
+      "longestSleep": "Plus long sommeil",
+      "diapers": "Couches",
+      "pumped": "Tiré",
+      "sessions": "Séances"
     },
     "day": "Jour",
     "night": "Nuit",
+    "wet": "Mouillée",
+    "dirty": "Selles",
+    "left": "Gauche",
+    "right": "Droite",
     "perDay": "par jour",
+    "diaperHeadline": "{{wet}} mouillées · {{dirty}} selles",
     "weekOf": "Semaine du {{date}}",
     "noValue": "–",
     "loadError": "Impossible de charger les tendances."

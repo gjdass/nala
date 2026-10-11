@@ -1,4 +1,6 @@
+using Nala.Core.Diapers;
 using Nala.Core.Families;
+using Nala.Core.Pumps;
 using Nala.Core.Sleeps;
 using Nala.Core.Users;
 
@@ -19,7 +21,7 @@ public abstract record TrendResult<TDay>
 /// A baby's trends (spec 12), aggregated per local day of the caller's time zone. Only data days are returned: a day without
 /// an entry of the section has no data, it isn't a zero. A live entry counts up to now.
 /// </summary>
-public class TrendService(ISleepRepository sleeps, FamilyAccess access, TimeProvider time)
+public class TrendService(ISleepRepository sleeps, IDiaperRepository diapers, IPumpRepository pumps, FamilyAccess access, TimeProvider time)
 {
     /// <summary>Night is 19:00 to 07:00 local, fixed.</summary>
     public static readonly TimeOnly NightStart = new(19, 0);
@@ -29,45 +31,74 @@ public class TrendService(ISleepRepository sleeps, FamilyAccess access, TimeProv
     /// <summary>
     /// Seconds slept by day and by night, split across local days; the longest sleep (its whole duration) on the day it starts.
     /// </summary>
-    public async Task<TrendResult<SleepTrendDay>> SleepsAsync(
-        User user, Guid babyId, string? from, string? to, string? tz, CancellationToken cancellationToken = default)
+    public Task<TrendResult<SleepTrendDay>> SleepsAsync(
+        User user, Guid babyId, string? from, string? to, string? tz, CancellationToken cancellationToken = default) =>
+        AggregateAsync(user, babyId, from, to, tz, async range =>
+        {
+            var now = time.GetUtcNow();
+            var (rangeStart, rangeEnd) = (range.StartUtc, range.EndUtc);
+            var days = new SortedDictionary<DateOnly, (TimeSpan Day, TimeSpan Night, TimeSpan? Longest)>();
+            foreach (var sleep in await sleeps.ListOverlappingAsync(babyId, rangeStart, rangeEnd, cancellationToken))
+            {
+                var end = sleep.EndTime ?? now;
+                foreach (var piece in LocalDays.Split(LocalDays.Max(sleep.StartTime, rangeStart), LocalDays.Min(end, rangeEnd), range.Zone))
+                {
+                    var night = Night(piece, range.Zone);
+                    var day = days.GetValueOrDefault(piece.Date);
+                    days[piece.Date] = (day.Day + piece.Duration - night, day.Night + night, day.Longest);
+                }
+
+                var startDate = LocalDays.DateOf(sleep.StartTime, range.Zone);
+                if (end > sleep.StartTime && range.Contains(startDate))
+                {
+                    var day = days[startDate];
+                    var duration = end - sleep.StartTime;
+                    days[startDate] = day with { Longest = day.Longest is { } longest && longest > duration ? longest : duration };
+                }
+            }
+
+            return days
+                .Select(d => new SleepTrendDay(d.Key, Seconds(d.Value.Day), Seconds(d.Value.Night), d.Value.Longest is { } l ? Seconds(l) : null))
+                .ToList();
+        }, cancellationToken);
+
+    /// <summary>Wet, dirty and all diapers on the local day of their time; a wet and dirty one counts in both.</summary>
+    public Task<TrendResult<DiaperTrendDay>> DiapersAsync(
+        User user, Guid babyId, string? from, string? to, string? tz, CancellationToken cancellationToken = default) =>
+        AggregateAsync(user, babyId, from, to, tz, async range =>
+            (await diapers.ListInWindowAsync(babyId, range.StartUtc, range.EndUtc, cancellationToken))
+                .GroupBy(d => LocalDays.DateOf(d.Time, range.Zone))
+                .OrderBy(g => g.Key)
+                .Select(g => new DiaperTrendDay(g.Key, g.Count(d => d.Wet), g.Count(d => d.Dirty), g.Count()))
+                .ToList(), cancellationToken);
+
+    /// <summary>Ml per side and sessions on the local day each session starts, live ones included; a side not recorded counts 0.</summary>
+    public Task<TrendResult<PumpTrendDay>> PumpsAsync(
+        User user, Guid babyId, string? from, string? to, string? tz, CancellationToken cancellationToken = default) =>
+        AggregateAsync(user, babyId, from, to, tz, async range =>
+            (await pumps.ListStartingInAsync(babyId, range.StartUtc, range.EndUtc, cancellationToken))
+                .GroupBy(p => LocalDays.DateOf(p.StartTime, range.Zone))
+                .OrderBy(g => g.Key)
+                .Select(g => new PumpTrendDay(g.Key, g.Sum(p => p.LeftMl ?? 0), g.Sum(p => p.RightMl ?? 0), g.Count()))
+                .ToList(), cancellationToken);
+
+    /// <summary>The query checked (its codes), then the baby (not found across families), then the section's data days.</summary>
+    private async Task<TrendResult<TDay>> AggregateAsync<TDay>(
+        User user, Guid babyId, string? from, string? to, string? tz,
+        Func<TrendRange, Task<List<TDay>>> aggregate, CancellationToken cancellationToken)
     {
         var errors = new Dictionary<string, string>();
         if (TrendRange.Parse(from, to, tz, errors) is not { } range)
         {
-            return new TrendResult<SleepTrendDay>.Invalid(errors);
+            return new TrendResult<TDay>.Invalid(errors);
         }
 
         if (!await access.ReachesBabyAsync(user, babyId, cancellationToken))
         {
-            return new TrendResult<SleepTrendDay>.BabyNotFound();
+            return new TrendResult<TDay>.BabyNotFound();
         }
 
-        var now = time.GetUtcNow();
-        var (rangeStart, rangeEnd) = (range.StartUtc, range.EndUtc);
-        var days = new SortedDictionary<DateOnly, (TimeSpan Day, TimeSpan Night, TimeSpan? Longest)>();
-        foreach (var sleep in await sleeps.ListOverlappingAsync(babyId, rangeStart, rangeEnd, cancellationToken))
-        {
-            var end = sleep.EndTime ?? now;
-            foreach (var piece in LocalDays.Split(LocalDays.Max(sleep.StartTime, rangeStart), LocalDays.Min(end, rangeEnd), range.Zone))
-            {
-                var night = Night(piece, range.Zone);
-                var day = days.GetValueOrDefault(piece.Date);
-                days[piece.Date] = (day.Day + piece.Duration - night, day.Night + night, day.Longest);
-            }
-
-            var startDate = LocalDays.DateOf(sleep.StartTime, range.Zone);
-            if (end > sleep.StartTime && range.Contains(startDate))
-            {
-                var day = days[startDate];
-                var duration = end - sleep.StartTime;
-                days[startDate] = day with { Longest = day.Longest is { } longest && longest > duration ? longest : duration };
-            }
-        }
-
-        return new TrendResult<SleepTrendDay>.Days(days
-            .Select(d => new SleepTrendDay(d.Key, Seconds(d.Value.Day), Seconds(d.Value.Night), d.Value.Longest is { } l ? Seconds(l) : null))
-            .ToList());
+        return new TrendResult<TDay>.Days(await aggregate(range));
     }
 
     /// <summary>The part of a day's piece between 00:00 and 07:00 or between 19:00 and midnight.</summary>

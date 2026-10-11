@@ -34,7 +34,7 @@ On the Trends tab, show how the selected baby's feeding, sleep, diapers, pumping
 - Each card: the metric's title, a **headline** for the whole period (above the chart, M3 headline typescale) and a full-width chart about 160 px tall, in the section's colour scheme. Tapping a bar or a point shows its date (or week / month) and value; tapping elsewhere hides it. No zoom, no scroll inside a chart.
 - With no data day in the period, the card shows "Nothing logged in this period" instead of the chart. For Longest sleep, the data days are the days a sleep starts.
 - Headlines are **daily averages over the data days of the period** (today excluded), unless stated otherwise. When no day is left to average (only today has entries), the headline shows "–" and the chart still shows today's bar.
-- Bar charts: a dashed top line labelled with the tallest bar's value, a baseline, and day labels under the bars (every day on 7 days, about five otherwise; the month on the first label and when it changes). Stacked series use the scheme's `primary` (first, at the bottom) and `primary-container`, with a legend; Sleep stacks night under day.
+- Bar charts: a dashed top line labelled with the tallest bar's value, a baseline, and day labels under the bars (every day on 7 days, about five otherwise; the month on the first label and when it changes). Stacked series use the scheme's `primary` (first, at the bottom) and `primary-container`, with a legend; Sleep stacks night under day. Grouped series (Diapers) stand side by side in the same colours, each from the baseline, scaled to the tallest single value; their value lists each series without a total ("Wed, Oct 7: Wet 6, Dirty 2", "Week of Oct 4, per day: Wet 6.4, Dirty 2.1"), since a wet and dirty diaper counts in both.
 
 | Section | Card | Chart | Headline |
 |---|---|---|---|
@@ -44,14 +44,15 @@ On the Trends tab, show how the selected baby's feeding, sleep, diapers, pumping
 | Feed | Time between feeds | average gap per day | average gap ("2h 40m") |
 | Sleep | Sleep | hours, stacked day / night | hours per day |
 | Sleep | Longest sleep | longest single sleep per day (days where a sleep starts) | average longest sleep |
-| Diaper | Diapers | two bars side by side: wet, dirty (a wet and dirty diaper counts in both) | wet per day · dirty per day |
+| Diaper | Diapers | two bars side by side: wet, dirty (a wet and dirty diaper counts in both) | wet per day · dirty per day ("6.4 wet · 2.1 dirty per day", FR "6,4 mouillées · 2,1 selles par jour") |
 | Pump | Pumped | ml, stacked left / right | ml per day |
 | Pump | Sessions | sessions per day | sessions per day |
 | Growth | Weight / Length / Head | one line chart each (see Growth) | the latest value in the period and its date |
 
 - **Time between feeds:** the gap from one feed's start to the next feed's start, counted on the day of the later feed. **Gaps over 8 hours are ignored** (a night or a stretch nobody logged). A day with a single feed has no gap value.
 - **Night:** **19:00 to 07:00 local**, fixed. A sleep's minutes inside that window are night, the others day. The longest sleep counts, whole, on the day it starts; a day that only gets the end of an earlier sleep is a Sleep data day but has no longest sleep (no bar, left out of that headline).
-- Durations use spec 04's highlight duration format; ml and counts are rounded to whole numbers, averages of counts to one decimal ("6.4").
+- Durations use spec 04's highlight duration format; ml and counts are rounded to whole numbers, averages of counts to one decimal ("6.4"), in the language's digits ("6,4").
+- **Diaper:** a diaper counts on the day of its time; a day with only dry diapers is a data day with 0 wet and 0 dirty. **Pump:** a session (live included) counts, with its volumes, on the day it starts; a side not recorded counts 0 ml, and a session without any volume is still a session.
 
 ### Growth
 - No buckets: each measure (weight in kg, length in cm, head circumference in cm) is a **line chart of its values in the period**, a point per measurement, joined by lines, with the birth measurement (03) as the first point when it falls in the period. The x axis is dated; the tooltip gives the date, the value and the baby's age then.
@@ -125,7 +126,7 @@ Each slice: red → green → commit "Spec 12 slice N: …" on `master`.
 - [x] **2. Sleep trends API.** Shared local-day splitting in `Nala.Core` (spans split across local days in an IANA zone, live up to now), the 19:00–07:00 night split, longest sleep on its start day; `GET …/trends/sleeps` with the `from` / `to` / `tz` codes and 404 across families; `tzdata` in the runtime image. Covers: API (sleeps); midnight split (API side); night / longest sleep.
 - [x] **3. Sleep cards, daily bars.** `nala-bar-chart` (stacked series, no-data gaps, lighter today, tap for a value, accessible labels), `nala-metric-card` (title, headline, chart or "Nothing logged in this period", section scheme), the trends service, headlines (daily averages over data days, today excluded), reload on filter change / baby switch / reload signal, error with Try again; Sleep's two cards. Covers: no-data days; today lighter and out of headlines; tapping a bar; nothing logged; cards (Sleep).
 - [x] **4. Week and month buckets.** Web regrouping by day / week (locale's first day) / month, daily average over data days, today left out. Covers: buckets; today out of week / month bars.
-- [ ] **5. Diaper and Pump.** `…/trends/diapers` and `…/trends/pumps`; grouped bars in `nala-bar-chart`; the Diapers, Pumped and Sessions cards. Covers: cards (Diaper, Pump); API (diapers, pumps).
+- [x] **5. Diaper and Pump.** `…/trends/diapers` and `…/trends/pumps`; grouped bars in `nala-bar-chart`; the Diapers, Pumped and Sessions cards. Covers: cards (Diaper, Pump); API (diapers, pumps).
 - [ ] **6. Feed.** `…/trends/feeds` (counts by kind, bottle ml by milk type, breast seconds per side split across midnight, gaps ≤ 8 h on the later feed's day); the four Feed cards with the L / R split headline. Covers: cards (Feed); time between feeds; breastfeeding split; API (feeds); live entry counted up to now.
 - [ ] **7. Growth.** `…/trends/growth` (measurements in range with the birth point, milestones); `nala-line-chart` (dated points, line from two points, markers, tooltip with date, value and age); Weight (with milestone markers), Length and Head cards. Covers: Growth (both); cards (Growth).
 
@@ -137,7 +138,7 @@ Nothing new stored on the server: trends are computed from the existing entries.
 
 - Reused: `nala-top-app-bar`, 03's `nala-no-baby`, History's dropdown chip pattern (the single-choice menu is the shared `nala-choice-menu`, also used by History's window chip), `.nala-scheme-<key>` on each card.
 - New shared components: `nala-bar-chart` (stacked or grouped series, gaps for no-data days, lighter today bar, tap to show a value) and `nala-line-chart` (dated points, optional markers), both hand-made SVG from theme tokens, no chart library. Every bar and point has an accessible label ("Tue 7 Oct: 6 feeds").
-- New in `features/trends/`: the page, `nala-trends-filter-bar`, `nala-metric-card`.
+- New in `features/trends/`: the page, `nala-trends-filter-bar`, `nala-metric-card`, `nala-trends-load-state` (spinner, error with Try again, else the cards) and `TrendsSection`, the base of every section's trends (loading per baby and period, reload signal, buckets, headlines).
 - The API image resolves IANA time zones: the `aspnet:10.0` runtime image (Ubuntu) ships `tzdata`.
 - Labels (EN / FR): Trends / Tendances, Section / Section, Range / Période, 7 days / 7 jours, 30 days / 30 jours, 3 months / 3 mois, 6 months / 6 mois, Since birth / Depuis la naissance, Previous period / Période précédente, Next period / Période suivante, Week of {date} / Semaine du {date}, Feeds / Tétées et repas, Bottle / Biberon, Breastfeeding / Allaitement, Time between feeds / Temps entre les repas, Sleep / Sommeil, Day / Jour, Night / Nuit, Longest sleep / Plus long sommeil, Diapers / Couches, Wet / Mouillée, Dirty / Selles (spec 07's), Pumped / Tiré, Sessions / Séances, per day / par jour, Nothing logged in this period / Rien de noté sur cette période (reused from spec 11). Growth labels reuse spec 10's.
 

@@ -33,9 +33,9 @@
       @for (segment of bar.segments; track segment.series) {
         <rect
           [attr.class]="'segment series-' + segment.series"
-          [attr.x]="bar.x + barInset"
+          [attr.x]="segment.x"
           [attr.y]="segment.y"
-          [attr.width]="barWidth"
+          [attr.width]="segment.width"
           [attr.height]="segment.height"
           data-testid="segment"
         />

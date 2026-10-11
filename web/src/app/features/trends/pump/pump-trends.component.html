@@ -1,0 +1,34 @@
+<nala-trends-load-state
+  [error]="!!days.error()"
+  [loaded]="days.hasValue()"
+  (retry)="days.reload()"
+>
+  <nala-metric-card
+    section="pump"
+    [title]="'trends.cards.pumped' | transloco"
+    [headline]="pumpedHeadline()"
+    [empty]="loaded().length === 0"
+  >
+    <nala-bar-chart
+      [bars]="pumpedBars()"
+      [series]="pumpedSeries()"
+      [format]="formatMl"
+      [bucket]="bucket()"
+      [lang]="lang()"
+    />
+  </nala-metric-card>
+  <nala-metric-card
+    section="pump"
+    [title]="'trends.cards.sessions' | transloco"
+    [headline]="sessionsHeadline()"
+    [empty]="loaded().length === 0"
+  >
+    <nala-bar-chart
+      [bars]="sessionsBars()"
+      [series]="sessionsSeries()"
+      [format]="formatCount"
+      [bucket]="bucket()"
+      [lang]="lang()"
+    />
+  </nala-metric-card>
+</nala-trends-load-state>

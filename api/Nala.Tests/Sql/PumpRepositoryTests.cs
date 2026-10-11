@@ -258,4 +258,22 @@ public class PumpRepositoryTests
 
         Assert.That(live.Select(e => e.Pump.Id), Is.EqualTo(new[] { lea.Id }));
     }
+
+    [Test]
+    public async Task Listing_starting_in_a_window_returns_the_babys_sessions_live_included()
+    {
+        var from = Now.AddDays(-2);
+        var to = Now.AddDays(-1);
+        var first = await AddAsync(time: from);
+        var acrossEnd = await AddAsync(time: to.AddMinutes(-10));
+        var live = await AddAsync(time: from.AddHours(5), live: true);
+        await AddAsync(time: from.AddMinutes(-10));
+        await AddAsync(time: to);
+        await AddAsync(_tom, time: from.AddHours(5));
+
+        await using var db = _db();
+        var pumps = await new PumpRepository(db).ListStartingInAsync(_lea.Id, from, to);
+
+        Assert.That(pumps.Select(p => p.Id), Is.EquivalentTo(new[] { first.Id, acrossEnd.Id, live.Id }));
+    }
 }

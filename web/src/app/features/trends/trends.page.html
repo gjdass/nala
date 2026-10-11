@@ -40,6 +40,16 @@
             <nala-sleep-trends [babyId]="baby.id" [period]="period()" [today]="today()" />
           }
         }
+        @case ('diaper') {
+          @if (store.selected(); as baby) {
+            <nala-diaper-trends [babyId]="baby.id" [period]="period()" [today]="today()" />
+          }
+        }
+        @case ('pump') {
+          @if (store.selected(); as baby) {
+            <nala-pump-trends [babyId]="baby.id" [period]="period()" [today]="today()" />
+          }
+        }
       }
     }
   }

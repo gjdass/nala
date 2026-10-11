@@ -16,6 +16,11 @@ public class DiaperRepository(NalaDbContext db) : IDiaperRepository
     public Task<Diaper?> GetAsync(Guid id, CancellationToken cancellationToken = default) =>
         db.Set<Diaper>().SingleOrDefaultAsync(d => d.Id == id, cancellationToken);
 
+    public async Task<IReadOnlyList<Diaper>> ListInWindowAsync(Guid babyId, DateTimeOffset from, DateTimeOffset to, CancellationToken cancellationToken = default) =>
+        await db.Set<Diaper>().AsNoTracking()
+            .Where(d => d.BabyId == babyId && d.Time >= from && d.Time < to)
+            .ToListAsync(cancellationToken);
+
     public Task<DiaperEntry?> GetEntryAsync(Guid id, CancellationToken cancellationToken = default) =>
         Entries(db.Set<Diaper>().Where(d => d.Id == id)).SingleOrDefaultAsync(cancellationToken);
 

@@ -6,8 +6,14 @@ namespace Nala.Api.Trends;
 /// <summary>A data day of Sleep trends; <c>LongestSeconds</c> is null when no sleep starts that day.</summary>
 public sealed record SleepTrendDayResponse(DateOnly Date, long DaySeconds, long NightSeconds, long? LongestSeconds);
 
+/// <summary>A data day of Diaper trends: a wet and dirty diaper counts in both, <c>Count</c> includes dry ones.</summary>
+public sealed record DiaperTrendDayResponse(DateOnly Date, int Wet, int Dirty, int Count);
+
+/// <summary>A data day of Pump trends, on the day each session starts.</summary>
+public sealed record PumpTrendDayResponse(DateOnly Date, int LeftMl, int RightMl, int Sessions);
+
 /// <summary>Only the data days of the range, in date order.</summary>
-public sealed record SleepTrendsResponse(IEnumerable<SleepTrendDayResponse> Days);
+public sealed record TrendsResponse<TDay>(IEnumerable<TDay> Days);
 
 /// <summary>
 /// A baby's trends (spec 12), aggregated per local day of <c>tz</c> over the local dates <c>from</c> to <c>to</c>, both
@@ -21,17 +27,22 @@ public static class TrendEndpoints
     public static IEndpointRouteBuilder MapNalaTrends(this IEndpointRouteBuilder endpoints)
     {
         var trends = endpoints.MapGroup("/api/babies/{babyId:guid}/trends");
-        trends.MapGet("/sleeps", SleepsAsync);
+        trends.MapGet("/sleeps", async (Guid babyId, string? from, string? to, string? tz, TrendService service, HttpContext context, CancellationToken cancellationToken) =>
+            Respond(await service.SleepsAsync(AuthEndpoints.CurrentUser(context)!, babyId, from, to, tz, cancellationToken),
+                d => new SleepTrendDayResponse(d.Date, d.DaySeconds, d.NightSeconds, d.LongestSeconds)));
+        trends.MapGet("/diapers", async (Guid babyId, string? from, string? to, string? tz, TrendService service, HttpContext context, CancellationToken cancellationToken) =>
+            Respond(await service.DiapersAsync(AuthEndpoints.CurrentUser(context)!, babyId, from, to, tz, cancellationToken),
+                d => new DiaperTrendDayResponse(d.Date, d.Wet, d.Dirty, d.Count)));
+        trends.MapGet("/pumps", async (Guid babyId, string? from, string? to, string? tz, TrendService service, HttpContext context, CancellationToken cancellationToken) =>
+            Respond(await service.PumpsAsync(AuthEndpoints.CurrentUser(context)!, babyId, from, to, tz, cancellationToken),
+                d => new PumpTrendDayResponse(d.Date, d.LeftMl, d.RightMl, d.Sessions)));
         return endpoints;
     }
 
-    private static async Task<IResult> SleepsAsync(
-        Guid babyId, string? from, string? to, string? tz, TrendService trends, HttpContext context, CancellationToken cancellationToken) =>
-        await trends.SleepsAsync(AuthEndpoints.CurrentUser(context)!, babyId, from, to, tz, cancellationToken) switch
-        {
-            TrendResult<SleepTrendDay>.Days days => Results.Ok(new SleepTrendsResponse(
-                days.Items.Select(d => new SleepTrendDayResponse(d.Date, d.DaySeconds, d.NightSeconds, d.LongestSeconds)))),
-            TrendResult<SleepTrendDay>.Invalid invalid => AuthEndpoints.ValidationProblem(invalid.Errors),
-            _ => Results.Json(new ErrorResponse("babyNotFound"), statusCode: StatusCodes.Status404NotFound),
-        };
+    private static IResult Respond<TDay, TResponse>(TrendResult<TDay> result, Func<TDay, TResponse> toResponse) => result switch
+    {
+        TrendResult<TDay>.Days days => Results.Ok(new TrendsResponse<TResponse>(days.Items.Select(toResponse))),
+        TrendResult<TDay>.Invalid invalid => AuthEndpoints.ValidationProblem(invalid.Errors),
+        _ => Results.Json(new ErrorResponse("babyNotFound"), statusCode: StatusCodes.Status404NotFound),
+    };
 }

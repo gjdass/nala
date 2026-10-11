@@ -43,6 +43,11 @@ public class PumpRepository(NalaDbContext db) : IPumpRepository
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<Pump>> ListStartingInAsync(Guid babyId, DateTimeOffset from, DateTimeOffset to, CancellationToken cancellationToken = default) =>
+        await db.Set<Pump>().AsNoTracking()
+            .Where(p => p.BabyId == babyId && p.StartTime >= from && p.StartTime < to)
+            .ToListAsync(cancellationToken);
+
     public Task<PumpEntry?> GetLiveAsync(Guid babyId, CancellationToken cancellationToken = default) =>
         Entries(Live().Where(p => p.BabyId == babyId)).FirstOrDefaultAsync(cancellationToken);
 
