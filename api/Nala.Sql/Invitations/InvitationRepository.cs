@@ -119,9 +119,4 @@ public class InvitationRepository(NalaDbContext db) : IInvitationRepository
         await transaction.CommitAsync(cancellationToken);
         return true;
     }
-
-    public Task RevokePendingAsync(Guid createdByUserId, DateTimeOffset now, CancellationToken cancellationToken = default) =>
-        db.Set<Invitation>()
-            .Where(i => i.CreatedByUserId == createdByUserId && i.UsedAt == null && i.RevokedAt == null && i.ExpiresAt > now)
-            .ExecuteUpdateAsync(s => s.SetProperty(i => i.RevokedAt, now), cancellationToken);
 }

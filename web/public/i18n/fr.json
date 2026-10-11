@@ -138,6 +138,9 @@
       "dialogText": "C'est définitif. Saisissez votre mot de passe pour confirmer.",
       "cancel": "Annuler",
       "confirm": "Supprimer",
+      "familiesWarning": "Vous administrez ces familles : elles seront supprimées pour tous leurs membres, avec tous leurs bébés et leurs saisies.",
+      "noBaby": "Pas encore de bébé",
+      "confirmWithFamilies": "Supprimer mon compte et mes familles",
       "done": "Votre compte a été supprimé"
     },
     "admin": {

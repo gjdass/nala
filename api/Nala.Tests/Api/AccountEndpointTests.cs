@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Nala.Core.Auth;
+using Nala.Core.Families;
 using Nala.Core.Invitations;
 using Nala.Core.Users;
 using Nala.Tests.Support;
@@ -273,6 +274,84 @@ public class AccountEndpointTests
         var lookup = await visitor.GetAsync($"/api/auth/invitations/{token}");
         Assert.That(lookup.StatusCode, Is.EqualTo(HttpStatusCode.Gone));
         Assert.That(await CodeAsync(lookup), Is.EqualTo("invitationRevoked"));
+    }
+
+    /// <summary>Accepts, on <paramref name="client"/>, a join invitation from <paramref name="inviterId"/> to their only family.</summary>
+    private async Task JoinAsync(HttpClient client, Guid inviterId)
+    {
+        var token = await TestInvitations.SeedJoinAsync(_factory, inviterId);
+        var response = await client.PostAsJsonAsync($"/api/auth/invitations/{token}/accept", new { });
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+    }
+
+    private static async Task<Guid> AddBabyAsync(HttpClient client, Guid familyId)
+    {
+        var response = await client.PostAsJsonAsync("/api/babies", new { familyId, name = "Lea", birthDate = "2026-09-01" });
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Created));
+        return (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+    }
+
+    private static async Task<Guid> AddFeedAsync(HttpClient client, Guid babyId)
+    {
+        var id = Guid.NewGuid();
+        var response = await client.PostAsJsonAsync("/api/feeds", new
+        {
+            id,
+            babyId,
+            kind = "bottle",
+            startTime = DateTimeOffset.UtcNow.AddMinutes(-10),
+            milkType = "formula",
+            amountMl = 120,
+        });
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Created));
+        return id;
+    }
+
+    private static async Task<string[]> FamilyNamesAsync(HttpClient client) =>
+        (await client.GetFromJsonAsync<JsonElement[]>("/api/families"))!.Select(f => f.GetProperty("name").GetString()!).ToArray();
+
+    [Test]
+    public async Task Family_admin_deleting_their_account_deletes_their_family_for_every_member()
+    {
+        using var carl = await OtherFamily.CreateAsync(_factory);
+        await JoinAsync(_client, carl.UserId);
+        var babyId = await AddBabyAsync(carl.Client, carl.FamilyId);
+        var feedId = await AddFeedAsync(_client, babyId);
+
+        var response = await DeleteAccountAsync(carl.Client, OtherFamily.Password);
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
+        Assert.That(await FamilyNamesAsync(_client), Is.EqualTo(new[] { "Martins" }), "Anna keeps her own family only");
+        var baby = await _client.GetAsync($"/api/babies/{babyId}/feeds");
+        Assert.That(baby.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
+        Assert.That(await CodeAsync(baby), Is.EqualTo("babyNotFound"));
+        var feed = await _client.GetAsync($"/api/feeds/{feedId}");
+        Assert.That(feed.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
+        var members = await _client.GetAsync($"/api/families/{carl.FamilyId}/members");
+        Assert.That(members.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
+        Assert.That(await CodeAsync(members), Is.EqualTo("familyNotFound"));
+    }
+
+    [Test]
+    public async Task Entries_a_deleted_user_logged_in_families_they_didnt_administer_are_kept()
+    {
+        using var carl = await OtherFamily.CreateAsync(_factory);
+        await JoinAsync(carl.Client, _annaId);
+        var martins = (await _client.GetFromJsonAsync<JsonElement[]>("/api/families"))!.Single().GetProperty("id").GetGuid();
+        var babyId = await AddBabyAsync(_client, martins);
+        var feedId = await AddFeedAsync(carl.Client, babyId);
+
+        await DeleteAccountAsync(carl.Client, OtherFamily.Password);
+
+        var feed = await _client.GetFromJsonAsync<JsonElement>($"/api/feeds/{feedId}");
+        Assert.That(feed.GetProperty("loggedBy").GetProperty("displayName").GetString(), Is.EqualTo("Carl"));
+        var members = await _client.GetFromJsonAsync<JsonElement[]>($"/api/families/{martins}/members");
+        Assert.That(members!.Select(m => m.GetProperty("displayName").GetString()), Is.EqualTo(new[] { "Anna" }));
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var role = await scope.ServiceProvider.GetRequiredService<IFamilyRepository>().GetRoleAsync(martins, carl.UserId);
+            Assert.That(role, Is.Null, "the membership itself is gone, not only hidden");
+        }
     }
 
     [Test]

@@ -138,6 +138,9 @@
       "dialogText": "This can't be undone. Enter your password to confirm.",
       "cancel": "Cancel",
       "confirm": "Delete",
+      "familiesWarning": "You administer these families: they will be deleted for every member, with all their babies and entries.",
+      "noBaby": "No baby yet",
+      "confirmWithFamilies": "Delete my account and my families",
       "done": "Your account was deleted"
     },
     "admin": {

@@ -1,6 +1,6 @@
 # 03 — Family & baby profile
 
-Status: in progress
+Status: done
 
 ## Goal
 
@@ -93,8 +93,8 @@ Each item becomes at least one test, written failing first.
 - [x] A removed member can only come back through a new join invitation.
 
 ### Family admin account deletion
-- [ ] A family admin deleting their account (02) deletes every family they administer, with its babies, every entry of those babies, its memberships and its invitations; the other members keep their accounts and other families, and lose access to the deleted family.
-- [ ] Entries the deleted person logged in families where they were a member are kept.
+- [x] A family admin deleting their account (02) deletes every family they administer, with its babies, every entry of those babies, its memberships and its invitations; the other members keep their accounts and other families, and lose access to the deleted family.
+- [x] Entries the deleted person logged in families where they were a member are kept.
 
 ### Authorization and isolation
 - [x] Every baby, activity, History and live endpoint only works for members of the baby's family; for anyone else, the baby or entry answers the same 404 and code as an unknown id. Each section's API tests include a user from another family.
@@ -106,18 +106,7 @@ Each item becomes at least one test, written failing first.
 
 ## Build slices
 
-Slices 1–7 (single family) are done; each is a commit "Spec 03 slice N: …" (`git log --grep "Spec 03 slice"`). Multi-family, with 02's changes, continues from slice 8. The app keeps working after each slice.
-
-- [x] **Slice 8: families, memberships and setup.** `Family` and `Membership` entities and tables (one admin per family, enforced by a unique partial index); `Baby.FamilyId`; nullable `Invitation.FamilyId`. Migration for existing instances (one family "Family": the instance admin as its admin, every other non-deleted, enabled user as a member, every baby and invitation in it). Setup asks for `familyName` and creates the account, the family and the admin membership together (API and web form). Registering through a join invitation adds a membership in its family. `GET /api/families`. *Covers:* Families 1, 4, 6; 02 First-run setup 2.
-- [x] **Slice 9: shared family check, babies scoped to families.** `Nala.Core/Families` access check (family or baby → the caller's membership and role, 404 before any role check). Baby endpoints use it: `GET` returns the caller's families' babies, `POST` takes `familyId`, `PUT` never changes the family, and `DELETE` answers 403 `familyAdminOnly` to members who aren't the admin. Web: `familyId` on the baby model, a new baby goes to the current family, and only the family admin sees Delete. *Covers:* Babies 3, 5, 6; Isolation 3 (babies).
-- [x] **Slice 10: isolation for every activity endpoint and Live.** Feed, Sleep, Diaper, Pump, Growth, Health and `/api/live` go through the shared check. Another family's baby or entry answers the same 404 as an unknown one, and an id that belongs to another family's entry is never created over, re-sent, started or stopped. Each section's API tests add a user from another family. *Covers:* Isolation 1, 3 (live), 4, 5.
-- [x] **Slice 11: current family on the web, switcher across families, empty states.** The device remembers the current family and baby, with the fallbacks above. The switcher is grouped by family, with "No baby yet" items. The top bar shows the family name when the family has no baby. Home, History and Trends show the no-family empty state. Settings hides the family sections for a user in no family. *Covers:* First baby 1, 2; Baby switcher 1, 2, 3; Families 3.
-- [x] **Slice 12: rename a family.** `PATCH /api/families/{id}`. Settings gets a Family section (name, plus Rename for the admin, in a dialog). *Covers:* Families 5.
-- [x] **Slice 13: join invitations per family.** Invitation endpoints move under `/api/families/{familyId}/invitations` (link, email with `alreadyMember`, pending list, revoke; `invitationUnknown` across families). Members & invitations shows the current family. *Covers:* Invitations 1, 2, 3; Isolation 2 (invitations).
-- [x] **Slice 14: accepting an invitation with an existing account.** The lookup returns `kind` and `familyName`. `POST /api/auth/invitations/{token}/accept` (409 `alreadyMember`, link stays usable). Signing in from the invite page comes back to it; signed in, an accept card with Accept / Not now selects the family after accepting. When the email is `taken`, the register page offers to sign in and accept instead. *Covers:* Invitations 4; Members 5; 02 Registration 3 (join), 4, 6.
-- [x] **Slice 15: members per family, removal, no account disable.** `GET /api/families/{id}/members`, `POST …/members/{userId}/remove` (errors in order, pending invitations revoked, entries kept). Disable / enable and `IsDisabled` are removed: column dropped, and login and reset no longer refuse an account for being disabled. The accounts list shows no family data. Web: a Members heading, and for the family admin a Remove button with confirmation; the Instance section loses disable. *Covers:* Members 1, 2, 3, 4; Isolation 2 (members); 02 Instance admin 2, 4.
-- [x] **Slice 16: new-family invitations.** `/api/admin/invitations` (link, email, pending list, revoke; 403 `adminOnly`). Registering or accepting with `familyName` creates a family with that person as its admin (until then, accepting a new-family invitation answers `invitationUnknown`). Web: "New families" in the Instance section, and the family name field on the invite page. *Covers:* Families 2; Isolation 6; 02 Registration 3 (new family); 02 Instance admin 3.
-- [ ] **Slice 17: a family admin deleting their account.** Account deletion ends the user's memberships and deletes the families they administer, with all their data; entries they logged in other families stay. The delete dialog warns about each family it will delete, with its babies, and its button reads "Delete my account and my families". *Covers:* Family admin account deletion 1, 2; 02 Account deletion 4, 5.
+Built in 17 slices, all done; each is a commit "Spec 03 slice N: …" (`git log --grep "Spec 03 slice"`).
 
 ## Data
 

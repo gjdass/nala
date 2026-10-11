@@ -6,3 +6,18 @@ mat-form-field {
   color: var(--mat-sys-error);
   font: var(--mat-sys-body-medium);
 }
+
+.families-warning {
+  color: var(--mat-sys-error);
+  font: var(--mat-sys-body-medium);
+
+  ul {
+    margin: 0 0 16px;
+    padding-left: 20px;
+  }
+
+  li span {
+    display: block;
+    color: var(--mat-sys-on-surface-variant);
+  }
+}

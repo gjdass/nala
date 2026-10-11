@@ -1,6 +1,23 @@
 <form [formGroup]="form" (ngSubmit)="confirm()" novalidate>
   <h2 mat-dialog-title>{{ 'settings.delete.dialogTitle' | transloco }}</h2>
   <mat-dialog-content>
+    @if (doomedFamilies().length > 0) {
+      <div class="families-warning" role="alert" data-testid="families-warning">
+        <p>{{ 'settings.delete.familiesWarning' | transloco }}</p>
+        <ul>
+          @for (family of doomedFamilies(); track family.id) {
+            <li data-testid="doomed-family">
+              <strong data-testid="doomed-family-name">{{ family.name }}</strong>
+              <span data-testid="doomed-family-babies">{{
+                family.babies.length > 0
+                  ? family.babies.join(', ')
+                  : ('settings.delete.noBaby' | transloco)
+              }}</span>
+            </li>
+          }
+        </ul>
+      </div>
+    }
     <p>{{ 'settings.delete.dialogText' | transloco }}</p>
     <mat-form-field>
       <mat-label>{{ 'auth.fields.password' | transloco }}</mat-label>
@@ -28,7 +45,12 @@
       {{ 'settings.delete.cancel' | transloco }}
     </button>
     <button mat-button type="submit" [disabled]="deleting()" data-testid="confirm-delete">
-      {{ 'settings.delete.confirm' | transloco }}
+      {{
+        (doomedFamilies().length > 0
+          ? 'settings.delete.confirmWithFamilies'
+          : 'settings.delete.confirm'
+        ) | transloco
+      }}
     </button>
   </mat-dialog-actions>
 </form>

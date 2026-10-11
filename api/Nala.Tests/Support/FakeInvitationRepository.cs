@@ -118,14 +118,4 @@ public class FakeInvitationRepository(FakeUserRepository users, FakeFamilyReposi
         invitation.RevokedAt = now;
         return Task.FromResult(true);
     }
-
-    public Task RevokePendingAsync(Guid createdByUserId, DateTimeOffset now, CancellationToken cancellationToken = default)
-    {
-        foreach (var invitation in Invitations.Where(i => i.CreatedByUserId == createdByUserId && i.ProblemAt(now) is null))
-        {
-            invitation.RevokedAt = now;
-        }
-
-        return Task.CompletedTask;
-    }
 }

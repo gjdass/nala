@@ -40,7 +40,4 @@ public interface IInvitationRepository
     /// </summary>
     Task<bool> AcceptAsync(
         Guid invitationId, Family? family, Membership membership, DateTimeOffset now, CancellationToken cancellationToken = default);
-
-    /// <summary>Revokes, at <paramref name="now"/>, the invitations the user created that are still usable then.</summary>
-    Task RevokePendingAsync(Guid createdByUserId, DateTimeOffset now, CancellationToken cancellationToken = default);
 }

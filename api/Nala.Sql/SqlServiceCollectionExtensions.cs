@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Nala.Core.Account;
 using Nala.Core.Auth;
 using Nala.Core.Babies;
 using Nala.Core.Diapers;
@@ -12,6 +13,7 @@ using Nala.Core.Pumps;
 using Nala.Core.Sections;
 using Nala.Core.Sleeps;
 using Nala.Core.Users;
+using Nala.Sql.Account;
 using Nala.Sql.Auth;
 using Nala.Sql.Babies;
 using Nala.Sql.Diapers;
@@ -36,6 +38,7 @@ public static class SqlServiceCollectionExtensions
             .AddScoped<ISessionRepository, SessionRepository>()
             .AddScoped<ILoginFailureRepository, LoginFailureRepository>()
             .AddScoped<IInvitationRepository, InvitationRepository>()
+            .AddScoped<IAccountRepository, AccountRepository>()
             .AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>()
             .AddScoped<IFamilyRepository, FamilyRepository>()
             .AddScoped<IBabyRepository, BabyRepository>()

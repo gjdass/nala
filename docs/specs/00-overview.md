@@ -27,8 +27,8 @@ Status: `idea` → `specified` → `in progress` → `done`. A feature moves to 
 | # | Feature | Spec | Status | Notes |
 |---|---------|------|--------|-------|
 | 01 | Project skeleton (solution, Angular PWA, Docker Compose, test setups) | [01-project-skeleton.md](01-project-skeleton.md) | done | |
-| 02 | Authentication (login, register, sessions) | [02-auth.md](02-auth.md) | in progress | Reopened for multi-family: setup creates the first family, invitations accepted by existing accounts, instance admin (new-family invitations, accounts, reset links; no disable), family admin's account deletion. Built with 03's slices. |
-| 03 | Family & baby profile | [03-family-baby.md](03-family-baby.md) | in progress | Reopened for multi-family: families, memberships, family admin, family isolation (404 across families everywhere), switcher across families. Its build slices cover 02's changes too. |
+| 02 | Authentication (login, register, sessions) | [02-auth.md](02-auth.md) | done | Multi-family: setup creates the first family, invitations accepted by existing accounts, instance admin (new-family invitations, accounts, reset links; no disable), a family admin's account deletion deletes their families. |
+| 03 | Family & baby profile | [03-family-baby.md](03-family-baby.md) | done | Multi-family: families, memberships, family admin, family isolation (404 across families everywhere), switcher across families. Its slices 8–17 built 02's multi-family changes too. |
 | 04 | App layout & section pattern (home cards, entry sheet, mini-bar, bottom navigation, timers) | [04-app-layout.md](04-app-layout.md) | done | Shared by every section: app shell, section pattern, entry API conventions, offline queue, timers, live sync and refresh on return (the reload signal), no zoom and portrait-only phones. |
 | 05 | Feed | [05-feed.md](05-feed.md) | done | **Hard requirement:** breast feeding has two independent per-side timers (left/right), side by side in the Breastfeed sheet. A single timer with a "side" field is not acceptable. |
 | 06 | Sleep | [06-sleep.md](06-sleep.md) | done | One kind, single Start/Stop timer, start/end times, notes. |
@@ -48,4 +48,4 @@ Specs are numbered in build order: build 01, then 02, and so on. If the order of
 
 When a spec is done, keep it describing the app as it is, not how it got there: fold every change into its Decisions and Acceptance criteria (rewrite or remove what changed, never append a contradicting paragraph) and collapse its Build slices to one line pointing at the commits (`git log --grep "Spec NN slice"`). Rules shared by several sections go into spec 04, not into each section spec.
 
-Spec each remaining feature (12–15) before building it. Reopened specs (02 and 03, multi-family) are built before the next new one.
+Spec each remaining feature (12–15) before building it.

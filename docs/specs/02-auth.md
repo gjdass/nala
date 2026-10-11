@@ -1,6 +1,6 @@
 # 02 — Authentication
 
-Status: in progress
+Status: done
 
 ## Goal
 
@@ -63,8 +63,8 @@ Each item becomes at least one test, written failing first.
 - [x] A user can delete their own account from the app settings, after confirming with their password.
 - [x] Deletion ends all of the user's sessions; the account can no longer log in.
 - [x] Deletion removes the user's email and password hash, freeing the email to be invited again. The display name is kept so entries still show who logged them.
-- [ ] Deletion ends the user's memberships. Entries logged by the deleted user are not changed or removed, except those of the families they administer, which are deleted with them (03).
-- [ ] A family admin deleting their account is first warned, in the confirmation dialog, that the families they administer (each named, with its babies) will be deleted for every member with all their data; confirming deletes them (03).
+- [x] Deletion ends the user's memberships. Entries logged by the deleted user are not changed or removed, except those of the families they administer, which are deleted with them (03).
+- [x] A family admin deleting their account is first warned, in the confirmation dialog, that the families they administer (each named, with its babies) will be deleted for every member with all their data; confirming deletes them (03).
 - [x] The instance admin cannot delete their own account (the instance must always have its admin).
 
 ### Instance admin
@@ -122,7 +122,7 @@ Each item becomes at least one test, written failing first.
 
 ## Build slices
 
-Built in 8 slices, all done; each is a commit "Spec 02 slice N: …" (`git log --grep "Spec 02 slice"`). The multi-family changes (unticked criteria above) are built with spec 03's slices.
+Built in 8 slices, all done; each is a commit "Spec 02 slice N: …" (`git log --grep "Spec 02 slice"`). The multi-family changes were built with spec 03's slices 8–17 (`git log --grep "Spec 03 slice"`).
 
 ## Data
 

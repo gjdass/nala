@@ -214,36 +214,6 @@ public class InvitationRepositoryTests
     }
 
     [Test]
-    public async Task RevokePending_revokes_only_the_users_pending_invitations()
-    {
-        var ben = NewUser("ben@mail.com");
-        await using (var db = _db())
-        {
-            await new UserRepository(db).AddAsync(ben);
-        }
-
-        var pending = await InviteAsync();
-        var used = await InviteAsync(i =>
-        {
-            i.UsedAt = Now.AddDays(-1);
-            i.UsedByUserId = ben.Id;
-        });
-        var expired = await InviteAsync(i => i.ExpiresAt = Now.AddDays(-1));
-        var revoked = await InviteAsync(i => i.RevokedAt = Now.AddDays(-2));
-        var bens = await InviteAsync(createdBy: ben.Id);
-
-        await using (var db = _db())
-        {
-            await new InvitationRepository(db).RevokePendingAsync(_anna.Id, Now);
-        }
-
-        Assert.That((await ReadAsync(pending)).RevokedAt, Is.EqualTo(Now));
-        Assert.That((await ReadAsync(used)).RevokedAt, Is.Null);
-        Assert.That((await ReadAsync(expired)).RevokedAt, Is.Null);
-        Assert.That((await ReadAsync(revoked)).RevokedAt, Is.EqualTo(Now.AddDays(-2)));
-        Assert.That((await ReadAsync(bens)).RevokedAt, Is.Null);
-    }
-    [Test]
     public async Task GetById_reads_the_invitation()
     {
         var invitation = await InviteAsync();

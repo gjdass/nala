@@ -1,5 +1,4 @@
 using Nala.Core.Auth;
-using Nala.Core.Invitations;
 using Nala.Core.Users;
 
 namespace Nala.Core.Account;
@@ -42,7 +41,7 @@ public abstract record DeleteAccountResult
 public class AccountService(
     IUserRepository users,
     ISessionRepository sessions,
-    IInvitationRepository invitations,
+    IAccountRepository accounts,
     IPasswordHasher hasher,
     TimeProvider time)
 {
@@ -110,7 +109,8 @@ public class AccountService(
 
     /// <summary>
     /// Soft delete confirmed by the password: the row and display name stay so entries still show who logged them;
-    /// the email is freed, sessions end and the user's pending invitations are revoked. Refused for the admin.
+    /// the email is freed, sessions and memberships end, the user's pending invitations are revoked and the families they
+    /// administer are deleted with all their data, in one transaction. Refused for the instance admin.
     /// </summary>
     public async Task<DeleteAccountResult> DeleteAsync(
         User user, DeleteAccountCommand command, CancellationToken cancellationToken = default)
@@ -134,9 +134,7 @@ public class AccountService(
         user.DeletedAt = now;
         user.Email = null;
         user.PasswordHash = null;
-        await users.UpdateAsync(user, cancellationToken);
-        await invitations.RevokePendingAsync(user.Id, now, cancellationToken);
-        await sessions.DeleteAllAsync(user.Id, cancellationToken);
+        await accounts.DeleteAsync(user, now, cancellationToken);
         return new DeleteAccountResult.Deleted();
     }
 }
