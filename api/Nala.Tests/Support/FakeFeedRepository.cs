@@ -66,4 +66,11 @@ public class FakeFeedRepository : IFeedRepository
 
     private IEnumerable<Feed> Breastfeeds(Guid babyId) =>
         Feeds.Where(f => f.BabyId == babyId && f.Kind == FeedKind.Breastfeed).OrderByDescending(f => f.StartTime);
+
+    public Task<IReadOnlyList<Feed>> ListForTrendsAsync(
+        Guid babyId, DateTimeOffset startingFrom, DateTimeOffset from, DateTimeOffset to, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<Feed>>(Feeds
+            .Where(f => f.BabyId == babyId && f.StartTime < to
+                && (f.StartTime >= startingFrom || (f.Kind == FeedKind.Breastfeed && (f.EndTime is null || f.EndTime > from))))
+            .ToList());
 }

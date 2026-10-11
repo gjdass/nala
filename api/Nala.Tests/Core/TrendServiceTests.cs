@@ -1,6 +1,7 @@
 using Nala.Core.Babies;
 using Nala.Core.Diapers;
 using Nala.Core.Families;
+using Nala.Core.Feeds;
 using Nala.Core.Pumps;
 using Nala.Core.Sleeps;
 using Nala.Core.Trends;
@@ -17,6 +18,7 @@ public class TrendServiceTests
     private FakeSleepRepository _sleeps = null!;
     private FakeDiaperRepository _diapers = null!;
     private FakePumpRepository _pumps = null!;
+    private FakeFeedRepository _feeds = null!;
     private FakeFamilyRepository _families = null!;
     private FakeBabyRepository _babies = null!;
     private TrendService _service = null!;
@@ -32,9 +34,10 @@ public class TrendServiceTests
         _sleeps = new FakeSleepRepository();
         _diapers = new FakeDiaperRepository();
         _pumps = new FakePumpRepository();
+        _feeds = new FakeFeedRepository();
         _families = new FakeFamilyRepository();
         _babies = new FakeBabyRepository(_families);
-        _service = new TrendService(_sleeps, _diapers, _pumps, new FamilyAccess(_families, _babies), new FixedTimeProvider(Now));
+        _service = new TrendService(_sleeps, _diapers, _pumps, _feeds, new FamilyAccess(_families, _babies), new FixedTimeProvider(Now));
         _anna = new User { Id = Guid.NewGuid(), DisplayName = "Anna", PreferredLanguage = "en" };
         _carl = new User { Id = Guid.NewGuid(), DisplayName = "Carl", PreferredLanguage = "en" };
         var martins = _families.Seed("Martins", Now, _anna);
@@ -264,17 +267,163 @@ public class TrendServiceTests
         Assert.That(days.Select(d => d.Date), Is.EqualTo(new[] { new DateOnly(2026, 9, 7) }));
     }
 
+    private Feed AddFeed(FeedKind kind, DateTimeOffset start, Baby? baby, DateTimeOffset? end = null, MilkType? milkType = null, int? amountMl = null)
+    {
+        var feed = new Feed
+        {
+            Id = Guid.NewGuid(),
+            BabyId = (baby ?? _lea).Id,
+            Kind = kind,
+            StartTime = start,
+            EndTime = end,
+            MilkType = milkType,
+            AmountMl = amountMl,
+            Food = kind == FeedKind.Solids ? "Carrot" : null,
+            LoggedByUserId = _anna.Id,
+            UpdatedByUserId = _anna.Id,
+            CreatedAt = Now,
+            UpdatedAt = Now,
+        };
+        _feeds.Feeds.Add(feed);
+        return feed;
+    }
+
+    private void AddBottle(DateTimeOffset start, MilkType milkType, int amountMl, Baby? baby = null) =>
+        AddFeed(FeedKind.Bottle, start, baby, milkType: milkType, amountMl: amountMl);
+
+    private void AddSolids(DateTimeOffset start) => AddFeed(FeedKind.Solids, start, null);
+
+    /// <summary>A breastfeed with its sides' segments, each from and to an instant (null: still running); live when one runs.</summary>
+    private void AddBreastfeed(DateTimeOffset start, params (BreastSide Side, DateTimeOffset From, DateTimeOffset? To)[] segments)
+    {
+        var live = segments.Any(s => s.To is null);
+        var feed = AddFeed(FeedKind.Breastfeed, start, null, end: live ? null : segments.Max(s => s.To));
+        feed.Segments.AddRange(segments.Select(s => new BreastFeedSegment
+        {
+            Id = Guid.NewGuid(),
+            FeedId = feed.Id,
+            Side = s.Side,
+            StartedAt = s.From,
+            EndedAt = s.To,
+        }));
+    }
+
+    private async Task<IReadOnlyList<FeedTrendDay>> FeedDaysAsync(string from = "2026-09-01", string to = "2026-09-30") =>
+        ((TrendResult<FeedTrendDay>.Days)await _service.FeedsAsync(_anna, _lea.Id, from, to, "Europe/Paris")).Items;
+
+    private static FeedTrendDay FeedDay(
+        int day, (int Breastfeed, int Bottle, int Solids) count = default, (int BreastMilk, int Formula) bottleMl = default,
+        (long Left, long Right) breast = default, long gapSecondsSum = 0, int gapCount = 0) =>
+        new(new DateOnly(2026, 9, day),
+            new FeedKindCounts(count.Breastfeed, count.Bottle, count.Solids),
+            new BottleMl(bottleMl.BreastMilk, bottleMl.Formula),
+            new BreastSeconds(breast.Left, breast.Right),
+            gapSecondsSum, gapCount);
+
+    [Test]
+    public async Task Feeds_count_by_kind_and_bottle_ml_by_milk_type_on_their_start_day()
+    {
+        AddBottle(At(10, 23, 50), MilkType.Formula, 120);
+        AddBottle(At(10, 15), MilkType.BreastMilk, 90);
+        AddSolids(At(10, 12));
+        AddBreastfeed(At(11, 9), (BreastSide.Left, At(11, 9), At(11, 9, 10)));
+
+        Assert.That(await FeedDaysAsync(), Is.EqualTo(new[]
+        {
+            FeedDay(10, count: (0, 2, 1), bottleMl: (90, 120), gapSecondsSum: 3 * 3600, gapCount: 1),
+            FeedDay(11, count: (1, 0, 0), breast: (600, 0)),
+        }));
+    }
+
+    [Test]
+    public async Task Breast_seconds_are_summed_per_side_from_the_segments()
+    {
+        AddBreastfeed(At(10, 9),
+            (BreastSide.Left, At(10, 9), At(10, 9, 5)),
+            (BreastSide.Right, At(10, 9, 5), At(10, 9, 12)),
+            (BreastSide.Left, At(10, 9, 12), At(10, 9, 15)));
+
+        Assert.That(await FeedDaysAsync(), Is.EqualTo(new[] { FeedDay(10, count: (1, 0, 0), breast: (8 * 60, 7 * 60)) }));
+    }
+
+    [Test]
+    public async Task A_breast_side_crossing_midnight_splits_across_both_days()
+    {
+        AddBreastfeed(At(10, 23, 50),
+            (BreastSide.Left, At(10, 23, 50), At(10, 23, 58)),
+            (BreastSide.Right, At(10, 23, 58), At(11, 0, 6)));
+
+        Assert.That(await FeedDaysAsync(), Is.EqualTo(new[]
+        {
+            FeedDay(10, count: (1, 0, 0), breast: (8 * 60, 2 * 60)),
+            FeedDay(11, breast: (0, 6 * 60)),
+        }));
+    }
+
+    [Test]
+    public async Task A_running_breast_side_counts_up_to_now()
+    {
+        AddBreastfeed(At(30, 13, 30), (BreastSide.Left, At(30, 13, 30), At(30, 13, 40)), (BreastSide.Right, At(30, 13, 40), null));
+
+        Assert.That(await FeedDaysAsync(), Is.EqualTo(new[] { FeedDay(30, count: (1, 0, 0), breast: (10 * 60, 20 * 60)) }));
+    }
+
+    [Test]
+    public async Task Gaps_count_on_the_later_feeds_day_and_ignore_gaps_over_8_hours()
+    {
+        AddBottle(At(10, 20), MilkType.Formula, 100);
+        AddBottle(At(11, 4), MilkType.Formula, 100);
+        AddBottle(At(11, 6, 30), MilkType.Formula, 100);
+        AddBottle(At(11, 14, 31), MilkType.Formula, 100);
+        AddBottle(At(13, 9), MilkType.Formula, 100);
+
+        var days = await FeedDaysAsync();
+
+        Assert.That(days.Select(d => (d.Date.Day, d.GapSecondsSum, d.GapCount)), Is.EqualTo(new[]
+        {
+            (10, 0L, 0),
+            (11, 8 * 3600L + 150 * 60, 2),
+            (13, 0L, 0),
+        }));
+    }
+
+    [Test]
+    public async Task A_feed_before_the_range_gives_the_first_day_its_gap()
+    {
+        AddBottle(At(9, 22), MilkType.Formula, 100);
+        AddBottle(At(10, 1), MilkType.Formula, 100);
+
+        var days = await FeedDaysAsync(from: "2026-09-10", to: "2026-09-16");
+
+        Assert.That(days, Is.EqualTo(new[] { FeedDay(10, count: (0, 1, 0), bottleMl: (0, 100), gapSecondsSum: 3 * 3600, gapCount: 1) }));
+    }
+
+    [Test]
+    public async Task Feeds_of_another_baby_or_outside_the_range_are_left_out()
+    {
+        AddBottle(At(3, 12), MilkType.Formula, 100);
+        AddBottle(At(7, 12), MilkType.Formula, 100, _tom);
+        AddBottle(At(11, 0, 30), MilkType.Formula, 100);
+        AddBottle(At(8, 12), MilkType.Formula, 100);
+
+        var days = await FeedDaysAsync(from: "2026-09-04", to: "2026-09-10");
+
+        Assert.That(days, Is.EqualTo(new[] { FeedDay(8, count: (0, 1, 0), bottleMl: (0, 100)) }));
+    }
+
     /// <summary>A section's trends, whatever their day type.</summary>
     private async Task<object> TrendsAsync(string section, Guid babyId, string from, string to, string tz) => section switch
     {
         "sleeps" => await _service.SleepsAsync(_anna, babyId, from, to, tz),
         "diapers" => await _service.DiapersAsync(_anna, babyId, from, to, tz),
-        _ => await _service.PumpsAsync(_anna, babyId, from, to, tz),
+        "pumps" => await _service.PumpsAsync(_anna, babyId, from, to, tz),
+        _ => await _service.FeedsAsync(_anna, babyId, from, to, tz),
     };
 
     [TestCase("sleeps")]
     [TestCase("diapers")]
     [TestCase("pumps")]
+    [TestCase("feeds")]
     public async Task Invalid_parameters_return_their_codes(string section)
     {
         var result = await TrendsAsync(section, _lea.Id, "2026-09-10", "2026-09-01", "Mars/Olympus");
@@ -284,6 +433,7 @@ public class TrendServiceTests
             TrendResult<SleepTrendDay>.Invalid i => i.Errors,
             TrendResult<DiaperTrendDay>.Invalid i => i.Errors,
             TrendResult<PumpTrendDay>.Invalid i => i.Errors,
+            TrendResult<FeedTrendDay>.Invalid i => i.Errors,
             _ => null,
         };
         Assert.That(errors,
@@ -293,11 +443,13 @@ public class TrendServiceTests
     [TestCase("sleeps")]
     [TestCase("diapers")]
     [TestCase("pumps")]
+    [TestCase("feeds")]
     public async Task Another_familys_or_an_unknown_baby_is_not_found(string section)
     {
         AddSleep(At(10, 13), At(10, 14), _max);
         AddDiaper(At(10, 13), wet: true, dirty: false, _max);
         AddPump(At(10, 13), At(10, 14), 50, 50, _max);
+        AddBottle(At(10, 13), MilkType.Formula, 120, _max);
 
         foreach (var babyId in new[] { _max.Id, Guid.NewGuid() })
         {

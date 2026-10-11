@@ -36,3 +36,17 @@ export interface PumpTrendDay {
   rightMl: number;
   sessions: number;
 }
+
+/**
+ * A data day of Feed trends (spec 12): feeds by kind and bottle ml by milk type on the day each feed
+ * starts, breastfeeding seconds per side split across days, and the gaps between feeds (start to start,
+ * up to 8 hours) on the later feed's day.
+ */
+export interface FeedTrendDay {
+  date: string;
+  count: { breastfeed: number; bottle: number; solids: number };
+  bottleMl: { breastMilk: number; formula: number };
+  breastSeconds: { left: number; right: number };
+  gapSecondsSum: number;
+  gapCount: number;
+}

@@ -1,0 +1,64 @@
+<nala-trends-load-state
+  [error]="!!days.error()"
+  [loaded]="days.hasValue()"
+  (retry)="days.reload()"
+>
+  <nala-metric-card
+    section="feed"
+    [title]="'trends.cards.feeds' | transloco"
+    [headline]="feedsHeadline()"
+    [empty]="loaded().length === 0"
+  >
+    <nala-bar-chart
+      [bars]="feedsBars()"
+      [series]="feedsSeries()"
+      [format]="formatCount"
+      [bucket]="bucket()"
+      [lang]="lang()"
+    />
+  </nala-metric-card>
+  <nala-metric-card
+    section="feed"
+    [title]="'trends.cards.bottle' | transloco"
+    [headline]="bottleHeadline()"
+    [empty]="loaded().length === 0"
+  >
+    <nala-bar-chart
+      [bars]="bottleBars()"
+      [series]="bottleSeries()"
+      [format]="formatMl"
+      [bucket]="bucket()"
+      [lang]="lang()"
+    />
+  </nala-metric-card>
+  <nala-metric-card
+    section="feed"
+    [title]="'trends.cards.breastfeeding' | transloco"
+    [headline]="breastHeadline()"
+    [detail]="breastSplit()"
+    [empty]="loaded().length === 0"
+  >
+    <nala-bar-chart
+      [bars]="breastBars()"
+      [series]="breastSeries()"
+      [format]="formatDuration"
+      [bucket]="bucket()"
+      [lang]="lang()"
+    />
+  </nala-metric-card>
+  <nala-metric-card
+    section="feed"
+    [title]="'trends.cards.timeBetweenFeeds' | transloco"
+    [headline]="gapHeadline()"
+    [perDay]="false"
+    [empty]="gapEmpty()"
+  >
+    <nala-bar-chart
+      [bars]="gapBars()"
+      [series]="gapSeries()"
+      [format]="formatDuration"
+      [bucket]="bucket()"
+      [lang]="lang()"
+    />
+  </nala-metric-card>
+</nala-trends-load-state>

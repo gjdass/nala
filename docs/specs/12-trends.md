@@ -40,8 +40,8 @@ On the Trends tab, show how the selected baby's feeding, sleep, diapers, pumping
 |---|---|---|---|
 | Feed | Feeds | bars stacked by kind: breastfeed, bottle, solids | feeds per day |
 | Feed | Bottle | ml, stacked breast milk / formula | ml per day |
-| Feed | Breastfeeding | minutes, stacked left / right | minutes per day, and the left / right split over the period ("L 55 % · R 45 %") |
-| Feed | Time between feeds | average gap per day | average gap ("2h 40m") |
+| Feed | Breastfeeding | minutes, stacked left / right | minutes per day, and the left / right split over the same days ("L 55 % · R 45 %"; hidden without breastfeeding) |
+| Feed | Time between feeds | average gap per day | average gap ("2h 40m"): every gap of the period's past data days pooled, not a daily average |
 | Sleep | Sleep | hours, stacked day / night | hours per day |
 | Sleep | Longest sleep | longest single sleep per day (days where a sleep starts) | average longest sleep |
 | Diaper | Diapers | two bars side by side: wet, dirty (a wet and dirty diaper counts in both) | wet per day · dirty per day ("6.4 wet · 2.1 dirty per day", FR "6,4 mouillées · 2,1 selles par jour") |
@@ -49,7 +49,8 @@ On the Trends tab, show how the selected baby's feeding, sleep, diapers, pumping
 | Pump | Sessions | sessions per day | sessions per day |
 | Growth | Weight / Length / Head | one line chart each (see Growth) | the latest value in the period and its date |
 
-- **Time between feeds:** the gap from one feed's start to the next feed's start, counted on the day of the later feed. **Gaps over 8 hours are ignored** (a night or a stretch nobody logged). A day with a single feed has no gap value.
+- **Time between feeds:** the gap from one feed's start to the next feed's start, of any kind, counted on the day of the later feed (a feed up to 8 hours before the period gives its first day a gap). **Gaps over 8 hours are ignored** (a night or a stretch nobody logged). A day without a gap (a single feed) has no bar; with no gap in the whole period the card shows "Nothing logged in this period".
+- **Breastfeeding:** each side's seconds come from its own timed segments, split across midnight; a day that only gets the end of a side started the day before is a Feed data day without feeds.
 - **Night:** **19:00 to 07:00 local**, fixed. A sleep's minutes inside that window are night, the others day. The longest sleep counts, whole, on the day it starts; a day that only gets the end of an earlier sleep is a Sleep data day but has no longest sleep (no bar, left out of that headline).
 - Durations use spec 04's highlight duration format; ml and counts are rounded to whole numbers, averages of counts to one decimal ("6.4"), in the language's digits ("6,4").
 - **Diaper:** a diaper counts on the day of its time; a day with only dry diapers is a data day with 0 wet and 0 dirty. **Pump:** a session (live included) counts, with its volumes, on the day it starts; a side not recorded counts 0 ml, and a session without any volume is still a session.
@@ -100,15 +101,15 @@ Each item becomes at least one test, written failing first.
 - [x] Up to 31 days: one bar per day; up to 6 months: per week (locale's first day); longer: per month. Week and month bars show the daily average over their data days.
 - [x] A day without an entry of the section has no bar and is left out of averages; a data day's metric can be zero.
 - [x] Today's bar is lighter and today is left out of headlines and week / month bars.
-- [ ] Durations crossing midnight are split across both local days; counts and volumes go to the start day; a live entry counts up to now.
+- [x] Durations crossing midnight are split across both local days; counts and volumes go to the start day; a live entry counts up to now.
 
 ### Metric cards
 - [ ] Each section shows the cards of the table above, with their headline and chart, in the section's colours.
 - [ ] Tapping a bar or point shows its date and value.
 - [x] A card with no data day in the period shows "Nothing logged in this period".
-- [ ] Time between feeds ignores gaps over 8 hours and counts each gap on the later feed's day.
+- [x] Time between feeds ignores gaps over 8 hours and counts each gap on the later feed's day.
 - [x] Sleep minutes between 19:00 and 07:00 local count as night; the longest sleep counts on its start day.
-- [ ] Breastfeeding headline shows the period's left / right split.
+- [x] Breastfeeding headline shows the period's left / right split.
 
 ### Growth
 - [ ] Weight, length and head circumference each show a line of their measurements in the period, the birth measurement first when in the period; the tooltip shows date, value and age.
@@ -127,7 +128,7 @@ Each slice: red → green → commit "Spec 12 slice N: …" on `master`.
 - [x] **3. Sleep cards, daily bars.** `nala-bar-chart` (stacked series, no-data gaps, lighter today, tap for a value, accessible labels), `nala-metric-card` (title, headline, chart or "Nothing logged in this period", section scheme), the trends service, headlines (daily averages over data days, today excluded), reload on filter change / baby switch / reload signal, error with Try again; Sleep's two cards. Covers: no-data days; today lighter and out of headlines; tapping a bar; nothing logged; cards (Sleep).
 - [x] **4. Week and month buckets.** Web regrouping by day / week (locale's first day) / month, daily average over data days, today left out. Covers: buckets; today out of week / month bars.
 - [x] **5. Diaper and Pump.** `…/trends/diapers` and `…/trends/pumps`; grouped bars in `nala-bar-chart`; the Diapers, Pumped and Sessions cards. Covers: cards (Diaper, Pump); API (diapers, pumps).
-- [ ] **6. Feed.** `…/trends/feeds` (counts by kind, bottle ml by milk type, breast seconds per side split across midnight, gaps ≤ 8 h on the later feed's day); the four Feed cards with the L / R split headline. Covers: cards (Feed); time between feeds; breastfeeding split; API (feeds); live entry counted up to now.
+- [x] **6. Feed.** `…/trends/feeds` (counts by kind, bottle ml by milk type, breast seconds per side split across midnight, gaps ≤ 8 h on the later feed's day); the four Feed cards with the L / R split headline. Covers: cards (Feed); time between feeds; breastfeeding split; API (feeds); live entry counted up to now.
 - [ ] **7. Growth.** `…/trends/growth` (measurements in range with the birth point, milestones); `nala-line-chart` (dated points, line from two points, markers, tooltip with date, value and age); Weight (with milestone markers), Length and Head cards. Covers: Growth (both); cards (Growth).
 
 ## Data

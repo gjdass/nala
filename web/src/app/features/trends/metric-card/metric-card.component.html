@@ -9,6 +9,9 @@
         @if (perDay()) {
           &ngsp;<span class="unit">{{ 'trends.perDay' | transloco }}</span>
         }
+        @if (detail()) {
+          &ngsp;<span class="unit">· {{ detail() }}</span>
+        }
       </p>
       <ng-content />
     }

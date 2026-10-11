@@ -88,4 +88,12 @@ public class FeedRepository(NalaDbContext db) : IFeedRepository
             .Where(f => f.BabyId == babyId && f.Kind == FeedKind.Breastfeed)
             .OrderByDescending(f => f.StartTime)
             .ThenByDescending(f => f.Id);
+
+    public async Task<IReadOnlyList<Feed>> ListForTrendsAsync(
+        Guid babyId, DateTimeOffset startingFrom, DateTimeOffset from, DateTimeOffset to, CancellationToken cancellationToken = default) =>
+        await db.Set<Feed>().AsNoTracking()
+            .Include(f => f.Segments.OrderBy(s => s.StartedAt))
+            .Where(f => f.BabyId == babyId && f.StartTime < to
+                && (f.StartTime >= startingFrom || (f.Kind == FeedKind.Breastfeed && (f.EndTime == null || f.EndTime > from))))
+            .ToListAsync(cancellationToken);
 }

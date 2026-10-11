@@ -18,6 +18,7 @@ import { TopAppBarComponent } from '../../shared/ui/top-app-bar/top-app-bar.comp
 import { NoBabyComponent } from '../babies/no-baby/no-baby.component';
 import { NoFamilyComponent } from '../babies/no-family/no-family.component';
 import { DiaperTrendsComponent } from './diaper/diaper-trends.component';
+import { FeedTrendsComponent } from './feed/feed-trends.component';
 import { TrendsFilterBarComponent } from './filter-bar/trends-filter-bar.component';
 import { PumpTrendsComponent } from './pump/pump-trends.component';
 import { SleepTrendsComponent } from './sleep/sleep-trends.component';
@@ -40,6 +41,7 @@ import { TrendsRange, canGoBack, canGoForward, period, periodLabel } from './tre
   selector: 'nala-trends',
   imports: [
     DiaperTrendsComponent,
+    FeedTrendsComponent,
     NoBabyComponent,
     NoFamilyComponent,
     PumpTrendsComponent,

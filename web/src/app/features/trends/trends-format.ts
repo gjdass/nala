@@ -7,3 +7,8 @@ export function formatCount(value: number, lang: string): string {
 export function formatMl(value: number, lang: string): string {
   return `${new Intl.NumberFormat(lang, { maximumFractionDigits: 0 }).format(value)} ml`;
 }
+
+/** A share as a whole percentage ("47%", FR "47 %"). */
+export function formatPercent(share: number, lang: string): string {
+  return new Intl.NumberFormat(lang, { style: 'percent', maximumFractionDigits: 0 }).format(share);
+}

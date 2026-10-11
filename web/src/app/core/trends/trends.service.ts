@@ -2,7 +2,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
 import { formatDate } from '../time/local-date';
-import { DiaperTrendDay, PumpTrendDay, SleepTrendDay, TrendsPeriod } from './trends.models';
+import { DiaperTrendDay, FeedTrendDay, PumpTrendDay, SleepTrendDay, TrendsPeriod } from './trends.models';
 
 /**
  * A baby's trends (spec 12), aggregated by the API per local day of the device's time zone. Reading
@@ -25,6 +25,11 @@ export class TrendsService {
   /** The period's Pump data days, in date order. */
   pumps(babyId: string, period: TrendsPeriod): Observable<PumpTrendDay[]> {
     return this.days<PumpTrendDay>(babyId, 'pumps', period);
+  }
+
+  /** The period's Feed data days, in date order. */
+  feeds(babyId: string, period: TrendsPeriod): Observable<FeedTrendDay[]> {
+    return this.days<FeedTrendDay>(babyId, 'feeds', period);
   }
 
   private days<T>(babyId: string, section: string, period: TrendsPeriod): Observable<T[]> {

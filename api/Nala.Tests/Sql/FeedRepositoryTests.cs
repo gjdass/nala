@@ -561,4 +561,26 @@ public class FeedRepositoryTests
         await using var read = _db();
         Assert.That(await read.Set<BreastFeedSegment>().CountAsync(s => s.FeedId == added.Id), Is.Zero);
     }
+
+    [Test]
+    public async Task Trends_list_the_feeds_starting_in_the_window_and_the_breastfeeds_reaching_into_the_range()
+    {
+        var from = new DateTimeOffset(2026, 9, 10, 0, 0, 0, TimeSpan.Zero);
+        var to = from.AddDays(7);
+        var startingFrom = from.AddHours(-8);
+        var bottle = await AddAsync(startTime: from.AddHours(5));
+        var lookback = await AddAsync(startTime: from.AddHours(-3));
+        await AddAsync(startTime: from.AddHours(-9));
+        await AddAsync(startTime: to);
+        await AddAsync(_tom, startTime: from.AddHours(5));
+        var acrossFrom = await AddBreastfeedAsync(from.AddHours(-10), from.AddMinutes(5), null, (BreastSide.Left, 0, 605));
+        var live = await AddBreastfeedAsync(from.AddHours(-12), null, null, (BreastSide.Right, 0, null));
+        await AddBreastfeedAsync(from.AddHours(-10), from.AddHours(-9), null, (BreastSide.Left, 0, 60));
+
+        await using var db = _db();
+        var feeds = await new FeedRepository(db).ListForTrendsAsync(_lea.Id, startingFrom, from, to);
+
+        Assert.That(feeds.Select(f => f.Id), Is.EquivalentTo(new[] { bottle.Id, lookback.Id, acrossFrom.Id, live.Id }));
+        Assert.That(feeds.Single(f => f.Id == acrossFrom.Id).Segments.Select(s => s.EndedAt), Is.EqualTo(new DateTimeOffset?[] { from.AddMinutes(5) }));
+    }
 }

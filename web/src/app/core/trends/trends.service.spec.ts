@@ -2,7 +2,12 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { firstValueFrom } from 'rxjs';
-import { DiaperTrendDay, PumpTrendDay, SleepTrendDay } from './trends.models';
+import {
+  DiaperTrendDay,
+  FeedTrendDay,
+  PumpTrendDay,
+  SleepTrendDay,
+} from './trends.models';
 import { TrendsService } from './trends.service';
 
 describe('TrendsService', () => {
@@ -40,10 +45,23 @@ describe('TrendsService', () => {
   it.each([
     ['diapers', [{ date: '2026-10-07', wet: 6, dirty: 2, count: 7 }] as DiaperTrendDay[]],
     ['pumps', [{ date: '2026-10-07', leftMl: 90, rightMl: 80, sessions: 2 }] as PumpTrendDay[]],
+    [
+      'feeds',
+      [
+        {
+          date: '2026-10-07',
+          count: { breastfeed: 6, bottle: 1, solids: 1 },
+          bottleMl: { breastMilk: 0, formula: 120 },
+          breastSeconds: { left: 1500, right: 1200 },
+          gapSecondsSum: 21600,
+          gapCount: 3,
+        },
+      ] as FeedTrendDay[],
+    ],
   ] as const)("loads the period's %s days", async (section, days) => {
     const period = { from: new Date(2026, 9, 3), to: new Date(2026, 9, 9) };
     const result = firstValueFrom<unknown[]>(
-      section === 'diapers' ? service.diapers('b1', period) : service.pumps('b1', period),
+      service[section]('b1', period),
     );
 
     const request = http.expectOne((r) => r.url === `/api/babies/b1/trends/${section}`);

@@ -35,6 +35,11 @@
         (next)="offset.set(offset() + 1)"
       />
       @switch (section()) {
+        @case ('feed') {
+          @if (store.selected(); as baby) {
+            <nala-feed-trends [babyId]="baby.id" [period]="period()" [today]="today()" />
+          }
+        }
         @case ('sleep') {
           @if (store.selected(); as baby) {
             <nala-sleep-trends [babyId]="baby.id" [period]="period()" [today]="today()" />

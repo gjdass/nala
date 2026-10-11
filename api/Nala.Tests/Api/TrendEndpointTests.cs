@@ -60,6 +60,25 @@ public class TrendEndpointTests
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Created));
     }
 
+    private async Task AddBottleAsync(DateTimeOffset start, string milkType, int amountMl)
+    {
+        var response = await _admin.PostAsJsonAsync("/api/feeds", new { id = Guid.NewGuid(), babyId = _leaId, kind = "bottle", startTime = start.ToUniversalTime(), milkType, amountMl });
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Created));
+    }
+
+    private async Task AddBreastfeedAsync(DateTimeOffset start, int leftSeconds, int rightSeconds)
+    {
+        var response = await _admin.PostAsJsonAsync("/api/feeds", new
+        {
+            id = Guid.NewGuid(),
+            babyId = _leaId,
+            kind = "breastfeed",
+            startTime = start.ToUniversalTime(),
+            durations = new { leftSeconds, rightSeconds, endedOn = "right" },
+        });
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Created));
+    }
+
     private static async Task<JsonElement> JsonAsync(HttpResponseMessage response) =>
         await response.Content.ReadFromJsonAsync<JsonElement>();
 
@@ -135,7 +154,35 @@ public class TrendEndpointTests
         });
     }
 
-    private static readonly string[] Sections = ["sleeps", "diapers", "pumps"];
+    [Test]
+    public async Task Feed_trends_return_the_data_days_aggregated_in_the_zone()
+    {
+        await AddBreastfeedAsync(At(10, 8), 300, 420);
+        await AddBottleAsync(At(10, 11), "formula", 120);
+        await AddBottleAsync(At(20, 9), "breastMilk", 90);
+
+        var response = await _admin.GetAsync($"/api/babies/{_leaId}/trends/feeds?from=2026-09-10&to=2026-09-16&tz=Europe/Paris");
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        var days = (await JsonAsync(response)).GetProperty("days");
+        Assert.That(days.GetArrayLength(), Is.EqualTo(1));
+        var day = days[0];
+        Assert.Multiple(() =>
+        {
+            Assert.That(day.GetProperty("date").GetString(), Is.EqualTo("2026-09-10"));
+            Assert.That(day.GetProperty("count").GetProperty("breastfeed").GetInt32(), Is.EqualTo(1));
+            Assert.That(day.GetProperty("count").GetProperty("bottle").GetInt32(), Is.EqualTo(1));
+            Assert.That(day.GetProperty("count").GetProperty("solids").GetInt32(), Is.EqualTo(0));
+            Assert.That(day.GetProperty("bottleMl").GetProperty("breastMilk").GetInt32(), Is.EqualTo(0));
+            Assert.That(day.GetProperty("bottleMl").GetProperty("formula").GetInt32(), Is.EqualTo(120));
+            Assert.That(day.GetProperty("breastSeconds").GetProperty("left").GetInt64(), Is.EqualTo(300));
+            Assert.That(day.GetProperty("breastSeconds").GetProperty("right").GetInt64(), Is.EqualTo(420));
+            Assert.That(day.GetProperty("gapSecondsSum").GetInt64(), Is.EqualTo(3 * 3600));
+            Assert.That(day.GetProperty("gapCount").GetInt32(), Is.EqualTo(1));
+        });
+    }
+
+    private static readonly string[] Sections = ["sleeps", "diapers", "pumps", "feeds"];
 
     private static IEnumerable<TestCaseData> InvalidQueries() =>
         from section in Sections

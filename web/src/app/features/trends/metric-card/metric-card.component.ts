@@ -6,7 +6,7 @@ import { SectionKey } from '../../../core/sections/section.models';
 
 /**
  * A Trends metric card (spec 12), in its section's colour scheme: the title, the headline for the whole
- * period ("per day" by default) and the projected chart, or "Nothing logged in this period" when the
+ * period ("per day" by default, then an optional detail) and the projected chart, or "Nothing logged in this period" when the
  * period has no data day.
  */
 @Component({
@@ -21,6 +21,7 @@ export class MetricCardComponent {
   readonly title = input.required<string>();
   readonly headline = input('');
   readonly perDay = input(true);
+  readonly detail = input('');
   readonly empty = input(false);
 
   protected readonly scheme = computed(() => sectionScheme(this.section()));

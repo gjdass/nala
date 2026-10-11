@@ -29,4 +29,11 @@ public interface IFeedRepository
 
     /// <summary>The live breastfeeds (no end) of the given babies, with their segments; oldest start first.</summary>
     Task<IReadOnlyList<FeedEntry>> ListInProgressBreastfeedsAsync(IReadOnlyCollection<Guid> babyIds, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// For trends (spec 12): the baby's feeds with their segments starting before <paramref name="to"/>, and either starting
+    /// at or after <paramref name="startingFrom"/> or breastfeeds still live or ending after <paramref name="from"/>.
+    /// </summary>
+    Task<IReadOnlyList<Feed>> ListForTrendsAsync(
+        Guid babyId, DateTimeOffset startingFrom, DateTimeOffset from, DateTimeOffset to, CancellationToken cancellationToken = default);
 }

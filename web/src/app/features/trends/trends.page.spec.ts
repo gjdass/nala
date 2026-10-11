@@ -22,6 +22,7 @@ import { TrendsService } from '../../core/trends/trends.service';
 import { fakeDataRefresh } from '../../testing/data-refresh';
 import { translocoTesting } from '../../testing/transloco-testing';
 import { DiaperTrendsComponent } from './diaper/diaper-trends.component';
+import { FeedTrendsComponent } from './feed/feed-trends.component';
 import { PumpTrendsComponent } from './pump/pump-trends.component';
 import { SleepTrendsComponent } from './sleep/sleep-trends.component';
 import { TrendsPage } from './trends.page';
@@ -102,7 +103,12 @@ describe('TrendsPage', () => {
         { provide: DataRefreshService, useValue: refresh },
         {
           provide: TrendsService,
-          useValue: { sleeps: () => of([]), diapers: () => of([]), pumps: () => of([]) },
+          useValue: {
+            sleeps: () => of([]),
+            diapers: () => of([]),
+            pumps: () => of([]),
+            feeds: () => of([]),
+          },
         },
       ],
     }).compileComponents();
@@ -289,6 +295,16 @@ describe('TrendsPage', () => {
 
   describe('section content', () => {
     beforeEach(create);
+
+    it("shows Feed's trends by default, for the selected baby and the current period", async () => {
+      await loadBabies([lea]);
+
+      const feed = fixture.debugElement.query(By.directive(FeedTrendsComponent))
+        .componentInstance as FeedTrendsComponent;
+      expect(feed.babyId()).toBe('b1');
+      expect(feed.period()).toEqual({ from: new Date(2026, 9, 3), to: new Date(2026, 9, 9) });
+      expect(feed.today()).toEqual(new Date(2026, 9, 9));
+    });
 
     it("shows Sleep's trends for the selected baby and the current period", async () => {
       await loadBabies([lea]);
