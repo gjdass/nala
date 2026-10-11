@@ -19,12 +19,7 @@ public sealed record TrendRange(DateOnly From, DateOnly To, TimeZoneInfo Zone)
     /// </summary>
     public static TrendRange? Parse(string? from, string? to, string? tz, Dictionary<string, string> errors)
     {
-        var fromDate = ParseDate("from", from, errors);
-        var toDate = ParseDate("to", to, errors);
-        if (fromDate is { } f && toDate is { } t && t < f)
-        {
-            errors["to"] = "beforeFrom";
-        }
+        var dates = ParseDates(from, to, errors);
 
         TimeZoneInfo? zone = null;
         if (string.IsNullOrWhiteSpace(tz))
@@ -36,7 +31,28 @@ public sealed record TrendRange(DateOnly From, DateOnly To, TimeZoneInfo Zone)
             errors["tz"] = "invalid";
         }
 
-        return errors.Count == 0 ? new TrendRange(fromDate!.Value, toDate!.Value, zone!) : null;
+        return errors.Count == 0 ? new TrendRange(dates!.Value.From, dates.Value.To, zone!) : null;
+    }
+
+    /// <summary>
+    /// The local dates of a query, or null with the errors added: <c>from</c> / <c>to</c> <c>required</c> or <c>invalid</c>
+    /// (not a <c>yyyy-MM-dd</c> date), <c>to</c> <c>beforeFrom</c>.
+    /// </summary>
+    public static (DateOnly From, DateOnly To)? ParseDates(string? from, string? to, Dictionary<string, string> errors)
+    {
+        var fromDate = ParseDate("from", from, errors);
+        var toDate = ParseDate("to", to, errors);
+        if (fromDate is { } f && toDate is { } t)
+        {
+            if (t >= f)
+            {
+                return (f, t);
+            }
+
+            errors["to"] = "beforeFrom";
+        }
+
+        return null;
     }
 
     private static DateOnly? ParseDate(string field, string? value, Dictionary<string, string> errors)

@@ -1,45 +1,19 @@
-import { Directive, computed, inject, input } from '@angular/core';
-import { rxResource, toSignal } from '@angular/core/rxjs-interop';
-import { TranslocoService } from '@jsverse/transloco';
-import { Observable } from 'rxjs';
-import { onReload } from '../../core/refresh/data-refresh.service';
+import { Directive, computed } from '@angular/core';
 import { formatDate } from '../../core/time/local-date';
 import { BarDatum } from '../../shared/ui/bar-chart/bar-chart.component';
-import { TrendsPeriod } from './trends-period';
+import { TrendsLoader } from './trends-loader';
 import { bucketBars, bucketOf, firstDayOfWeek } from './trends-stats';
 
 /**
- * What every Trends section (spec 12) shares: its data days for the baby and the period, loaded again
- * when either changes and on the reload signal (keeping the cards meanwhile), a bar per day, week or
- * month, and headlines that read "–" when no past data day is left.
+ * What every bucketed Trends section (spec 12) shares on top of its loading: its data days, a bar per
+ * day, week or month, and headlines that read "–" when no past data day is left.
  */
 @Directive()
-export abstract class TrendsSection<TDay extends { date: string }> {
-  protected readonly transloco = inject(TranslocoService);
-  protected readonly lang = toSignal(this.transloco.langChanges$, {
-    initialValue: this.transloco.getActiveLang(),
-  });
-
-  readonly babyId = input.required<string>();
-  readonly period = input.required<TrendsPeriod>();
-  readonly today = input.required<Date>();
-
-  protected readonly days = rxResource({
-    params: () => ({ babyId: this.babyId(), period: this.period() }),
-    stream: ({ params }) => this.load(params.babyId, params.period),
-  });
-
+export abstract class TrendsSection<TDay extends { date: string }> extends TrendsLoader<TDay[]> {
   protected readonly todayDate = computed(() => formatDate(this.today()));
   protected readonly bucket = computed(() => bucketOf(this.period()));
   /** The loaded days; none while loading or on an error (the hidden cards still read them). */
-  protected readonly loaded = computed(() => (this.days.hasValue() ? this.days.value() : []));
-
-  constructor() {
-    onReload(() => this.days.reload());
-  }
-
-  /** The section's data days of the period, in date order. */
-  protected abstract load(babyId: string, period: TrendsPeriod): Observable<TDay[]>;
+  protected readonly loaded = computed(() => (this.data.hasValue() ? this.data.value() : []));
 
   /** A slot per day, week or month of the period; no bar without data or without a value. */
   protected bars(values: (day: TDay) => number[] | null): BarDatum[] {

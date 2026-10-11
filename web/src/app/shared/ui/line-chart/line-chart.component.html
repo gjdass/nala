@@ -1,0 +1,73 @@
+<p class="tooltip" aria-live="polite">
+  @if (selected(); as item) {
+    <span data-testid="chart-tooltip">{{ item.label }}</span>
+  }
+</p>
+
+<div class="value-label" aria-hidden="true">
+  @if (maxLabel(); as max) {
+    <span data-testid="chart-max">{{ max }}</span>
+  }
+</div>
+
+<svg class="plot">
+  <line class="grid" x1="0" y1="0" x2="100%" y2="0" />
+  @for (segment of segments(); track $index) {
+    <line
+      class="line"
+      [attr.x1]="segment.from.x + '%'"
+      [attr.y1]="segment.from.y + '%'"
+      [attr.x2]="segment.to.x + '%'"
+      [attr.y2]="segment.to.y + '%'"
+      data-testid="line-segment"
+    />
+  }
+  <line class="baseline" x1="0" y1="100%" x2="100%" y2="100%" />
+  @for (point of drawnPoints(); track point.key) {
+    <g
+      class="point"
+      [class.selected]="selected()?.key === point.key"
+      role="button"
+      tabindex="0"
+      [attr.aria-label]="point.label"
+      (click)="select(point)"
+      (keydown.enter)="select(point)"
+      (keydown.space)="$event.preventDefault(); select(point)"
+      data-testid="point-target"
+    >
+      <circle class="hit" [attr.cx]="point.x + '%'" [attr.cy]="point.y + '%'" r="14" />
+      <circle class="dot" [attr.cx]="point.x + '%'" [attr.cy]="point.y + '%'" r="4" data-testid="point" />
+    </g>
+  }
+  @for (marker of drawnMarkers(); track marker.key) {
+    <svg
+      class="marker"
+      [class.selected]="selected()?.key === marker.key"
+      [attr.x]="marker.x + '%'"
+      y="100%"
+      overflow="visible"
+      role="button"
+      tabindex="0"
+      [attr.aria-label]="marker.label"
+      (click)="select(marker)"
+      (keydown.enter)="select(marker)"
+      (keydown.space)="$event.preventDefault(); select(marker)"
+      data-testid="marker"
+    >
+      <circle class="hit" r="14" />
+      <path class="flag" d="M0 -10 L6 0 L-6 0 Z" />
+    </svg>
+  }
+</svg>
+
+<div class="value-label" aria-hidden="true">
+  @if (minLabel(); as min) {
+    <span data-testid="chart-min">{{ min }}</span>
+  }
+</div>
+
+<div class="x-labels" aria-hidden="true">
+  @for (label of xLabels(); track $index) {
+    <span [style.left.%]="label.left" data-testid="chart-x-label">{{ label.text }}</span>
+  }
+</div>

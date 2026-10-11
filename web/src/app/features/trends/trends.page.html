@@ -55,6 +55,16 @@
             <nala-pump-trends [babyId]="baby.id" [period]="period()" [today]="today()" />
           }
         }
+        @case ('growth') {
+          @if (store.selected(); as baby) {
+            <nala-growth-trends
+              [babyId]="baby.id"
+              [period]="period()"
+              [today]="today()"
+              [birthDate]="baby.birthDate"
+            />
+          }
+        }
       }
     }
   }

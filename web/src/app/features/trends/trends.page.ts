@@ -19,6 +19,7 @@ import { NoBabyComponent } from '../babies/no-baby/no-baby.component';
 import { NoFamilyComponent } from '../babies/no-family/no-family.component';
 import { DiaperTrendsComponent } from './diaper/diaper-trends.component';
 import { FeedTrendsComponent } from './feed/feed-trends.component';
+import { GrowthTrendsComponent } from './growth/growth-trends.component';
 import { TrendsFilterBarComponent } from './filter-bar/trends-filter-bar.component';
 import { PumpTrendsComponent } from './pump/pump-trends.component';
 import { SleepTrendsComponent } from './sleep/sleep-trends.component';
@@ -42,6 +43,7 @@ import { TrendsRange, canGoBack, canGoForward, period, periodLabel } from './tre
   imports: [
     DiaperTrendsComponent,
     FeedTrendsComponent,
+    GrowthTrendsComponent,
     NoBabyComponent,
     NoFamilyComponent,
     PumpTrendsComponent,
@@ -85,7 +87,7 @@ export class TrendsPage {
     return this.filters().section ?? (first?.key as TrendsSection | undefined) ?? 'feed';
   });
 
-  private readonly birthDate = computed(() => this.store.selected()?.birthDate ?? '');
+  protected readonly birthDate = computed(() => this.store.selected()?.birthDate ?? '');
 
   /**
    * 0 is the current period, -1 the one before, and so on. Back to the current one when the baby, the

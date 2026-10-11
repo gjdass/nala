@@ -25,4 +25,7 @@ public interface IGrowthEntryRepository
     /// fields (<see cref="LatestMeasure.Birth"/> false); null when no entry has it.
     /// </summary>
     Task<GrowthLatest> LatestAsync(Guid babyId, CancellationToken cancellationToken = default);
+
+    /// <summary>The baby's entries of both kinds dated <paramref name="from"/> to <paramref name="to"/>, both included, oldest first (date, then creation time, then id).</summary>
+    Task<IReadOnlyList<GrowthEntry>> ListDatedInAsync(Guid babyId, DateOnly from, DateOnly to, CancellationToken cancellationToken = default);
 }

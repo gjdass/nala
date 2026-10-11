@@ -1,4 +1,5 @@
 using Nala.Api.Auth;
+using Nala.Core.GrowthEntries;
 using Nala.Core.Trends;
 
 namespace Nala.Api.Trends;
@@ -22,12 +23,22 @@ public sealed record BottleMlResponse(int BreastMilk, int Formula);
 
 public sealed record BreastSecondsResponse(long Left, long Right);
 
+/// <summary>A point of the growth curves; <c>Birth</c> for the baby's birth measurements, dated with the birth date.</summary>
+public sealed record GrowthTrendPointResponse(DateOnly Date, int? WeightG, decimal? LengthCm, decimal? HeadCircumferenceCm, bool Birth);
+
+/// <summary>A milestone of the weight curve; <c>Title</c> only for a custom one.</summary>
+public sealed record GrowthTrendMilestoneResponse(DateOnly Date, string Milestone, string? Title);
+
+/// <summary>The measurements and milestones dated in the range, in date order, the birth point first.</summary>
+public sealed record GrowthTrendsResponse(IEnumerable<GrowthTrendPointResponse> Measurements, IEnumerable<GrowthTrendMilestoneResponse> Milestones);
+
 /// <summary>Only the data days of the range, in date order.</summary>
 public sealed record TrendsResponse<TDay>(IEnumerable<TDay> Days);
 
 /// <summary>
 /// A baby's trends (spec 12), aggregated per local day of <c>tz</c> over the local dates <c>from</c> to <c>to</c>, both
-/// included. Every member of the baby's family may read them (fallback session policy, family check in Core).
+/// included; growth takes calendar dates only, no <c>tz</c>. Every member of the baby's family may read them (fallback
+/// session policy, family check in Core).
 /// </summary>
 public static class TrendEndpoints
 {
@@ -55,6 +66,15 @@ public static class TrendEndpoints
                     new BreastSecondsResponse(d.BreastSeconds.Left, d.BreastSeconds.Right),
                     d.GapSecondsSum,
                     d.GapCount)));
+        trends.MapGet("/growth", async (Guid babyId, string? from, string? to, TrendService service, HttpContext context, CancellationToken cancellationToken) =>
+            await service.GrowthAsync(AuthEndpoints.CurrentUser(context)!, babyId, from, to, cancellationToken) switch
+            {
+                GrowthTrendResult.Found found => Results.Ok(new GrowthTrendsResponse(
+                    found.Trends.Measurements.Select(m => new GrowthTrendPointResponse(m.Date, m.WeightG, m.LengthCm, m.HeadCircumferenceCm, m.Birth)),
+                    found.Trends.Milestones.Select(m => new GrowthTrendMilestoneResponse(m.Date, GrowthEntryFields.FormatMilestone(m.Milestone), m.Title)))),
+                GrowthTrendResult.Invalid invalid => AuthEndpoints.ValidationProblem(invalid.Errors),
+                _ => BabyNotFound(),
+            });
         return endpoints;
     }
 
@@ -62,6 +82,8 @@ public static class TrendEndpoints
     {
         TrendResult<TDay>.Days days => Results.Ok(new TrendsResponse<TResponse>(days.Items.Select(toResponse))),
         TrendResult<TDay>.Invalid invalid => AuthEndpoints.ValidationProblem(invalid.Errors),
-        _ => Results.Json(new ErrorResponse("babyNotFound"), statusCode: StatusCodes.Status404NotFound),
+        _ => BabyNotFound(),
     };
+
+    private static IResult BabyNotFound() => Results.Json(new ErrorResponse("babyNotFound"), statusCode: StatusCodes.Status404NotFound);
 }

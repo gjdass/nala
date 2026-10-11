@@ -2,6 +2,7 @@ using Nala.Core.Babies;
 using Nala.Core.Diapers;
 using Nala.Core.Families;
 using Nala.Core.Feeds;
+using Nala.Core.GrowthEntries;
 using Nala.Core.Pumps;
 using Nala.Core.Sleeps;
 using Nala.Core.Trends;
@@ -19,6 +20,7 @@ public class TrendServiceTests
     private FakeDiaperRepository _diapers = null!;
     private FakePumpRepository _pumps = null!;
     private FakeFeedRepository _feeds = null!;
+    private FakeGrowthEntryRepository _growth = null!;
     private FakeFamilyRepository _families = null!;
     private FakeBabyRepository _babies = null!;
     private TrendService _service = null!;
@@ -35,9 +37,10 @@ public class TrendServiceTests
         _diapers = new FakeDiaperRepository();
         _pumps = new FakePumpRepository();
         _feeds = new FakeFeedRepository();
+        _growth = new FakeGrowthEntryRepository();
         _families = new FakeFamilyRepository();
         _babies = new FakeBabyRepository(_families);
-        _service = new TrendService(_sleeps, _diapers, _pumps, _feeds, new FamilyAccess(_families, _babies), new FixedTimeProvider(Now));
+        _service = new TrendService(_sleeps, _diapers, _pumps, _feeds, _growth, new FamilyAccess(_families, _babies), new FixedTimeProvider(Now));
         _anna = new User { Id = Guid.NewGuid(), DisplayName = "Anna", PreferredLanguage = "en" };
         _carl = new User { Id = Guid.NewGuid(), DisplayName = "Carl", PreferredLanguage = "en" };
         var martins = _families.Seed("Martins", Now, _anna);
@@ -456,6 +459,111 @@ public class TrendServiceTests
             var result = await TrendsAsync(section, babyId, "2026-09-01", "2026-09-30", "Europe/Paris");
 
             Assert.That(result.GetType().Name, Is.EqualTo("BabyNotFound"));
+        }
+    }
+
+    private GrowthEntry AddGrowth(
+        int month, int day, int? weightG = null, decimal? lengthCm = null, decimal? headCm = null,
+        GrowthMilestone? milestone = null, string? title = null, Baby? baby = null, int createdMinute = 0)
+    {
+        var entry = new GrowthEntry
+        {
+            Id = Guid.NewGuid(),
+            BabyId = (baby ?? _lea).Id,
+            Kind = milestone is null ? GrowthKind.Measurement : GrowthKind.Milestone,
+            Date = new DateOnly(2026, month, day),
+            WeightG = weightG,
+            LengthCm = lengthCm,
+            HeadCircumferenceCm = headCm,
+            Milestone = milestone,
+            Title = title,
+            LoggedByUserId = _anna.Id,
+            UpdatedByUserId = _anna.Id,
+            CreatedAt = Now.AddMinutes(createdMinute),
+            UpdatedAt = Now,
+        };
+        _growth.GrowthEntries.Add(entry);
+        return entry;
+    }
+
+    private async Task<GrowthTrends> GrowthAsync(string from, string to) =>
+        ((GrowthTrendResult.Found)await _service.GrowthAsync(_anna, _lea.Id, from, to)).Trends;
+
+    [Test]
+    public async Task Growth_returns_the_measurements_in_range_in_date_order()
+    {
+        AddGrowth(9, 30, weightG: 4800);
+        AddGrowth(9, 10, weightG: 3900, createdMinute: 2);
+        AddGrowth(9, 10, lengthCm: 52.5m, createdMinute: 1);
+        AddGrowth(9, 5, weightG: 3600);
+        AddGrowth(10, 1, weightG: 5000);
+        AddGrowth(9, 20, weightG: 4400, baby: _tom);
+
+        var trends = await GrowthAsync("2026-09-10", "2026-09-30");
+
+        Assert.That(trends.Measurements, Is.EqualTo(new[]
+        {
+            new GrowthTrendPoint(new DateOnly(2026, 9, 10), null, 52.5m, null, false),
+            new GrowthTrendPoint(new DateOnly(2026, 9, 10), 3900, null, null, false),
+            new GrowthTrendPoint(new DateOnly(2026, 9, 30), 4800, null, null, false),
+        }));
+    }
+
+    [Test]
+    public async Task Growth_puts_the_birth_measurement_first_when_the_birth_date_is_in_range()
+    {
+        _lea.BirthWeightG = 3400;
+        _lea.BirthHeadCircumferenceCm = 34.5m;
+        AddGrowth(9, 1, weightG: 3350);
+
+        var trends = await GrowthAsync("2026-09-01", "2026-09-30");
+
+        Assert.That(trends.Measurements, Is.EqualTo(new[]
+        {
+            new GrowthTrendPoint(new DateOnly(2026, 9, 1), 3400, null, 34.5m, true),
+            new GrowthTrendPoint(new DateOnly(2026, 9, 1), 3350, null, null, false),
+        }));
+    }
+
+    [Test]
+    public async Task Growth_has_no_birth_point_outside_the_range_or_without_birth_measurements()
+    {
+        Assert.That((await GrowthAsync("2026-09-01", "2026-09-30")).Measurements, Is.Empty);
+
+        _lea.BirthWeightG = 3400;
+        Assert.That((await GrowthAsync("2026-09-02", "2026-09-30")).Measurements, Is.Empty);
+    }
+
+    [Test]
+    public async Task Growth_returns_the_milestones_in_range_with_their_titles()
+    {
+        AddGrowth(9, 20, milestone: GrowthMilestone.Custom, title: "Grabs a toy");
+        AddGrowth(9, 12, milestone: GrowthMilestone.FirstSmile);
+        AddGrowth(10, 2, milestone: GrowthMilestone.FirstLaugh);
+        AddGrowth(9, 15, milestone: GrowthMilestone.RollsOver, baby: _tom);
+
+        var trends = await GrowthAsync("2026-09-01", "2026-09-30");
+
+        Assert.That(trends.Milestones, Is.EqualTo(new[]
+        {
+            new GrowthTrendMilestone(new DateOnly(2026, 9, 12), GrowthMilestone.FirstSmile, null),
+            new GrowthTrendMilestone(new DateOnly(2026, 9, 20), GrowthMilestone.Custom, "Grabs a toy"),
+        }));
+        Assert.That(trends.Measurements, Is.Empty);
+    }
+
+    [Test]
+    public async Task Growth_checks_from_and_to_then_the_baby()
+    {
+        var invalid = (GrowthTrendResult.Invalid)await _service.GrowthAsync(_anna, Guid.NewGuid(), "2026-09-10", "2026-09-01");
+        Assert.That(invalid.Errors, Is.EqualTo(new Dictionary<string, string> { ["to"] = "beforeFrom" }));
+
+        invalid = (GrowthTrendResult.Invalid)await _service.GrowthAsync(_anna, _lea.Id, null, "2026-9-1");
+        Assert.That(invalid.Errors, Is.EqualTo(new Dictionary<string, string> { ["from"] = "required", ["to"] = "invalid" }));
+
+        foreach (var babyId in new[] { _max.Id, Guid.NewGuid() })
+        {
+            Assert.That(await _service.GrowthAsync(_anna, babyId, "2026-09-01", "2026-09-30"), Is.InstanceOf<GrowthTrendResult.BabyNotFound>());
         }
     }
 }

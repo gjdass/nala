@@ -1,6 +1,6 @@
 # 12 — Trends
 
-Status: in progress
+Status: done
 
 Builds on [04 — App layout](04-app-layout.md): the app shell, the section registry and colour schemes, the home section order and the reload signal apply. This spec adds the Trends destination's content, which replaces 04's "Coming soon" placeholder.
 
@@ -56,9 +56,10 @@ On the Trends tab, show how the selected baby's feeding, sleep, diapers, pumping
 - **Diaper:** a diaper counts on the day of its time; a day with only dry diapers is a data day with 0 wet and 0 dirty. **Pump:** a session (live included) counts, with its volumes, on the day it starts; a side not recorded counts 0 ml, and a session without any volume is still a session.
 
 ### Growth
-- No buckets: each measure (weight in kg, length in cm, head circumference in cm) is a **line chart of its values in the period**, a point per measurement, joined by lines, with the birth measurement (03) as the first point when it falls in the period. The x axis is dated; the tooltip gives the date, the value and the baby's age then.
-- **Milestones** show as small markers along the weight chart's x axis; tapping one shows its name and date.
-- A measure with fewer than two points in the period shows its point(s) without a line; none: "Nothing logged in this period".
+- No buckets: each measure (weight in kg, length in cm, head circumference in cm) is a **line chart of its values in the period**, a point per measurement, joined by lines, with the birth measurement (03) as the first point when it falls in the period. The x axis runs over the period's dates (about five date labels); the y axis fits the period's values, a dashed top line labelled with the highest and the baseline with the lowest. A point's value reads its date, value and the baby's age then ("Sat, Oct 3: 4.600 kg · 4 weeks 4 days"; "Birth" instead of the age for the birth point).
+- The headline is the measure's latest value in the period, then its date in spec 04's entry date format ("4.600 kg · Oct 3"), "Birth" for the birth point; no "per day".
+- **Milestones** show as small markers along the weight chart's x axis; tapping one shows its date and name ("Fri, Sep 25: First smile", a custom one its title). With milestones but no weight in the period, the Weight card still shows its chart, with only the markers, and the headline "–".
+- A measure with fewer than two points in the period shows its point(s) without a line; none: "Nothing logged in this period" (Weight: only without milestones either).
 - This is where growth curves live: the Growth section on home stays raw logging (spec 10), and there are no percentile or WHO curves anywhere.
 
 ### Architecture
@@ -104,32 +105,24 @@ Each item becomes at least one test, written failing first.
 - [x] Durations crossing midnight are split across both local days; counts and volumes go to the start day; a live entry counts up to now.
 
 ### Metric cards
-- [ ] Each section shows the cards of the table above, with their headline and chart, in the section's colours.
-- [ ] Tapping a bar or point shows its date and value.
+- [x] Each section shows the cards of the table above, with their headline and chart, in the section's colours.
+- [x] Tapping a bar or point shows its date and value.
 - [x] A card with no data day in the period shows "Nothing logged in this period".
 - [x] Time between feeds ignores gaps over 8 hours and counts each gap on the later feed's day.
 - [x] Sleep minutes between 19:00 and 07:00 local count as night; the longest sleep counts on its start day.
 - [x] Breastfeeding headline shows the period's left / right split.
 
 ### Growth
-- [ ] Weight, length and head circumference each show a line of their measurements in the period, the birth measurement first when in the period; the tooltip shows date, value and age.
-- [ ] Milestones show as markers on the weight chart.
+- [x] Weight, length and head circumference each show a line of their measurements in the period, the birth measurement first when in the period; the tooltip shows date, value and age.
+- [x] Milestones show as markers on the weight chart.
 
 ### API
-- [ ] Each trends endpoint returns only the baby's data days in the range, aggregated in the given time zone, as described above.
-- [ ] Invalid or missing `from`, `to`, `tz` return their codes; another family's baby returns 404.
+- [x] Each trends endpoint returns only the baby's data days in the range, aggregated in the given time zone, as described above.
+- [x] Invalid or missing `from`, `to`, `tz` return their codes; another family's baby returns 404.
 
 ## Build slices
 
-Each slice: red → green → commit "Spec 12 slice N: …" on `master`.
-
-- [x] **1. Page and filter bar.** `/trends` replaces "Coming soon": top app bar, no-baby empty state, sticky `nala-trends-filter-bar` (Section and Range chips, period navigation bounded by today and the birth date, `nala.trendsFilters` remembered with fallbacks). No cards yet. Updates spec 04 (Bottom navigation bar, its "Coming soon" criterion, Out of scope). Covers: Page; Filter bar (all).
-- [x] **2. Sleep trends API.** Shared local-day splitting in `Nala.Core` (spans split across local days in an IANA zone, live up to now), the 19:00–07:00 night split, longest sleep on its start day; `GET …/trends/sleeps` with the `from` / `to` / `tz` codes and 404 across families; `tzdata` in the runtime image. Covers: API (sleeps); midnight split (API side); night / longest sleep.
-- [x] **3. Sleep cards, daily bars.** `nala-bar-chart` (stacked series, no-data gaps, lighter today, tap for a value, accessible labels), `nala-metric-card` (title, headline, chart or "Nothing logged in this period", section scheme), the trends service, headlines (daily averages over data days, today excluded), reload on filter change / baby switch / reload signal, error with Try again; Sleep's two cards. Covers: no-data days; today lighter and out of headlines; tapping a bar; nothing logged; cards (Sleep).
-- [x] **4. Week and month buckets.** Web regrouping by day / week (locale's first day) / month, daily average over data days, today left out. Covers: buckets; today out of week / month bars.
-- [x] **5. Diaper and Pump.** `…/trends/diapers` and `…/trends/pumps`; grouped bars in `nala-bar-chart`; the Diapers, Pumped and Sessions cards. Covers: cards (Diaper, Pump); API (diapers, pumps).
-- [x] **6. Feed.** `…/trends/feeds` (counts by kind, bottle ml by milk type, breast seconds per side split across midnight, gaps ≤ 8 h on the later feed's day); the four Feed cards with the L / R split headline. Covers: cards (Feed); time between feeds; breastfeeding split; API (feeds); live entry counted up to now.
-- [ ] **7. Growth.** `…/trends/growth` (measurements in range with the birth point, milestones); `nala-line-chart` (dated points, line from two points, markers, tooltip with date, value and age); Weight (with milestone markers), Length and Head cards. Covers: Growth (both); cards (Growth).
+Built in 7 slices, all done; each is a commit "Spec 12 slice N: …" (`git log --grep "Spec 12 slice"`).
 
 ## Data
 
@@ -139,7 +132,7 @@ Nothing new stored on the server: trends are computed from the existing entries.
 
 - Reused: `nala-top-app-bar`, 03's `nala-no-baby`, History's dropdown chip pattern (the single-choice menu is the shared `nala-choice-menu`, also used by History's window chip), `.nala-scheme-<key>` on each card.
 - New shared components: `nala-bar-chart` (stacked or grouped series, gaps for no-data days, lighter today bar, tap to show a value) and `nala-line-chart` (dated points, optional markers), both hand-made SVG from theme tokens, no chart library. Every bar and point has an accessible label ("Tue 7 Oct: 6 feeds").
-- New in `features/trends/`: the page, `nala-trends-filter-bar`, `nala-metric-card`, `nala-trends-load-state` (spinner, error with Try again, else the cards) and `TrendsSection`, the base of every section's trends (loading per baby and period, reload signal, buckets, headlines).
+- New in `features/trends/`: the page, `nala-trends-filter-bar`, `nala-metric-card`, `nala-trends-load-state` (spinner, error with Try again, else the cards), `TrendsLoader`, the base of every section's trends (loading per baby and period, reload signal), and `TrendsSection` on top of it for the bucketed sections (buckets, headlines).
 - The API image resolves IANA time zones: the `aspnet:10.0` runtime image (Ubuntu) ships `tzdata`.
 - Labels (EN / FR): Trends / Tendances, Section / Section, Range / Période, 7 days / 7 jours, 30 days / 30 jours, 3 months / 3 mois, 6 months / 6 mois, Since birth / Depuis la naissance, Previous period / Période précédente, Next period / Période suivante, Week of {date} / Semaine du {date}, Feeds / Tétées et repas, Bottle / Biberon, Breastfeeding / Allaitement, Time between feeds / Temps entre les repas, Sleep / Sommeil, Day / Jour, Night / Nuit, Longest sleep / Plus long sommeil, Diapers / Couches, Wet / Mouillée, Dirty / Selles (spec 07's), Pumped / Tiré, Sessions / Séances, per day / par jour, Nothing logged in this period / Rien de noté sur cette période (reused from spec 11). Growth labels reuse spec 10's.
 

@@ -5,6 +5,7 @@ import { firstValueFrom } from 'rxjs';
 import {
   DiaperTrendDay,
   FeedTrendDay,
+  GrowthTrends,
   PumpTrendDay,
   SleepTrendDay,
 } from './trends.models';
@@ -71,5 +72,26 @@ describe('TrendsService', () => {
     request.flush({ days });
 
     expect(await result).toEqual(days);
+  });
+
+  it("loads the period's growth measurements and milestones, by calendar date only", async () => {
+    const trends: GrowthTrends = {
+      measurements: [
+        { date: '2026-09-01', weightG: 3400, lengthCm: null, headCircumferenceCm: null, birth: true },
+      ],
+      milestones: [{ date: '2026-09-25', milestone: 'firstSmile', title: null }],
+    };
+    const result = firstValueFrom(
+      service.growth('b1', { from: new Date(2026, 8, 1), to: new Date(2026, 9, 9) }),
+    );
+
+    const request = http.expectOne((r) => r.url === '/api/babies/b1/trends/growth');
+    expect(request.request.method).toBe('GET');
+    expect(request.request.params.get('from')).toBe('2026-09-01');
+    expect(request.request.params.get('to')).toBe('2026-10-09');
+    expect(request.request.params.has('tz')).toBe(false);
+    request.flush(trends);
+
+    expect(await result).toEqual(trends);
   });
 });

@@ -1,3 +1,5 @@
+import { Milestone } from '../growth-entries/growth-entry.models';
+
 /** A period of whole local days, both ends included, as local midnights. */
 export interface TrendsPeriod {
   from: Date;
@@ -49,4 +51,29 @@ export interface FeedTrendDay {
   breastSeconds: { left: number; right: number };
   gapSecondsSum: number;
   gapCount: number;
+}
+
+/**
+ * A point of the growth curves (spec 12): a measurement's values, or the baby's birth measurements
+ * (`birth`), dated with the birth date. Each value is null when not measured.
+ */
+export interface GrowthTrendPoint {
+  date: string;
+  weightG: number | null;
+  lengthCm: number | null;
+  headCircumferenceCm: number | null;
+  birth: boolean;
+}
+
+/** A milestone of the weight curve; `title` only for a custom one. */
+export interface GrowthTrendMilestone {
+  date: string;
+  milestone: Milestone;
+  title: string | null;
+}
+
+/** The measurements and milestones dated in a period, in date order, the birth point first. */
+export interface GrowthTrends {
+  measurements: GrowthTrendPoint[];
+  milestones: GrowthTrendMilestone[];
 }

@@ -43,6 +43,12 @@ public class GrowthEntryRepository(NalaDbContext db) : IGrowthEntryRepository
         return await Entries(Newest(growthEntries).Take(limit)).ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<GrowthEntry>> ListDatedInAsync(Guid babyId, DateOnly from, DateOnly to, CancellationToken cancellationToken = default) =>
+        await db.Set<GrowthEntry>().AsNoTracking()
+            .Where(g => g.BabyId == babyId && g.Date >= from && g.Date <= to)
+            .OrderBy(g => g.Date).ThenBy(g => g.CreatedAt).ThenBy(g => g.Id)
+            .ToListAsync(cancellationToken);
+
     public async Task<GrowthLatest> LatestAsync(Guid babyId, CancellationToken cancellationToken = default)
     {
         var ofBaby = Newest(db.Set<GrowthEntry>().AsNoTracking().Where(g => g.BabyId == babyId));

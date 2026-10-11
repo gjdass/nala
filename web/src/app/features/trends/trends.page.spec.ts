@@ -23,6 +23,7 @@ import { fakeDataRefresh } from '../../testing/data-refresh';
 import { translocoTesting } from '../../testing/transloco-testing';
 import { DiaperTrendsComponent } from './diaper/diaper-trends.component';
 import { FeedTrendsComponent } from './feed/feed-trends.component';
+import { GrowthTrendsComponent } from './growth/growth-trends.component';
 import { PumpTrendsComponent } from './pump/pump-trends.component';
 import { SleepTrendsComponent } from './sleep/sleep-trends.component';
 import { TrendsPage } from './trends.page';
@@ -108,6 +109,7 @@ describe('TrendsPage', () => {
             diapers: () => of([]),
             pumps: () => of([]),
             feeds: () => of([]),
+            growth: () => of({ measurements: [], milestones: [] }),
           },
         },
       ],
@@ -332,6 +334,18 @@ describe('TrendsPage', () => {
         | PumpTrendsComponent;
       expect(trends.babyId()).toBe('b1');
       expect(trends.period()).toEqual({ from: new Date(2026, 9, 3), to: new Date(2026, 9, 9) });
+    });
+
+    it("shows Growth's trends with the baby's birth date", async () => {
+      await loadBabies([lea]);
+
+      await pick('section-chip', 'section-option', 4);
+
+      const growth = fixture.debugElement.query(By.directive(GrowthTrendsComponent))
+        .componentInstance as GrowthTrendsComponent;
+      expect(growth.babyId()).toBe('b1');
+      expect(growth.period()).toEqual({ from: new Date(2026, 9, 3), to: new Date(2026, 9, 9) });
+      expect(growth.birthDate()).toBe('2026-09-01');
     });
   });
 

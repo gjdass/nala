@@ -299,4 +299,21 @@ public class GrowthEntryRepositoryTests
 
         Assert.That((await ListAsync()).Select(e => e.GrowthEntry.Id), Is.EqualTo(new[] { kept.Id }));
     }
+
+    [Test]
+    public async Task ListDatedIn_returns_the_babys_entries_between_both_dates_included_in_order()
+    {
+        var last = await AddAsync(day: 20);
+        var secondCreated = await AddAsync(day: 10, createdAt: Now.AddMinutes(2));
+        var firstCreated = await AddAsync(day: 10, createdAt: Now.AddMinutes(1));
+        var first = await AddAsync(day: 5);
+        await AddAsync(day: 4);
+        await AddAsync(day: 21);
+        await AddAsync(baby: _tom, day: 10);
+
+        await using var db = _db();
+        var entries = await new GrowthEntryRepository(db).ListDatedInAsync(_lea.Id, new DateOnly(2026, 9, 5), new DateOnly(2026, 9, 20));
+
+        Assert.That(entries.Select(e => e.Id), Is.EqualTo(new[] { first.Id, firstCreated.Id, secondCreated.Id, last.Id }));
+    }
 }

@@ -46,6 +46,14 @@ public class FakeGrowthEntryRepository : IGrowthEntryRepository
             entries.Where(g => g.HeadCircumferenceCm is not null).Select(g => new LatestMeasure(g.HeadCircumferenceCm!.Value, g.Date, false)).FirstOrDefault()));
     }
 
+    public Task<IReadOnlyList<GrowthEntry>> ListDatedInAsync(Guid babyId, DateOnly from, DateOnly to, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<GrowthEntry>>(GrowthEntries
+            .Where(g => g.BabyId == babyId && g.Date >= from && g.Date <= to)
+            .OrderBy(g => g.Date)
+            .ThenBy(g => g.CreatedAt)
+            .ThenBy(g => g.Id)
+            .ToList());
+
     private IEnumerable<GrowthEntry> Newest(Guid babyId) => GrowthEntries
         .Where(g => g.BabyId == babyId)
         .OrderByDescending(g => g.Date)

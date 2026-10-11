@@ -1,0 +1,25 @@
+<nala-trends-load-state
+  [error]="!!data.error()"
+  [loaded]="data.hasValue()"
+  (retry)="data.reload()"
+>
+  @for (card of cards(); track card.key; let weight = $first) {
+    <nala-metric-card
+      section="growth"
+      [title]="card.title"
+      [headline]="card.headline"
+      [perDay]="false"
+      [detail]="card.detail"
+      [empty]="card.points.length === 0 && !(weight && milestones().length > 0)"
+    >
+      <nala-line-chart
+        [points]="card.points"
+        [markers]="weight ? milestones() : []"
+        [from]="from()"
+        [to]="to()"
+        [format]="card.format"
+        [lang]="lang()"
+      />
+    </nala-metric-card>
+  }
+</nala-trends-load-state>

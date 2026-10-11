@@ -2,7 +2,14 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
 import { formatDate } from '../time/local-date';
-import { DiaperTrendDay, FeedTrendDay, PumpTrendDay, SleepTrendDay, TrendsPeriod } from './trends.models';
+import {
+  DiaperTrendDay,
+  FeedTrendDay,
+  GrowthTrends,
+  PumpTrendDay,
+  SleepTrendDay,
+  TrendsPeriod,
+} from './trends.models';
 
 /**
  * A baby's trends (spec 12), aggregated by the API per local day of the device's time zone. Reading
@@ -32,13 +39,20 @@ export class TrendsService {
     return this.days<FeedTrendDay>(babyId, 'feeds', period);
   }
 
+  /** The period's measurements and milestones: calendar dates, so no time zone. */
+  growth(babyId: string, period: TrendsPeriod): Observable<GrowthTrends> {
+    return this.http.get<GrowthTrends>(`/api/babies/${babyId}/trends/growth`, {
+      params: dates(period),
+    });
+  }
+
   private days<T>(babyId: string, section: string, period: TrendsPeriod): Observable<T[]> {
-    const params = new HttpParams()
-      .set('from', formatDate(period.from))
-      .set('to', formatDate(period.to))
-      .set('tz', Intl.DateTimeFormat().resolvedOptions().timeZone);
+    const params = dates(period).set('tz', Intl.DateTimeFormat().resolvedOptions().timeZone);
     return this.http
       .get<{ days: T[] }>(`/api/babies/${babyId}/trends/${section}`, { params })
       .pipe(map((response) => response.days));
   }
 }
+
+const dates = (period: TrendsPeriod) =>
+  new HttpParams().set('from', formatDate(period.from)).set('to', formatDate(period.to));

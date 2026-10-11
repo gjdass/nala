@@ -27,7 +27,7 @@ public class TrendEndpointTests
             "/api/auth/setup", new { email = "anna@mail.com", displayName = "Anna", password = Password, language = "en", familyName = "Martins" });
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
 
-        response = await TestBabies.PostAsync(_admin, new { name = "Lea", birthDate = "2026-09-01" });
+        response = await TestBabies.PostAsync(_admin, new { name = "Lea", birthDate = "2026-09-01", birthWeightG = 3400 });
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Created));
         _leaId = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
     }
@@ -76,6 +76,12 @@ public class TrendEndpointTests
             startTime = start.ToUniversalTime(),
             durations = new { leftSeconds, rightSeconds, endedOn = "right" },
         });
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Created));
+    }
+
+    private async Task AddGrowthAsync(object body)
+    {
+        var response = await _admin.PostAsJsonAsync("/api/growth-entries", body);
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Created));
     }
 
@@ -182,10 +188,58 @@ public class TrendEndpointTests
         });
     }
 
-    private static readonly string[] Sections = ["sleeps", "diapers", "pumps", "feeds"];
+    [Test]
+    public async Task Growth_trends_return_measurements_and_milestones()
+    {
+        await AddGrowthAsync(new { id = Guid.NewGuid(), babyId = _leaId, kind = "measurement", date = "2026-09-20", weightG = 4100, lengthCm = 54.5 });
+        await AddGrowthAsync(new { id = Guid.NewGuid(), babyId = _leaId, kind = "measurement", date = "2026-10-20", weightG = 5100 });
+        await AddGrowthAsync(new { id = Guid.NewGuid(), babyId = _leaId, kind = "milestone", date = "2026-09-25", milestone = "firstSmile" });
+
+        var response = await _admin.GetAsync($"/api/babies/{_leaId}/trends/growth?from=2026-09-01&to=2026-09-30");
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        var json = await JsonAsync(response);
+        var measurements = json.GetProperty("measurements");
+        var milestones = json.GetProperty("milestones");
+        Assert.Multiple(() =>
+        {
+            Assert.That(measurements.GetArrayLength(), Is.EqualTo(2));
+            Assert.That(measurements[0].GetProperty("date").GetString(), Is.EqualTo("2026-09-01"));
+            Assert.That(measurements[0].GetProperty("weightG").GetInt32(), Is.EqualTo(3400));
+            Assert.That(measurements[0].GetProperty("lengthCm").ValueKind, Is.EqualTo(JsonValueKind.Null));
+            Assert.That(measurements[0].GetProperty("birth").GetBoolean(), Is.True);
+            Assert.That(measurements[1].GetProperty("date").GetString(), Is.EqualTo("2026-09-20"));
+            Assert.That(measurements[1].GetProperty("lengthCm").GetDecimal(), Is.EqualTo(54.5m));
+            Assert.That(measurements[1].GetProperty("headCircumferenceCm").ValueKind, Is.EqualTo(JsonValueKind.Null));
+            Assert.That(measurements[1].GetProperty("birth").GetBoolean(), Is.False);
+            Assert.That(milestones.GetArrayLength(), Is.EqualTo(1));
+            Assert.That(milestones[0].GetProperty("date").GetString(), Is.EqualTo("2026-09-25"));
+            Assert.That(milestones[0].GetProperty("milestone").GetString(), Is.EqualTo("firstSmile"));
+            Assert.That(milestones[0].GetProperty("title").ValueKind, Is.EqualTo(JsonValueKind.Null));
+        });
+    }
+
+    [TestCase("", "from", "required")]
+    [TestCase("?from=2026-09-10", "to", "required")]
+    [TestCase("?from=2026-9-10&to=2026-09-16", "from", "invalid")]
+    [TestCase("?from=2026-09-10&to=nope", "to", "invalid")]
+    [TestCase("?from=2026-09-10&to=2026-09-09", "to", "beforeFrom")]
+    public async Task Growth_answers_the_from_and_to_codes(string query, string field, string code)
+    {
+        var response = await _admin.GetAsync($"/api/babies/{_leaId}/trends/growth{query}");
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
+        var errors = (await JsonAsync(response)).GetProperty("errors");
+        Assert.That(errors.GetProperty(field)[0].GetString(), Is.EqualTo(code));
+        Assert.That(errors.TryGetProperty("tz", out _), Is.False);
+    }
+
+    private static readonly string[] Sections = ["sleeps", "diapers", "pumps", "feeds", "growth"];
+
+    private static readonly string[] BucketedSections = ["sleeps", "diapers", "pumps", "feeds"];
 
     private static IEnumerable<TestCaseData> InvalidQueries() =>
-        from section in Sections
+        from section in BucketedSections
         from data in new[]
         {
             ("", "from", "required"),

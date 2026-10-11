@@ -1,0 +1,83 @@
+:host {
+  display: block;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-label-small);
+}
+
+.tooltip {
+  min-height: 20px;
+  margin: 0 0 4px;
+  color: var(--mat-sys-on-surface);
+  font: var(--mat-sys-label-large);
+}
+
+.value-label {
+  min-height: 16px;
+  text-align: end;
+}
+
+.plot {
+  display: block;
+  width: 100%;
+  height: 160px;
+  overflow: visible;
+}
+
+.grid,
+.baseline {
+  stroke: var(--mat-sys-outline-variant);
+  stroke-width: 1;
+}
+
+.grid {
+  stroke-dasharray: 4 4;
+}
+
+.line {
+  stroke: var(--mat-sys-primary);
+  stroke-width: 2;
+}
+
+.point,
+.marker {
+  cursor: pointer;
+  outline: none;
+}
+
+// A large invisible circle takes the taps, so small dots stay easy to hit.
+.hit {
+  fill: none;
+  pointer-events: all;
+}
+
+.point:focus-visible .hit,
+.marker:focus-visible .hit {
+  stroke: var(--mat-sys-primary);
+  stroke-width: 2;
+}
+
+.point.selected .hit,
+.marker.selected .hit {
+  fill: var(--mat-sys-on-surface);
+  fill-opacity: 0.08;
+}
+
+.dot {
+  fill: var(--mat-sys-primary);
+}
+
+.flag {
+  fill: var(--mat-sys-tertiary);
+}
+
+.x-labels {
+  position: relative;
+  height: 20px;
+  margin-top: 4px;
+
+  span {
+    position: absolute;
+    transform: translateX(-50%);
+    white-space: nowrap;
+  }
+}
