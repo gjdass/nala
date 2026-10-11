@@ -17,7 +17,7 @@ On the Trends tab, show how the selected baby's feeding, sleep, diapers, pumping
 
 ### Filter bar
 - Sticky under the top edge guard, as History's. Two dropdown chips side by side (History's chip and menu pattern), then the period navigation:
-  - **Section** (single choice, `menuitemradio`): the sections that have trends, i.e. **Feed, Sleep, Diaper, Pump and Growth**, in the home order (visible ones, a divider, then hidden ones; default order while the home order isn't loaded). **Health has no trends.** Default: the first section with trends that is visible on home.
+  - **Section** (single choice, `menuitemradio`): the sections that have trends, i.e. **Feed, Sleep, Diaper, Pump and Growth**, in the home order (visible ones, a divider, then hidden ones; default order while the home order isn't loaded). **Health has no trends.** Default: the first section with trends that is visible on home, else the first one in home order (only Health visible).
   - **Range** (`menuitemradio`): **7 days** (default), **30 days**, **3 months**, **6 months**, **Since birth**.
   - **Period navigation:** ‹ and › around the period's label ("3 – 9 Oct", "Jul – Oct 2026"). ‹ shows the period of the same length just before; › the one after, disabled on the current period. Nothing goes before the birth date (‹ disabled once the period reaches it). Not shown for Since birth.
 - Periods are **whole local days**, ending today: 7 days = today and the 6 days before; 3 months = from the same day 3 months ago + 1 day to today. Changing the range or the section goes back to the current period.
@@ -46,7 +46,7 @@ On the Trends tab, show how the selected baby's feeding, sleep, diapers, pumping
 | Diaper | Diapers | two bars side by side: wet, dirty (a wet and dirty diaper counts in both) | wet per day · dirty per day |
 | Pump | Pumped | ml, stacked left / right | ml per day |
 | Pump | Sessions | sessions per day | sessions per day |
-| Growth | Weight / Length / Head | one line chart each (see Growth) | latest value and its date |
+| Growth | Weight / Length / Head | one line chart each (see Growth) | the latest value in the period and its date |
 
 - **Time between feeds:** the gap from one feed's start to the next feed's start, counted on the day of the later feed. **Gaps over 8 hours are ignored** (a night or a stretch nobody logged). A day with a single feed has no gap value.
 - **Night:** **19:00 to 07:00 local**, fixed. A sleep's minutes inside that window are night, the others day. The longest sleep counts on the day it starts.
@@ -66,7 +66,7 @@ On the Trends tab, show how the selected baby's feeding, sleep, diapers, pumping
     - diapers: `wet`, `dirty`, `count`;
     - pumps: `leftMl`, `rightMl`, `sessions`.
   - `GET /api/babies/{babyId}/trends/growth?from=…&to=…` → `{ measurements: [{ date, weightG, lengthCm, headCircumferenceCm, birth }], milestones: [{ date, milestone, title }] }`.
-  - Codes: `from` / `to` `required` / `invalid`, `to` `beforeFrom`, `tz` `required` / `invalid`; another family's or an unknown baby → 404 as the other baby endpoints.
+  - Codes: `from` / `to` `required` / `invalid`, `to` `beforeFrom`, `tz` `required` / `invalid` (the four bucketed endpoints; growth takes no `tz`); another family's or an unknown baby → 404 as the other baby endpoints.
 - The web regroups days into weeks / months and computes the headlines. Reading needs the network (overview); an error shows Try again. The page reloads on the reload signal (04), a baby switch and a filter change.
 
 ## User stories
@@ -87,7 +87,7 @@ Each item becomes at least one test, written failing first.
 - [ ] `/trends` shows the top app bar, the filter bar and the selected section's metric cards; no page title, no + button. Without a baby, 03's empty state.
 
 ### Filter bar
-- [ ] The Section chip offers Feed, Sleep, Diaper, Pump and Growth in home order (visible, divider, hidden), never Health; default: the first visible one.
+- [ ] The Section chip offers Feed, Sleep, Diaper, Pump and Growth in home order (visible, divider, hidden), never Health; default: the first visible one, else the first in home order.
 - [ ] The Range chip offers 7 days (default), 30 days, 3 months, 6 months and Since birth.
 - [ ] ‹ shows the previous period of the same length and › the next one; › is disabled on the current period, ‹ once the period reaches the birth date; no arrows for Since birth. The label shows the period's dates.
 - [ ] Changing the section or the range goes back to the current period.
@@ -117,7 +117,7 @@ Each item becomes at least one test, written failing first.
 
 ## Build slices
 
-<!-- Added by /slice before the first one is built. -->
+<!-- Added by /slice before the first one is built. The slice that replaces the placeholder also updates spec 04 (Bottom navigation bar, its "Coming soon" criterion, Out of scope). -->
 
 ## Data
 
@@ -129,7 +129,7 @@ Nothing new stored on the server: trends are computed from the existing entries.
 - New shared components: `nala-bar-chart` (stacked or grouped series, gaps for no-data days, lighter today bar, tap to show a value) and `nala-line-chart` (dated points, optional markers), both hand-made SVG from theme tokens, no chart library. Every bar and point has an accessible label ("Tue 7 Oct: 6 feeds").
 - New in `features/trends/`: the page, `nala-trends-filter-bar`, `nala-metric-card`.
 - The API image must resolve IANA time zones (check `tzdata` in the runtime image).
-- Labels (EN / FR): Trends / Tendances, Range / Période, 7 days / 7 jours, 30 days / 30 jours, 3 months / 3 mois, 6 months / 6 mois, Since birth / Depuis la naissance, Previous period / Période précédente, Next period / Période suivante, Feeds / Tétées et repas, Bottle / Biberon, Breastfeeding / Allaitement, Time between feeds / Temps entre les repas, Sleep / Sommeil, Day / Jour, Night / Nuit, Longest sleep / Plus long sommeil, Diapers / Couches, Wet / Mouillée, Dirty / Sale, Pumped / Tiré, Sessions / Séances, per day / par jour, Nothing logged in this period / Rien de noté sur cette période (reused from spec 11). Growth labels reuse spec 10's.
+- Labels (EN / FR): Trends / Tendances, Range / Période, 7 days / 7 jours, 30 days / 30 jours, 3 months / 3 mois, 6 months / 6 mois, Since birth / Depuis la naissance, Previous period / Période précédente, Next period / Période suivante, Feeds / Tétées et repas, Bottle / Biberon, Breastfeeding / Allaitement, Time between feeds / Temps entre les repas, Sleep / Sommeil, Day / Jour, Night / Nuit, Longest sleep / Plus long sommeil, Diapers / Couches, Wet / Mouillée, Dirty / Selles (spec 07's), Pumped / Tiré, Sessions / Séances, per day / par jour, Nothing logged in this period / Rien de noté sur cette période (reused from spec 11). Growth labels reuse spec 10's.
 
 ## Out of scope
 
@@ -145,4 +145,4 @@ Nothing new stored on the server: trends are computed from the existing entries.
 
 ## Open questions
 
-- None yet.
+None.

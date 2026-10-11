@@ -6,6 +6,17 @@ Status: done
 
 Prove the whole chain — Angular PWA → nginx → API → PostgreSQL, built and run with Docker Compose — before any feature is written, with both test suites in place. This is the first build step.
 
+## Decisions
+
+- **i18n library:** Transloco (`@jsverse/transloco`), runtime language switching. Translation files are `web/public/i18n/en.json` and `fr.json`, fetched over HTTP and cached by the service worker.
+- **Initial language:** the first of EN/FR in the browser's language preferences, else English, until the per-user setting (spec 02) replaces it.
+- **Web test runner:** Vitest through the Angular CLI (`ng test`). Checks that need Node (compiling the SCSS theme, running stylelint) are Node test-runner tests in `web/tools/` (`npm run test:tooling`).
+- **Theme:** Angular Material M3 with `theme-type: color-scheme`: every colour token is a `light-dark()` value, so the theme follows the system preference, and `ThemeService` forces light or dark by setting `color-scheme` on `<html>`. The choice is stored per device in `localStorage` (`nala.theme`); default `system`. Palette: Material's default (azure) until decided.
+- **Section colour tokens:** `--nala-section-<key>` (surface) and `--nala-on-section-<key>` (text/icons on it) for `feed`, `sleep`, `diaper`, `pump`, `growth`, `health`, defined in `web/src/styles/_sections.scss`. Placeholder values from Material's M3 palettes (tone 40/80 for the colour, 100/20 for the on-colour, light/dark): feed orange, sleep violet, diaper cyan, pump rose, growth green, health red.
+- **Font:** Roboto bundled with the app (`@fontsource/roboto`), no Google Fonts request.
+- **Colour lint:** stylelint on component styles (`src/app/**/*.scss`) rejects hex, named colours and colour functions (`rgb()`, `hsl()`, `oklch()`…). Theme files under `src/styles/` are the only place colours are defined.
+- **Deployment:** the `web` host port comes from `NALA_HTTP_PORT` (default 8080); `db` and `api` publish nothing. PostgreSQL 18 (`postgres:18-alpine`, same as the tests) with the named volume `nala-db` mounted at `/var/lib/postgresql` (the PG 18 layout). Both runtime images are non-root and listen on 8080 (`aspnet:10.0` as `app`, `nginx-unprivileged`). The stack serves plain HTTP; HTTPS is the host's own reverse proxy, documented in the README. Deployment checks live in `tests/deploy/` (Node test runner on the resolved compose model, plus `smoke.sh` from a clean copy).
+
 ## Acceptance criteria
 
 Each item becomes at least one test or check, written failing first where testable.
@@ -31,7 +42,7 @@ Each item becomes at least one test or check, written failing first where testab
 - [x] nginx serves the Angular build (SPA fallback to `index.html`) and reverse-proxies `/api` to the `api` container.
 - [x] `docker-compose.yml` defines `db` (PostgreSQL, named volume, healthcheck), `api` (waits for a healthy `db`) and `web` (the only published port).
 - [x] `.env.example` lists every variable compose needs, with placeholder values.
-- [x] From a clean clone: `cp .env.example .env && docker compose up -d --build` → the app opens in a browser and shows the API health as ok.
+- [x] From a clean clone: `cp .env.example .env && docker compose up -d --build` → the app opens in a browser and `/api/health` answers ok (smoke check).
 
 ### Docs
 - [x] The "Commands" sections of `web/CLAUDE.md` and `api/CLAUDE.md` list the real commands (run, test, lint, build, add migration).
@@ -40,18 +51,6 @@ Each item becomes at least one test or check, written failing first where testab
 ## Build slices
 
 Built in 4 slices, all done; each is a commit "Spec 01 slice N: …" (`git log --grep "Spec 01 slice"`).
-
-## Decisions
-
-- **i18n library:** Transloco (`@jsverse/transloco`), runtime language switching. Translation files are `web/public/i18n/en.json` and `fr.json`, fetched over HTTP and cached by the service worker.
-- **Initial language:** the first of EN/FR in the browser's language preferences, else English, until the per-user setting (spec 02) replaces it.
-- **Web test runner:** Vitest through the Angular CLI (`ng test`). Checks that need Node (compiling the SCSS theme, running stylelint) are Node test-runner tests in `web/tools/` (`npm run test:tooling`).
-- **Theme:** Angular Material M3 with `theme-type: color-scheme`: every colour token is a `light-dark()` value, so the theme follows the system preference, and `ThemeService` forces light or dark by setting `color-scheme` on `<html>`. The choice is stored per device in `localStorage` (`nala.theme`); default `system`. Palette: Material's default (azure) until decided.
-- **Section colour tokens:** `--nala-section-<key>` (surface) and `--nala-on-section-<key>` (text/icons on it) for `feed`, `sleep`, `diaper`, `pump`, `growth`, `health`, defined in `web/src/styles/_sections.scss`. Placeholder values from Material's M3 palettes (tone 40/80 for the colour, 100/20 for the on-colour, light/dark): feed orange, sleep violet, diaper cyan, pump rose, growth green, health red.
-- **Font:** Roboto bundled with the app (`@fontsource/roboto`), no Google Fonts request.
-- **Colour lint:** stylelint on component styles (`src/app/**/*.scss`) rejects hex, named colours and colour functions (`rgb()`, `hsl()`, `oklch()`…). Theme files under `src/styles/` are the only place colours are defined.
-
-- **Deployment:** the `web` host port comes from `NALA_HTTP_PORT` (default 8080); `db` and `api` publish nothing. PostgreSQL 18 (`postgres:18-alpine`, same as the tests) with the named volume `nala-db` mounted at `/var/lib/postgresql` (the PG 18 layout). Both runtime images are non-root and listen on 8080 (`aspnet:10.0` as `app`, `nginx-unprivileged`). The stack serves plain HTTP; HTTPS is the host's own reverse proxy, documented in the README. Deployment checks live in `tests/deploy/` (Node test runner on the resolved compose model, plus `smoke.sh` from a clean copy).
 
 ## Out of scope
 

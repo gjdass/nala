@@ -61,4 +61,5 @@ Built in 4 slices, all done; each is a commit "Spec 06 slice N: …" (`git log -
 - Nap / night categories, location, how the baby fell asleep, night wakings (decided: not wanted).
 - Pauses inside a sleep (segments): restarting a stopped sleep continues it from its start time.
 - Overlap checks between sleeps.
-- Totals, statistics, charts, sleep schedules or "next nap" predictions (Trends, feature 12).
+- Totals, statistics, charts (Trends, feature 12).
+- Sleep schedules or "next nap" predictions (decided: not wanted, the app gives no advice).

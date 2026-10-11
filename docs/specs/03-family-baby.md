@@ -114,7 +114,7 @@ Built in 17 slices, all done; each is a commit "Spec 03 slice N: …" (`git log 
 - **Membership:** family, user, role (admin / member), joined at. Unique per family and user; one admin per family (unique partial index). Deleted with its family; deleted with the user's account.
 - **Baby:** id, family, name, birth date (date only, no time), sex, birth weight g (nullable), birth length cm (nullable, one decimal), birth head circumference cm (nullable, one decimal), created at, created by user, updated at.
 - Birth measurements live on the baby. Growth (10) shows them as the first point of the growth history rather than duplicating them as entries.
-- **Invitation:** as defined in 02, plus `revoked at` and its family (join invitation) or none (new-family invitation).
+- **Invitation:** as defined in 02 (family set for a join invitation, null for a new-family one).
 - Deleting a baby cascades to every activity table's entries for that baby. Deleting a family cascades to its babies, memberships and invitations.
 
 ## UI notes

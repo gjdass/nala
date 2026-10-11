@@ -92,4 +92,4 @@ Built in 4 slices, all done; each is a commit "Spec 09 slice N: …" (`git log -
 - Fahrenheit, fever thresholds, temperature colours or warnings, the measuring method (rectal, ear…).
 - Other health events (symptoms, doctor visits, vaccines): add them to the overview as ideas if wanted.
 - Timers, live sync, mini-bar (an entry is instantaneous).
-- Daily counts, totals, statistics, charts (Trends, feature 12).
+- Daily counts, totals, statistics, charts: Trends (12) has no Health.

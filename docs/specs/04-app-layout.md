@@ -109,8 +109,8 @@ Every section card has the same frame (shared `nala-section-card`), filled with 
 
 ### Formats
 - **Time since** (card highlights and banners): hours and minutes only, never seconds: `just now` (under 1 min), `26m ago` (under 1 h), `2h 15m ago` / `2h ago` (under 24 h), `>24h ago` (24 h or more). French: `à l'instant`, `il y a 26 min`, `il y a 2 h 15 min`, `il y a plus de 24 h`. Refreshed every second from the shared `NowService` clock.
-- **Highlight durations** (a duration shown in a card highlight, e.g. Sleep's "Awake for" and "last sleep"): hours and minutes only: `<1m` (under 1 min), `26m`, `2h 15m` / `2h`, `>24h` (24 h or more). French: `<1 min`, `26 min`, `2 h 15 min`, `>24 h`. Shared pipe `nalaHighlightDuration`; every section's highlight uses it (or Time since), never the full duration format.
-- **Durations** (everywhere except card highlights: timers, entry summaries, sheets, mini-bar): `45s`, `8m 30s` / `8m`, `1h 5m` / `2h` (zero parts left out, seconds left out from 1 h). French: `45 s`, `8 min 30 s`, `1 h 5 min`.
+- **Highlight durations** (a duration shown in a card highlight, e.g. Sleep's "Awake for" and "last sleep", and in Trends' headlines and charts, spec 12): hours and minutes only: `<1m` (under 1 min), `26m`, `2h 15m` / `2h`, `>24h` (24 h or more). French: `<1 min`, `26 min`, `2 h 15 min`, `>24 h`. Shared pipe `nalaHighlightDuration`; every section's highlight and Trends use it (or Time since), never the full duration format.
+- **Durations** (everywhere except card highlights and Trends: timers, entry summaries, sheets, mini-bar): `45s`, `8m 30s` / `8m`, `1h 5m` / `2h` (zero parts left out, seconds left out from 1 h). French: `45 s`, `8 min 30 s`, `1 h 5 min`.
 - **Entry time** (`nalaEntryTime`): the local time for today's entries (`2:10 PM`), `Yesterday 2:10 PM`, then date and time (`Sep 20, 2:10 PM`, with the year when it is not the current year). **Entry date** (`nalaEntryDate`, date-only entries): its date part ("Today", "Yesterday", "Sep 28").
 
 ### Entry list item
@@ -141,7 +141,7 @@ For a section with resource `/api/<entries>` (e.g. `/api/diapers`):
 - Shared Core code in `Nala.Core/Entries` (`UserName`, `EntryCursor`, `EntryFields`, `EntryPaging`), `Nala.Api/Entries` (`UserNameResponse`); web `core/entries` (`UserName`, `EntryResult` / `EntryDeleteResult`, `toEntryResult` / `toDeleteResult`).
 
 ### Times
-- **Times in the future are allowed.** No entry time, date, duration or timer tap is refused for being in the future, in the app or the API: the user logs what they want. Only the baby's birth date (03) can't be in the future. "End after start" and "not before birth" stay.
+- **Times in the future are allowed.** No entry time, date, duration or timer tap is refused for being in the future, in the app or the API: the user logs what they want. Only the baby's birth date (03) can't be in the future. "End after start" and Growth's "not before birth" (spec 10) stay.
 
 ### Offline queue
 - A shared device queue (`core/offline/`, `localStorage`) keeps every add / edit / delete (and timer tap) made while the server can't be reached (no network, or 502/503/504), with the signed-in user and the time of the action. Once one waits, the user's next changes queue behind it so they arrive in order.
