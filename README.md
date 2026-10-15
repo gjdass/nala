@@ -62,9 +62,29 @@ docker compose up -d --build
 
 The database lives in the `nala-db` named volume. It survives `docker compose down` and rebuilds, but `docker compose down -v` deletes it.
 
+### Backup and restore
+
+With the stack running, from the repository:
+
+```sh
+scripts/db-backup.sh                      # writes backups/nala-<UTC timestamp>.sql.gz
+scripts/db-backup.sh /path/to/file.sql.gz # or to a file of your choice
+```
+
+The backup holds the data only (gzipped SQL); the app recreates the tables itself. Keep backups somewhere safe: they contain your family's data.
+
+To restore, start Nala on an empty database (a new host, or after `docker compose down -v` then `docker compose up -d`), let it start once, then:
+
+```sh
+scripts/db-restore.sh backups/nala-20261014T120000Z.sql.gz
+```
+
+The restore refuses to run if the database already holds data, or if it is on another app version than the backup (restore with the version the backup was made with, then update). It is all-or-nothing: on any error nothing is written.
+
 ### Checks
 
 ```sh
 node --test "tests/**/*.test.mjs"   # compose and Dockerfile checks (needs Docker and Node)
 tests/deploy/smoke.sh               # builds and starts the stack from a clean copy, checks the app and /api/health
+tests/deploy/db-backup-restore.sh   # backs up, wipes the database, restores and compares
 ```

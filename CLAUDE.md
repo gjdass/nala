@@ -22,10 +22,11 @@ docker-compose.yml     # prod stack: db + api + web
 .env.example           # every variable compose needs, with safe placeholder values
 web/                   # Angular app (own Dockerfile)
 api/                   # .NET solution (own Dockerfile)
+scripts/               # operator scripts (database backup/restore)
 tests/deploy/          # deployment checks
 ```
 
-Deployment checks (from the root, Docker needed): `node --test "tests/**/*.test.mjs"` (compose and Dockerfiles), `tests/deploy/smoke.sh` (full stack from a clean copy).
+Deployment checks (from the root, Docker needed): `node --test "tests/**/*.test.mjs"` (compose and Dockerfiles), `tests/deploy/smoke.sh` (full stack from a clean copy), `tests/deploy/db-backup-restore.sh` (backup → fresh database → restore).
 
 ## Development workflow: test first, always
 
@@ -51,6 +52,7 @@ Don't write production code before a failing test exists for it. Don't call a ta
 - The API applies EF Core migrations at startup.
 - All config comes from environment variables (`.env`, never committed). Keep `.env.example` up to date whenever a variable is added.
 - Postgres data lives in a named volume.
+- Database backup and restore: `scripts/db-backup.sh` / `scripts/db-restore.sh`, checked by `tests/deploy/db-backup-restore.sh`. Any schema change must keep them working and the user must be told (see "Backup scripts" in `api/CLAUDE.md`).
 
 ## Specs
 

@@ -36,6 +36,7 @@ Dependency rule: `Nala.Core` has no dependency on EF Core, ASP.NET or any infras
 - Never expose EF entities directly over HTTP. Use DTOs.
 - Entity configuration uses `IEntityTypeConfiguration<T>` classes in `Nala.Sql`, not data annotations on Core entities.
 - Every schema change goes through an EF migration committed with the change. Migrations are applied at startup.
+- **Backup scripts:** every new migration also means reviewing `scripts/db-backup.sh` and `scripts/db-restore.sh` (data-only dump of every public table except `__EFMigrationsHistory`, restore refused on another migration or a non-empty database). Update them when the change needs it (a table that must not be backed up, a non-`public` schema, data that a restore must transform…), run `tests/deploy/db-backup-restore.sh`, and **always tell the user** in the reply and the commit message that the backup scripts were checked, and what changed in them if anything.
 - Store timestamps in UTC (`timestamptz`) and let the client handle local-time display.
 - Configuration (connection string, etc.) comes from environment variables.
 

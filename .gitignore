@@ -25,3 +25,6 @@ coverage/
 
 # Local data exports from other apps (may contain personal data)
 export_*.csv
+
+# Database backups (personal data)
+backups/
