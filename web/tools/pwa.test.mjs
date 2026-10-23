@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import { before, describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { inflateSync } from 'node:zlib';
 
 const publicDir = fileURLToPath(new URL('../public/', import.meta.url));
 const indexHtml = readFileSync(fileURLToPath(new URL('../src/index.html', import.meta.url)), 'utf8');
@@ -13,6 +14,33 @@ function pngSize(path) {
   assert.equal(png.toString('ascii', 1, 4), 'PNG', `${path} is a PNG`);
   return { width: png.readUInt32BE(16), height: png.readUInt32BE(20), colorType: png[25] };
 }
+
+// Top-left pixel of an 8-bit RGB(A) PNG, as #rrggbb. Every PNG filter leaves the first
+// pixel of the first row unchanged, so no unfiltering is needed.
+function pngCorner(path) {
+  const png = read(path);
+  assert.equal(png[24], 8, `${path} has 8-bit channels`);
+  assert.ok([2, 6].includes(png[25]), `${path} is RGB or RGBA`);
+  const idat = [];
+  for (let offset = 8; offset < png.length; ) {
+    const length = png.readUInt32BE(offset);
+    if (png.toString('ascii', offset + 4, offset + 8) === 'IDAT') {
+      idat.push(png.subarray(offset + 8, offset + 8 + length));
+    }
+    offset += 12 + length;
+  }
+  const rgb = inflateSync(Buffer.concat(idat)).subarray(1, 4);
+  return '#' + rgb.toString('hex');
+}
+
+// Colours resampled from a flat background may drift by a unit or two.
+function assertSameColour(actual, expected, message) {
+  const channels = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+  const [a, e] = [channels(actual), channels(expected)];
+  assert.ok(a.every((v, i) => Math.abs(v - e[i]) <= 3), `${message}: ${actual} ≠ ${expected}`);
+}
+
+const iconBackground = () => pngCorner('icons/icon-512.png');
 
 function jpegSize(path) {
   const jpg = read(path);
@@ -89,11 +117,21 @@ describe('browser favicon', () => {
     const sizes = Array.from({ length: ico.readUInt16LE(4) }, (_, i) => ico[6 + i * 16]);
     assert.deepEqual(sizes.sort((a, b) => a - b), [16, 32, 48]);
   });
+
+  it('is drawn from the app icon, on its background', () => {
+    for (const size of [16, 32]) {
+      assertSameColour(pngCorner(`icons/favicon-${size}.png`), iconBackground(), `favicon-${size}`);
+    }
+  });
 });
 
 describe('brand mark (top app bar)', () => {
   it("ships the lion's head at 72 px, sharp at 3× for its 24 px display", () => {
     assert.deepEqual(Object.values(pngSize('icons/brand-mark.png')).slice(0, 2), [72, 72]);
+  });
+
+  it('is cropped from the app icon, on its background', () => {
+    assertSameColour(pngCorner('icons/brand-mark.png'), iconBackground(), 'brand-mark');
   });
 });
 
@@ -109,6 +147,8 @@ describe('web app manifest', () => {
     assert.match(manifest.theme_color, /^#[0-9a-f]{6}$/i);
     assert.match(manifest.background_color, /^#[0-9a-f]{6}$/i);
     assert.equal(manifest.theme_color, meta('theme-color'));
+    assertSameColour(manifest.background_color, iconBackground(), 'background_color');
+    assertSameColour(manifest.theme_color, iconBackground(), 'theme_color');
   });
 
   it('lists 192 and 512 px "any" icons and a 512 px maskable one, all files present at their size', () => {

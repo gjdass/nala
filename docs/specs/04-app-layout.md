@@ -31,7 +31,7 @@ This spec has four parts:
 
 ### Top app bar
 - Selected baby (name + age) with the baby switcher (03). Shared `nala-top-app-bar`. No settings button: Settings is a destination of the bottom navigation bar.
-- On the right, vertically centred with the baby's name + age block, the Nala brand: "Nala" in `headline-small`, `on-surface-variant`, then the lion's head (`icons/brand-mark.png`, 72 px, generated from the artwork like the favicon) at 40 px, the height of the name + age block (`title-medium` + `body-small` lines), so the brand fills the same row height. Decorative (not a button, not translated), shown with or without a baby. A long baby name ends with an ellipsis before the brand is squeezed.
+- On the right, vertically centred with the baby's name + age block, the Nala brand: "Nala" in `headline-small`, `on-surface-variant`, then the lion's head (`icons/brand-mark.png`, 72 px, cropped from the app icon) at 40 px, the height of the name + age block (`title-medium` + `body-small` lines), so the brand fills the same row height. Decorative (not a button, not translated), shown with or without a baby. A long baby name ends with an ellipsis before the brand is squeezed.
 
 ### Bottom navigation bar
 - Shared `nala-bottom-nav`, on every signed-in screen (auth state with a user), never on the signed-out ones (setup, login, invitation, password reset).
