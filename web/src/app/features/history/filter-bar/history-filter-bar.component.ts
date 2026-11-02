@@ -10,19 +10,26 @@ import {
   ChoiceMenuComponent,
   ChoiceOption,
 } from '../../../shared/ui/choice-menu/choice-menu.component';
+import {
+  DateRange,
+  DateRangeFieldComponent,
+} from '../../../shared/ui/date-range-field/date-range-field.component';
 import { MenuSection, splitByVisibility } from '../../../core/sections/section-menu';
 import { SectionKey } from '../../../core/sections/section.models';
-import { HISTORY_WINDOWS, HistoryWindow } from '../history-filters';
+import { formatDate, parseDate } from '../../../core/time/local-date';
+import { HISTORY_WINDOWS, HistoryRange, HistoryWindow } from '../history-filters';
 
 /**
  * History's filter bar (spec 11): two filter chips opening a menu each. The time window's menu is a
- * single choice and closes once one is picked; the sections' menu of checkboxes stays open while
+ * single choice and closes once one is picked; with the custom window, its dates show under the chips.
+ * The sections' menu of checkboxes stays open while
  * sections are picked, and the last selected section can't be unselected.
  */
 @Component({
   selector: 'nala-history-filter-bar',
   imports: [
     ChoiceMenuComponent,
+    DateRangeFieldComponent,
     MatChipsModule,
     MatDividerModule,
     MatIconModule,
@@ -44,11 +51,29 @@ export class HistoryFilterBarComponent {
   /** The new selection, in the menu's order. */
   readonly selectedChange = output<SectionKey[]>();
 
+  /** The custom window's dates, shown under the chips with the custom window. */
+  readonly range = input<HistoryRange | undefined>();
+  /** New custom dates, complete and in order. */
+  readonly rangeChange = output<HistoryRange>();
+
   protected readonly windowOptions: ChoiceOption<HistoryWindow>[] = HISTORY_WINDOWS.map((w) => ({
     value: w,
     labelKey: `history.window.${w}`,
+    dividerBefore: w === 'custom',
   }));
   protected readonly split = computed(() => splitByVisibility(this.sections()));
+  /** The custom range as the date field holds it, null with a rolling window. */
+  protected readonly dates = computed(() => {
+    const range = this.range();
+    return this.window() === 'custom' && range
+      ? { start: parseDate(range.start), end: parseDate(range.end) }
+      : null;
+  });
+  protected readonly today = new Date();
+
+  protected pickRange({ start, end }: DateRange): void {
+    this.rangeChange.emit({ start: formatDate(start), end: formatDate(end) });
+  }
 
   protected isSelected(key: SectionKey): boolean {
     return this.selected().includes(key);

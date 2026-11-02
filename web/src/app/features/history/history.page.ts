@@ -29,15 +29,18 @@ import { NoFamilyComponent } from '../babies/no-family/no-family.component';
 import { HistoryFilterBarComponent } from './filter-bar/history-filter-bar.component';
 import { HistoryEntryComponent } from './history-entry/history-entry.component';
 import {
+  CUSTOM_DEFAULT_DAYS,
   HistoryFilters,
   HistoryFiltersStore,
+  HistoryRange,
   HistoryWindow,
-  WINDOW_HOURS,
+  historyPeriod,
+  lastDays,
 } from './history-filters';
 
 /**
- * The History destination (spec 11): the top bar with the selected baby, the filter bar (time window and
- * sections, remembered on the device), then the entries of the selected sections in the window, newest
+ * The History destination (spec 11): the top bar with the selected baby, the filter bar (time window or
+ * custom dates, and sections, remembered on the device), then the entries of the selected sections in the window, newest
  * first across sections, each its section's own list item; a tapped entry opens its sheet and is updated
  * in place. Opened from a card (`?section=<key>`), it shows that section over 7 days and saves nothing.
  * Without a baby, or in no family, 03's empty states. The babies, the home order and the list load again on the reload
@@ -98,19 +101,16 @@ export class HistoryPage {
    */
   protected readonly loader = computed((): HistoryPageLoader<HistoryItem> | null => {
     const babyId = this.store.selected()?.id;
-    const { window, sections } = this.filters();
+    const filters = this.filters();
     this.refresh.reload();
     if (!babyId) {
       return null;
     }
     // The home order only breaks ties: read once, so its arrival doesn't load the list again.
     const order = untracked(this.menuSections).map((s) => s.key);
-    const keys = order.filter((key) => sections.includes(key));
-    return this.loaders.loader(
-      babyId,
-      keys,
-      new Date(Date.now() - WINDOW_HOURS[window] * 3_600_000),
-    );
+    const keys = order.filter((key) => filters.sections.includes(key));
+    const { since, until } = historyPeriod(filters, new Date());
+    return this.loaders.loader(babyId, keys, since, until);
   });
 
   constructor() {
@@ -122,8 +122,21 @@ export class HistoryPage {
     onReload(load);
   }
 
+  /**
+   * Picking Custom from another window starts on the last 90 days, picking it again keeps its dates;
+   * a rolling window forgets them.
+   */
   protected setWindow(window: HistoryWindow): void {
-    this.setFilters({ ...this.filters(), window });
+    const { range, ...current } = this.filters();
+    if (window !== 'custom') {
+      this.setFilters({ ...current, window });
+    } else if (current.window !== 'custom' || !range) {
+      this.setFilters({ ...current, window, range: lastDays(CUSTOM_DEFAULT_DAYS, new Date()) });
+    }
+  }
+
+  protected setRange(range: HistoryRange): void {
+    this.setFilters({ ...this.filters(), window: 'custom', range });
   }
 
   protected setSections(sections: SectionKey[]): void {

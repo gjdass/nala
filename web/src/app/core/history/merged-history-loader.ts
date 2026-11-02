@@ -18,8 +18,9 @@ interface SectionState {
 
 /**
  * History's merged list (spec 11): the entries of `sections` (in home order) whose time is at or
- * after `since`, newest first, ties by section in that order then the section's own order. Reads each
- * section's pages of 50 only as needed, and only until one of its entries is older than `since`;
+ * after `since` and, given `until`, before it, newest first, ties by section in that order then the
+ * section's own order. Reads each section's pages of 50 only as needed (skipping the entries at or after
+ * `until`, newest first, so reading on), and only until one of its entries is older than `since`;
  * hands out pages of 20. A page works on a copy of the state, kept only once the page is out, so a
  * failed section page fails the load and calling again with the same cursor (Try again) loses nothing.
  * Asked with no cursor, it starts again from the first page.
@@ -28,6 +29,7 @@ export function mergedHistoryLoader(
   sections: readonly { key: SectionKey; source: HistorySource }[],
   babyId: string,
   since: Date,
+  until: Date | null = null,
 ): HistoryPageLoader<HistoryItem> {
   const start = (): SectionState[] =>
     sections.map(() => ({ buffer: [], cursor: null, done: false }));
@@ -42,11 +44,11 @@ export function mergedHistoryLoader(
         : sections[i].source.page(babyId, s.cursor, SECTION_PAGE_SIZE).pipe(
             map((page): SectionState => {
               const time = (e: { id: string }) => sections[i].source.time(e).getTime();
-              const inWindow = page.entries.filter((e) => time(e) >= since.getTime());
+              const end = until?.getTime() ?? Infinity;
               return {
-                buffer: inWindow,
+                buffer: page.entries.filter((e) => time(e) >= since.getTime() && time(e) < end),
                 cursor: page.next,
-                done: page.next === null || inWindow.length < page.entries.length,
+                done: page.next === null || page.entries.some((e) => time(e) < since.getTime()),
               };
             }),
           ),

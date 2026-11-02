@@ -1,0 +1,21 @@
+<mat-form-field subscriptSizing="dynamic">
+  <mat-label>{{ label() | transloco }}</mat-label>
+  <mat-date-range-input [formGroup]="form" [rangePicker]="picker" [max]="max()">
+    <input
+      matStartDate
+      formControlName="start"
+      [attr.aria-label]="'dateRange.start' | transloco"
+      (dateChange)="changed()"
+      data-testid="range-start"
+    />
+    <input
+      matEndDate
+      formControlName="end"
+      [attr.aria-label]="'dateRange.end' | transloco"
+      (dateChange)="changed()"
+      data-testid="range-end"
+    />
+  </mat-date-range-input>
+  <mat-datepicker-toggle matIconSuffix [for]="picker" />
+  <mat-date-range-picker #picker />
+</mat-form-field>

@@ -6,7 +6,7 @@ Builds on [04 — App layout](04-app-layout.md): the app shell, the section regi
 
 ## Goal
 
-On the History tab, show the selected baby's entries from several sections in one list, newest first, filtered by a time window and by section, and let the parent fix any of them with a tap.
+On the History tab, show the selected baby's entries from several sections in one list, newest first, filtered by a time window (or custom dates) and by section, and let the parent fix any of them with a tap.
 
 ## Decisions
 
@@ -19,6 +19,7 @@ On the History tab, show the selected baby's entries from several sections in on
 - At the top of the page, under the top app bar, **sticky** (it stays under the top edge guard while the list scrolls; the top app bar scrolls away). Not shown without a baby.
 - Two M3 filter chips with a dropdown, side by side and the same size (`mat-chip` in one `mat-chip-set`, each opening a `mat-menu`): the time window on the left, then Sections.
 - **Time window:** the chip reads the current window and its menu offers **24 h** (default), **7 days** and **30 days**, each a menu item radio (`menuitemradio`) with the current one checked (Material's pseudo-checkbox, minimal appearance). Picking one applies it and closes the menu. Each is a rolling window: the entries whose time is at or after now − 24 h / 7 × 24 h / 30 × 24 h. The window is taken when the list loads and doesn't move while the page stays open, as the card's Show more; a list loaded again (filter change, baby switch, reload signal) takes a new one.
+- **Custom** is the menu's last option, after a divider. Picking it from another window shows a **date range field** under the chips, with a start and an end date set to **the last 90 days**: today − 90 days through today, as local calendar dates. The chip then reads "Custom". The parent can change either date by typing it or with the range picker (`mat-date-range-input` + `mat-date-range-picker`). No date after today can be picked. The list loads again once both dates are set and the start is not after the end; an incomplete or reversed range leaves the list as it was. The range covers whole local days: the entries whose time is at or after local midnight of the start date and before local midnight of the day after the end date. Picking Custom again while it is current keeps the dates. Picking another window hides the field and forgets them.
 - **Sections:** the chip reads "Sections" with the number selected ("Sections · 3"). Its menu lists **every registered section**, each with its icon, title and a checkbox:
   - first the sections **visible on home**, in the user's home order (04's section preferences);
   - then, after a divider, the sections **hidden from home**, in the same order;
@@ -26,7 +27,7 @@ On the History tab, show the selected baby's entries from several sections in on
   - Each row is a menu item checkbox (`menuitemcheckbox`) showing its state with Material's pseudo-checkbox.
   - Default selection: **Feed, Sleep and Diaper**. Selecting or unselecting one applies at once and keeps the menu open. The last selected section can't be unselected (its checkbox is disabled), the same rule as "at least one visible section" in settings.
 - Changing a filter loads the list again from the first page.
-- **Remembered per device:** the filters chosen from the bar are saved in `localStorage` (`nala.historyFilters`: `{ window, sections }`) and restored when History is opened from the bottom bar. A stored key no longer registered is dropped; a stored selection left empty, or unreadable, falls back to the default sections, and an unknown window to 24 h (an unreadable value resets both). A section registered later starts unselected.
+- **Remembered per device:** the filters chosen from the bar are saved in `localStorage` (`nala.historyFilters`: `{ window, sections, range? }`, `range` only with the custom window) and restored when History is opened from the bottom bar, custom dates included. A stored key no longer registered is dropped; a stored selection left empty, or unreadable, falls back to the default sections, and an unknown window to 24 h (an unreadable value resets both). A custom window with a missing, unreadable or reversed range gets the last 90 days. A section registered later starts unselected.
 
 ### Opened from a section card
 - A card's **All activities** opens `/history?section=<key>`: only that section selected, the **7 days** window. These filters come from the link, never from `localStorage`, and **nothing is saved** while History shows them: changing a filter there changes the list only. Opening History from the bottom bar afterwards shows the remembered filters again.
@@ -34,7 +35,7 @@ On the History tab, show the selected baby's entries from several sections in on
 - There is no per-section history page: `/history/:section` (old bookmarks) redirects to `/history?section=<key>` for a registered section, home otherwise.
 
 ### List
-- Every entry of the selected sections whose time falls in the window, **newest first, interleaved across sections**: ordered by each section's time (Feed, Sleep and Pump by start time; Diaper and Health by time), ties by section in the home order (the default section order while the home order is not loaded, or failed to load: it only breaks ties, so its arrival doesn't load the list again), then the section's own order. Growth is date-only, so a growth entry counts as **local midnight of its date**, for the window as for the order: today's measurement appears below today's timed entries.
+- Every entry of the selected sections whose time falls in the window (or the custom range), **newest first, interleaved across sections**: ordered by each section's time (Feed, Sleep and Pump by start time; Diaper and Health by time), ties by section in the home order (the default section order while the home order is not loaded, or failed to load: it only breaks ties, so its arrival doesn't load the list again), then the section's own order. Growth is date-only, so a growth entry counts as **local midnight of its date**, for the window as for the order: today's measurement appears below today's timed entries.
 - Each entry is **its section's own list item** (`nala-feed-entry`, `nala-sleep-entry`…), inside its section's colour scheme (`.nala-scheme-<key>`), so it looks exactly as on its card. A live entry is listed with its live total, as on the cards.
 - **Tap → edit:** opens the entry's sheet in edit mode, as on home (`EntrySheetService.edit(section, kind, entry)`). A saved entry is replaced where it is, a deleted one removed, without a reload (04's history rule).
 - **States:** `nala-history-list` as it is: progress spinner while loading, the next page loading when the end scrolls into view, an empty state ("Nothing logged in this period"), and an error with Try again keeping what is already shown. A new baby, a filter change or the reload signal (04) starts again from the first page. Reading needs the network (overview).
@@ -43,12 +44,14 @@ On the History tab, show the selected baby's entries from several sections in on
 ### Architecture
 - **No API change.** The overview asks a combined timeline to aggregate across types explicitly: the web does it with each section's existing list endpoint.
 - **History sources:** each `SectionDefinition` gets a lazily loaded history source (`loadSource: () => import(…)`), providing: the section's page loader for a baby, the entry's time (for the window and the order), the entry's kind (to open its sheet), and the entry's list item component with its inputs. A new section joins History by registering its source.
-- **Merged loader** (`core/history/`): for each selected section it pages through that section's list (limit 50) until an entry is older than the window or the last page, merges the sections newest first, and hands out pages of 20 items `{ id, section, entry }` in final order. It has the `HistoryPageLoader` signature, so `nala-history-list` (paging, `apply()`, retry) is reused unchanged. A section's failed page fails the whole load (Try again retries it); nothing is listed out of order.
+- **No API change for custom dates either:** the sections' list endpoints page newest first, so the merged loader skips the entries after the range's end on the device. A range far in the past reads the newer pages first (pages of 50, only as needed).
+- **Merged loader** (`core/history/`): given the period's start (`since`) and an optional end (`until`, exclusive), for each selected section it pages through that section's list (limit 50), skipping the entries at or after `until`, until an entry is older than `since` or the last page, merges the sections newest first, and hands out pages of 20 items `{ id, section, entry }` in final order. It has the `HistoryPageLoader` signature, so `nala-history-list` (paging, `apply()`, retry) is reused unchanged. A section's failed page fails the whole load (Try again retries it); nothing is listed out of order.
 
 ## User stories
 
 - As a parent, I want to see everything logged for my baby in the last 24 hours in one list, so I can tell the doctor or my partner what happened.
 - As a parent, I want to widen it to the last week or month and choose which sections to see.
+- As a parent, I want to pick exact start and end dates to look further back, e.g. the last three months before a doctor's visit.
 - As a parent, I want my filters kept the next time I open History on this phone.
 - As a parent, I want "All activities" on a card to show that section's last week.
 - As a parent, I want to fix or delete a wrong entry right from History.
@@ -64,7 +67,10 @@ Each item becomes at least one test, written failing first.
 
 ### Filter bar
 - [x] By default (nothing remembered) the window is 24 h and Feed, Sleep and Diaper are selected.
-- [x] The time window is a dropdown chip, left of the Sections chip and the same size, reading the current window; its menu offers 24 h, 7 days and 30 days (rolling), the current one checked, and picking one applies it and closes the menu.
+- [x] The time window is a dropdown chip, left of the Sections chip and the same size, reading the current window; its menu offers 24 h, 7 days and 30 days (rolling), then Custom after a divider, the current one checked, and picking one applies it and closes the menu.
+- [x] Picking Custom shows a start and an end date under the chips, set to today − 90 days through today, and lists the entries from local midnight of the start date to the end of the end date; no date after today can be picked.
+- [x] Changing either date loads the list again from the first page with the new range; an incomplete or reversed range doesn't. Picking Custom again keeps the dates; another window hides the field.
+- [x] Custom dates are remembered with the filters; a custom window with a missing or invalid stored range gets the last 90 days.
 - [x] The sections menu lists the sections visible on home in home order, a divider, then the hidden ones in home order; the chip shows how many are selected.
 - [x] Selecting or unselecting a section updates the list; the last selected one can't be unselected.
 - [x] Changing a filter loads the list again from the first page.
@@ -86,26 +92,28 @@ Each item becomes at least one test, written failing first.
 
 ### Merged loader
 - [x] It reads each selected section's pages only until one entry is older than the window (or the last page), and returns pages of 20 in final order.
+- [x] With an end, it skips the entries at or after it, reading on through newer pages, and still stops at the first entry older than the start.
 - [x] A failed section page makes the load fail; Try again retries it and the list goes on in order.
 
 ## Build slices
 
-Built in 5 slices, all done; each is a commit "Spec 11 slice N: …" (`git log --grep "Spec 11 slice"`).
+Built in 5 slices, all done; each is a commit "Spec 11 slice N: …" (`git log --grep "Spec 11 slice"`). The custom window came later, in one commit (issue #13).
 
 ## Data
 
-Nothing new on the server. On the device: `nala.historyFilters` (`localStorage`): `{ window: "24h" | "7d" | "30d", sections: SectionKey[] }`.
+Nothing new on the server. On the device: `nala.historyFilters` (`localStorage`): `{ window: "24h" | "7d" | "30d" | "custom", sections: SectionKey[], range?: { start: "yyyy-MM-dd", end: "yyyy-MM-dd" } }`.
 
 ## UI notes
 
 - Reused: `nala-top-app-bar`, `nala-history-list` (its `emptyTitle` input gives the period's empty state), each section's list item component, `EntrySheetService`, 03's no-baby empty state (`nala-no-baby`, `features/babies/`, shared with home).
-- New, in `features/history/`: `nala-history-entry` (renders an item's section list item from its History source, in the section's scheme) and `nala-history-filter-bar` (time window and sections dropdown chips).
-- Labels (EN / FR): "Period" / "Période" (the window chip's accessible name), "24 h" / "24 h", "7 days" / "7 jours", "30 days" / "30 jours", "Sections" / "Sections", "Sections · 3" / "Sections · 3", "Nothing logged in this period" / "Rien de noté sur cette période". Section titles reuse `sections.<key>`.
+- New, in `features/history/`: `nala-history-entry` (renders an item's section list item from its History source, in the section's scheme) and `nala-history-filter-bar` (time window and sections dropdown chips, and the date range field under them for Custom).
+- New, shared (`shared/ui/date-range-field/`): `nala-date-range-field`, a Material date range field (start and end inputs, range picker toggle). It takes `start` and `end` (local days), an optional `max` and a label key, and emits `rangeChange` with both dates only when the range is complete and in order. Any later date range filter (e.g. Trends) can reuse it.
+- Labels (EN / FR): "Period" / "Période" (the window chip's accessible name), "24 h" / "24 h", "7 days" / "7 jours", "30 days" / "30 jours", "Custom" / "Personnalisée", "Dates" / "Dates" (the range field's label), "Start date" / "Date de début", "End date" / "Date de fin", "Sections" / "Sections", "Sections · 3" / "Sections · 3", "Nothing logged in this period" / "Rien de noté sur cette période". Section titles reuse `sections.<key>`.
 
 ## Out of scope
 
 - Totals, statistics and charts (feature 12, Trends).
 - Day headers ("Today", "Yesterday") between entries: each item's time already says it.
 - Adding entries from History.
-- Custom date ranges, search, filtering by kind or by who logged an entry.
+- Search, filtering by kind or by who logged an entry.
 - Reading history offline.
