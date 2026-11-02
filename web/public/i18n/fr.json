@@ -365,10 +365,16 @@
       "24h": "24 h",
       "7d": "7 jours",
       "30d": "30 jours",
+      "custom": "Personnalisée",
+      "range": "Dates",
       "label": "Période"
     },
     "sections": "Sections",
     "sectionsCount": "Sections · {{count}}"
+  },
+  "dateRange": {
+    "start": "Date de début",
+    "end": "Date de fin"
   },
   "time": {
     "justNow": "à l'instant",

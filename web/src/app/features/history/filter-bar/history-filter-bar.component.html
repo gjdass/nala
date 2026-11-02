@@ -21,6 +21,17 @@
   </mat-chip>
 </mat-chip-set>
 
+@if (dates(); as dates) {
+  <nala-date-range-field
+    class="range"
+    label="history.window.range"
+    [start]="dates.start"
+    [end]="dates.end"
+    [max]="today"
+    (rangeChange)="pickRange($event)"
+  />
+}
+
 <nala-choice-menu
   #windowChoice
   ariaLabel="history.window.label"

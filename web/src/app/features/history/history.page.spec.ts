@@ -9,6 +9,7 @@ import {
   signal,
 } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideNativeDateAdapter } from '@angular/material/core';
 import { Router, provideRouter } from '@angular/router';
 import { EMPTY, Observable, Subject, of } from 'rxjs';
 import en from '../../../../public/i18n/en.json';
@@ -102,6 +103,7 @@ describe('HistoryPage', () => {
     babyId: string;
     keys: readonly SectionKey[];
     since: Date;
+    until?: Date | null;
     cursors: (string | null)[];
   }[];
   let pages: Subject<Page<HistoryItem>>[];
@@ -141,16 +143,18 @@ describe('HistoryPage', () => {
     calls = [];
     pages = [];
     loaders = {
-      loader: vi.fn((babyId: string, keys: readonly SectionKey[], since: Date) => {
-        const call = { babyId, keys, since, cursors: [] as (string | null)[] };
-        calls.push(call);
-        return (cursor: string | null): Observable<Page<HistoryItem>> => {
-          call.cursors.push(cursor);
-          const page = new Subject<Page<HistoryItem>>();
-          pages.push(page);
-          return page;
-        };
-      }),
+      loader: vi.fn(
+        (babyId: string, keys: readonly SectionKey[], since: Date, until?: Date | null) => {
+          const call = { babyId, keys, since, until, cursors: [] as (string | null)[] };
+          calls.push(call);
+          return (cursor: string | null): Observable<Page<HistoryItem>> => {
+            call.cursors.push(cursor);
+            const page = new Subject<Page<HistoryItem>>();
+            pages.push(page);
+            return page;
+          };
+        },
+      ),
       source: () => Promise.resolve(TestBed.inject(TestSource) as HistorySource),
     };
     edited = new Subject();
@@ -159,6 +163,7 @@ describe('HistoryPage', () => {
     await TestBed.configureTestingModule({
       imports: [HistoryPage, translocoTesting()],
       providers: [
+        provideNativeDateAdapter(),
         provideRouter([{ path: '**', children: [] }]),
         {
           provide: SECTIONS,
@@ -359,9 +364,7 @@ describe('HistoryPage', () => {
     const KEY = 'nala.historyFilters';
     const DAY = 24 * 3_600_000;
     const checkedWindow = () =>
-      find('window-chip')
-        ?.querySelector('.mdc-evolution-chip__text-label')
-        ?.textContent?.trim();
+      find('window-chip')?.querySelector('.mdc-evolution-chip__text-label')?.textContent?.trim();
     const pickWindow = async (index: number) => {
       find('window-chip')!.click();
       await fixture.whenStable();
@@ -416,6 +419,99 @@ describe('HistoryPage', () => {
       expect(JSON.parse(localStorage.getItem(KEY)!)).toEqual({
         window: '30d',
         sections: ['feed', 'sleep', 'diaper'],
+      });
+    });
+
+    describe('custom window', () => {
+      // NOW is 9 October 2026: the last 90 days start on 11 July.
+      const DEFAULT_START = new Date(2026, 6, 11);
+      const AFTER_TODAY = new Date(2026, 9, 10);
+      const rangeInput = (testId: string) => find(testId) as HTMLInputElement;
+      const typeDate = async (testId: string, value: string) => {
+        rangeInput(testId).value = value;
+        rangeInput(testId).dispatchEvent(new Event('input'));
+        rangeInput(testId).dispatchEvent(new Event('change'));
+        await fixture.whenStable();
+      };
+
+      it('shows the last 90 days through today, and lists them', async () => {
+        await loadBabies([lea]);
+        await answer([item('feed', 'f1')], '1');
+
+        await pickWindow(3);
+
+        expect(checkedWindow()).toBe(en.history.window.custom);
+        expect(new Date(rangeInput('range-start').value)).toEqual(DEFAULT_START);
+        expect(new Date(rangeInput('range-end').value)).toEqual(new Date(2026, 9, 9));
+        expect(calls).toHaveLength(2);
+        expect(calls[1].since).toEqual(DEFAULT_START);
+        expect(calls[1].until).toEqual(AFTER_TODAY);
+        expect(calls[1].cursors).toEqual([null]);
+        expect(JSON.parse(localStorage.getItem(KEY)!)).toEqual({
+          window: 'custom',
+          sections: ['feed', 'sleep', 'diaper'],
+          range: { start: '2026-07-11', end: '2026-10-09' },
+        });
+      });
+
+      it('loads the list again with the dates picked, and remembers them', async () => {
+        await loadBabies([lea]);
+        await pickWindow(3);
+
+        await typeDate('range-start', '3/28/2026');
+        await typeDate('range-end', '4/2/2026');
+
+        expect(calls.at(-1)!.since).toEqual(new Date(2026, 2, 28));
+        expect(calls.at(-1)!.until).toEqual(new Date(2026, 3, 3));
+        expect(calls.at(-1)!.cursors).toEqual([null]);
+        expect(JSON.parse(localStorage.getItem(KEY)!).range).toEqual({
+          start: '2026-03-28',
+          end: '2026-04-02',
+        });
+      });
+
+      it('keeps the list as it is for an incomplete range', async () => {
+        await loadBabies([lea]);
+        await pickWindow(3);
+        const count = calls.length;
+
+        await typeDate('range-end', '');
+
+        expect(calls).toHaveLength(count);
+      });
+
+      it('keeps the dates when Custom is picked again, and hides them with another window', async () => {
+        await loadBabies([lea]);
+        await pickWindow(3);
+        await typeDate('range-start', '3/28/2026');
+
+        await pickWindow(3);
+        expect(new Date(rangeInput('range-start').value)).toEqual(new Date(2026, 2, 28));
+
+        await pickWindow(1);
+        expect(find('range-start')).toBeNull();
+        expect(calls.at(-1)!.until ?? null).toBeNull();
+        expect(JSON.parse(localStorage.getItem(KEY)!)).toEqual({
+          window: '7d',
+          sections: ['feed', 'sleep', 'diaper'],
+        });
+      });
+
+      it('restores remembered custom dates', async () => {
+        localStorage.setItem(
+          KEY,
+          JSON.stringify({
+            window: 'custom',
+            sections: ['feed'],
+            range: { start: '2026-01-01', end: '2026-01-31' },
+          }),
+        );
+        await recreate();
+        await loadBabies([lea]);
+
+        expect(checkedWindow()).toBe(en.history.window.custom);
+        expect(calls.at(-1)!.since).toEqual(new Date(2026, 0, 1));
+        expect(calls.at(-1)!.until).toEqual(new Date(2026, 1, 1));
       });
     });
 

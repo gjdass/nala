@@ -200,6 +200,33 @@ describe('mergedHistoryLoader', () => {
     expect(again).toEqual(first);
   });
 
+  it('with an end, skips the entries at or after it, reading on through newer pages', () => {
+    const UNTIL = new Date(NOW.getTime() - 120 * 60_000);
+    const newer = many('new', 70, 1); // 0 to 69 minutes ago: after the end
+    const atEnd = entry('end', 120); // exactly at the end: excluded
+    const inRange = many('in', 30, 10, 121); // 121 to 411 minutes ago
+    const older = many('old', 60, 1, 25 * 60);
+    const feed = fakeSource([...newer, atEnd, ...inRange, ...older]);
+    const sleep = fakeSource([entry('s-new', 60), entry('s-in', 200)]);
+
+    const pages = all(
+      mergedHistoryLoader(
+        [
+          { key: 'feed', source: feed.source },
+          { key: 'sleep', source: sleep.source },
+        ],
+        'baby-1',
+        SINCE,
+        UNTIL,
+      ),
+    );
+
+    // in7 is 191 minutes ago, in8 201: the sleep entry (200) falls between them.
+    const feedIds = inRange.map((e) => `feed:${e.id}`);
+    expect(ids(pages)).toEqual([...feedIds.slice(0, 8), 'sleep:s-in', ...feedIds.slice(8)]);
+    expect(feed.calls.map((c) => c.cursor)).toEqual([null, '50', '100']);
+  });
+
   it('lists nothing, with no next, when no entry falls in the window', () => {
     const feed = fakeSource([entry('old', 25 * 60)]);
 

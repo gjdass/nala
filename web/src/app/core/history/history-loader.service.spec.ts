@@ -68,6 +68,19 @@ describe('HistoryLoaderService', () => {
     expect(calls.sort()).toEqual(['diaper:baby-1', 'feed:baby-1']);
   });
 
+  it('leaves out the entries at or after the given end', async () => {
+    const loader = TestBed.inject(HistoryLoaderService).loader(
+      'baby-1',
+      ['feed', 'sleep'],
+      new Date('2026-10-08T12:00:00Z'),
+      new Date('2026-10-09T11:00:00Z'),
+    );
+
+    const page = await firstValueFrom(loader(null));
+
+    expect(page.entries.map((i) => `${i.section}:${i.id}`)).toEqual(['feed:f1']);
+  });
+
   it('gives the registered source of a section, loaded once', async () => {
     const service = TestBed.inject(HistoryLoaderService);
     const feed = TestBed.inject(SECTIONS).find((s) => s.key === 'feed')!;

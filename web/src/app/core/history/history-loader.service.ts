@@ -34,10 +34,15 @@ export class HistoryLoaderService {
   }
 
   /**
-   * The merged pages of the selected baby's entries in `keys` (home order) at or after `since`; a key
-   * with no registered section is skipped.
+   * The merged pages of the selected baby's entries in `keys` (home order) at or after `since` and,
+   * given `until`, before it; a key with no registered section is skipped.
    */
-  loader(babyId: string, keys: readonly SectionKey[], since: Date): HistoryPageLoader<HistoryItem> {
+  loader(
+    babyId: string,
+    keys: readonly SectionKey[],
+    since: Date,
+    until: Date | null = null,
+  ): HistoryPageLoader<HistoryItem> {
     const registered = keys.filter((key) => this.sections.some((s) => s.key === key));
     let merged: Promise<HistoryPageLoader<HistoryItem>> | undefined;
     // The sources load once; a failed load (e.g. offline) is tried again on the next call.
@@ -45,7 +50,7 @@ export class HistoryLoaderService {
       (merged ??= Promise.all(
         registered.map(async (key) => ({ key, source: await this.source(key) })),
       ).then(
-        (sources) => mergedHistoryLoader(sources, babyId, since),
+        (sources) => mergedHistoryLoader(sources, babyId, since, until),
         (error: unknown) => {
           merged = undefined;
           throw error;
