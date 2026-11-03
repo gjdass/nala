@@ -117,6 +117,13 @@ describe('global theme', () => {
     assert.match(css, /html,\s*body\s*\{[^}]*overscroll-behavior-y:\s*none/);
   });
 
+  it("never rubber-bands a tall entry sheet, so no blank gap shows above its header (issue #15)", () => {
+    assert.match(
+      css,
+      /\.cdk-overlay-pane \.mat-bottom-sheet-container\s*\{[^}]*overscroll-behavior-y:\s*none/,
+    );
+  });
+
   it('lets the document scroll but not pinch or double-tap zoom', () => {
     assert.match(css, /html\s*\{[^}]*touch-action:\s*pan-x pan-y/);
   });
