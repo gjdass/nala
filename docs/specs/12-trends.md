@@ -137,7 +137,7 @@ Each item becomes at least one test, written failing first.
 - [x] Milestones show as markers on the weight chart.
 
 ### Growth percentiles
-- [ ] The reference gives, for a sex, a measure and an age in days, the 3rd, 15th, 50th, 85th and 97th percentile values from the WHO LMS tables, interpolated between rows (a boy's weight at birth: 2.5 / 2.9 / 3.3 / 3.9 / 4.3 kg to one decimal); nothing after 1856 days.
+- [ ] The reference gives, for a sex, a measure and an age in days, the 3rd, 15th, 50th, 85th and 97th percentile values from the WHO LMS tables, interpolated between rows (a boy's weight at birth: 2.51 / 2.87 / 3.35 / 3.88 / 4.35 kg to two decimals); nothing after 1856 days.
 - [ ] The reference file is generated from the committed WHO tables (running the script again changes nothing), is loaded only when bands are to be drawn, and is in the service worker's lazy assets.
 - [ ] `nala-line-chart` draws given bands behind the line: outer band, inner band, dashed median, "3" / "50" / "97" at the right edge; with bands the y axis and its top and bottom labels fit the values and the outer band; without bands nothing changes.
 - [ ] For a girl or a boy, each growth chart with a point in the period shows their sex's bands, from the birth date at the earliest and up to 1856 days of age, with the caption naming the source and the sex; a card without a point shows no bands.
