@@ -6,7 +6,7 @@ Builds on [04 — App layout](04-app-layout.md): the section pattern, the entry 
 
 ## Goal
 
-Log the selected baby's measurements (weight, length, head circumference) and milestones over time, starting from the birth measurements of the baby profile, and see the latest value of each measure at a glance. Raw logging only: no percentiles, curves or trends in the section (the curves live in Trends, spec 12).
+Log the selected baby's measurements (weight, length, head circumference) and milestones over time, starting from the birth measurements of the baby profile, and see the latest value of each measure at a glance. Raw logging only: no percentiles, curves or trends in the section (the curves and their percentile bands live in Trends, spec 12).
 
 ## Kinds
 
@@ -36,7 +36,7 @@ Two kinds, so + opens the kind picker (Measurement, Milestone). Section icon: `m
 - **Card highlight:** the latest of each measure side by side, from `…/growth-entries/latest`: Weight ("4.250 kg"), Length ("55.5 cm"), Head ("38.0 cm"), each value in an M3 headline typescale with its label above it and its date under it (spec 04's entry date format; "Birth" when it comes from the profile). A measure with no value shows "—". The highlight reloads when the card reloads (after a save). A milestone never changes the highlight. With no value at all (no measurement, no birth measurement): the empty state, even when milestones exist (the card's `empty` input). When the latest values can't be loaded (offline), the card lists its entries without a highlight nor the empty state.
 - **Card entries:** spec 04's card rules apply, an entry's date counting as its local midnight for the 24-hour window (so Show more rarely appears).
 - **Offline:** the highlight needs the network (reading needs the network, overview).
-- **No percentiles, curves, charts or trend analysis in the section:** the plain growth curves live in Trends (spec 12); percentiles nowhere.
+- **No percentiles, curves, charts or trend analysis in the section:** the growth curves and their WHO percentile bands live in Trends (spec 12).
 
 ## User stories
 
@@ -98,7 +98,7 @@ Built in 3 slices, all done; each is a commit "Spec 10 slice N: …" (`git log -
 
 ## Out of scope
 
-- Percentiles, WHO curves, trend or velocity analysis (decided: raw logging only). Plain growth curves are in Trends (spec 12).
+- Percentiles, WHO curves, trend or velocity analysis in the section (decided: raw logging only). The growth curves and their WHO percentile bands are in Trends (spec 12).
 - Imperial units (metric only, overview).
 - Times on growth entries (date only).
 - Other measures (temperature, BMI…), milestone photos.

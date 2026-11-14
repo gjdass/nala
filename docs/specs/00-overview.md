@@ -35,12 +35,13 @@ Status: `idea` → `specified` → `in progress` → `done`. A feature moves to 
 | 07 | Diaper | [07-diaper.md](07-diaper.md) | done | Time, Wet and Dirty as two independent toggles (neither = dry), diaper-rash toggle, notes; a dirty diaper has optional colour and consistency. No timer. |
 | 08 | Pump | [08-pump.md](08-pump.md) | done | **Hard requirement:** pumping sessions with volume and history. One Start/Stop timer (like Sleep), Left ml and Right ml, notes. |
 | 09 | Health | [09-health.md](09-health.md) | done | Built as Medication, then renamed Health. Medicine name (recent names as chips), optional dose, optional temperature °C; at least a name or a temperature. Never gives dose advice nor interprets temperatures. |
-| 10 | Growth | [10-growth.md](10-growth.md) | done | **Hard requirement:** simple measurement entries over time — weight, length, head circumference, milestones. Raw logging only on home (no percentiles anywhere; growth curves live in Trends, 12). Birth measurements (03) are the starting point of the growth history. |
+| 10 | Growth | [10-growth.md](10-growth.md) | done | **Hard requirement:** simple measurement entries over time — weight, length, head circumference, milestones. Raw logging only on home (growth curves and their WHO percentile bands live in Trends, 12). Birth measurements (03) are the starting point of the growth history. |
 | 11 | History (all sections) | [11-history.md](11-history.md) | done | The bottom bar's History destination: every selected section's entries together, newest first, filtered by time window (24 h / 7 days / 30 days, or custom start and end dates defaulting to the last 90 days) and sections, remembered per device. Replaces the per-section history pages: a card's All activities opens it for that section. |
-| 12 | Trends | [12-trends.md](12-trends.md) | done | The bottom bar's Trends destination: one section at a time (Feed, Sleep, Diaper, Pump, Growth; no Health), metric cards with daily / weekly / monthly charts over a preset range with period navigation. Statistics and charts live only here. |
+| 12 | Trends | [12-trends.md](12-trends.md) | in progress | The bottom bar's Trends destination: one section at a time (Feed, Sleep, Diaper, Pump, Growth; no Health), metric cards with daily / weekly / monthly charts over a preset range with period navigation. Statistics and charts live only here. Growth's curves can show the WHO percentile bands (a Percentiles chip, on by default; slices 8–11 to build). |
 | 13 | Sleep pattern chart | — | idea | In Trends: one row per day, sleep blocks across the 24 hours, to see a rhythm forming. |
 | 14 | Foods tried | — | idea | In Trends or Feed: the solids foods introduced, with their reactions (allergic reactions flagged). |
 | 15 | Family admin handover | — | idea | Let a family admin pass the role to another member (today the role never changes, and deleting the admin's account deletes the family). |
+| 16 | Corrected age for premature babies | — | idea | An optional due date on the baby profile, so Trends' growth percentiles (12) use the corrected age. Today they use the age since birth, which reads low for a premature baby. |
 
 ## Build plan
 
@@ -48,4 +49,4 @@ Specs are numbered in build order: build 01, then 02, and so on. If the order of
 
 When a spec is done, keep it describing the app as it is, not how it got there: fold every change into its Decisions and Acceptance criteria (rewrite or remove what changed, never append a contradicting paragraph) and collapse its Build slices to one line pointing at the commits (`git log --grep "Spec NN slice"`). Rules shared by several sections go into spec 04, not into each section spec.
 
-Spec each remaining feature (13–15) before building it.
+Spec each remaining feature (13–16) before building it.
