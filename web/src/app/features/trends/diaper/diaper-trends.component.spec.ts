@@ -125,7 +125,11 @@ describe('DiaperTrendsComponent', () => {
   it('averages each series per week over 3 months', async () => {
     fixture.componentInstance.period.set({ from: new Date(2026, 6, 10), to: new Date(2026, 9, 9) });
     await settle();
-    await respond([day('2026-10-05', 6, 2, 7), day('2026-10-07', 5, 1, 6), day('2026-10-09', 2, 0, 2)]);
+    await respond([
+      day('2026-10-05', 6, 2, 7),
+      day('2026-10-07', 5, 1, 6),
+      day('2026-10-09', 2, 0, 2),
+    ]);
 
     const bars = [...inCard(0, 'bar')];
     expect(bars.map((b) => b.getAttribute('data-date'))).toEqual(['2026-10-04']);

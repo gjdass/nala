@@ -1,11 +1,19 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { Subject } from 'rxjs';
+import { By } from '@angular/platform-browser';
+import { Observable, Subject, of, throwError } from 'rxjs';
 import en from '../../../../../public/i18n/en.json';
+import { Sex } from '../../../core/babies/baby.models';
+import { GrowthReference, LmsTable } from '../../../core/growth-reference/growth-reference';
+import { GrowthReferenceService } from '../../../core/growth-reference/growth-reference.service';
 import { DataRefreshService } from '../../../core/refresh/data-refresh.service';
 import { NowService } from '../../../core/time/now.service';
 import { GrowthTrendPoint, GrowthTrends } from '../../../core/trends/trends.models';
 import { TrendsService } from '../../../core/trends/trends.service';
+import {
+  LineBandSample,
+  LineChartComponent,
+} from '../../../shared/ui/line-chart/line-chart.component';
 import { fakeDataRefresh } from '../../../testing/data-refresh';
 import { translocoTesting } from '../../../testing/transloco-testing';
 import { TrendsPeriod } from '../trends-period';
@@ -18,10 +26,14 @@ import { GrowthTrendsComponent } from './growth-trends.component';
     [babyId]="babyId()"
     [period]="period()"
     [today]="today"
-    birthDate="2026-09-01"
+    [birthDate]="birthDate()"
+    [sex]="sex()"
+    name="Nala"
   />`,
 })
 class HostComponent {
+  readonly birthDate = signal('2026-09-01');
+  readonly sex = signal<Sex>('unspecified');
   readonly babyId = signal('b1');
   readonly period = signal<TrendsPeriod>({ from: new Date(2026, 8, 1), to: new Date(2026, 9, 9) });
   readonly today = new Date(2026, 9, 9);
@@ -32,6 +44,7 @@ describe('GrowthTrendsComponent', () => {
   let responses: Subject<GrowthTrends>[];
   let growth: ReturnType<typeof vi.fn>;
   let refresh: ReturnType<typeof fakeDataRefresh>;
+  let referenceLoad: ReturnType<typeof vi.fn<() => Observable<GrowthReference>>>;
 
   const host = () => fixture.nativeElement as HTMLElement;
   const norm = (s?: string | null) => (s ?? '').replace(/\s+/g, ' ').trim();
@@ -72,6 +85,20 @@ describe('GrowthTrendsComponent', () => {
     ],
   };
 
+  /** M grows linearly from birth (age 0) to 1826 days; L = 1, so a percentile is M × (1 + S × z). */
+  const table = (from: number, to: number): LmsTable => ({
+    l: [1, 1],
+    m: [from, to],
+    s: [0.1, 0.1],
+  });
+  const reference: GrowthReference = {
+    source: 'WHO',
+    licence: 'GPL-3',
+    ageDays: [0, 1826],
+    girl: { weight: table(3, 18), length: table(49, 110), head: table(34, 50) },
+    boy: { weight: table(4, 19), length: table(50, 111), head: table(35, 51) },
+  };
+
   beforeEach(async () => {
     responses = [];
     growth = vi.fn(() => {
@@ -80,11 +107,13 @@ describe('GrowthTrendsComponent', () => {
       return response;
     });
     refresh = fakeDataRefresh();
+    referenceLoad = vi.fn(() => of(reference));
     await TestBed.configureTestingModule({
       imports: [HostComponent, translocoTesting()],
       providers: [
         { provide: TrendsService, useValue: { growth } },
         { provide: DataRefreshService, useValue: refresh },
+        { provide: GrowthReferenceService, useValue: { reference: referenceLoad } },
         { provide: NowService, useValue: { now: signal(new Date(2026, 9, 9, 12).getTime()) } },
       ],
     }).compileComponents();
@@ -174,5 +203,138 @@ describe('GrowthTrendsComponent', () => {
 
     await respond(trends);
     expect(cards().length).toBe(3);
+  });
+  describe('percentiles', () => {
+    const charts = () =>
+      fixture.debugElement
+        .queryAll(By.directive(LineChartComponent))
+        .map((c) => c.componentInstance as LineChartComponent);
+    const bandsOf = (index: number) => charts()[index].bands() as LineBandSample[] | null;
+    const asGirl = async (sex: Sex = 'girl') => {
+      fixture.componentInstance.sex.set(sex);
+      await settle();
+      await respond(trends);
+    };
+
+    it("gives each chart with a point its sex's bands and the caption", async () => {
+      await asGirl();
+
+      expect(referenceLoad).toHaveBeenCalled();
+      expect([0, 1, 2].map((i) => !!bandsOf(i)?.length)).toEqual([true, true, true]);
+      expect([0, 1, 2].map((i) => textIn(i, 'percentiles-caption'))).toEqual([
+        en.trends.percentiles.caption.girl,
+        en.trends.percentiles.caption.girl,
+        en.trends.percentiles.caption.girl,
+      ]);
+      expect(find('percentiles-hint')).toBeNull();
+    });
+
+    it("uses a boy's table and names boys in the caption", async () => {
+      await asGirl('boy');
+
+      expect(bandsOf(0)![0].p50).toBe(4000);
+      expect(textIn(0, 'percentiles-caption')).toBe(en.trends.percentiles.caption.boy);
+    });
+
+    it('samples about 60 dates across the period from the birth date, weight in g', async () => {
+      await asGirl();
+
+      const bands = bandsOf(0)!;
+      expect(bands.length).toBeGreaterThanOrEqual(30);
+      expect(bands.length).toBeLessThanOrEqual(60);
+      expect(bands[0]).toEqual({
+        date: '2026-09-01',
+        p3: expect.closeTo(3000 * (1 - 0.188079), 6),
+        p15: expect.closeTo(3000 * (1 - 0.103643), 6),
+        p50: 3000,
+        p85: expect.closeTo(3000 * (1 + 0.103643), 6),
+        p97: expect.closeTo(3000 * (1 + 0.188079), 6),
+      });
+      expect(bands.at(-1)!.date).toBe('2026-10-09');
+      expect(bandsOf(1)![0].p50).toBe(49);
+    });
+
+    it('starts the bands at the birth date when the period starts before it', async () => {
+      fixture.componentInstance.birthDate.set('2026-09-10');
+      await asGirl();
+
+      expect(bandsOf(0)![0].date).toBe('2026-09-10');
+    });
+
+    it('stops the bands at 1826 days of age', async () => {
+      fixture.componentInstance.birthDate.set('2021-10-01');
+      await asGirl();
+
+      // 2021-10-01 + 1826 days = 2026-10-01 (2024 is a leap year); the period ends 2026-10-09.
+      expect(bandsOf(0)!.at(-1)!.date).toBe('2026-10-01');
+      expect(bandsOf(0)!.at(-1)!.p50).toBe(18000);
+    });
+
+    it('draws no bands nor caption for a period after 1826 days of age', async () => {
+      fixture.componentInstance.birthDate.set('2020-01-01');
+      await asGirl();
+
+      expect(bandsOf(0)).toBeNull();
+      expect(inCard(0, 'percentiles-caption').length).toBe(0);
+    });
+
+    it('gives no bands to a card without a point, even the Weight card with milestones', async () => {
+      fixture.componentInstance.sex.set('girl');
+      await settle();
+      await respond({
+        measurements: [measurement('2026-09-20', null, 54.5, null)],
+        milestones: trends.milestones,
+      });
+
+      expect(bandsOf(0)).toBeNull();
+      expect(inCard(0, 'percentiles-caption').length).toBe(0);
+      expect(bandsOf(1)!.length).toBeGreaterThan(0);
+      expect(textIn(2, 'metric-empty')).toBe(en.history.emptyPeriod);
+    });
+
+    it('keeps the tooltips and the headlines the same with bands', async () => {
+      await asGirl();
+
+      expect(labelsIn(0, 'point-target')).toEqual([
+        `Tue, Sep 1: 3.400 kg · ${en.growth.card.birth}`,
+        'Sun, Sep 20: 4.100 kg · 2 weeks 5 days',
+        'Sat, Oct 3: 4.600 kg · 4 weeks 4 days',
+      ]);
+      expect(textIn(0, 'metric-headline')).toBe('4.600 kg · Oct 3');
+      expect(norm(host().textContent)).not.toMatch(/percentile \d|normal|low|high/i);
+    });
+
+    it('shows no bands and the hint to set the sex for an unspecified sex, without loading the reference', async () => {
+      await respond(trends);
+
+      expect(referenceLoad).not.toHaveBeenCalled();
+      expect(bandsOf(0)).toBeNull();
+      expect(inCard(0, 'percentiles-caption').length).toBe(0);
+      expect(norm(find('percentiles-hint')?.textContent)).toBe(
+        en.trends.percentiles.hint.replace('{{name}}', 'Nala'),
+      );
+    });
+
+    it('shows the charts without bands and without an error when the reference fails to load', async () => {
+      referenceLoad.mockReturnValue(throwError(() => new Error('offline')));
+      await asGirl();
+
+      expect(bandsOf(0)).toBeNull();
+      expect(inCard(0, 'percentiles-caption').length).toBe(0);
+      expect(find('trends-error')).toBeNull();
+      expect(inCard(0, 'point-target').length).toBe(3);
+    });
+
+    it('tries the reference again on the reload signal after a failed load', async () => {
+      referenceLoad.mockReturnValueOnce(throwError(() => new Error('offline')));
+      await asGirl();
+
+      refresh.reload.set(1);
+      await settle();
+      await respond(trends);
+
+      expect(referenceLoad).toHaveBeenCalledTimes(2);
+      expect(bandsOf(0)!.length).toBeGreaterThan(0);
+    });
   });
 });

@@ -1,8 +1,9 @@
-<nala-trends-load-state
-  [error]="!!data.error()"
-  [loaded]="data.hasValue()"
-  (retry)="data.reload()"
->
+<nala-trends-load-state [error]="!!data.error()" [loaded]="data.hasValue()" (retry)="data.reload()">
+  @if (!referenceSex()) {
+    <p class="hint" data-testid="percentiles-hint">
+      {{ 'trends.percentiles.hint' | transloco: { name: name() } }}
+    </p>
+  }
   @for (card of cards(); track card.key; let weight = $first) {
     <nala-metric-card
       section="growth"
@@ -15,11 +16,15 @@
       <nala-line-chart
         [points]="card.points"
         [markers]="weight ? milestones() : []"
+        [bands]="card.bands"
         [from]="from()"
         [to]="to()"
         [format]="card.format"
         [lang]="lang()"
       />
+      @if (card.bands) {
+        <p class="caption" data-testid="percentiles-caption">{{ caption() }}</p>
+      }
     </nala-metric-card>
   }
 </nala-trends-load-state>

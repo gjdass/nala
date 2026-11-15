@@ -41,6 +41,8 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const X_LABELS = 5;
 /** Two band labels closer than this (percent of the plot's height, about a label's line) overlap. */
 const LABEL_GAP = 10;
+/** Band labels stay this far (percent of the plot's height) inside its top and bottom edges. */
+const LABEL_INSET = 6;
 
 /**
  * A line chart of dated values (spec 12), hand-made SVG from the theme tokens of the scheme it sits in:
@@ -111,7 +113,10 @@ export class LineChartComponent {
       return `M ${upper.join(' L ')} L ${lower.join(' L ')} Z`;
     };
     const last = bands[bands.length - 1];
-    const label = (text: string, value: number) => ({ text, y: round(this.y(value)) });
+    const label = (text: string, value: number) => ({
+      text,
+      y: round(Math.min(100 - LABEL_INSET, Math.max(LABEL_INSET, this.y(value)))),
+    });
     let labels = [label('97', last.p97), label('50', last.p50), label('3', last.p3)];
     const clashes = (a: { y: number }, b: { y: number }) => Math.abs(a.y - b.y) < LABEL_GAP;
     if (clashes(labels[1], labels[0]) || clashes(labels[1], labels[2])) {

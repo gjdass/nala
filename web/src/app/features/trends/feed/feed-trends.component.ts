@@ -39,7 +39,10 @@ export class FeedTrendsComponent extends TrendsSection<FeedTrendDay> {
     'trends.bottle',
     'trends.solids',
   ]);
-  protected readonly bottleSeries = this.seriesOf(['feed.milkType.breastMilk', 'feed.milkType.formula']);
+  protected readonly bottleSeries = this.seriesOf([
+    'feed.milkType.breastMilk',
+    'feed.milkType.formula',
+  ]);
   protected readonly breastSeries = this.seriesOf(['trends.left', 'trends.right']);
   protected readonly gapSeries = this.seriesOf(['trends.cards.timeBetweenFeeds']);
 
@@ -62,7 +65,11 @@ export class FeedTrendsComponent extends TrendsSection<FeedTrendDay> {
   );
   protected readonly bottleHeadline = computed(() =>
     this.headline(
-      dailyAverage(this.loaded(), (d) => d.bottleMl.breastMilk + d.bottleMl.formula, this.todayDate()),
+      dailyAverage(
+        this.loaded(),
+        (d) => d.bottleMl.breastMilk + d.bottleMl.formula,
+        this.todayDate(),
+      ),
       this.formatMl,
     ),
   );
@@ -71,7 +78,10 @@ export class FeedTrendsComponent extends TrendsSection<FeedTrendDay> {
     this.bars((d) => [d.breastSeconds.left, d.breastSeconds.right]),
   );
   protected readonly breastHeadline = computed(() =>
-    this.headline(dailyAverage(this.loaded(), breastSeconds, this.todayDate()), this.formatDuration),
+    this.headline(
+      dailyAverage(this.loaded(), breastSeconds, this.todayDate()),
+      this.formatDuration,
+    ),
   );
   /** The period's left / right split over the past data days ("L 47% · R 53%"); none without breastfeeding. */
   protected readonly breastSplit = computed(() => {

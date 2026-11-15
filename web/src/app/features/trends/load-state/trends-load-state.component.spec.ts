@@ -7,7 +7,11 @@ import { TrendsLoadStateComponent } from './trends-load-state.component';
 @Component({
   imports: [TrendsLoadStateComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `<nala-trends-load-state [error]="error()" [loaded]="loaded()" (retry)="retries = retries + 1">
+  template: `<nala-trends-load-state
+    [error]="error()"
+    [loaded]="loaded()"
+    (retry)="retries = retries + 1"
+  >
     <p data-testid="cards">Cards</p>
   </nala-trends-load-state>`,
 })

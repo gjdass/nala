@@ -1,8 +1,4 @@
-<nala-trends-load-state
-  [error]="!!data.error()"
-  [loaded]="data.hasValue()"
-  (retry)="data.reload()"
->
+<nala-trends-load-state [error]="!!data.error()" [loaded]="data.hasValue()" (retry)="data.reload()">
   <nala-metric-card
     section="pump"
     [title]="'trends.cards.pumped' | transloco"

@@ -7,7 +7,13 @@ import { MetricCardComponent } from './metric-card.component';
 @Component({
   imports: [MetricCardComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `<nala-metric-card section="sleep" title="Sleep" headline="11h 30m" [detail]="detail()" [empty]="empty()">
+  template: `<nala-metric-card
+    section="sleep"
+    title="Sleep"
+    headline="11h 30m"
+    [detail]="detail()"
+    [empty]="empty()"
+  >
     <p data-testid="chart">Chart</p>
   </nala-metric-card>`,
 })

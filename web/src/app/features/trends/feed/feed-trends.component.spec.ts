@@ -151,9 +151,11 @@ describe('FeedTrendsComponent', () => {
   });
 
   it('shows the Time between feeds card: the average gap per day, pooled in the headline', async () => {
-    await respond([...week, day('2026-10-06', [1, 0, 0], [0, 0], [600, 0], [0, 0])].sort((a, b) =>
-      a.date.localeCompare(b.date),
-    ));
+    await respond(
+      [...week, day('2026-10-06', [1, 0, 0], [0, 0], [600, 0], [0, 0])].sort((a, b) =>
+        a.date.localeCompare(b.date),
+      ),
+    );
 
     // (21600 + 10800) / (3 + 1) s, not the average of the daily averages.
     expect(textIn(3, 'metric-headline')).toBe('2h 15m');

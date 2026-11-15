@@ -50,7 +50,11 @@ describe('PumpTrendsComponent', () => {
     sessions,
   });
   // The 8th: one session without a volume.
-  const week = [day('2026-10-07', 90, 80, 2), day('2026-10-08', 0, 0, 1), day('2026-10-09', 40, 30, 1)];
+  const week = [
+    day('2026-10-07', 90, 80, 2),
+    day('2026-10-08', 0, 0, 1),
+    day('2026-10-09', 40, 30, 1),
+  ];
 
   beforeEach(async () => {
     responses = [];

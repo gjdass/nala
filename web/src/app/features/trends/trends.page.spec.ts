@@ -42,7 +42,13 @@ describe('TrendsPage', () => {
   let refresh: ReturnType<typeof fakeDataRefresh>;
   let families: FamiliesResult;
 
-  const lea = { id: 'b1', familyId: 'f1', name: 'Lea', birthDate: '2026-09-01' } as Baby;
+  const lea = {
+    id: 'b1',
+    familyId: 'f1',
+    name: 'Lea',
+    birthDate: '2026-09-01',
+    sex: 'girl',
+  } as Baby;
   const host = () => fixture.nativeElement as HTMLElement;
   const find = (testId: string) => document.querySelector<HTMLElement>(`[data-testid="${testId}"]`);
   const all = (testId: string) => [
@@ -330,13 +336,12 @@ describe('TrendsPage', () => {
       await pick('section-chip', 'section-option', option);
 
       const trends = fixture.debugElement.query(By.directive(component)).componentInstance as
-        | DiaperTrendsComponent
-        | PumpTrendsComponent;
+        DiaperTrendsComponent | PumpTrendsComponent;
       expect(trends.babyId()).toBe('b1');
       expect(trends.period()).toEqual({ from: new Date(2026, 9, 3), to: new Date(2026, 9, 9) });
     });
 
-    it("shows Growth's trends with the baby's birth date", async () => {
+    it("shows Growth's trends with the baby's birth date, sex and name", async () => {
       await loadBabies([lea]);
 
       await pick('section-chip', 'section-option', 4);
@@ -346,6 +351,8 @@ describe('TrendsPage', () => {
       expect(growth.babyId()).toBe('b1');
       expect(growth.period()).toEqual({ from: new Date(2026, 9, 3), to: new Date(2026, 9, 9) });
       expect(growth.birthDate()).toBe('2026-09-01');
+      expect(growth.sex()).toBe('girl');
+      expect(growth.name()).toBe('Lea');
     });
   });
 

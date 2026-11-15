@@ -71,14 +71,14 @@ On the Trends tab, show how the selected baby's feeding, sleep, diapers, pumping
   - an **outer band** from the 3rd to the 97th percentile (lightest fill);
   - an **inner band** from the 15th to the 85th (a little stronger);
   - the **median** (50th) as a thin dashed line;
-  - "3", "50" and "97" in small type at the right edge of the plot, at their curve's height (a label that would overlap another is left out, 50 first).
+  - "3", "50" and "97" in small type at the right edge of the plot, at their curve's height, kept just inside the plot's top and bottom (a label that would overlap another is left out, 50 first).
   The baby's line and points stay on top, unchanged, the only strong mark. The bands aren't tappable and are hidden from assistive technologies; the caption says what they are.
 - **Y axis with bands:** it fits the baby's values **and** the 3rd–97th band over the period; the top and bottom labels are that range's highest and lowest values. Without bands, it fits the baby's values as before.
 - **Caption** under each chart with bands, one line (M3 body-small, on-surface-variant): "WHO standards, girls: 3rd–97th percentile, median dashed" ("boys" for a boy).
 - **When the bands show:** the Percentiles chip is on, the baby's sex is girl or boy, the measure has at least one point in the period, and part of the period is within the reference's ages. A card without a point keeps its current content (no bands alone).
 - **Sex unspecified:** there is no reference to pick (WHO has no unisex table). With the chip on, the charts show without bands and one hint shows above the cards: "Set {name}'s sex in the baby profile to see percentiles". Turning the chip off hides it.
 - **No interpretation:** no percentile number for the baby, no "normal" / "low" / "high" wording, no colour change of the baby's line or points, no alert. Tooltips and headlines are unchanged.
-- If the reference can't be loaded, the charts show without bands and without an error; it is tried again on the next load.
+- If the reference can't be loaded, the charts show without bands and without an error; it is tried again on the next load (the reload signal, or opening Growth's trends again).
 
 ### Architecture
 - **Aggregation in the API**, per section (the overview: aggregate across types explicitly), shared day-splitting logic in `Nala.Core`:
@@ -140,10 +140,10 @@ Each item becomes at least one test, written failing first.
 - [x] The reference gives, for a sex, a measure and an age in days, the 3rd, 15th, 50th, 85th and 97th percentile values from the WHO LMS tables, interpolated between rows (a boy's weight at birth: 2.51 / 2.86 / 3.35 / 3.88 / 4.35 kg to two decimals); nothing after 1826 days.
 - [x] The reference file is generated from the committed WHO tables (running the script again changes nothing), is loaded only when bands are to be drawn, and is in the service worker's lazy assets.
 - [x] `nala-line-chart` draws given bands behind the line: outer band, inner band, dashed median, "3" / "50" / "97" at the right edge; with bands the y axis and its top and bottom labels fit the values and the outer band; without bands nothing changes.
-- [ ] For a girl or a boy, each growth chart with a point in the period shows their sex's bands, from the birth date at the earliest and up to 1826 days of age, with the caption naming the source and the sex; a card without a point shows no bands.
-- [ ] With an unspecified sex, the charts show without bands and the hint to set the sex shows above the cards.
-- [ ] Tooltips, headlines and the baby's line are the same with and without bands; no percentile of the baby and no verdict is shown anywhere.
-- [ ] When the reference can't be loaded, the charts show without bands and without an error.
+- [x] For a girl or a boy, each growth chart with a point in the period shows their sex's bands, from the birth date at the earliest and up to 1826 days of age, with the caption naming the source and the sex; a card without a point shows no bands.
+- [x] With an unspecified sex, the charts show without bands and the hint to set the sex shows above the cards.
+- [x] Tooltips, headlines and the baby's line are the same with and without bands; no percentile of the baby and no verdict is shown anywhere.
+- [x] When the reference can't be loaded, the charts show without bands and without an error.
 - [ ] The Percentiles chip shows only when the section is Growth, is on by default, and turning it off hides the bands, the caption and the hint.
 - [ ] The chip's state is remembered on the device; a missing or invalid stored value falls back to on.
 
@@ -157,7 +157,7 @@ Slices 1–7 are built; each is a commit "Spec 12 slice N: …" (`git log --grep
 
 - [x] **8. Reference data and percentile maths.** Commit the three WHO tables (`weianthro.txt`, `lenanthro.txt`, `hcanthro.txt` from `data-raw/growthstandards/` of WHO's `anthro` package, GPL-3) in `web/tools/who-growth/` with a note on their source and licence; `tools/who-growth.mjs` generates `public/reference/who-growth.json` (rows kept: every day up to 14, then every 7th day, plus 730, 731 and 1826); a tooling test that the committed file is what the script produces; `/reference/*.json` in `ngsw-config.json`'s lazy asset group; in `core/growth-reference/`, the pure functions (LMS at an age by interpolation, percentile value from LMS and z, null after 1826 days) and `GrowthReferenceService` (loads the file once, on first use; a failed load is retried on the next call); a credit line for the WHO standards in the README. No UI. Covers: Growth percentiles 1, 2.
 - [x] **9. Bands in the line chart.** `nala-line-chart` gets an optional `bands` input (dated samples of the five percentile values): outer and inner fills, dashed median, right-edge labels with overlap dropped, y axis and labels fitted to values and outer band, all `aria-hidden`, colours from the scheme's tokens, checked in light and dark. Without the input the chart is unchanged. Covers: Growth percentiles 3.
-- [ ] **10. Growth cards with percentiles.** `nala-growth-trends` takes the baby's `sex` and name; for a girl or a boy it loads the reference and gives each chart with a point its bands (about 60 samples across the period, from the birth date, up to 1826 days of age, weight in g to match the points) and the caption; the hint above the cards for an unspecified sex; no bands and no error when the load fails. Always on in this slice. Labels in EN and FR. Covers: Growth percentiles 4, 5, 6, 7.
+- [x] **10. Growth cards with percentiles.** `nala-growth-trends` takes the baby's `sex` and name; for a girl or a boy it loads the reference and gives each chart with a point its bands (about 60 samples across the period, from the birth date, up to 1826 days of age, weight in g to match the points) and the caption; the hint above the cards for an unspecified sex; no bands and no error when the load fails. Always on in this slice. Labels in EN and FR. Covers: Growth percentiles 4, 5, 6, 7.
 - [ ] **11. Percentiles chip.** The chip in `nala-trends-filter-bar`, only for Growth; `percentiles` in `TrendsFilters` and `nala.trendsFilters` (default and fallback: on); off hides bands, caption and hint, and doesn't load the reference. Covers: Growth percentiles 8, 9; and re-checks Filter bar's "remembered on the device".
 
 ## Data
@@ -169,7 +169,7 @@ Shipped with the web app, not stored: `public/reference/who-growth.json`, `{ sou
 ## UI notes
 
 - Reused: `nala-top-app-bar`, 03's `nala-no-baby`, History's dropdown chip pattern (the single-choice menu is the shared `nala-choice-menu`, also used by History's window chip), `.nala-scheme-<key>` on each card.
-- Growth percentiles: `nala-line-chart`'s `bands` input (fills need real coordinates, unlike the chart's percentage-positioned lines and dots: a nested `viewBox="0 0 100 100"` `preserveAspectRatio="none"` SVG with `vector-effect: non-scaling-stroke` on the median is one way). Band fills: the scheme's `primary-container` at two strengths (45 % and 90 %), the tokens `--nala-chart-band-outer` / `--nala-chart-band-inner` set on `nala-line-chart` in `src/styles/_charts.scss`; median: `outline`. `core/growth-reference/` holds the reference service and the percentile functions. The chip is a Material filter chip, as designed.
+- Growth percentiles: `nala-line-chart`'s `bands` input (fills need real coordinates, unlike the chart's percentage-positioned lines and dots: a nested `viewBox="0 0 100 100"` `preserveAspectRatio="none"` SVG with `vector-effect: non-scaling-stroke` on the median is one way). Band fills: the scheme's `primary-container` at two strengths (30 % and 60 %), the tokens `--nala-chart-band-outer` / `--nala-chart-band-inner` set on `nala-line-chart` in `src/styles/_charts.scss`; median: `outline`. `core/growth-reference/` holds the reference service and the percentile functions. The chip is a Material filter chip, as designed.
 - New shared components: `nala-bar-chart` (stacked or grouped series, gaps for no-data days, lighter today bar, tap to show a value) and `nala-line-chart` (dated points, optional markers), both hand-made SVG from theme tokens, no chart library. Every bar and point has an accessible label ("Tue 7 Oct: 6 feeds").
 - New in `features/trends/`: the page, `nala-trends-filter-bar`, `nala-metric-card`, `nala-trends-load-state` (spinner, error with Try again, else the cards), `TrendsLoader`, the base of every section's trends (loading per baby and period, reload signal), and `TrendsSection` on top of it for the bucketed sections (buckets, headlines).
 - The API image resolves IANA time zones: the `aspnet:10.0` runtime image (Ubuntu) ships `tzdata`.

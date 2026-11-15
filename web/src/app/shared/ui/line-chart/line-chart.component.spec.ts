@@ -215,7 +215,7 @@ describe('LineChartComponent', () => {
       );
       const labels = all('band-label');
       expect(labels.map((l) => l.textContent?.trim())).toEqual(['97', '50', '3']);
-      expect(labels.map((l) => percent(l, 'y'))).toEqual([0, 25, 50]);
+      expect(labels.map((l) => percent(l, 'y'))).toEqual([6, 25, 50]);
     });
 
     it('leaves out the 50 label first when labels would overlap', async () => {
