@@ -1,5 +1,5 @@
 <nala-trends-load-state [error]="!!data.error()" [loaded]="data.hasValue()" (retry)="data.reload()">
-  @if (!referenceSex()) {
+  @if (sexHint()) {
     <p class="hint" data-testid="percentiles-hint">
       {{ 'trends.percentiles.hint' | transloco: { name: name() } }}
     </p>

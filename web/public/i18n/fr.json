@@ -853,6 +853,7 @@
     "noValue": "–",
     "loadError": "Impossible de charger les tendances.",
     "percentiles": {
+      "label": "Centiles",
       "caption": {
         "girl": "Normes OMS, filles : 3ᵉ–97ᵉ centile, médiane en pointillés",
         "boy": "Normes OMS, garçons : 3ᵉ–97ᵉ centile, médiane en pointillés"

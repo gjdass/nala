@@ -20,6 +20,17 @@
     <mat-icon matChipTrailingIcon>arrow_drop_down</mat-icon>
   </mat-chip>
 </mat-chip-set>
+@if (section() === 'growth') {
+  <mat-chip-listbox [multiple]="true" [attr.aria-label]="'trends.percentiles.label' | transloco">
+    <mat-chip-option
+      [selected]="percentiles()"
+      (selectionChange)="$event.isUserInput && percentilesChange.emit($event.selected)"
+      data-testid="percentiles-chip"
+    >
+      {{ 'trends.percentiles.label' | transloco }}
+    </mat-chip-option>
+  </mat-chip-listbox>
+}
 
 <div class="navigation">
   @if (navigable()) {

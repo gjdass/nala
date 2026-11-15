@@ -28,12 +28,14 @@ import { GrowthTrendsComponent } from './growth-trends.component';
     [today]="today"
     [birthDate]="birthDate()"
     [sex]="sex()"
+    [percentiles]="percentiles()"
     name="Nala"
   />`,
 })
 class HostComponent {
   readonly birthDate = signal('2026-09-01');
   readonly sex = signal<Sex>('unspecified');
+  readonly percentiles = signal(true);
   readonly babyId = signal('b1');
   readonly period = signal<TrendsPeriod>({ from: new Date(2026, 8, 1), to: new Date(2026, 9, 9) });
   readonly today = new Date(2026, 9, 9);
@@ -335,6 +337,18 @@ describe('GrowthTrendsComponent', () => {
 
       expect(referenceLoad).toHaveBeenCalledTimes(2);
       expect(bandsOf(0)!.length).toBeGreaterThan(0);
+    });
+    it('draws no bands, no caption and no hint, and loads no reference, with the percentiles off', async () => {
+      fixture.componentInstance.percentiles.set(false);
+      await asGirl();
+
+      expect(referenceLoad).not.toHaveBeenCalled();
+      expect(bandsOf(0)).toBeNull();
+      expect(inCard(0, 'percentiles-caption').length).toBe(0);
+
+      fixture.componentInstance.sex.set('unspecified');
+      await settle();
+      expect(find('percentiles-hint')).toBeNull();
     });
   });
 });

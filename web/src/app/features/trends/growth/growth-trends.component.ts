@@ -70,7 +70,8 @@ const DAY_MS = 24 * 60 * 60 * 1000;
  * then. The milestones are markers on the Weight chart, which shows for them even without a weight.
  * For a girl or a boy, each chart with a point shows the WHO percentile bands of their sex behind the
  * line, from the birth date and up to 1826 days of age, with a caption; for an unspecified sex, a
- * hint to set it. The reference loads only then; when it can't, the charts show without bands.
+ * hint to set it. Turning the percentiles off hides them all. The reference loads only when bands are
+ * to be drawn; when it can't, the charts show without bands.
  */
 @Component({
   selector: 'nala-growth-trends',
@@ -93,12 +94,17 @@ export class GrowthTrendsComponent extends TrendsLoader<GrowthTrends> {
   readonly sex = input.required<Sex>();
   /** The baby's name, for the hint to set the sex. */
   readonly name = input.required<string>();
+  /** The Percentiles chip: off, no bands, caption nor hint, and the reference isn't loaded. */
+  readonly percentiles = input(true);
 
-  /** The reference's sex, or null when there's none to pick. */
+  /** The reference's sex when bands are to be drawn, else null. */
   protected readonly referenceSex = computed(() => {
     const sex = this.sex();
-    return sex === 'unspecified' ? null : sex;
+    return !this.percentiles() || sex === 'unspecified' ? null : sex;
   });
+
+  /** The hint to set the sex: percentiles on, but no reference to pick. */
+  protected readonly sexHint = computed(() => this.percentiles() && this.sex() === 'unspecified');
 
   /** The WHO reference, loaded only when bands are to be drawn. */
   private readonly reference = rxResource({

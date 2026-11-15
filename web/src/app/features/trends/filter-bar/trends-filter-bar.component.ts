@@ -13,8 +13,9 @@ import { TrendsSection } from '../trends-filters';
 import { TRENDS_RANGES, TrendsRange } from '../trends-period';
 
 /**
- * Trends' filter bar (spec 12): the Section and Range chips, each opening a single-choice menu, then
- * the period navigation (‹ label ›), on the same row and wrapping when it doesn't fit.
+ * Trends' filter bar (spec 12): the Section and Range chips, each opening a single-choice menu, the
+ * Percentiles filter chip for Growth, then the period navigation (‹ label ›), on the same row and
+ * wrapping when it doesn't fit.
  */
 @Component({
   selector: 'nala-trends-filter-bar',
@@ -41,11 +42,14 @@ export class TrendsFilterBarComponent {
   readonly canGoForward = input.required<boolean>();
   /** False when the period can't be moved (Since birth): the label stays, the arrows go. */
   readonly navigable = input.required<boolean>();
+  /** Growth's WHO percentile bands shown. */
+  readonly percentiles = input.required<boolean>();
 
   readonly sectionChange = output<TrendsSection>();
   readonly rangeChange = output<TrendsRange>();
   readonly previous = output<void>();
   readonly next = output<void>();
+  readonly percentilesChange = output<boolean>();
 
   protected readonly sectionOptions = computed((): ChoiceOption<TrendsSection>[] => {
     const { visible, hidden } = splitByVisibility(this.sections());

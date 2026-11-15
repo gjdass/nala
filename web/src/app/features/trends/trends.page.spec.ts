@@ -243,7 +243,7 @@ describe('TrendsPage', () => {
       await pick('section-chip', 'section-option', 3);
       await pick('range-chip', 'range-option', 2);
 
-      expect(saved()).toEqual({ section: 'pump', range: '3m' });
+      expect(saved()).toEqual({ section: 'pump', range: '3m', percentiles: true });
       expect(find('section-chip')!.textContent).toContain(en.sections.pump);
       expect(find('range-chip')!.textContent).toContain(en.trends.range['3m']);
       expect(label()).toBe('Jul – Oct 2026');
@@ -354,6 +354,21 @@ describe('TrendsPage', () => {
       expect(growth.sex()).toBe('girl');
       expect(growth.name()).toBe('Lea');
     });
+
+    it("turns Growth's percentiles off and on with the chip, and remembers it", async () => {
+      await loadBabies([lea]);
+      await pick('section-chip', 'section-option', 4);
+      const growth = () =>
+        fixture.debugElement.query(By.directive(GrowthTrendsComponent))
+          .componentInstance as GrowthTrendsComponent;
+      expect(growth().percentiles()).toBe(true);
+
+      find('percentiles-chip')!.querySelector<HTMLElement>('[role="option"]')!.click();
+      await fixture.whenStable();
+
+      expect(growth().percentiles()).toBe(false);
+      expect(saved()).toEqual({ section: 'growth', range: '7d', percentiles: false });
+    });
   });
 
   describe('period', () => {
@@ -405,6 +420,22 @@ describe('TrendsPage', () => {
 
       expect(find('section-chip')!.textContent).toContain(en.sections.growth);
       expect(find('range-chip')!.textContent).toContain(en.trends.range['6m']);
+    });
+
+    it('restores the percentiles turned off', async () => {
+      localStorage.setItem(
+        'nala.trendsFilters',
+        JSON.stringify({ section: 'growth', range: '6m', percentiles: false }),
+      );
+      await create();
+      await loadBabies([lea]);
+
+      const growth = fixture.debugElement.query(By.directive(GrowthTrendsComponent))
+        .componentInstance as GrowthTrendsComponent;
+      expect(growth.percentiles()).toBe(false);
+      expect(
+        find('percentiles-chip')!.querySelector('[role="option"]')!.getAttribute('aria-selected'),
+      ).toBe('false');
     });
   });
 });

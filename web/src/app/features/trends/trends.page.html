@@ -29,6 +29,8 @@
         [canGoBack]="canGoBack()"
         [canGoForward]="canGoForward()"
         [navigable]="navigable()"
+        [percentiles]="filters().percentiles"
+        (percentilesChange)="setPercentiles($event)"
         (sectionChange)="setSection($event)"
         (rangeChange)="setRange($event)"
         (previous)="offset.set(offset() - 1)"
@@ -64,6 +66,7 @@
               [birthDate]="baby.birthDate"
               [sex]="baby.sex"
               [name]="baby.name"
+              [percentiles]="filters().percentiles"
             />
           }
         }

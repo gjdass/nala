@@ -1,6 +1,6 @@
 # 12 — Trends
 
-Status: in progress
+Status: done
 
 Builds on [04 — App layout](04-app-layout.md): the app shell, the section registry and colour schemes, the home section order and the reload signal apply. This spec adds the Trends destination's content, which replaces 04's "Coming soon" placeholder.
 
@@ -144,8 +144,8 @@ Each item becomes at least one test, written failing first.
 - [x] With an unspecified sex, the charts show without bands and the hint to set the sex shows above the cards.
 - [x] Tooltips, headlines and the baby's line are the same with and without bands; no percentile of the baby and no verdict is shown anywhere.
 - [x] When the reference can't be loaded, the charts show without bands and without an error.
-- [ ] The Percentiles chip shows only when the section is Growth, is on by default, and turning it off hides the bands, the caption and the hint.
-- [ ] The chip's state is remembered on the device; a missing or invalid stored value falls back to on.
+- [x] The Percentiles chip shows only when the section is Growth, is on by default, and turning it off hides the bands, the caption and the hint.
+- [x] The chip's state is remembered on the device; a missing or invalid stored value falls back to on.
 
 ### API
 - [x] Each trends endpoint returns only the baby's data days in the range, aggregated in the given time zone, as described above.
@@ -153,12 +153,7 @@ Each item becomes at least one test, written failing first.
 
 ## Build slices
 
-Slices 1–7 are built; each is a commit "Spec 12 slice N: …" (`git log --grep "Spec 12 slice"`). Slices 8–11 add Growth percentiles: web only, no API, database or backup-script change. Each goes red → green → commit "Spec 12 slice N: …" on `master`, in this order.
-
-- [x] **8. Reference data and percentile maths.** Commit the three WHO tables (`weianthro.txt`, `lenanthro.txt`, `hcanthro.txt` from `data-raw/growthstandards/` of WHO's `anthro` package, GPL-3) in `web/tools/who-growth/` with a note on their source and licence; `tools/who-growth.mjs` generates `public/reference/who-growth.json` (rows kept: every day up to 14, then every 7th day, plus 730, 731 and 1826); a tooling test that the committed file is what the script produces; `/reference/*.json` in `ngsw-config.json`'s lazy asset group; in `core/growth-reference/`, the pure functions (LMS at an age by interpolation, percentile value from LMS and z, null after 1826 days) and `GrowthReferenceService` (loads the file once, on first use; a failed load is retried on the next call); a credit line for the WHO standards in the README. No UI. Covers: Growth percentiles 1, 2.
-- [x] **9. Bands in the line chart.** `nala-line-chart` gets an optional `bands` input (dated samples of the five percentile values): outer and inner fills, dashed median, right-edge labels with overlap dropped, y axis and labels fitted to values and outer band, all `aria-hidden`, colours from the scheme's tokens, checked in light and dark. Without the input the chart is unchanged. Covers: Growth percentiles 3.
-- [x] **10. Growth cards with percentiles.** `nala-growth-trends` takes the baby's `sex` and name; for a girl or a boy it loads the reference and gives each chart with a point its bands (about 60 samples across the period, from the birth date, up to 1826 days of age, weight in g to match the points) and the caption; the hint above the cards for an unspecified sex; no bands and no error when the load fails. Always on in this slice. Labels in EN and FR. Covers: Growth percentiles 4, 5, 6, 7.
-- [ ] **11. Percentiles chip.** The chip in `nala-trends-filter-bar`, only for Growth; `percentiles` in `TrendsFilters` and `nala.trendsFilters` (default and fallback: on); off hides bands, caption and hint, and doesn't load the reference. Covers: Growth percentiles 8, 9; and re-checks Filter bar's "remembered on the device".
+Built in 11 slices, all done; each is a commit "Spec 12 slice N: …" (`git log --grep "Spec 12 slice"`).
 
 ## Data
 
