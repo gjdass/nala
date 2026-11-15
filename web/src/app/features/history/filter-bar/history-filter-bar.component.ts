@@ -1,5 +1,6 @@
 import { NgTemplateOutlet } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
+import { NowService } from '../../../core/time/now.service';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatPseudoCheckboxModule } from '@angular/material/core';
 import { MatDividerModule } from '@angular/material/divider';
@@ -69,7 +70,9 @@ export class HistoryFilterBarComponent {
       ? { start: parseDate(range.start), end: parseDate(range.end) }
       : null;
   });
-  protected readonly today = new Date();
+  private readonly clock = inject(NowService);
+  /** The custom range's calendar can't go past today (the clock's day: it moves on at midnight). */
+  protected readonly today = computed(() => new Date(this.clock.today()));
 
   protected pickRange({ start, end }: DateRange): void {
     this.rangeChange.emit({ start: formatDate(start), end: formatDate(end) });

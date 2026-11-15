@@ -206,7 +206,7 @@ describe('SelectedBabyService', () => {
   describe('across families', () => {
     beforeEach(() => inFamilies(martins, durands));
 
-    it('babies() holds every family\'s babies, familyBabies() only the current family\'s', () => {
+    it("babies() holds every family's babies, familyBabies() only the current family's", () => {
       const store = loaded({ ok: true, babies: [zoe, tom, lea] });
 
       expect(store.babies()).toEqual([zoe, tom, lea]);

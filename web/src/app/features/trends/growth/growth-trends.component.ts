@@ -69,9 +69,9 @@ const DAY_MS = 24 * 60 * 60 * 1000;
  * the birth measurement first when in the period; each point reads its date, value and the baby's age
  * then. The milestones are markers on the Weight chart, which shows for them even without a weight.
  * For a girl or a boy, each chart with a point shows the WHO percentile bands of their sex behind the
- * line, from the birth date and up to 1826 days of age, with a caption; for an unspecified sex, a
- * hint to set it. Turning the percentiles off hides them all. The reference loads only when bands are
- * to be drawn; when it can't, the charts show without bands.
+ * line, from the birth date and up to 1826 days of age, with one caption under the cards; for an
+ * unspecified sex, a hint to set it. Turning the percentiles off hides them all. The reference loads
+ * only when bands are to be drawn; when it can't, the charts show without bands.
  */
 @Component({
   selector: 'nala-growth-trends',
@@ -160,7 +160,10 @@ export class GrowthTrendsComponent extends TrendsLoader<GrowthTrends> {
     }));
   });
 
-  /** The caption of a chart with bands: the source and the sex. */
+  /** Whether a chart draws bands: then one caption under all the cards says what they are. */
+  protected readonly hasBands = computed(() => this.cards().some((card) => card.bands));
+
+  /** The caption under the cards when a chart has bands: the source and the sex. */
   protected readonly caption = computed(() => {
     this.lang();
     const sex = this.referenceSex();

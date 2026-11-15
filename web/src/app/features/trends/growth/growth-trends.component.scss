@@ -1,4 +1,4 @@
-// Growth's percentile hint above the cards and the caption under a chart with bands (spec 12).
+// Growth's percentile hint above the cards and the caption under the cards when a chart has bands (spec 12).
 .hint {
   margin: 0;
   color: var(--mat-sys-on-surface-variant);
@@ -6,7 +6,7 @@
 }
 
 .caption {
-  margin: 4px 0 0;
+  margin: 0;
   color: var(--mat-sys-on-surface-variant);
   font: var(--mat-sys-body-small);
 }

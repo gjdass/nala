@@ -27,7 +27,7 @@
     label="history.window.range"
     [start]="dates.start"
     [end]="dates.end"
-    [max]="today"
+    [max]="today()"
     (rangeChange)="pickRange($event)"
   />
 }

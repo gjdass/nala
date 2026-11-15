@@ -102,4 +102,13 @@
     transform: translateX(-50%);
     white-space: nowrap;
   }
+
+  // The first and last dates sit at the plot's edges: aligned inwards, they stay inside the card.
+  .start {
+    transform: none;
+  }
+
+  .end {
+    transform: translateX(-100%);
+  }
 }

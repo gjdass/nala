@@ -18,7 +18,7 @@
     matInput
     readonly
     [matDatepicker]="picker"
-    [max]="today"
+    [max]="today()"
     [formControl]="form().controls.birthDate"
     (click)="picker.open()"
     data-testid="birthDate"

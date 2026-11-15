@@ -1,14 +1,14 @@
 import { Pipe, PipeTransform, inject } from '@angular/core';
 import { TranslocoService } from '@jsverse/transloco';
-import { NowService } from './now.service';
+import { NowService, dayStartOf } from './now.service';
 
-const dayStart = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+const dayStart = (d: Date) => dayStartOf(d.getTime());
 
 /**
  * When an entry happened, in the device's time zone and the active language (spec 04): the time
  * today ("2:10 PM", or "Today 2:10 PM" with `withToday`, as in entry sheet rows), "Yesterday 2:10 PM",
  * then the date and time, with the year when it isn't this one.
- * Impure: it follows the language and the shared clock (today becomes yesterday at midnight).
+ * Impure: it follows the language and the shared clock (its day: today becomes yesterday at midnight).
  */
 @Pipe({ name: 'nalaEntryTime', pure: false })
 export class EntryTimePipe implements PipeTransform {
@@ -18,7 +18,7 @@ export class EntryTimePipe implements PipeTransform {
   transform(iso: string, withToday = false): string {
     const lang = this.transloco.getActiveLang();
     const date = new Date(iso);
-    const now = new Date(this.clock.now());
+    const now = new Date(this.clock.today());
     const time = new Intl.DateTimeFormat(lang, { timeStyle: 'short' }).format(date);
     const today = dayStart(now);
     const day = dayStart(date);
@@ -51,7 +51,7 @@ export class EntryDatePipe implements PipeTransform {
   transform(value: string | Date): string {
     const lang = this.transloco.getActiveLang();
     const date = new Date(value);
-    const now = new Date(this.clock.now());
+    const now = new Date(this.clock.today());
     const today = dayStart(now);
     const day = dayStart(date);
     if (day === today) {

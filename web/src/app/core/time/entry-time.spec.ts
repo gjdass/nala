@@ -1,3 +1,4 @@
+import { computed } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { TranslocoService } from '@jsverse/transloco';
 import { translocoTesting } from '../../testing/transloco-testing';
@@ -104,5 +105,35 @@ describe('EntryDatePipe', () => {
     expect(pipe.transform(new Date(2026, 8, 28))).toBe("Aujourd'hui");
     expect(pipe.transform(new Date(2026, 8, 27))).toBe('Hier');
     expect(pipe.transform(new Date(2026, 8, 20))).toBe('20 sept.');
+  });
+});
+
+describe('EntryTimePipe and EntryDatePipe in a computed', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date', 'setInterval', 'clearInterval'] });
+    vi.setSystemTime(NOW);
+    TestBed.configureTestingModule({ imports: [translocoTesting()] });
+  });
+
+  afterEach(() => vi.useRealTimers());
+
+  it('run again only when the day changes, not on every tick of the clock', () => {
+    const time = TestBed.runInInjectionContext(() => new EntryTimePipe());
+    const date = TestBed.runInInjectionContext(() => new EntryDatePipe());
+    const iso = at(2026, 8, 28, 9, 0);
+    let runs = 0;
+    const labels = computed(() => {
+      runs++;
+      return [time.transform(iso), date.transform(iso)];
+    });
+
+    expect(labels()[1]).toBe('Today');
+    vi.advanceTimersByTime(60_000);
+    labels();
+    expect(runs).toBe(1);
+
+    vi.advanceTimersByTime(12 * 60 * 60 * 1000);
+    expect(labels()[1]).toBe('Yesterday');
+    expect(runs).toBe(2);
   });
 });

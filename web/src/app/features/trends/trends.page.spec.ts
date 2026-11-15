@@ -11,6 +11,7 @@ import { SelectedBabyService } from '../../core/babies/selected-baby.service';
 import { FamiliesResult } from '../../core/families/family.models';
 import { FamilyService } from '../../core/families/family.service';
 import { DataRefreshService } from '../../core/refresh/data-refresh.service';
+import { NowService } from '../../core/time/now.service';
 import {
   SECTIONS,
   SectionDefinition,
@@ -20,6 +21,7 @@ import {
 import { SectionPreferencesService } from '../../core/sections/section-preferences.service';
 import { TrendsService } from '../../core/trends/trends.service';
 import { fakeDataRefresh } from '../../testing/data-refresh';
+import { fakeNow } from '../../testing/now';
 import { translocoTesting } from '../../testing/transloco-testing';
 import { DiaperTrendsComponent } from './diaper/diaper-trends.component';
 import { FeedTrendsComponent } from './feed/feed-trends.component';
@@ -40,6 +42,7 @@ describe('TrendsPage', () => {
   let preferences: WritableSignal<SectionPreference[] | null>;
   let loadSections: ReturnType<typeof vi.fn>;
   let refresh: ReturnType<typeof fakeDataRefresh>;
+  let now: WritableSignal<number>;
   let families: FamiliesResult;
 
   const lea = {
@@ -85,6 +88,7 @@ describe('TrendsPage', () => {
     preferences = signal<SectionPreference[] | null>(null);
     loadSections = vi.fn();
     refresh = fakeDataRefresh();
+    now = signal(NOW.getTime());
     await TestBed.configureTestingModule({
       imports: [TrendsPage, translocoTesting()],
       providers: [
@@ -108,6 +112,7 @@ describe('TrendsPage', () => {
           useValue: { preferences, load: loadSections, save: vi.fn() },
         },
         { provide: DataRefreshService, useValue: refresh },
+        { provide: NowService, useValue: fakeNow(now) },
         {
           provide: TrendsService,
           useValue: {
@@ -374,13 +379,12 @@ describe('TrendsPage', () => {
   describe('period', () => {
     beforeEach(create);
 
-    it('moves to the new current period on the reload signal of another day', async () => {
+    it('moves to the new current period at midnight, while the page stays open', async () => {
       await loadBabies([lea]);
       await click('previous');
 
-      vi.setSystemTime(new Date(2026, 9, 10, 8));
-      refresh.reload.set(1);
-      await loadBabies([lea]);
+      now.set(new Date(2026, 9, 10, 0, 0, 1).getTime());
+      await fixture.whenStable();
 
       expect(label()).toBe('Oct 4 – 10');
       expect(find('next')!.hasAttribute('disabled')).toBe(true);

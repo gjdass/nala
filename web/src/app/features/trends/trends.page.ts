@@ -10,6 +10,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { SelectedBabyService } from '../../core/babies/selected-baby.service';
 import { CurrentFamilyService } from '../../core/families/current-family.service';
+import { NowService } from '../../core/time/now.service';
 import { onReload } from '../../core/refresh/data-refresh.service';
 import { menuSections } from '../../core/sections/section-menu';
 import { SECTIONS } from '../../core/sections/section.models';
@@ -35,8 +36,8 @@ import { TrendsRange, canGoBack, canGoForward, period, periodLabel } from './tre
  * The Trends destination (spec 12): the top bar with the selected baby, then the filter bar (section,
  * range and period navigation; the section and range are remembered on the device), then the section's
  * metric cards. Without a baby, or
- * in no family, 03's empty states. The babies, the home order and today load again on the reload signal
- * (spec 04 Refresh on return).
+ * in no family, 03's empty states. The babies and the home order load again on the reload signal
+ * (spec 04 Refresh on return); today follows the clock's day.
  */
 @Component({
   selector: 'nala-trends',
@@ -61,6 +62,7 @@ export class TrendsPage {
   private readonly filterStore = inject(TrendsFiltersStore);
   private readonly sections = inject(SECTIONS);
   private readonly transloco = inject(TranslocoService);
+  private readonly clock = inject(NowService);
   private readonly lang = toSignal(this.transloco.langChanges$, {
     initialValue: this.transloco.getActiveLang(),
   });
@@ -68,10 +70,8 @@ export class TrendsPage {
   protected readonly store = inject(SelectedBabyService);
   protected readonly families = inject(CurrentFamilyService);
 
-  /** The periods end today: read again on the reload signal, so a page left open overnight moves on. */
-  protected readonly today = signal(startOfToday(), {
-    equal: (a, b) => a.getTime() === b.getTime(),
-  });
+  /** The periods end today: the clock's day, so a page left open overnight moves on at midnight. */
+  protected readonly today = computed(() => new Date(this.clock.today()));
 
   protected readonly filters = signal(this.filterStore.read());
 
@@ -119,7 +119,6 @@ export class TrendsPage {
     const load = () => {
       this.store.refresh();
       this.preferences.load();
-      this.today.set(startOfToday());
     };
     load();
     onReload(load);
@@ -141,9 +140,4 @@ export class TrendsPage {
     this.filters.set(filters);
     this.filterStore.save(filters);
   }
-}
-
-function startOfToday(): Date {
-  const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
 }

@@ -1,5 +1,8 @@
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { TranslocoService } from '@jsverse/transloco';
+import { NowService } from '../time/now.service';
+import { fakeNow } from '../../testing/now';
 import { translocoTesting } from '../../testing/transloco-testing';
 import { BabyAgePipe } from './baby-age.pipe';
 
@@ -8,10 +11,15 @@ describe('BabyAgePipe', () => {
   let transloco: TranslocoService;
 
   const today = new Date(2026, 8, 28, 9, 0);
+  const now = signal(today.getTime());
   const format = (birthDate: string) => pipe.transform(birthDate, today);
 
   beforeEach(() => {
-    TestBed.configureTestingModule({ imports: [translocoTesting()] });
+    now.set(today.getTime());
+    TestBed.configureTestingModule({
+      imports: [translocoTesting()],
+      providers: [{ provide: NowService, useValue: fakeNow(now) }],
+    });
     transloco = TestBed.inject(TranslocoService);
     pipe = TestBed.runInInjectionContext(() => new BabyAgePipe());
   });
@@ -25,6 +33,14 @@ describe('BabyAgePipe', () => {
     expect(format('2026-08-15')).toBe('6 weeks 2 days');
     expect(format('2026-05-18')).toBe('4 months 10 days');
     expect(format('2025-08-28')).toBe('13 months');
+  });
+
+  it("defaults to the clock's day, and follows it at midnight", () => {
+    expect(pipe.transform('2026-09-27')).toBe('1 day');
+
+    now.set(new Date(2026, 8, 29, 0, 0, 1).getTime());
+
+    expect(pipe.transform('2026-09-27')).toBe('2 days');
   });
 
   it('formats in French', () => {

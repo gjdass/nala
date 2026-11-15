@@ -21,7 +21,7 @@ On the Trends tab, show how the selected baby's feeding, sleep, diapers, pumping
   - **Range** (chip "Range"; `menuitemradio`): **7 days** (default), **30 days**, **3 months**, **6 months**, **Since birth**.
   - **Percentiles** (a filter chip, `mat-chip-option`, after Range; **only when the section is Growth**): shows or hides the WHO percentile bands on the three growth charts. **On by default.**
   - **Period navigation:** ‹ and › around the period's label ("3 – 9 Oct", "Jul – Oct 2026"). ‹ shows the period of the same length just before; › the one after, disabled on the current period. Nothing goes before the birth date (‹ disabled once the period reaches it). It sits on the chips' row and wraps below them when it doesn't fit. Since birth has no arrows (nothing to move), but its label still shows the dates ("Aug 2025 – Oct 2026").
-- Periods are **whole local days**, ending today: 7 days = today and the 6 days before; 3 months = from the same day 3 months ago + 1 day to today. Earlier periods count both ends back from today, so a day clamped in a short month never makes two periods overlap. Changing the range, the section or the baby goes back to the current period, and so does a new day (today is read again on the reload signal).
+- Periods are **whole local days**, ending today: 7 days = today and the 6 days before; 3 months = from the same day 3 months ago + 1 day to today. Earlier periods count both ends back from today, so a day clamped in a short month never makes two periods overlap. Changing the range, the section or the baby goes back to the current period, and so does a new day (today follows the device's clock: the period moves on at midnight, even with the page open).
 - **Remembered per device:** `localStorage` `nala.trendsFilters` `{ section, range, percentiles }` (not the period offset), restored when Trends is opened. An unknown or no-longer-eligible section falls back to the default, an unknown range to 7 days, a missing or non-boolean `percentiles` to on.
 
 ### Buckets
@@ -74,7 +74,7 @@ On the Trends tab, show how the selected baby's feeding, sleep, diapers, pumping
   - "3", "50" and "97" in small type at the right edge of the plot, at their curve's height, kept just inside the plot's top and bottom (a label that would overlap another is left out, 50 first).
   The baby's line and points stay on top, unchanged, the only strong mark. The bands aren't tappable and are hidden from assistive technologies; the caption says what they are.
 - **Y axis with bands:** it fits the baby's values **and** the 3rd–97th band over the period; the top and bottom labels are that range's highest and lowest values. Without bands, it fits the baby's values as before.
-- **Caption** under each chart with bands, one line (M3 body-small, on-surface-variant): "WHO standards, girls: 3rd–97th percentile, median dashed" ("boys" for a boy).
+- **Caption**: one line at the bottom of the Growth screen, under all the cards, when at least one chart has bands (M3 body-small, on-surface-variant): "WHO standards, girls: 3rd–97th percentile, median dashed" ("boys" for a boy). Not repeated under each chart.
 - **When the bands show:** the Percentiles chip is on, the baby's sex is girl or boy, the measure has at least one point in the period, and part of the period is within the reference's ages. A card without a point keeps its current content (no bands alone).
 - **Sex unspecified:** there is no reference to pick (WHO has no unisex table). With the chip on, the charts show without bands and one hint shows above the cards: "Set {name}'s sex in the baby profile to see percentiles". Turning the chip off hides it.
 - **No interpretation:** no percentile number for the baby, no "normal" / "low" / "high" wording, no colour change of the baby's line or points, no alert. Tooltips and headlines are unchanged.
@@ -126,7 +126,7 @@ Each item becomes at least one test, written failing first.
 
 ### Metric cards
 - [x] Each section shows the cards of the table above, with their headline and chart, in the section's colours.
-- [x] Tapping a bar or point shows its date and value.
+- [x] Tapping a bar or point shows its date and value until the user taps elsewhere (it stays while the clock ticks).
 - [x] A card with no data day in the period shows "Nothing logged in this period".
 - [x] Time between feeds ignores gaps over 8 hours and counts each gap on the later feed's day.
 - [x] Sleep minutes between 19:00 and 07:00 local count as night; the longest sleep counts on its start day.
@@ -140,7 +140,7 @@ Each item becomes at least one test, written failing first.
 - [x] The reference gives, for a sex, a measure and an age in days, the 3rd, 15th, 50th, 85th and 97th percentile values from the WHO LMS tables, interpolated between rows (a boy's weight at birth: 2.51 / 2.86 / 3.35 / 3.88 / 4.35 kg to two decimals); nothing after 1826 days.
 - [x] The reference file is generated from the committed WHO tables (running the script again changes nothing), is loaded only when bands are to be drawn, and is in the service worker's lazy assets.
 - [x] `nala-line-chart` draws given bands behind the line: outer band, inner band, dashed median, "3" / "50" / "97" at the right edge; with bands the y axis and its top and bottom labels fit the values and the outer band; without bands nothing changes.
-- [x] For a girl or a boy, each growth chart with a point in the period shows their sex's bands, from the birth date at the earliest and up to 1826 days of age, with the caption naming the source and the sex; a card without a point shows no bands.
+- [x] For a girl or a boy, each growth chart with a point in the period shows their sex's bands, from the birth date at the earliest and up to 1826 days of age, with one caption under all the cards naming the source and the sex; a card without a point shows no bands.
 - [x] With an unspecified sex, the charts show without bands and the hint to set the sex shows above the cards.
 - [x] Tooltips, headlines and the baby's line are the same with and without bands; no percentile of the baby and no verdict is shown anywhere.
 - [x] When the reference can't be loaded, the charts show without bands and without an error.

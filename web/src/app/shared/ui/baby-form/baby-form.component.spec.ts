@@ -1,7 +1,9 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideNativeDateAdapter } from '@angular/material/core';
 import en from '../../../../../public/i18n/en.json';
+import { NowService } from '../../../core/time/now.service';
+import { fakeNow } from '../../../testing/now';
 import { translocoTesting } from '../../../testing/transloco-testing';
 import { BabyFormComponent, babyFields, createBabyForm } from './baby-form.component';
 
@@ -16,6 +18,7 @@ class HostComponent {
 
 describe('BabyFormComponent', () => {
   let fixture: ComponentFixture<HostComponent>;
+  let now: ReturnType<typeof signal<number>>;
 
   const form = () => fixture.componentInstance.form;
   const host = () => fixture.nativeElement as HTMLElement;
@@ -38,15 +41,25 @@ describe('BabyFormComponent', () => {
     // Local 27 Sep 2026, 10:00.
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date(2026, 8, 27, 10, 0));
+    now = signal(new Date(2026, 8, 27, 10, 0).getTime());
     await TestBed.configureTestingModule({
       imports: [HostComponent, translocoTesting()],
-      providers: [provideNativeDateAdapter()],
+      providers: [provideNativeDateAdapter(), { provide: NowService, useValue: fakeNow(now) }],
     }).compileComponents();
     fixture = TestBed.createComponent(HostComponent);
     await fixture.whenStable();
   });
 
   afterEach(() => vi.useRealTimers());
+
+  it("keeps the birth date's calendar up to today, which moves on at midnight", async () => {
+    expect(input('birthDate').getAttribute('max')).toBe('2026-09-27');
+
+    now.set(new Date(2026, 8, 28, 0, 0, 1).getTime());
+    await refresh();
+
+    expect(input('birthDate').getAttribute('max')).toBe('2026-09-28');
+  });
 
   it('renders every field with its label and unit', () => {
     const text = host().textContent!;
