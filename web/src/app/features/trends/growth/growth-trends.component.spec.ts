@@ -47,6 +47,7 @@ describe('GrowthTrendsComponent', () => {
   let growth: ReturnType<typeof vi.fn>;
   let refresh: ReturnType<typeof fakeDataRefresh>;
   let referenceLoad: ReturnType<typeof vi.fn<() => Observable<GrowthReference>>>;
+  let now: ReturnType<typeof signal<number>>;
 
   const host = () => fixture.nativeElement as HTMLElement;
   const norm = (s?: string | null) => (s ?? '').replace(/\s+/g, ' ').trim();
@@ -110,13 +111,14 @@ describe('GrowthTrendsComponent', () => {
     });
     refresh = fakeDataRefresh();
     referenceLoad = vi.fn(() => of(reference));
+    now = signal(new Date(2026, 9, 9, 12).getTime());
     await TestBed.configureTestingModule({
       imports: [HostComponent, translocoTesting()],
       providers: [
         { provide: TrendsService, useValue: { growth } },
         { provide: DataRefreshService, useValue: refresh },
         { provide: GrowthReferenceService, useValue: { reference: referenceLoad } },
-        { provide: NowService, useValue: { now: signal(new Date(2026, 9, 9, 12).getTime()) } },
+        { provide: NowService, useValue: { now } },
       ],
     }).compileComponents();
     fixture = TestBed.createComponent(HostComponent);
@@ -165,6 +167,19 @@ describe('GrowthTrendsComponent', () => {
     ]);
     expect(inCard(2, 'point-target').length).toBe(1);
     expect(inCard(2, 'line-segment').length).toBe(0);
+  });
+
+  it('keeps a tapped point\'s value shown while the clock ticks', async () => {
+    await respond(trends);
+    inCard(0, 'point-target')[1].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await settle();
+    const label = labelsIn(0, 'point-target')[1];
+    expect(norm(find('chart-tooltip')?.textContent)).toBe(label);
+
+    now.set(now() + 1000);
+    await settle();
+
+    expect(norm(find('chart-tooltip')?.textContent)).toBe(label);
   });
 
   it('shows the milestones as markers on the Weight chart only', async () => {

@@ -126,7 +126,7 @@ Each item becomes at least one test, written failing first.
 
 ### Metric cards
 - [x] Each section shows the cards of the table above, with their headline and chart, in the section's colours.
-- [x] Tapping a bar or point shows its date and value.
+- [x] Tapping a bar or point shows its date and value until the user taps elsewhere (it stays while the clock ticks).
 - [x] A card with no data day in the period shows "Nothing logged in this period".
 - [x] Time between feeds ignores gaps over 8 hours and counts each gap on the later feed's day.
 - [x] Sleep minutes between 19:00 and 07:00 local count as night; the longest sleep counts on its start day.

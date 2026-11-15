@@ -10,7 +10,7 @@
       [title]="card.title"
       [headline]="card.headline"
       [perDay]="false"
-      [detail]="card.detail"
+      [detail]="details()[card.key]"
       [empty]="card.points.length === 0 && !(weight && milestones().length > 0)"
     >
       <nala-line-chart

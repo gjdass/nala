@@ -29,13 +29,12 @@ import { TrendsPeriod } from '../trends-period';
 
 type Measure = 'weightG' | 'lengthCm' | 'headCircumferenceCm';
 
-/** A measure's card: its points in the period and the headline (its latest value, then its date). */
+/** A measure's card: its points in the period and the headline (its latest value). */
 interface GrowthCard {
   key: Measure;
   title: string;
   points: LinePoint[];
   headline: string;
-  detail: string;
   format: (value: number) => string;
   /** The WHO percentile bands behind the line, or null when none are drawn. */
   bands: LineBandSample[] | null;
@@ -142,9 +141,26 @@ export class GrowthTrendsComponent extends TrendsLoader<GrowthTrends> {
           label: `${this.dayLabel(m.date)}: ${format(m[key]!)} · ${this.ageAt(m)}`,
         })),
         headline: latest ? format(latest[key]!) : this.transloco.translate('trends.noValue'),
-        detail: latest ? this.dateOf(latest) : '',
       };
     });
+  });
+
+  /**
+   * Each measure's headline date ("Today", "Yesterday"…), apart from the cards: it follows the clock,
+   * which must not rebuild the charts' points (that would hide a tapped point's value every second).
+   */
+  protected readonly details = computed((): Record<Measure, string> => {
+    this.lang();
+    const measurements = this.data.hasValue() ? this.data.value().measurements : [];
+    const detail = (key: Measure) => {
+      const latest = measurements.filter((m) => m[key] !== null).at(-1);
+      return latest ? this.dateOf(latest) : '';
+    };
+    return {
+      weightG: detail('weightG'),
+      lengthCm: detail('lengthCm'),
+      headCircumferenceCm: detail('headCircumferenceCm'),
+    };
   });
 
   protected readonly milestones = computed((): LineMarker[] => {
