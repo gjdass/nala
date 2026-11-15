@@ -146,6 +146,12 @@ describe('LineChartComponent', () => {
       '29',
     ]);
   });
+  it('keeps the first and last dates inside the plot: start-aligned and end-aligned', async () => {
+    await show([point('2026-09-01', 3)]);
+
+    expect(all('chart-x-label').map((l) => l.className)).toEqual(['start', '', '', '', 'end']);
+  });
+
   describe('with percentile bands', () => {
     const sample = (date: string, p50: number, spread: number): LineBandSample => ({
       date,

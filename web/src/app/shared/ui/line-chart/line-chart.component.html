@@ -96,6 +96,12 @@
 
 <div class="x-labels" aria-hidden="true">
   @for (label of xLabels(); track $index) {
-    <span [style.left.%]="label.left" data-testid="chart-x-label">{{ label.text }}</span>
+    <span
+      [style.left.%]="label.left"
+      [class.start]="label.left === 0"
+      [class.end]="label.left === 100"
+      data-testid="chart-x-label"
+      >{{ label.text }}</span
+    >
   }
 </div>
