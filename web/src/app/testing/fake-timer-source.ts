@@ -2,7 +2,9 @@ import { signal } from '@angular/core';
 import { RunningTimer, RunningTimerSource } from '../core/timers/running-timer.models';
 
 /** A running timer started at `startedAt` (epoch ms), labelled with an existing translation key. */
-export const fakeTimer = (overrides: Partial<RunningTimer> & { startedAt?: number } = {}): RunningTimer => {
+export const fakeTimer = (
+  overrides: Partial<RunningTimer> & { startedAt?: number } = {},
+): RunningTimer => {
   const { startedAt = 0, ...timer } = overrides;
   return {
     id: 'timer-1',

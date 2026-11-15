@@ -1,7 +1,10 @@
+import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideNativeDateAdapter } from '@angular/material/core';
 import en from '../../../../../public/i18n/en.json';
 import { SectionKey } from '../../../core/sections/section.models';
+import { NowService } from '../../../core/time/now.service';
+import { fakeNow } from '../../../testing/now';
 import { translocoTesting } from '../../../testing/transloco-testing';
 import { HistoryWindow } from '../history-filters';
 import { MenuSection } from '../../../core/sections/section-menu';
@@ -11,6 +14,7 @@ describe('HistoryFilterBarComponent', () => {
   let fixture: ComponentFixture<HistoryFilterBarComponent>;
   let windows: HistoryWindow[];
   let selections: SectionKey[][];
+  let now: ReturnType<typeof signal<number>>;
 
   const sections: MenuSection[] = [
     { key: 'diaper', icon: 'baby_changing_station', visible: true },
@@ -36,9 +40,10 @@ describe('HistoryFilterBarComponent', () => {
   };
 
   beforeEach(async () => {
+    now = signal(new Date(2026, 10, 2, 10).getTime());
     await TestBed.configureTestingModule({
       imports: [HistoryFilterBarComponent, translocoTesting()],
-      providers: [provideNativeDateAdapter()],
+      providers: [provideNativeDateAdapter(), { provide: NowService, useValue: fakeNow(now) }],
     }).compileComponents();
     fixture = TestBed.createComponent(HistoryFilterBarComponent);
     windows = [];
@@ -54,6 +59,18 @@ describe('HistoryFilterBarComponent', () => {
     find('window-chip')!.click();
     await fixture.whenStable();
   };
+
+  it("keeps the custom range's calendar up to today, which moves on at midnight", async () => {
+    fixture.componentRef.setInput('range', { start: '2026-08-04', end: '2026-11-01' });
+    await show(['feed'], 'custom');
+    const end = () => host().querySelector('[data-testid="range-end"]')!.getAttribute('max');
+    expect(end()).toBe('2026-11-02');
+
+    now.set(new Date(2026, 10, 3, 0, 0, 1).getTime());
+    await fixture.whenStable();
+
+    expect(end()).toBe('2026-11-03');
+  });
 
   it('shows the window chip first, then the sections chip, in one chip set', async () => {
     await show(['feed']);

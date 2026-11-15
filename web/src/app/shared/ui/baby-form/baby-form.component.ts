@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
+import { NowService } from '../../../core/time/now.service';
 import {
   AbstractControl,
   FormControl,
@@ -140,8 +141,10 @@ export class BabyFormComponent {
   protected readonly sexes: Sex[] = ['girl', 'boy', 'unspecified'];
   protected readonly measurements = MEASUREMENTS;
 
-  /** The calendar can't go past today. */
-  protected readonly today = new Date();
+  private readonly clock = inject(NowService);
+
+  /** The calendar can't go past today (the clock's day, so it moves on at midnight). */
+  protected readonly today = computed(() => new Date(this.clock.today()));
 
   /** A server code set as `{ server: code }` first, else the form's own code. */
   protected errorOf(control: AbstractControl): string | null {
