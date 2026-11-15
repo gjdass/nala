@@ -33,6 +33,28 @@
   stroke-dasharray: 4 4;
 }
 
+// Percentile bands (spec 12): behind everything, fills from the global chart tokens.
+.band-outer {
+  fill: var(--nala-chart-band-outer);
+}
+
+.band-inner {
+  fill: var(--nala-chart-band-inner);
+}
+
+.band-median {
+  fill: none;
+  stroke: var(--mat-sys-outline);
+  stroke-width: 1;
+  stroke-dasharray: 4 3;
+  vector-effect: non-scaling-stroke;
+}
+
+.band-label {
+  fill: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-label-small);
+}
+
 .line {
   stroke: var(--mat-sys-primary);
   stroke-width: 2;

@@ -22,6 +22,16 @@ export interface LineMarker {
   label: string;
 }
 
+/** The five percentile values of a reference at a date, drawn as bands behind the line. */
+export interface LineBandSample {
+  date: string;
+  p3: number;
+  p15: number;
+  p50: number;
+  p85: number;
+  p97: number;
+}
+
 interface Drawn {
   key: string;
   label: string;
@@ -29,6 +39,8 @@ interface Drawn {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const X_LABELS = 5;
+/** Two band labels closer than this (percent of the plot's height, about a label's line) overlap. */
+const LABEL_GAP = 10;
 
 /**
  * A line chart of dated values (spec 12), hand-made SVG from the theme tokens of the scheme it sits in:
@@ -36,6 +48,9 @@ const X_LABELS = 5;
  * the y axis fits the values, the top labelled with the max and the bottom with the min. Markers sit
  * along the x axis. Tapping a point or a marker (or Enter on it) shows its label above the chart;
  * tapping anywhere else hides it. Coordinates are percentages, so the dots stay round at any width.
+ * Optional percentile `bands` are drawn behind the line (outer 3rd–97th and inner 15th–85th fills, a
+ * dashed median, "3" / "50" / "97" at the right edge), hidden from assistive technologies; with them
+ * the y axis fits the values and the outer band.
  */
 @Component({
   selector: 'nala-line-chart',
@@ -49,6 +64,7 @@ export class LineChartComponent {
 
   readonly points = input.required<readonly LinePoint[]>();
   readonly markers = input<readonly LineMarker[]>([]);
+  readonly bands = input<readonly LineBandSample[] | null>(null);
   readonly from = input.required<string>();
   readonly to = input.required<string>();
   readonly format = input.required<(value: number) => string>();
@@ -58,7 +74,10 @@ export class LineChartComponent {
 
   private readonly range = computed(() => {
     const values = this.points().map((p) => p.value);
-    return values.length ? { min: Math.min(...values), max: Math.max(...values) } : null;
+    const bands = this.bands() ?? [];
+    const lows = [...values, ...bands.map((b) => b.p3)];
+    const highs = [...values, ...bands.map((b) => b.p97)];
+    return lows.length ? { min: Math.min(...lows), max: Math.max(...highs) } : null;
   });
   protected readonly maxLabel = computed(() => {
     const range = this.range();
@@ -69,17 +88,45 @@ export class LineChartComponent {
     return range ? this.format()(range.min) : null;
   });
 
-  protected readonly drawnPoints = computed(() => {
-    const range = this.range();
-    return this.points().map((point, index) => ({
+  protected readonly drawnPoints = computed(() =>
+    this.points().map((point, index) => ({
       key: `p${index}`,
       label: point.label,
       x: this.x(point.date),
-      y:
-        !range || range.max === range.min
-          ? 50
-          : ((range.max - point.value) / (range.max - range.min)) * 100,
-    }));
+      y: this.y(point.value),
+    })),
+  );
+
+  /** The bands' paths in the plot's 0–100 box, and their labels at the right edge. */
+  protected readonly drawnBands = computed(() => {
+    const bands = this.bands();
+    if (!bands?.length) {
+      return null;
+    }
+    const at = (key: keyof Omit<LineBandSample, 'date'>) =>
+      bands.map((b) => `${round(this.x(b.date))} ${round(this.y(b[key]))}`);
+    const fill = (top: keyof LineBandSample, bottom: keyof LineBandSample) => {
+      const upper = at(top as 'p97');
+      const lower = at(bottom as 'p3').reverse();
+      return `M ${upper.join(' L ')} L ${lower.join(' L ')} Z`;
+    };
+    const last = bands[bands.length - 1];
+    const label = (text: string, value: number) => ({ text, y: round(this.y(value)) });
+    let labels = [label('97', last.p97), label('50', last.p50), label('3', last.p3)];
+    const clashes = (a: { y: number }, b: { y: number }) => Math.abs(a.y - b.y) < LABEL_GAP;
+    if (clashes(labels[1], labels[0]) || clashes(labels[1], labels[2])) {
+      labels = [labels[0], labels[2]];
+    }
+    if (clashes(labels[0], labels[labels.length - 1]) && labels.length > 1) {
+      labels = [labels[0]];
+    }
+    return {
+      outer: fill('p97', 'p3'),
+      inner: fill('p85', 'p15'),
+      median: `M ${at('p50').join(' L ')}`,
+      labelX: round(this.x(last.date)),
+      labels,
+    };
   });
 
   protected readonly segments = computed(() =>
@@ -128,11 +175,21 @@ export class LineChartComponent {
 
   protected hideOutside(event: Event): void {
     const target = event.target as Element | null;
-    if (
-      !(target && this.host.nativeElement.contains(target) && target.closest('.point, .marker'))
-    ) {
+    if (!(
+      target &&
+      this.host.nativeElement.contains(target) &&
+      target.closest('.point, .marker')
+    )) {
       this.selected.set(null);
     }
+  }
+
+  /** A value's height in the plot, in percent from the top: centred when there's a single value. */
+  private y(value: number): number {
+    const range = this.range();
+    return !range || range.max === range.min
+      ? 50
+      : ((range.max - value) / (range.max - range.min)) * 100;
   }
 
   /** A date's place across the period, in percent. */
@@ -140,6 +197,11 @@ export class LineChartComponent {
     const span = this.span();
     return span > 0 ? ((dayNumber(date) - dayNumber(this.from())) / span) * 100 : 50;
   }
+}
+
+/** Path coordinates to two decimals, so the markup stays short. */
+function round(value: number): number {
+  return Math.round(value * 100) / 100;
 }
 
 /** A calendar date as a day count, so daylight saving changes don't shift positions. */

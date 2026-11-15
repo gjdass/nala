@@ -1,0 +1,6 @@
+// Growth percentile bands of the line chart (spec 12): the scheme's primary-container at two
+// strengths, set on the chart itself so they follow the section scheme it sits in.
+nala-line-chart {
+  --nala-chart-band-outer: color-mix(in srgb, var(--mat-sys-primary-container) 45%, transparent);
+  --nala-chart-band-inner: color-mix(in srgb, var(--mat-sys-primary-container) 90%, transparent);
+}
