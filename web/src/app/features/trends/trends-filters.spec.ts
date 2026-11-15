@@ -11,14 +11,18 @@ describe('TrendsFiltersStore', () => {
   });
 
   it('gives no section and 7 days with nothing stored', () => {
-    expect(store.read()).toEqual({ section: null, range: '7d' });
+    expect(store.read()).toEqual({ section: null, range: '7d', percentiles: true });
   });
 
   it('reads back what was saved', () => {
-    store.save({ section: 'sleep', range: '3m' });
+    store.save({ section: 'sleep', range: '3m', percentiles: false });
 
-    expect(JSON.parse(localStorage.getItem(KEY)!)).toEqual({ section: 'sleep', range: '3m' });
-    expect(store.read()).toEqual({ section: 'sleep', range: '3m' });
+    expect(JSON.parse(localStorage.getItem(KEY)!)).toEqual({
+      section: 'sleep',
+      range: '3m',
+      percentiles: false,
+    });
+    expect(store.read()).toEqual({ section: 'sleep', range: '3m', percentiles: false });
   });
 
   it.each([
@@ -27,18 +31,27 @@ describe('TrendsFiltersStore', () => {
   ])('gives no section for %s', (_, section) => {
     localStorage.setItem(KEY, JSON.stringify({ section, range: '30d' }));
 
-    expect(store.read()).toEqual({ section: null, range: '30d' });
+    expect(store.read()).toEqual({ section: null, range: '30d', percentiles: true });
   });
 
   it('gives 7 days for an unknown range', () => {
     localStorage.setItem(KEY, JSON.stringify({ section: 'pump', range: '1y' }));
 
-    expect(store.read()).toEqual({ section: 'pump', range: '7d' });
+    expect(store.read()).toEqual({ section: 'pump', range: '7d', percentiles: true });
   });
 
   it('gives the defaults for unreadable JSON', () => {
     localStorage.setItem(KEY, '{nope');
 
-    expect(store.read()).toEqual({ section: null, range: '7d' });
+    expect(store.read()).toEqual({ section: null, range: '7d', percentiles: true });
+  });
+
+  it.each([
+    ['missing', {}],
+    ['not a boolean', { percentiles: 'no' }],
+  ])('shows the percentiles when the stored value is %s', (_, stored) => {
+    localStorage.setItem(KEY, JSON.stringify({ section: 'growth', range: '6m', ...stored }));
+
+    expect(store.read()).toEqual({ section: 'growth', range: '6m', percentiles: true });
   });
 });

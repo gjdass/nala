@@ -28,6 +28,7 @@ describe('TrendsFilterBarComponent', () => {
       canGoBack: true,
       canGoForward: true,
       navigable: true,
+      percentiles: true,
       ...inputs,
     };
     for (const [name, value] of Object.entries(values)) {
@@ -47,6 +48,7 @@ describe('TrendsFilterBarComponent', () => {
     c.rangeChange.subscribe((v) => events.push(['range', v]));
     c.previous.subscribe(() => events.push(['previous']));
     c.next.subscribe(() => events.push(['next']));
+    c.percentilesChange.subscribe((v) => events.push(['percentiles', v]));
   });
 
   it('shows the section chip then the range chip in one chip set, each with its value', async () => {
@@ -144,5 +146,42 @@ describe('TrendsFilterBarComponent', () => {
     expect(host().querySelector('[data-testid="period-label"]')!.textContent?.trim()).toBe(
       'Aug 2025 – Oct 2026',
     );
+  });
+
+  describe('Percentiles chip', () => {
+    const chip = () => find('percentiles-chip');
+
+    it('shows only when the section is Growth', async () => {
+      await show({ section: 'feed' });
+      expect(chip()).toBeNull();
+
+      await show({ section: 'growth' });
+      expect(chip()!.tagName.toLowerCase()).toBe('mat-chip-option');
+      expect(chip()!.textContent).toContain(en.trends.percentiles.label);
+    });
+
+    it('shows its state, selected when on', async () => {
+      await show({ section: 'growth', percentiles: true });
+      expect(chip()!.querySelector('[role="option"]')!.getAttribute('aria-selected')).toBe('true');
+
+      await show({ section: 'growth', percentiles: false });
+      expect(chip()!.querySelector('[role="option"]')!.getAttribute('aria-selected')).toBe('false');
+      expect(events).toEqual([]);
+    });
+
+    it('turns the percentiles off and on when tapped', async () => {
+      await show({ section: 'growth', percentiles: true });
+      chip()!.querySelector<HTMLElement>('[role="option"]')!.click();
+      await fixture.whenStable();
+      expect(events).toEqual([['percentiles', false]]);
+
+      await show({ section: 'growth', percentiles: false });
+      chip()!.querySelector<HTMLElement>('[role="option"]')!.click();
+      await fixture.whenStable();
+      expect(events).toEqual([
+        ['percentiles', false],
+        ['percentiles', true],
+      ]);
+    });
   });
 });

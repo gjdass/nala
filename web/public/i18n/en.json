@@ -851,6 +851,14 @@
     "diaperHeadline": "{{wet}} wet · {{dirty}} dirty",
     "weekOf": "Week of {{date}}",
     "noValue": "–",
-    "loadError": "Couldn't load the trends."
+    "loadError": "Couldn't load the trends.",
+    "percentiles": {
+      "label": "Percentiles",
+      "caption": {
+        "girl": "WHO standards, girls: 3rd–97th percentile, median dashed",
+        "boy": "WHO standards, boys: 3rd–97th percentile, median dashed"
+      },
+      "hint": "Set {{name}}'s sex in the baby profile to see percentiles"
+    }
   }
 }

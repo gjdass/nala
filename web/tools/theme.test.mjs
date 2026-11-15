@@ -73,6 +73,16 @@ describe('global theme', () => {
     }
   });
 
+  it("defines the growth percentile band fills from the chart's scheme primary-container (spec 12)", () => {
+    const rule = css.match(/nala-line-chart\s*\{([^}]*)\}/)?.[1] ?? '';
+    const outer = rule.match(/--nala-chart-band-outer:\s*([^;]*);/)?.[1] ?? '';
+    const inner = rule.match(/--nala-chart-band-inner:\s*([^;]*);/)?.[1] ?? '';
+    assert.match(outer, /var\(--mat-sys-primary-container\)/);
+    assert.match(inner, /var\(--mat-sys-primary-container\)/);
+    const strength = (value) => Number(value.match(/(\d+)%/)?.[1] ?? 100);
+    assert.ok(strength(outer) < strength(inner), 'the inner band is stronger');
+  });
+
   it('colours the section card small FAB and text button from the section tokens', () => {
     const block = (selector) => css.match(new RegExp(`\\${selector}\\s*\\{([^}]*)\\}`))?.[1] ?? '';
     const fab = block('.nala-section-fab');

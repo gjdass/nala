@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { translocoTesting } from '../../../testing/transloco-testing';
-import { LineChartComponent, LineMarker, LinePoint } from './line-chart.component';
+import { LineBandSample, LineChartComponent, LineMarker, LinePoint } from './line-chart.component';
 
 const kg = (v: number) => `${v} kg`;
 
@@ -12,6 +12,7 @@ const kg = (v: number) => `${v} kg`;
     <nala-line-chart
       [points]="points()"
       [markers]="markers()"
+      [bands]="bands()"
       [from]="from()"
       [to]="to()"
       [format]="format"
@@ -21,6 +22,7 @@ const kg = (v: number) => `${v} kg`;
 class HostComponent {
   readonly points = signal<LinePoint[]>([]);
   readonly markers = signal<LineMarker[]>([]);
+  readonly bands = signal<LineBandSample[] | null>(null);
   readonly from = signal('2026-09-01');
   readonly to = signal('2026-09-11');
   readonly format = kg;
@@ -113,10 +115,7 @@ describe('LineChartComponent', () => {
   });
 
   it('shows markers at their date along the x axis, with their label when tapped', async () => {
-    await show(
-      [point('2026-09-01', 3)],
-      [{ date: '2026-09-06', label: 'First smile · Sep 6' }],
-    );
+    await show([point('2026-09-01', 3)], [{ date: '2026-09-06', label: 'First smile · Sep 6' }]);
 
     const markers = all('marker');
     expect(markers.length).toBe(1);
@@ -146,5 +145,93 @@ describe('LineChartComponent', () => {
       '19',
       '29',
     ]);
+  });
+  describe('with percentile bands', () => {
+    const sample = (date: string, p50: number, spread: number): LineBandSample => ({
+      date,
+      p3: p50 - 2 * spread,
+      p15: p50 - spread,
+      p50,
+      p85: p50 + spread,
+      p97: p50 + 2 * spread,
+    });
+    const showBands = async (bands: LineBandSample[], points: LinePoint[]) => {
+      fixture.componentInstance.bands.set(bands);
+      await show(points);
+    };
+    const numbers = (d: string | null) => (d ?? '').match(/-?\d+(\.\d+)?/g)!.map(Number);
+
+    it('draws nothing more without bands', async () => {
+      await show([point('2026-09-01', 3), point('2026-09-11', 5)]);
+      expect(all('band-outer').length).toBe(0);
+      expect(all('band-inner').length).toBe(0);
+      expect(all('band-median').length).toBe(0);
+      expect(all('band-label').length).toBe(0);
+    });
+
+    it('fits the y axis and its labels to the values and the outer band', async () => {
+      await showBands(
+        [sample('2026-09-01', 4, 0.5), sample('2026-09-11', 6, 0.5)],
+        [point('2026-09-06', 5)],
+      );
+      expect(text('chart-max')).toBe('7 kg');
+      expect(text('chart-min')).toBe('3 kg');
+      expect(percent(all('point')[0], 'cy')).toBe(50);
+    });
+
+    it('keeps a value outside the band inside the axis', async () => {
+      await showBands([sample('2026-09-01', 4, 0.5)], [point('2026-09-06', 8)]);
+      expect(text('chart-max')).toBe('8 kg');
+      expect(text('chart-min')).toBe('3 kg');
+    });
+
+    it('fills the outer band from the 97th to the 3rd and the inner one from the 85th to the 15th', async () => {
+      await showBands(
+        [sample('2026-09-01', 4, 0.5), sample('2026-09-11', 6, 0.5)],
+        [point('2026-09-06', 5)],
+      );
+      // y range 3 → 7: a value v is at (7 − v) / 4 × 100.
+      expect(numbers(all('band-outer')[0].getAttribute('d'))).toEqual([
+        0, 50, 100, 0, 100, 50, 0, 100,
+      ]);
+      expect(numbers(all('band-inner')[0].getAttribute('d'))).toEqual([
+        0, 62.5, 100, 12.5, 100, 37.5, 0, 87.5,
+      ]);
+      expect(numbers(all('band-median')[0].getAttribute('d'))).toEqual([0, 75, 100, 25]);
+    });
+
+    it('starts the bands at their first sample, not at the period start', async () => {
+      await showBands(
+        [sample('2026-09-06', 4, 0.5), sample('2026-09-11', 4, 0.5)],
+        [point('2026-09-06', 4)],
+      );
+      expect(numbers(all('band-median')[0].getAttribute('d'))[0]).toBe(50);
+    });
+
+    it("labels 3, 50 and 97 at the right edge, at their curve's height", async () => {
+      await showBands(
+        [sample('2026-09-01', 4, 0.5), sample('2026-09-11', 6, 0.5)],
+        [point('2026-09-06', 5)],
+      );
+      const labels = all('band-label');
+      expect(labels.map((l) => l.textContent?.trim())).toEqual(['97', '50', '3']);
+      expect(labels.map((l) => percent(l, 'y'))).toEqual([6, 25, 50]);
+    });
+
+    it('leaves out the 50 label first when labels would overlap', async () => {
+      await showBands(
+        [sample('2026-09-01', 4, 0.15)],
+        [point('2026-09-06', 2), point('2026-09-07', 6)],
+      );
+      expect(all('band-label').map((l) => l.textContent?.trim())).toEqual(['97', '3']);
+    });
+
+    it('hides the bands from assistive technologies and keeps the points tappable', async () => {
+      await showBands([sample('2026-09-01', 4, 0.5)], [point('2026-09-06', 5)]);
+      expect(host().querySelector('[data-testid="bands"]')!.getAttribute('aria-hidden')).toBe(
+        'true',
+      );
+      expect(all('point-target').length).toBe(1);
+    });
   });
 });

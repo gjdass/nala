@@ -133,6 +133,10 @@ export class TrendsPage {
     this.setFilters({ ...this.filters(), range });
   }
 
+  protected setPercentiles(percentiles: boolean): void {
+    this.setFilters({ ...this.filters(), percentiles });
+  }
+
   private setFilters(filters: TrendsFilters): void {
     this.filters.set(filters);
     this.filterStore.save(filters);

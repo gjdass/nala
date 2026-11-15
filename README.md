@@ -88,3 +88,7 @@ node --test "tests/**/*.test.mjs"   # compose and Dockerfile checks (needs Docke
 tests/deploy/smoke.sh               # builds and starts the stack from a clean copy, checks the app and /api/health
 tests/deploy/db-backup-restore.sh   # backs up, wipes the database, restores and compares
 ```
+
+## Credits
+
+Trends' growth percentile bands use the [WHO Child Growth Standards](https://www.who.int/tools/child-growth-standards) (weight, length/height and head circumference for age, birth to 5 years), from the tables of WHO's [`anthro`](https://github.com/WorldHealthOrganization/anthro) R package (GPL-3). See `web/tools/who-growth/`.
