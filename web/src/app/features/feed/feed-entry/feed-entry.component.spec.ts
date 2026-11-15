@@ -4,6 +4,7 @@ import { MatListModule } from '@angular/material/list';
 import en from '../../../../../public/i18n/en.json';
 import { aBottle, aBreastfeed, aSegment, aSolids } from '../../../testing/feeds';
 import { NowService } from '../../../core/time/now.service';
+import { fakeNow } from '../../../testing/now';
 import { translocoTesting } from '../../../testing/transloco-testing';
 import { FeedEntryComponent } from './feed-entry.component';
 
@@ -17,7 +18,7 @@ describe('FeedEntryComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [FeedEntryComponent, MatListModule, translocoTesting()],
-      providers: [{ provide: NowService, useValue: { now } }],
+      providers: [{ provide: NowService, useValue: fakeNow(now) }],
     }).compileComponents();
     fixture = TestBed.createComponent(FeedEntryComponent);
   });

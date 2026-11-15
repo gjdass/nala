@@ -15,6 +15,7 @@ import {
 } from '../../../core/feeds/feed.models';
 import { FeedService } from '../../../core/feeds/feed.service';
 import { NowService } from '../../../core/time/now.service';
+import { fakeNow } from '../../../testing/now';
 import { ConfirmDialogComponent } from '../../../shared/ui/confirm-dialog/confirm-dialog.component';
 import { DurationDialogComponent } from '../../../shared/ui/duration-dialog/duration-dialog.component';
 import { EntrySheetData } from '../../../shared/ui/entry-sheet/entry-sheet.models';
@@ -138,7 +139,7 @@ describe('BreastfeedSheetComponent', () => {
       providers: [
         provideNativeDateAdapter(),
         { provide: FeedService, useValue: feeds },
-        { provide: NowService, useValue: { now } },
+        { provide: NowService, useValue: fakeNow(now) },
         { provide: SelectedBabyService, useValue: { selected: signal({ id: 'b1' }) } },
         { provide: SheetRef, useValue: sheetRef },
         { provide: SHEET_DATA, useValue: null },

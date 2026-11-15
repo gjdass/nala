@@ -8,6 +8,7 @@ import { GrowthReference, LmsTable } from '../../../core/growth-reference/growth
 import { GrowthReferenceService } from '../../../core/growth-reference/growth-reference.service';
 import { DataRefreshService } from '../../../core/refresh/data-refresh.service';
 import { NowService } from '../../../core/time/now.service';
+import { fakeNow } from '../../../testing/now';
 import { GrowthTrendPoint, GrowthTrends } from '../../../core/trends/trends.models';
 import { TrendsService } from '../../../core/trends/trends.service';
 import {
@@ -118,7 +119,7 @@ describe('GrowthTrendsComponent', () => {
         { provide: TrendsService, useValue: { growth } },
         { provide: DataRefreshService, useValue: refresh },
         { provide: GrowthReferenceService, useValue: { reference: referenceLoad } },
-        { provide: NowService, useValue: { now } },
+        { provide: NowService, useValue: fakeNow(now) },
       ],
     }).compileComponents();
     fixture = TestBed.createComponent(HostComponent);

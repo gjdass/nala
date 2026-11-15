@@ -13,6 +13,7 @@ import { FeedService } from '../../../core/feeds/feed.service';
 import { HistoryItem, HistorySource } from '../../../core/history/history-source.models';
 import { SECTIONS, SectionDefinition, SectionKey } from '../../../core/sections/section.models';
 import { NowService } from '../../../core/time/now.service';
+import { fakeNow } from '../../../testing/now';
 import { aBreastfeed, aSegment } from '../../../testing/feeds';
 import { translocoTesting } from '../../../testing/transloco-testing';
 import { FeedHistorySource } from '../../feed/feed-history-source';
@@ -68,7 +69,7 @@ describe('HistoryEntryComponent', () => {
           useValue: [section('sleep', TestSource), section('feed', FeedHistorySource)],
         },
         { provide: FeedService, useValue: {} },
-        { provide: NowService, useValue: { now } },
+        { provide: NowService, useValue: fakeNow(now) },
       ],
     }).compileComponents();
     fixture = TestBed.createComponent(HistoryEntryComponent);

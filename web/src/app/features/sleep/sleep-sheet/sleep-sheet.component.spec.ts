@@ -11,6 +11,7 @@ import { Sleep } from '../../../core/sleeps/sleep.models';
 import { SleepService } from '../../../core/sleeps/sleep.service';
 import { SleepSyncService } from '../../../core/sleeps/sleep-sync.service';
 import { NowService } from '../../../core/time/now.service';
+import { fakeNow } from '../../../testing/now';
 import { DurationDialogComponent } from '../../../shared/ui/duration-dialog/duration-dialog.component';
 import { EntrySheetData } from '../../../shared/ui/entry-sheet/entry-sheet.models';
 import { SHEET_DATA, SheetRef } from '../../../shared/ui/sheet/sheet-ref';
@@ -127,7 +128,7 @@ describe('SleepSheetComponent', () => {
         { provide: SelectedBabyService, useValue: { selected: signal({ id: 'b1' }) } },
         { provide: SheetRef, useValue: sheetRef },
         { provide: SHEET_DATA, useValue: null },
-        { provide: NowService, useValue: { now } },
+        { provide: NowService, useValue: fakeNow(now) },
         { provide: SleepSyncService, useValue: sync },
         { provide: MatSnackBar, useValue: snackBar },
         { provide: MatDialog, useValue: dialog },

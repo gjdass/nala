@@ -11,6 +11,7 @@ import { Pump } from '../../../core/pumps/pump.models';
 import { PumpService } from '../../../core/pumps/pump.service';
 import { PumpSyncService } from '../../../core/pumps/pump-sync.service';
 import { NowService } from '../../../core/time/now.service';
+import { fakeNow } from '../../../testing/now';
 import { DurationDialogComponent } from '../../../shared/ui/duration-dialog/duration-dialog.component';
 import { EntrySheetData } from '../../../shared/ui/entry-sheet/entry-sheet.models';
 import { SHEET_DATA, SheetRef } from '../../../shared/ui/sheet/sheet-ref';
@@ -127,7 +128,7 @@ describe('PumpSheetComponent', () => {
         { provide: SelectedBabyService, useValue: { selected: signal({ id: 'b1' }) } },
         { provide: SheetRef, useValue: sheetRef },
         { provide: SHEET_DATA, useValue: null },
-        { provide: NowService, useValue: { now } },
+        { provide: NowService, useValue: fakeNow(now) },
         { provide: PumpSyncService, useValue: sync },
         { provide: MatSnackBar, useValue: snackBar },
         {

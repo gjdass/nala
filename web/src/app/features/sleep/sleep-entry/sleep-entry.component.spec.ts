@@ -2,6 +2,7 @@ import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatListModule } from '@angular/material/list';
 import { NowService } from '../../../core/time/now.service';
+import { fakeNow } from '../../../testing/now';
 import { aSleep } from '../../../testing/sleeps';
 import { translocoTesting } from '../../../testing/transloco-testing';
 import { SleepEntryComponent } from './sleep-entry.component';
@@ -22,7 +23,7 @@ describe('SleepEntryComponent', () => {
     now = signal(NOW.getTime());
     await TestBed.configureTestingModule({
       imports: [SleepEntryComponent, MatListModule, translocoTesting()],
-      providers: [{ provide: NowService, useValue: { now } }],
+      providers: [{ provide: NowService, useValue: fakeNow(now) }],
     }).compileComponents();
     fixture = TestBed.createComponent(SleepEntryComponent);
   });

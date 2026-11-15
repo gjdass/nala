@@ -6,6 +6,7 @@ import { Baby } from '../../../core/babies/baby.models';
 import { SelectedBabyService } from '../../../core/babies/selected-baby.service';
 import { SECTIONS } from '../../../core/sections/section.models';
 import { NowService } from '../../../core/time/now.service';
+import { fakeNow } from '../../../testing/now';
 import { RUNNING_TIMER_SOURCES } from '../../../core/timers/running-timer.models';
 import { fakeSection } from '../../../testing/fake-section';
 import { fakeTimer, fakeTimerSource } from '../../../testing/fake-timer-source';
@@ -55,7 +56,7 @@ describe('RunningTimersBarComponent', () => {
           provide: SECTIONS,
           useValue: [fakeSection('feed', 'restaurant'), fakeSection('sleep', 'bedtime')],
         },
-        { provide: NowService, useValue: { now } },
+        { provide: NowService, useValue: fakeNow(now) },
         { provide: SelectedBabyService, useValue: { babies } },
         { provide: EntrySheetService, useValue: entrySheets },
       ],

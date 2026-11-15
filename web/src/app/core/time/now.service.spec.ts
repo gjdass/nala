@@ -1,3 +1,4 @@
+import { computed } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { NowService } from './now.service';
 
@@ -23,6 +24,26 @@ describe('NowService', () => {
 
     vi.advanceTimersByTime(59_000);
     expect(now.now()).toBe(start + 60_000);
+  });
+
+  it("gives today's local midnight, which changes only when the day does", () => {
+    const now = TestBed.inject(NowService);
+    let runs = 0;
+    const day = computed(() => {
+      runs++;
+      return now.today();
+    });
+
+    expect(day()).toBe(new Date(2026, 8, 28).getTime());
+    expect(runs).toBe(1);
+
+    vi.advanceTimersByTime(60_000);
+    expect(day()).toBe(new Date(2026, 8, 28).getTime());
+    expect(runs).toBe(1);
+
+    vi.advanceTimersByTime(15 * 60 * 60 * 1000);
+    expect(day()).toBe(new Date(2026, 8, 29).getTime());
+    expect(runs).toBe(2);
   });
 
   it('stops ticking once destroyed', () => {
