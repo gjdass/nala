@@ -22,9 +22,9 @@
         [format]="card.format"
         [lang]="lang()"
       />
-      @if (card.bands) {
-        <p class="caption" data-testid="percentiles-caption">{{ caption() }}</p>
-      }
     </nala-metric-card>
+  }
+  @if (hasBands()) {
+    <p class="caption" data-testid="percentiles-caption">{{ caption() }}</p>
   }
 </nala-trends-load-state>

@@ -170,7 +170,7 @@ describe('GrowthTrendsComponent', () => {
     expect(inCard(2, 'line-segment').length).toBe(0);
   });
 
-  it('keeps a tapped point\'s value shown while the clock ticks', async () => {
+  it("keeps a tapped point's value shown while the clock ticks", async () => {
     await respond(trends);
     inCard(0, 'point-target')[1].dispatchEvent(new MouseEvent('click', { bubbles: true }));
     await settle();
@@ -234,16 +234,18 @@ describe('GrowthTrendsComponent', () => {
       await respond(trends);
     };
 
-    it("gives each chart with a point its sex's bands and the caption", async () => {
+    it("gives each chart with a point its sex's bands, and one caption under all the cards", async () => {
       await asGirl();
 
       expect(referenceLoad).toHaveBeenCalled();
       expect([0, 1, 2].map((i) => !!bandsOf(i)?.length)).toEqual([true, true, true]);
-      expect([0, 1, 2].map((i) => textIn(i, 'percentiles-caption'))).toEqual([
-        en.trends.percentiles.caption.girl,
-        en.trends.percentiles.caption.girl,
-        en.trends.percentiles.caption.girl,
-      ]);
+      const captions = host().querySelectorAll('[data-testid="percentiles-caption"]');
+      expect(captions.length).toBe(1);
+      expect(norm(captions[0].textContent)).toBe(en.trends.percentiles.caption.girl);
+      expect(cards().some((card) => card.contains(captions[0]))).toBe(false);
+      expect(
+        cards().at(-1)!.compareDocumentPosition(captions[0]) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
       expect(find('percentiles-hint')).toBeNull();
     });
 
@@ -251,7 +253,9 @@ describe('GrowthTrendsComponent', () => {
       await asGirl('boy');
 
       expect(bandsOf(0)![0].p50).toBe(4000);
-      expect(textIn(0, 'percentiles-caption')).toBe(en.trends.percentiles.caption.boy);
+      expect(norm(find('percentiles-caption')?.textContent)).toBe(
+        en.trends.percentiles.caption.boy,
+      );
     });
 
     it('samples about 60 dates across the period from the birth date, weight in g', async () => {
@@ -293,7 +297,7 @@ describe('GrowthTrendsComponent', () => {
       await asGirl();
 
       expect(bandsOf(0)).toBeNull();
-      expect(inCard(0, 'percentiles-caption').length).toBe(0);
+      expect(find('percentiles-caption')).toBeNull();
     });
 
     it('gives no bands to a card without a point, even the Weight card with milestones', async () => {
@@ -327,7 +331,7 @@ describe('GrowthTrendsComponent', () => {
 
       expect(referenceLoad).not.toHaveBeenCalled();
       expect(bandsOf(0)).toBeNull();
-      expect(inCard(0, 'percentiles-caption').length).toBe(0);
+      expect(find('percentiles-caption')).toBeNull();
       expect(norm(find('percentiles-hint')?.textContent)).toBe(
         en.trends.percentiles.hint.replace('{{name}}', 'Nala'),
       );
@@ -338,7 +342,7 @@ describe('GrowthTrendsComponent', () => {
       await asGirl();
 
       expect(bandsOf(0)).toBeNull();
-      expect(inCard(0, 'percentiles-caption').length).toBe(0);
+      expect(find('percentiles-caption')).toBeNull();
       expect(find('trends-error')).toBeNull();
       expect(inCard(0, 'point-target').length).toBe(3);
     });
@@ -360,7 +364,7 @@ describe('GrowthTrendsComponent', () => {
 
       expect(referenceLoad).not.toHaveBeenCalled();
       expect(bandsOf(0)).toBeNull();
-      expect(inCard(0, 'percentiles-caption').length).toBe(0);
+      expect(find('percentiles-caption')).toBeNull();
 
       fixture.componentInstance.sex.set('unspecified');
       await settle();
